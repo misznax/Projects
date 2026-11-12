@@ -1205,7 +1205,10 @@ class MainWindow(QMainWindow):
     def eventFilter(self, obj, ev):
         """Stuknięcie samego Alt pokazuje ukryty pasek menu."""
         t = ev.type()
-        if t == QEvent.Type.KeyPress:
+        if t == QEvent.Type.ShortcutOverride:  # Alt+cyfra (skrót) nie liczy się jako stuknięcie Alt
+            if ev.key() != Qt.Key.Key_Alt:
+                self._alt_clean = False
+        elif t == QEvent.Type.KeyPress:
             self._alt_clean = ev.key() == Qt.Key.Key_Alt and not ev.isAutoRepeat()
         elif t == QEvent.Type.KeyRelease and ev.key() == Qt.Key.Key_Alt:
             if self._alt_clean and self.isActiveWindow() and not self.menuBar().isVisible():
