@@ -26,7 +26,7 @@ from PySide6.QtGui import (QAction, QActionGroup, QColor, QDesktopServices, QFon
                            QPainter, QPen, QPixmap, QPolygonF, QShortcut, QSyntaxHighlighter, QTextCharFormat,
                            QTextCursor)
 from PySide6.QtWidgets import (
-    QAbstractButton, QApplication, QDialog, QFileDialog, QFrame, QHBoxLayout, QLabel, QMainWindow,
+    QAbstractButton, QApplication, QColorDialog, QDialog, QFileDialog, QFrame, QHBoxLayout, QLabel, QMainWindow,
     QMessageBox, QPlainTextEdit, QPushButton, QScrollArea, QSizePolicy, QStackedWidget,
     QToolButton, QVBoxLayout, QWidget,
 )
@@ -37,7 +37,7 @@ except Exception:  # brak biblioteki -> PDF niedostępny, reszta działa
     pdfium = None
 
 APP_NAME = "Startup Board"
-APP_VERSION = "v1.0"  # NIE ZMIENIAĆ bez polecenia autora
+APP_VERSION = "v1.1"  # zmieniać tylko na polecenie autora
 APP_AUTHOR = "Michał Rzekiecki"
 
 MAX_BYTES = 10 * 1024 * 1024        # limit pliku tekstowego
@@ -149,29 +149,46 @@ def _fmt(color: str, bold=False, italic=False) -> QTextCharFormat:
     return f
 
 
+DEFAULT_COLORS = {
+    "bg": "#ffffff", "text": "#1f1f1f", "num": "#ff7a00", "str": "#2fb344", "com": "#9aa0a6",
+    "kw": "#3b82f6", "other": "#b455e6",
+    "p;": "#ff3b30", "p?": "#ff2d95", "p!": "#ff9500", "p-": "#00c2a8", "p_": "#b266ff", "p=": "#2f80ff",
+    "p+": "#34c759", "p*/%": "#ff8a00", "p<>": "#8a63ff", "p&|^~": "#ff5e3a", "p,.:": "#18b8d9",
+    "p()": "#d9a400", "p[]": "#4f6bff", "p{}": "#ff5252", "p\\@$": "#c9a300",
+}
+COLORS = dict(DEFAULT_COLORS)  # aktualna paleta (globalna dla wszystkich paneli)
+COLOR_LABELS = [("text", "Tekst"), ("bg", "Tło edytora"), ("str", "Wartości w 'x' i \"x\""),
+                ("num", "Cyfry"), ("com", "Komentarze"), ("kw", "Słowa kluczowe i znaczniki"),
+                ("other", "Funkcje, atrybuty, wbudowane")]
+PUNCT_GROUPS = [("p;", ";"), ("p?", "?"), ("p!", "!"), ("p-", "-"), ("p_", "_"), ("p=", "="), ("p+", "+"),
+                ("p*/%", "* / %"), ("p<>", "< >"), ("p&|^~", "& | ^ ~"), ("p,.:", ", . :"),
+                ("p()", "( )"), ("p[]", "[ ]"), ("p{}", "{ }"), ("p\\@$", "\\ @ $")]
+
+
 @lru_cache(maxsize=1)
 def _formats() -> dict:
+    c = COLORS
     return {
-        "num": _fmt("#b5530a"), "kw": _fmt("#0033b3", bold=True), "builtin": _fmt("#7a3e9d"),
-        "str": _fmt("#067d17"), "com": _fmt("#8c8c8c", italic=True), "tag": _fmt("#0033b3"),
-        "attr": _fmt("#871094"), "deco": _fmt("#9e880d"), "func": _fmt("#00627a"),
+        "num": _fmt(c["num"]), "kw": _fmt(c["kw"], bold=True), "builtin": _fmt(c["other"]),
+        "str": _fmt(c["str"]), "com": _fmt(c["com"], italic=True), "tag": _fmt(c["kw"]),
+        "attr": _fmt(c["other"]), "deco": _fmt(c["other"]), "func": _fmt(c["other"]),
     }
 
 
 @lru_cache(maxsize=1)
 def _punct_formats() -> dict:
-    return {ch: _fmt(col) for ch, col in PUNCT_COLORS.items()}
+    return {ch: _fmt(COLORS[key]) for key, chars in ((k, k[1:]) for k, _l in PUNCT_GROUPS) for ch in chars}
+
+
+def refresh_colors():
+    """Po zmianie COLORS: wyczyść pamięć podręczną formatów."""
+    _formats.cache_clear()
+    _punct_formats.cache_clear()
+    _lang_def.cache_clear()
 
 
 NUM_RE = re.compile(r"0[xX][0-9a-fA-F]+|\d+(?:\.\d+)?")  # każda cyfra, także w abc123 i 3px
 PUNCT_RE = re.compile(r"[;?!\-_=+*/%<>&|^~\\@$,.:()\[\]{}]")
-PUNCT_COLORS = {
-    ";": "#d32f2f", "?": "#e91e63", "!": "#ff6f00", "-": "#00897b", "_": "#8e24aa", "=": "#1565c0",
-    "+": "#2e7d32", "*": "#ef6c00", "/": "#0097a7", "%": "#ad1457", "<": "#5e35b1", ">": "#5e35b1",
-    "&": "#d84315", "|": "#283593", "^": "#4e342e", "~": "#4e342e", "\\": "#bf360c", "@": "#9e880d",
-    "$": "#2e7d32", ",": "#795548", ".": "#455a64", ":": "#00838f",
-    "(": "#6d4c41", ")": "#6d4c41", "[": "#3949ab", "]": "#3949ab", "{": "#c0392b", "}": "#c0392b",
-}
 PY_KW = ("False None True and as assert async await break class continue def del elif else except finally "
          "for from global if import in is lambda nonlocal not or pass raise return try while with yield "
          "match case").split()
@@ -512,6 +529,7 @@ class TextPane(QFrame):
         self.editor.focused.connect(self._on_focus)
         self._reset_hint()
         self.set_active(False)
+        self.apply_colors()
         self.refresh_header()
 
     # --- wygląd ---
@@ -524,6 +542,12 @@ class TextPane(QFrame):
     def set_active(self, on: bool):
         self._active = on
         self._restyle()
+
+    def apply_colors(self):
+        self.editor.setStyleSheet(
+            f"QPlainTextEdit{{background:{COLORS['bg']};color:{COLORS['text']};}}")
+        if self.hl.document() is not None:
+            self.hl.rehighlight()
 
     def set_border(self, n: int):
         self.border = n
@@ -1079,6 +1103,15 @@ class MainWindow(QMainWindow):
         self.icon_acts = self._radio(
             v.addMenu("Kolor ikony (gwiazda)"), [(k, n) for k, n, _c in ICON_COLORS], self.set_icon_color,
             icons={k: QIcon(star_pixmap(c, 16)) for k, _n, c in ICON_COLORS})
+        mc = v.addMenu("Kolory składni")
+        self.color_acts: dict[str, QAction] = {}
+        for key, label in COLOR_LABELS:
+            mc.addAction(self._color_action(key, label))
+        mz = mc.addMenu("Znaki interpunkcyjne")
+        for key, label in PUNCT_GROUPS:
+            mz.addAction(self._color_action(key, label))
+        mc.addSeparator()
+        mc.addAction(self._act("Przywróć domyślne kolory", self.reset_colors))
         v.addSeparator()
         self.act_menu = self._act("Pokaż pasek menu", lambda: self.set_menu_visible(not self.menuBar().isVisible()),
                                   "Ctrl+M", checkable=True)
@@ -1102,6 +1135,42 @@ class MainWindow(QMainWindow):
         hp.addAction(self._act("Folder z ustawieniami", lambda: QDesktopServices.openUrl(
             QUrl.fromLocalFile(str(self.state_path.parent)))))
         hp.addAction(self._act("O autorze", self.show_about))
+
+    @staticmethod
+    def _swatch(col: str) -> QIcon:
+        pm = QPixmap(16, 16)
+        pm.fill(QColor(col))
+        p = QPainter(pm)
+        p.setPen(QColor("#808080"))
+        p.drawRect(0, 0, 15, 15)
+        p.end()
+        return QIcon(pm)
+
+    def _color_action(self, key: str, label: str) -> QAction:
+        a = QAction(label, self)
+        a.setIcon(self._swatch(COLORS[key]))
+        a.triggered.connect(lambda _c=False, k=key, l=label: self.pick_color(k, l))
+        self.color_acts[key] = a
+        return a
+
+    def pick_color(self, key: str, label: str):
+        c = QColorDialog.getColor(QColor(COLORS[key]), self, f"Kolor: {label}")
+        if c.isValid():
+            COLORS[key] = c.name()
+            self.apply_colors()
+
+    def reset_colors(self):
+        COLORS.clear()
+        COLORS.update(DEFAULT_COLORS)
+        self.apply_colors()
+
+    def apply_colors(self):
+        refresh_colors()
+        for p in self.panes:
+            p.apply_colors()
+        for key, a in self.color_acts.items():
+            a.setIcon(self._swatch(COLORS[key]))
+        self.schedule_save()
 
     def _sync_menu(self):
         c = self.current
@@ -1217,6 +1286,7 @@ class MainWindow(QMainWindow):
                 "rects": [[r.x(), r.y(), r.width(), r.height()] for r in (self.canvas.rel[p] for p in self.panes)],
                 "z": [p.index for p in self.canvas.order],
                 "border": self.border, "snap": self.canvas.snap_on, "icon": self.icon_key,
+                "colors": {k: v for k, v in COLORS.items() if v != DEFAULT_COLORS.get(k)},
                 "menu": self.menuBar().isVisible(),
                 "current": self.current.index,
                 "panes": [p.state() for p in self.panes],
@@ -1235,6 +1305,10 @@ class MainWindow(QMainWindow):
             self._log(f"load_state (odczyt): {ex!r}")
             return
         try:
+            for k, v in (data.get("colors") or {}).items():
+                if k in DEFAULT_COLORS and QColor(v).isValid():
+                    COLORS[k] = v
+            self.apply_colors()
             n = max(1, min(len(data.get("panes", [])) or DEFAULT_PANES, MAX_PANES))
             while len(self.panes) < n:
                 self._new_pane()
