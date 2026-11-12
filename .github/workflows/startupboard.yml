@@ -1,0 +1,32 @@
+name: Build StartupBoard exe
+on:
+  push:
+    branches: [main]
+    paths: ["StartupBoard/**", ".github/workflows/startupboard.yml"]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: StartupBoard
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install PySide6-Essentials pyinstaller
+      - run: pyinstaller --onefile --windowed --name StartupBoard startup_board.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: StartupBoard-exe
+          path: StartupBoard/dist/StartupBoard.exe
+      - name: Publish release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete startupboard-latest -y --cleanup-tag || true
+          gh release create startupboard-latest dist/StartupBoard.exe --title "StartupBoard (exe)" --notes "Automatyczny build z ostatniego commita"
