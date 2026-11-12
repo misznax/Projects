@@ -11,18 +11,22 @@ from __future__ import annotations
 import base64
 import codecs
 import json
+import math
 import os
 import re
 import sys
 import tempfile
+import time
 from functools import lru_cache
 from pathlib import Path
 
-from PySide6.QtCore import QByteArray, QEvent, QPoint, QPointF, QRect, QRectF, QStandardPaths, Qt, QTimer, Signal
-from PySide6.QtGui import (QAction, QActionGroup, QColor, QFont, QImage, QKeySequence, QPixmap, QShortcut,
-                           QSyntaxHighlighter, QTextCharFormat, QTextCursor)
+from PySide6.QtCore import (QByteArray, QEvent, QLockFile, QPoint, QPointF, QRect, QRectF, QStandardPaths, Qt,
+                            QTimer, QUrl, Signal)
+from PySide6.QtGui import (QAction, QActionGroup, QColor, QDesktopServices, QFont, QIcon, QImage, QKeySequence,
+                           QPainter, QPen, QPixmap, QPolygonF, QShortcut, QSyntaxHighlighter, QTextCharFormat,
+                           QTextCursor)
 from PySide6.QtWidgets import (
-    QAbstractButton, QApplication, QFileDialog, QFrame, QHBoxLayout, QLabel, QMainWindow,
+    QAbstractButton, QApplication, QDialog, QFileDialog, QFrame, QHBoxLayout, QLabel, QMainWindow,
     QMessageBox, QPlainTextEdit, QPushButton, QScrollArea, QSizePolicy, QStackedWidget,
     QToolButton, QVBoxLayout, QWidget,
 )
@@ -45,6 +49,11 @@ MONO = {"Consolas", "Courier New"}
 LANGS = [("auto", "Automatycznie (wg rozszerzenia)"), ("text", "Zwykły tekst"),
          ("python", "Python"), ("html", "HTML"), ("sql", "SQL")]
 BORDERS = [0, 1, 2, 3, 4, 6]
+DEFAULT_PANES, MAX_PANES = 6, 8
+ICON_COLORS = [("red", "Czerwony", "#e53935"), ("orange", "Pomarańczowy", "#fb8c00"),
+               ("yellow", "Żółty", "#fdd835"), ("green", "Zielony", "#43a047"),
+               ("cyan", "Turkusowy", "#00acc1"), ("blue", "Niebieski", "#1e88e5"),
+               ("purple", "Fioletowy", "#8e24aa"), ("pink", "Różowy", "#ec407a")]
 EXT_LANG = {".py": "python", ".pyw": "python", ".html": "html", ".htm": "html",
             ".xhtml": "html", ".sql": "sql"}
 HDR_CSS = (
@@ -82,17 +91,50 @@ def decode_bytes(raw: bytes) -> tuple[str, str]:
 
 
 def atomic_write(path: Path, data: bytes) -> None:
+    """Zapis przez plik tymczasowy; na Windowsie ponawia, gdy plik chwilowo zablokowany (AV, sync)."""
     fd, tmp = tempfile.mkstemp(dir=str(path.parent), prefix=".sb_", suffix=".tmp")
     try:
         with os.fdopen(fd, "wb") as f:
             f.write(data)
-        os.replace(tmp, path)
+        for _ in range(10):
+            try:
+                os.replace(tmp, path)
+                return
+            except OSError:
+                time.sleep(0.05)
+        path.write_bytes(data)  # ostatnia deska ratunku: zapis bezpośredni
+        os.unlink(tmp)
     except Exception:
         try:
             os.unlink(tmp)
         except OSError:
             pass
         raise
+
+
+def star_pixmap(color: str, size: int) -> QPixmap:
+    pm = QPixmap(size, size)
+    pm.fill(Qt.GlobalColor.transparent)
+    p = QPainter(pm)
+    p.setRenderHint(QPainter.RenderHint.Antialiasing)
+    cx, cy, R = size / 2, size / 2 + size * 0.03, size * 0.47
+    pts = [QPointF(cx + (R if i % 2 == 0 else R * 0.42) * math.sin(i * math.pi / 5),
+                   cy - (R if i % 2 == 0 else R * 0.42) * math.cos(i * math.pi / 5)) for i in range(10)]
+    col = QColor(color)
+    p.setBrush(col)
+    pen = QPen(col.darker(160), max(1.0, size / 14))
+    pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+    p.setPen(pen)
+    p.drawPolygon(QPolygonF(pts))
+    p.end()
+    return pm
+
+
+def star_icon(color: str) -> QIcon:
+    ic = QIcon()
+    for sz in (16, 24, 32, 48, 64, 128, 256):
+        ic.addPixmap(star_pixmap(color, sz))
+    return ic
 
 
 # ---------- kolorowanie składni (Python / HTML / SQL + cyfry) ----------
@@ -116,7 +158,20 @@ def _formats() -> dict:
     }
 
 
-NUM_RE = re.compile(r"\b(?:0[xX][0-9a-fA-F]+|\d+(?:[.,]\d+)?)\b")
+@lru_cache(maxsize=1)
+def _punct_formats() -> dict:
+    return {ch: _fmt(col) for ch, col in PUNCT_COLORS.items()}
+
+
+NUM_RE = re.compile(r"0[xX][0-9a-fA-F]+|\d+(?:\.\d+)?")  # każda cyfra, także w abc123 i 3px
+PUNCT_RE = re.compile(r"[;?!\-_=+*/%<>&|^~\\@$,.:()\[\]{}]")
+PUNCT_COLORS = {
+    ";": "#d32f2f", "?": "#e91e63", "!": "#ff6f00", "-": "#00897b", "_": "#8e24aa", "=": "#1565c0",
+    "+": "#2e7d32", "*": "#ef6c00", "/": "#0097a7", "%": "#ad1457", "<": "#5e35b1", ">": "#5e35b1",
+    "&": "#d84315", "|": "#283593", "^": "#4e342e", "~": "#4e342e", "\\": "#bf360c", "@": "#9e880d",
+    "$": "#2e7d32", ",": "#795548", ".": "#455a64", ":": "#00838f",
+    "(": "#6d4c41", ")": "#6d4c41", "[": "#3949ab", "]": "#3949ab", "{": "#c0392b", "}": "#c0392b",
+}
 PY_KW = ("False None True and as assert async await break class continue def del elif else except finally "
          "for from global if import in is lambda nonlocal not or pass raise return try while with yield "
          "match case").split()
@@ -138,7 +193,7 @@ def _words(ws, flags=0):
 def _lang_def(lang: str):
     """-> (reguły [(re, fmt)], strcom (re, {grupa: fmt}) | None, ml [(start, end, fmt)])"""
     F = _formats()
-    rules = [(NUM_RE, F["num"])]
+    rules = []
     strcom, ml = None, []
     if lang == "python":
         rules += [(_words(PY_KW), F["kw"]), (_words(PY_BI), F["builtin"]),
@@ -174,9 +229,15 @@ class Highlighter(QSyntaxHighlighter):
     def highlightBlock(self, text: str):
         rules, strcom, ml = _lang_def(self.lang)
         self.setCurrentBlockState(0)
+        pf = _punct_formats()
+        for m in PUNCT_RE.finditer(text):
+            self.setFormat(m.start(), 1, pf[m.group()])
         for rx, fmt in rules:
             for m in rx.finditer(text):
                 self.setFormat(m.start(), m.end() - m.start(), fmt)
+        num = _formats()["num"]
+        for m in NUM_RE.finditer(text):
+            self.setFormat(m.start(), m.end() - m.start(), num)
         comments = []
         if strcom:
             rx, gf = strcom
@@ -258,6 +319,9 @@ class PdfViewer(QScrollArea):
         self.cache.clear()
         self.labels = []
         self.sizes = []
+        old = self.takeWidget()
+        if old is not None:
+            old.deleteLater()
         if self.doc is not None:
             try:
                 self.doc.close()
@@ -718,7 +782,7 @@ class Canvas(QWidget):
 
     def __init__(self, panes: list[TextPane]):
         super().__init__()
-        self.panes = panes
+        self.panes = panes  # lista współdzielona z oknem głównym
         self.order = list(panes)  # od spodu do góry
         self.rel: dict[TextPane, QRectF] = {}
         self.snap_on = True
@@ -731,11 +795,37 @@ class Canvas(QWidget):
         QApplication.instance().installEventFilter(self)
 
     # --- geometria ---
-    def grid(self, cols=3, rows=2):
+    def grid(self):
+        n = len(self.panes)
+        rows = 2 if n >= 4 else 1
+        cols = -(-n // rows)
         for i, p in enumerate(self.panes):
             c, r = i % cols, i // cols
             self.rel[p] = QRectF(c / cols, r / rows, 1 / cols, 1 / rows)
         self.apply_all()
+        self.layoutChanged.emit()
+
+    def add_pane(self, p: TextPane):
+        off = 0.03 * (len(self.panes) % 6)
+        p.setParent(self)
+        self.rel[p] = QRectF(0.25 + off, 0.2 + off, 0.35, 0.45)
+        self.panes.append(p)
+        self.order.append(p)
+        p.show()
+        self.apply(p)
+        p.raise_()
+        self.layoutChanged.emit()
+
+    def remove_pane(self, p: TextPane):
+        self.panes.remove(p)
+        self.order.remove(p)
+        self.rel.pop(p, None)
+        p.pdf.close_doc()
+        p.hide()
+        p.setParent(None)
+        p.deleteLater()
+        for i, q in enumerate(self.panes):
+            q.index = i
         self.layoutChanged.emit()
 
     def apply_all(self):
@@ -893,6 +983,8 @@ class Canvas(QWidget):
         return False
 
 
+
+
 # ---------- okno główne ----------
 
 class MainWindow(QMainWindow):
@@ -900,27 +992,46 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle(APP_NAME)
         self.state_path = state_path or self._default_state_path()
-        self.panes = [TextPane(i) for i in range(6)]
-        self.current: TextPane = self.panes[0]
+        self._ready = False
         self.border = 1
-        self.canvas = Canvas(self.panes)
+        self.icon_key = "yellow"
+        self.canvas = Canvas([TextPane(i) for i in range(DEFAULT_PANES)])
+        self.panes = self.canvas.panes
+        self.current: TextPane = self.panes[0]
         self.setCentralWidget(self.canvas)
         for p in self.panes:
             p.activated.connect(self.set_current)
+        self._save_timer = QTimer(self, singleShot=True, interval=500)
+        self._save_timer.timeout.connect(self.save_state)
+        self.canvas.layoutChanged.connect(self.schedule_save)
         self._build_menu()
-        for i in range(len(self.panes)):
-            QShortcut(QKeySequence(f"Alt+{i + 1}"), self, activated=lambda i=i: self.panes[i].focus_editor())
+        for i in range(MAX_PANES):
+            QShortcut(QKeySequence(f"Alt+{i + 1}"), self,
+                      activated=lambda i=i: self.panes[i].focus_editor() if i < len(self.panes) else None)
         self.resize(1500, 900)
         self.load_state()
+        self.set_icon_color(self.icon_key)
         self.set_current(self.current)
-        self.timer = QTimer(self, interval=10_000)
+        self.timer = QTimer(self, interval=5_000)
         self.timer.timeout.connect(self.save_state)
         self.timer.start()
+        QApplication.instance().aboutToQuit.connect(self.save_state)
+        self._ready = True
 
     @staticmethod
     def _default_state_path() -> Path:
         base = QStandardPaths.writableLocation(QStandardPaths.StandardLocation.AppConfigLocation)
         return Path(base) / "state.json"
+
+    def _log(self, msg: str):
+        try:
+            lp = self.state_path.with_name("startupboard.log")
+            if lp.exists() and lp.stat().st_size > 200_000:
+                lp.unlink()
+            with open(lp, "a", encoding="utf-8") as f:
+                f.write(time.strftime("%Y-%m-%d %H:%M:%S ") + msg + "\n")
+        except OSError:
+            pass
 
     # --- menu ---
     def _act(self, text, slot, shortcut=None, checkable=False) -> QAction:
@@ -932,15 +1043,18 @@ class MainWindow(QMainWindow):
         self.addAction(a)  # skróty działają także po ukryciu paska menu
         return a
 
-    def _radio(self, menu, items, slot) -> tuple[QActionGroup, dict]:
+    def _radio(self, menu, items, slot, icons=None) -> dict:
         grp, acts = QActionGroup(self), {}
         for key, label in items:
             a = QAction(label, self, checkable=True)
+            if icons:
+                a.setIcon(icons[key])
             a.triggered.connect(lambda _c=False, k=key: slot(k))
             grp.addAction(a)
             menu.addAction(a)
             acts[key] = a
-        return grp, acts
+        self._groups = getattr(self, "_groups", []) + [grp]
+        return acts
 
     def _build_menu(self):
         mb = self.menuBar()
@@ -952,111 +1066,218 @@ class MainWindow(QMainWindow):
         m.addAction(self._act("Zakończ", self.close, "Ctrl+Q"))
 
         v = mb.addMenu("&Widok")
-        self.m_font = v.addMenu("Czcionka (aktywny panel)")
-        _, self.font_acts = self._radio(self.m_font, [(f, f) for f in FONTS],
-                                        lambda k: self.current.set_font(k))
-        self.m_lang = v.addMenu("Składnia (aktywny panel)")
-        _, self.lang_acts = self._radio(self.m_lang, LANGS, lambda k: self.current.set_lang(k))
+        self.font_acts = self._radio(v.addMenu("Czcionka (aktywny panel)"), [(f, f) for f in FONTS],
+                                     lambda k: self.current.set_font(k))
+        self.lang_acts = self._radio(v.addMenu("Składnia (aktywny panel)"), LANGS,
+                                     lambda k: self.current.set_lang(k))
         self.act_wrap = self._act("Zawijanie wierszy (aktywny panel)", lambda: self.current.btn_wrap.toggle(),
                                   "Ctrl+Shift+W", checkable=True)
         v.addAction(self.act_wrap)
-        self.m_border = v.addMenu("Grubość ramki paneli")
-        _, self.border_acts = self._radio(
-            self.m_border, [(b, "0 px (brak)" if b == 0 else f"{b} px") for b in BORDERS], self.set_border)
+        self.border_acts = self._radio(
+            v.addMenu("Grubość ramki paneli"),
+            [(b, "0 px (brak)" if b == 0 else f"{b} px") for b in BORDERS], self.set_border)
+        self.icon_acts = self._radio(
+            v.addMenu("Kolor ikony (gwiazda)"), [(k, n) for k, n, _c in ICON_COLORS], self.set_icon_color,
+            icons={k: QIcon(star_pixmap(c, 16)) for k, _n, c in ICON_COLORS})
         v.addSeparator()
         self.act_menu = self._act("Pokaż pasek menu", lambda: self.set_menu_visible(not self.menuBar().isVisible()),
                                   "Ctrl+M", checkable=True)
         v.addAction(self.act_menu)
         v.aboutToShow.connect(self._sync_menu)
 
-        la = mb.addMenu("&Układ")
-        la.addAction(self._act("Siatka 3×2 (reset układu)", self.canvas.grid, "Ctrl+Shift+E"))
+        self.m_layout = mb.addMenu("&Układ")
+        self.act_add = self._act(f"Dodaj panel (maks. {MAX_PANES})", self.add_pane, "Ctrl+Shift+N")
+        self.act_del = self._act("Usuń aktywny panel (zwalnia pamięć)", self.remove_pane, "Ctrl+Shift+D")
+        self.m_layout.addAction(self.act_add)
+        self.m_layout.addAction(self.act_del)
+        self.m_layout.addSeparator()
+        self.m_layout.addAction(self._act("Siatka (reset układu)", self.canvas.grid, "Ctrl+Shift+E"))
         self.act_snap = self._act("Przyciąganie magnetyczne (Alt = chwilowo wyłącz)",
                                   lambda: setattr(self.canvas, "snap_on", self.act_snap.isChecked()), checkable=True)
         self.act_snap.setChecked(True)
-        la.addAction(self.act_snap)
+        self.m_layout.addAction(self.act_snap)
+        self.m_layout.aboutToShow.connect(self._sync_menu)
 
         hp = mb.addMenu("Po&moc")
+        hp.addAction(self._act("Folder z ustawieniami", lambda: QDesktopServices.openUrl(
+            QUrl.fromLocalFile(str(self.state_path.parent)))))
         hp.addAction(self._act("O autorze", self.show_about))
 
     def _sync_menu(self):
         c = self.current
-        self.font_acts.get(c.family, QAction()).setChecked(True)
+        if c.family in self.font_acts:
+            self.font_acts[c.family].setChecked(True)
         self.lang_acts[c.lang].setChecked(True)
         self.border_acts[self.border].setChecked(True)
+        self.icon_acts[self.icon_key].setChecked(True)
         self.act_wrap.setChecked(c.btn_wrap.isChecked())
         self.act_menu.setChecked(self.menuBar().isVisible())
+        self.act_add.setEnabled(len(self.panes) < MAX_PANES)
+        self.act_del.setEnabled(len(self.panes) > 1)
 
     def show_about(self):
-        QMessageBox.about(self, "O autorze",
-                          f"<h3>{APP_NAME} {APP_VERSION}</h3><p>Autor: {APP_AUTHOR}</p>")
+        col = dict((k, c) for k, _n, c in ICON_COLORS)[self.icon_key]
+        d = QDialog(self)
+        d.setWindowTitle("O autorze")
+        d.setFixedWidth(320)
+        lay = QVBoxLayout(d)
+        lay.setContentsMargins(24, 20, 24, 16)
+        lay.setSpacing(6)
+        center = Qt.AlignmentFlag.AlignCenter
+        ic = QLabel()
+        ic.setPixmap(star_pixmap(col, 64))
+        ic.setAlignment(center)
+        title = QLabel(f"<span style='font-size:16pt;font-weight:600'>{APP_NAME}</span>")
+        ver = QLabel(f"Wersja {APP_VERSION}")
+        author = QLabel(f"Autor: {APP_AUTHOR}")
+        for w in (title, ver, author):
+            w.setAlignment(center)
+        ok = QPushButton("OK")
+        ok.setDefault(True)
+        ok.clicked.connect(d.accept)
+        for w in (ic, title, ver, author):
+            lay.addWidget(w)
+        lay.addSpacing(8)
+        lay.addWidget(ok, 0, Qt.AlignmentFlag.AlignHCenter)
+        d.exec()
 
+    # --- ustawienia widoku ---
     def set_menu_visible(self, on: bool):
         self.menuBar().setVisible(on)
         self.act_menu.setChecked(on)
+        self.schedule_save()
 
     def set_border(self, n: int):
         self.border = n
         for p in self.panes:
             p.set_border(n)
+        self.schedule_save()
+
+    def set_icon_color(self, key: str):
+        cols = {k: c for k, _n, c in ICON_COLORS}
+        if key not in cols:
+            key = "yellow"
+        self.icon_key = key
+        ic = star_icon(cols[key])
+        self.setWindowIcon(ic)
+        QApplication.instance().setWindowIcon(ic)
+        self.schedule_save()
 
     def set_current(self, pane: TextPane):
         self.current = pane
         for p in self.panes:
             p.set_active(p is pane)
 
+    # --- dodawanie / usuwanie paneli ---
+    def _new_pane(self) -> TextPane:
+        p = TextPane(len(self.panes))
+        p.activated.connect(self.set_current)
+        p.set_border(self.border)
+        self.canvas.add_pane(p)
+        return p
+
+    def add_pane(self):
+        if len(self.panes) >= MAX_PANES:
+            QMessageBox.information(self, APP_NAME, f"Maksymalnie {MAX_PANES} paneli.")
+            return
+        p = self._new_pane()
+        self.set_current(p)
+        p.focus_editor()
+
+    def remove_pane(self):
+        if len(self.panes) <= 1:
+            return
+        p = self.current
+        if not p.confirm_close():
+            return
+        idx = self.panes.index(p)
+        self.canvas.remove_pane(p)
+        self.set_current(self.panes[min(idx, len(self.panes) - 1)])
+
     # --- stan ---
+    def schedule_save(self):
+        if self._ready:
+            self._save_timer.start()
+
+    def moveEvent(self, e):
+        super().moveEvent(e)
+        self.schedule_save()
+
+    def resizeEvent(self, e):
+        super().resizeEvent(e)
+        self.schedule_save()
+
     def save_state(self):
-        data = {
-            "version": STATE_VERSION,
-            "geometry": base64.b64encode(bytes(self.saveGeometry())).decode(),
-            "rects": [[r.x(), r.y(), r.width(), r.height()] for r in (self.canvas.rel[p] for p in self.panes)],
-            "z": [p.index for p in self.canvas.order],
-            "border": self.border, "snap": self.canvas.snap_on,
-            "menu": self.menuBar().isVisible(),
-            "current": self.current.index,
-            "panes": [p.state() for p in self.panes],
-        }
+        if not self._ready:
+            return
         try:
+            data = {
+                "version": STATE_VERSION,
+                "geometry": base64.b64encode(bytes(self.saveGeometry())).decode(),
+                "rects": [[r.x(), r.y(), r.width(), r.height()] for r in (self.canvas.rel[p] for p in self.panes)],
+                "z": [p.index for p in self.canvas.order],
+                "border": self.border, "snap": self.canvas.snap_on, "icon": self.icon_key,
+                "menu": self.menuBar().isVisible(),
+                "current": self.current.index,
+                "panes": [p.state() for p in self.panes],
+            }
             self.state_path.parent.mkdir(parents=True, exist_ok=True)
             atomic_write(self.state_path, json.dumps(data, ensure_ascii=False, indent=1).encode())
-        except OSError:
-            pass
+        except Exception as ex:  # zapis stanu nigdy nie może zawiesić programu
+            self._log(f"save_state: {ex!r} ({self.state_path})")
 
     def load_state(self):
         try:
             data = json.loads(self.state_path.read_text(encoding="utf-8"))
-        except (OSError, ValueError):
+        except FileNotFoundError:
             return
-        if data.get("geometry"):
-            self.restoreGeometry(QByteArray(base64.b64decode(data["geometry"])))
-        rects = data.get("rects", [])
-        if len(rects) == len(self.panes):
-            for p, r in zip(self.panes, rects):
-                self.canvas.rel[p] = QRectF(*r)
-            self.canvas.apply_all()
-        for i in data.get("z", []):
-            if 0 <= i < len(self.panes):
-                self.canvas.raise_pane(self.panes[i])
-        if data.get("border") in BORDERS:
-            self.set_border(data["border"])
-        self.canvas.snap_on = bool(data.get("snap", True))
-        self.act_snap.setChecked(self.canvas.snap_on)
-        self.set_menu_visible(bool(data.get("menu", True)))
-        for p, st in zip(self.panes, data.get("panes", [])):
-            if st.get("path"):
-                p.open_file(st["path"], st, ask=False)
-            elif st.get("lang"):
-                p.lang = st["lang"]
-        idx = data.get("current", 0)
-        if 0 <= idx < len(self.panes):
-            self.current = self.panes[idx]
+        except Exception as ex:
+            self._log(f"load_state (odczyt): {ex!r}")
+            return
+        try:
+            n = max(1, min(len(data.get("panes", [])) or DEFAULT_PANES, MAX_PANES))
+            while len(self.panes) < n:
+                self._new_pane()
+            while len(self.panes) > n:
+                self.canvas.remove_pane(self.panes[-1])
+            if data.get("geometry"):
+                self.restoreGeometry(QByteArray(base64.b64decode(data["geometry"])))
+            rects = data.get("rects", [])
+            if len(rects) == n:
+                for p, r in zip(self.panes, rects):
+                    self.canvas.rel[p] = QRectF(*r)
+                self.canvas.apply_all()
+            else:
+                self.canvas.grid()
+            for i in data.get("z", []):
+                if 0 <= i < n:
+                    self.canvas.raise_pane(self.panes[i])
+            if data.get("border") in BORDERS:
+                self.set_border(data["border"])
+            self.canvas.snap_on = bool(data.get("snap", True))
+            self.act_snap.setChecked(self.canvas.snap_on)
+            self.icon_key = data.get("icon", "yellow")
+            self.set_menu_visible(bool(data.get("menu", True)))
+            for p, st in zip(self.panes, data.get("panes", [])):
+                if st.get("lang") in dict(LANGS):
+                    p.lang = st["lang"]
+                if st.get("family") in FONTS:
+                    p.set_font(st["family"], st.get("font") or None)
+                if st.get("path"):
+                    p.open_file(st["path"], st, ask=False)
+            idx = data.get("current", 0)
+            if 0 <= idx < n:
+                self.current = self.panes[idx]
+        except Exception as ex:
+            self._log(f"load_state: {ex!r}")
 
     def open_in_free_pane(self, path: str):
         for p in self.panes:
             if p.path is None:
                 p.open_file(path, ask=False)
                 return
+        if len(self.panes) < MAX_PANES:
+            self._new_pane().open_file(path, ask=False)
 
     def closeEvent(self, e):
         for p in self.panes:
@@ -1068,14 +1289,28 @@ class MainWindow(QMainWindow):
 
 
 def main():
+    if sys.platform == "win32":  # własna ikona/grupa na pasku zadań
+        try:
+            import ctypes
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("smialo.StartupBoard")
+        except Exception:
+            pass
     app = QApplication(sys.argv)
     app.setApplicationName("StartupBoard")
     app.setOrganizationName("smialo")
+    sp = MainWindow._default_state_path()
+    sp.parent.mkdir(parents=True, exist_ok=True)
+    lock = QLockFile(str(sp.parent / "app.lock"))  # jedna kopia naraz, by nie nadpisywały sobie stanu
+    if not lock.tryLock(300):
+        QMessageBox.information(None, APP_NAME, "Program już działa (sprawdź pasek zadań).")
+        sys.exit(0)
     win = MainWindow()
     for arg in sys.argv[1:]:
         win.open_in_free_pane(arg)
     win.show()
-    sys.exit(app.exec())
+    code = app.exec()
+    lock.unlock()
+    sys.exit(code)
 
 
 if __name__ == "__main__":
