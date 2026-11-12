@@ -1,1 +1,2 @@
-PySide6>=6.6
+PySide6-Essentials>=6.6
+pypdfium2>=4
