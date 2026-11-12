@@ -26,7 +26,7 @@ from PySide6.QtGui import (QAction, QActionGroup, QColor, QDesktopServices, QFon
                            QPainter, QPen, QPixmap, QPolygonF, QShortcut, QSyntaxHighlighter, QTextCharFormat,
                            QTextCursor)
 from PySide6.QtWidgets import (
-    QAbstractButton, QApplication, QColorDialog, QDialog, QFileDialog, QFrame, QHBoxLayout, QLabel, QMainWindow,
+    QAbstractButton, QApplication, QColorDialog, QDialog, QFileDialog, QMenu, QFrame, QHBoxLayout, QLabel, QMainWindow,
     QMessageBox, QPlainTextEdit, QPushButton, QScrollArea, QSizePolicy, QStackedWidget,
     QToolButton, QVBoxLayout, QWidget,
 )
@@ -458,6 +458,7 @@ class Editor(QPlainTextEdit):
 
 class TextPane(QFrame):
     activated = Signal(object)
+    menuRequested = Signal(QPoint)  # globalna pozycja, gdzie pokazać menu
 
     def __init__(self, index: int):
         super().__init__()
@@ -484,12 +485,18 @@ class TextPane(QFrame):
         self.lbl_name.setMinimumWidth(70)
         self.lbl_name.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
         self.lbl_state = QLabel("")
+        self.btn_menu = QToolButton(text="☰", toolTip="Menu (Ctrl+M pokazuje/chowa pasek menu)")
         self.btn_wrap = QToolButton(text="↵", checkable=True, checked=True, toolTip="Zawijanie wierszy")
         self.btn_open = QToolButton(text="…", toolTip="Otwórz plik (Ctrl+O)")
         self.btn_close = QToolButton(text="×", toolTip="Zamknij plik (Ctrl+W)")
         h.addWidget(self.lbl_name, 1)
-        for w in (self.lbl_state, self.btn_wrap, self.btn_open, self.btn_close):
+        for w in (self.lbl_state, self.btn_wrap, self.btn_open, self.btn_close, self.btn_menu):
             h.addWidget(w)
+        self.header.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.header.customContextMenuRequested.connect(
+            lambda pos: self.menuRequested.emit(self.header.mapToGlobal(pos)))
+        self.btn_menu.clicked.connect(
+            lambda: self.menuRequested.emit(self.btn_menu.mapToGlobal(QPoint(0, self.btn_menu.height()))))
 
         self.stack = QStackedWidget()
         ph = QWidget()
@@ -1025,6 +1032,7 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(self.canvas)
         for p in self.panes:
             p.activated.connect(self.set_current)
+            p.menuRequested.connect(self.show_popup)
         self._save_timer = QTimer(self, singleShot=True, interval=500)
         self._save_timer.timeout.connect(self.save_state)
         self.canvas.layoutChanged.connect(self.schedule_save)
@@ -1040,6 +1048,8 @@ class MainWindow(QMainWindow):
         self.timer.timeout.connect(self.save_state)
         self.timer.start()
         QApplication.instance().aboutToQuit.connect(self.save_state)
+        self._alt_clean = False
+        QApplication.instance().installEventFilter(self)
         self._ready = True
 
     @staticmethod
@@ -1135,6 +1145,10 @@ class MainWindow(QMainWindow):
         hp.addAction(self._act("Folder z ustawieniami", lambda: QDesktopServices.openUrl(
             QUrl.fromLocalFile(str(self.state_path.parent)))))
         hp.addAction(self._act("O autorze", self.show_about))
+        # to samo menu jako wyskakujące (przycisk ☰ / prawy klik na pasku panelu), działa przy ukrytym pasku
+        self.popup = QMenu(self)
+        for menu in (m, v, self.m_layout, hp):
+            self.popup.addMenu(menu)
 
     @staticmethod
     def _swatch(col: str) -> QIcon:
@@ -1183,6 +1197,21 @@ class MainWindow(QMainWindow):
         self.act_menu.setChecked(self.menuBar().isVisible())
         self.act_add.setEnabled(len(self.panes) < MAX_PANES)
         self.act_del.setEnabled(len(self.panes) > 1)
+
+    def show_popup(self, pos: QPoint):
+        self._sync_menu()
+        self.popup.exec(pos)
+
+    def eventFilter(self, obj, ev):
+        """Stuknięcie samego Alt pokazuje ukryty pasek menu."""
+        t = ev.type()
+        if t == QEvent.Type.KeyPress:
+            self._alt_clean = ev.key() == Qt.Key.Key_Alt and not ev.isAutoRepeat()
+        elif t == QEvent.Type.KeyRelease and ev.key() == Qt.Key.Key_Alt:
+            if self._alt_clean and self.isActiveWindow() and not self.menuBar().isVisible():
+                self.set_menu_visible(True)
+            self._alt_clean = False
+        return False
 
     def show_about(self):
         col = dict((k, c) for k, _n, c in ICON_COLORS)[self.icon_key]
@@ -1241,6 +1270,7 @@ class MainWindow(QMainWindow):
     def _new_pane(self) -> TextPane:
         p = TextPane(len(self.panes))
         p.activated.connect(self.set_current)
+        p.menuRequested.connect(self.show_popup)
         p.set_border(self.border)
         self.canvas.add_pane(p)
         return p
