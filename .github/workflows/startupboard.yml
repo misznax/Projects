@@ -2,7 +2,7 @@ name: Build StartupBoard exe
 on:
   push:
     branches: [main]
-    paths: ["StartupBoard/**", ".github/workflows/startupboard.yml"]
+    paths: ["01_StartupBoard/**", ".github/workflows/startupboard.yml"]
   workflow_dispatch:
 permissions:
   contents: write
@@ -11,7 +11,7 @@ jobs:
     runs-on: windows-latest
     defaults:
       run:
-        working-directory: StartupBoard
+        working-directory: 01_StartupBoard
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
