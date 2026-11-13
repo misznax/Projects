@@ -203,7 +203,7 @@ dialog a{color:var(--acc)}
 <script>
 (()=>{
 'use strict';
-const VER='v0.03', MAIL='michus@gmail.com', LS='esencja.v1';
+const VER='v0.04', MAIL='michus@gmail.com', LS='esencja.v1';
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
 
 /*LOGIC-START*/
@@ -525,7 +525,7 @@ async function ask(prompt,o){
 async function fetchTranscript(id){
   if(window.ESN_STANDALONE){
     let r,j;try{r=await fetch('/api/transcript?id='+encodeURIComponent(id));j=await r.json()}catch(e){throw{code:'no_mcp'}}
-    if(!r.ok||!j||!j.text)throw{code:(j&&j.detail)?'yt':((j&&j.code)||'no_captions'),detail:j&&j.detail};
+    if(!r.ok||!j||!j.text)throw{code:'yt',detail:(j&&j.detail)||('HTTP '+r.status+' '+((j&&j.code)||'brak odpowiedzi')+(r.status===403?' (Access nie przekazał tokena)':''))};
     return{text:j.text,lang:j.lang||'',dur:j.dur||0};
   }
   const mcp=window.claude&&window.claude.use?await window.claude.use('mcp'):null;
