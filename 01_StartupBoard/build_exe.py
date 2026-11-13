@@ -1,6 +1,6 @@
 """Buduje StartupBoard jako folder + ZIP (szybki start, bez rozpakowywania do TEMP).
 
-Użycie:  python build.py        (wymaga: pip install PySide6-Essentials pypdfium2 pyinstaller)
+Użycie:  python build_exe.py        (wymaga: pip install PySide6-Essentials pypdfium2 pyinstaller)
 Wynik:   dist/StartupBoard.zip  (rozpakuj i uruchom StartupBoard/StartupBoard.exe)
 """
 import shutil

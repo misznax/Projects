@@ -18,7 +18,7 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install PySide6-Essentials pypdfium2 pyinstaller
-      - run: python build.py
+      - run: python build_exe.py
       - name: Publish release
         shell: bash
         env:
