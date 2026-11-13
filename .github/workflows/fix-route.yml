@@ -1,0 +1,20 @@
+name: Fix route (jednorazowo)
+on:
+  push:
+    paths: [".github/workflows/fix-route.yml"]
+  workflow_dispatch:
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    env:
+      T: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - run: |
+          api() { curl -sS -H "Authorization: Bearer $T" -H "Content-Type: application/json" "$@"; }
+          Z=$(api "https://api.cloudflare.com/client/v4/zones?name=smialo.org" | tee /tmp/z.json | jq -r '.result[0].id')
+          echo "zone: $Z"; jq -c '.errors' /tmp/z.json
+          api "https://api.cloudflare.com/client/v4/zones/$Z/workers/routes" | tee /tmp/r.json | jq -c '.result[]? | {id,pattern,script}'; jq -c '.errors' /tmp/r.json
+          for id in $(jq -r '.result[]? | select(.pattern=="*.smialo.org/*") | .id' /tmp/r.json); do
+            echo "DELETE $id"; api -X DELETE "https://api.cloudflare.com/client/v4/zones/$Z/workers/routes/$id" | jq -c '{success,errors}'
+          done
+          echo "--- po:"; api "https://api.cloudflare.com/client/v4/zones/$Z/workers/routes" | jq -c '.result[]? | {pattern,script}'
