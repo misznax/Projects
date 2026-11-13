@@ -31,18 +31,34 @@ async function accessOk(request, env) {
 const UA_APP = 'com.google.android.youtube/20.10.38 (Linux; U; Android 14) gzip';
 const dec = (s) => s.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n));
 
-async function tracksViaPlayer(id) {
-  const r = await fetch('https://www.youtube.com/youtubei/v1/player?prettyPrint=false', {
-    method: 'POST', headers: { 'content-type': 'application/json', 'user-agent': UA_APP, 'accept-language': 'pl-PL,pl;q=0.9' },
-    body: JSON.stringify({ context: { client: { clientName: 'ANDROID', clientVersion: '20.10.38', androidSdkVersion: 34, hl: 'pl', gl: 'PL' } }, videoId: id, contentCheckOk: true, racyCheckOk: true }),
-  });
-  if (!r.ok) return null;
-  const j = await r.json();
-  return j?.captions?.playerCaptionsTracklistRenderer?.captionTracks || null;
+const CLIENTS = [
+  { ua: UA_APP, c: { clientName: 'ANDROID', clientVersion: '20.10.38', androidSdkVersion: 34 } },
+  { ua: 'com.google.ios.youtube/20.10.4 (iPhone16,2; U; CPU iOS 18_3_2 like Mac OS X;)', c: { clientName: 'IOS', clientVersion: '20.10.4', deviceMake: 'Apple', deviceModel: 'iPhone16,2', osName: 'iPhone', osVersion: '18.3.2.22D82' } },
+  { ua: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36', c: { clientName: 'WEB_EMBEDDED_PLAYER', clientVersion: '1.20250101.00.00' }, embed: true },
+  { ua: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36', c: { clientName: 'TVHTML5_SIMPLY_EMBEDDED_PLAYER', clientVersion: '2.0' }, embed: true },
+];
+async function tracksViaPlayer(id, why) {
+  for (const k of CLIENTS) {
+    try {
+      const ctx = { client: { ...k.c, hl: 'pl', gl: 'PL' } };
+      if (k.embed) ctx.thirdParty = { embedUrl: 'https://www.youtube.com/watch?v=' + id };
+      const r = await fetch('https://www.youtube.com/youtubei/v1/player?prettyPrint=false', {
+        method: 'POST', headers: { 'content-type': 'application/json', 'user-agent': k.ua, 'accept-language': 'pl-PL,pl;q=0.9' },
+        body: JSON.stringify({ context: ctx, videoId: id, contentCheckOk: true, racyCheckOk: true }),
+      });
+      if (!r.ok) { why.push(k.c.clientName + ' HTTP ' + r.status); continue; }
+      const j = await r.json();
+      const t = j?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
+      if (t?.length) return t;
+      const ps = j?.playabilityStatus;
+      why.push(k.c.clientName + ': ' + (ps?.status || '?') + (ps?.reason ? ' – ' + ps.reason : '') + (ps && !t ? ' (brak ścieżek napisów)' : ''));
+    } catch (e) { why.push(k.c.clientName + ' ' + String(e.message || e).slice(0, 60)); }
+  }
+  return null;
 }
-async function tracksViaWatch(id) {
+async function tracksViaWatch(id, why) {
   const r = await fetch('https://www.youtube.com/watch?v=' + id + '&hl=pl', { headers: { 'accept-language': 'pl-PL,pl;q=0.9', cookie: 'CONSENT=YES+1; SOCS=CAI', 'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36' } });
-  if (!r.ok) return null;
+  if (!r.ok) { why.push('WATCH HTTP ' + r.status); return null; }
   const m = (await r.text()).match(/"captionTracks":(\[.*?\]),"audioTracks"/s) || [];
   try { return m[1] ? JSON.parse(m[1]) : null; } catch { return null; }
 }
@@ -69,10 +85,10 @@ export function parseCaptions(body) {
 }
 
 async function transcript(id) {
-  let tracks = null;
-  try { tracks = await tracksViaPlayer(id); } catch {}
-  if (!tracks?.length) { try { tracks = await tracksViaWatch(id); } catch {} }
-  if (!tracks?.length) return { code: 'no_captions' };
+  const why = [];
+  let tracks = await tracksViaPlayer(id, why);
+  if (!tracks?.length) { try { tracks = await tracksViaWatch(id, why); } catch (e) { why.push('WATCH ' + String(e.message || e).slice(0, 60)); } }
+  if (!tracks?.length) return { code: 'no_captions', detail: why.join(' | ') || 'brak ścieżek napisów' };
   const t = pick(tracks), base = t.baseUrl.replace(/&fmt=[^&]*/, '');
   for (const u of [base + '&fmt=json3', base]) {
     try {
@@ -84,7 +100,7 @@ async function transcript(id) {
       if (p.text.length >= 40) return { ...p, lang: t.languageCode + (t.kind === 'asr' ? ' (auto)' : '') };
     } catch {}
   }
-  return { code: 'no_mcp' }; // napisy są, ale YouTube nie wydał treści temu serwerowi
+  return { code: 'no_mcp', detail: 'ścieżka napisów jest, ale YouTube zwrócił pustą treść (blokada serwera)' };
 }
 
 // ── Streszczanie: Claude (gdy jest ANTHROPIC_API_KEY), inaczej Workers AI ──

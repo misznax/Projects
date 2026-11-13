@@ -204,7 +204,7 @@ dialog a{color:var(--acc)}
 <script>
 (()=>{
 'use strict';
-const VER='v0.02', MAIL='michus@gmail.com', LS='esencja.v1';
+const VER='v0.03', MAIL='michus@gmail.com', LS='esencja.v1';
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
 
 /*LOGIC-START*/
@@ -526,7 +526,7 @@ async function ask(prompt,o){
 async function fetchTranscript(id){
   if(window.ESN_STANDALONE){
     let r,j;try{r=await fetch('/api/transcript?id='+encodeURIComponent(id));j=await r.json()}catch(e){throw{code:'no_mcp'}}
-    if(!r.ok||!j||!j.text)throw{code:(j&&j.code)||'no_captions'};
+    if(!r.ok||!j||!j.text)throw{code:(j&&j.detail)?'yt':((j&&j.code)||'no_captions'),detail:j&&j.detail};
     return{text:j.text,lang:j.lang||'',dur:j.dur||0};
   }
   const mcp=window.claude&&window.claude.use?await window.claude.use('mcp'):null;
@@ -573,6 +573,7 @@ function errText(e,stage){
     if(c==='needs_reauth')return'Composio wymaga ponownego zalogowania w <a href="https://claude.ai/settings/connectors" target="_blank" rel="noopener">Ustawieniach → Connectors</a>.';
     if(c==='not_in_manifest'||c==='approval_required'||c==='consent_required'||c==='not_granted')return'Brak zgody na użycie Composio dla tej strony — zezwól albo wklej transkrypt ręcznie.';
     if(c==='no_captions')return'Ten film nie ma dostępnych napisów. Wklej transkrypt ręcznie.';
+    if(c==='yt')return'Serwer nie dostał napisów od YouTube: '+esc(String(e.detail).slice(0,200))+'. Wklej transkrypt ręcznie.';
     if(c==='no_mcp'||c==='capability_disabled')return'Pobieranie napisów jest tu niedostępne. Wklej transkrypt ręcznie.';
     return'Nie udało się pobrać napisów (usługa zwróciła błąd). Wklej transkrypt ręcznie albo spróbuj za chwilę.';
   }
