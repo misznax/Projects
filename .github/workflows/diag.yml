@@ -18,6 +18,7 @@ jobs:
           npx --yes wrangler@4 dev --remote --port 8787 > /tmp/dev.log 2>&1 &
           for i in $(seq 1 40); do curl -s -o /dev/null localhost:8787/api/x && break; sleep 3; done
           for id in fvkrD5fuHP4 dQw4w9WgXcQ; do
-            echo "== $id"; curl -sS -m 60 -H "Cf-Access-Jwt-Assertion: a.b.c" "localhost:8787/api/transcript?id=$id" | cut -c1-700; echo
+            echo "== $id"; curl -sS -m 60 -H "Sec-Fetch-Site: same-origin" "localhost:8787/api/transcript?id=$id" | cut -c1-700; echo
           done
+          echo "== ask"; curl -sS -m 90 -X POST -H "Sec-Fetch-Site: same-origin" -d '{"prompt":"Napisz po polsku jedno zdanie o tym, czym jest zupa pomidorowa."}' localhost:8787/api/ask | cut -c1-400; echo
           echo "== dev.log"; tail -15 /tmp/dev.log

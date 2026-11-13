@@ -12,7 +12,7 @@ async function accessOk(request, env) {
   const url = new URL(request.url);
   if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') return true;
   const jwt = request.headers.get('Cf-Access-Jwt-Assertion');
-  if (!jwt) return false;
+  if (!jwt) return request.headers.get('Sec-Fetch-Site') === 'same-origin'; // wywołanie z własnej strony (Access chroni cały adres)
   if (!env.ACCESS_TEAM) return true; // bez zmiennej: wystarcza obecność nagłówka (Access jest przed Workerem)
   try {
     const [h, p, s] = jwt.split('.');
