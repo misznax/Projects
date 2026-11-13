@@ -31,14 +31,10 @@ from PySide6.QtWidgets import (
     QToolButton, QVBoxLayout, QWidget,
 )
 
-try:
-    import pypdfium2 as pdfium
-except Exception:  # brak biblioteki -> PDF niedostępny, reszta działa
-    pdfium = None
-
 APP_NAME = "Startup Board"
 APP_VERSION = "v1.1"  # zmieniać tylko na polecenie autora
 APP_AUTHOR = "Michał Rzekiecki"
+APP_CONTACT = "michus@gmail.com"
 
 MAX_BYTES = 10 * 1024 * 1024        # limit pliku tekstowego
 MAX_PDF_BYTES = 200 * 1024 * 1024   # limit PDF
@@ -230,6 +226,8 @@ def _lang_def(lang: str):
         strcom = (re.compile(r"(?P<c>--[^\n]*)|(?P<s>'(?:''|[^'])*')|(?P<i>\"[^\"]*\")"),
                   {"c": F["com"], "s": F["str"], "i": F["attr"]})
         ml = [(re.compile(r"/\*"), re.compile(r"\*/"), F["com"])]
+    else:  # zwykły tekst: także wartości w 'x' i "x" (apostrof w słowie, np. it's, jest pomijany)
+        strcom = (re.compile(r"(?P<s>\"[^\"\n]*\"|(?<!\w)'[^'\n]*'(?!\w))"), {"s": F["str"]})
     return rules, strcom, ml
 
 
@@ -319,6 +317,7 @@ class PdfViewer(QScrollArea):
         self.verticalScrollBar().valueChanged.connect(self.render_visible)
 
     def load(self, raw: bytes):
+        import pypdfium2 as pdfium  # ładowane dopiero przy pierwszym PDF
         self.close_doc()
         self.doc = pdfium.PdfDocument(raw)
         self.sizes = [self.doc[i].get_size() for i in range(len(self.doc))]
@@ -683,9 +682,6 @@ class TextPane(QFrame):
         return True
 
     def _open_pdf(self, p: Path, raw: bytes, stt, st: dict) -> bool:
-        if pdfium is None:
-            self._set_missing(str(p), "brak biblioteki pypdfium2")
-            return False
         try:
             self.pdf.load(raw)
         except Exception as ex:
@@ -1144,6 +1140,7 @@ class MainWindow(QMainWindow):
         hp = mb.addMenu("Po&moc")
         hp.addAction(self._act("Folder z ustawieniami", lambda: QDesktopServices.openUrl(
             QUrl.fromLocalFile(str(self.state_path.parent)))))
+        hp.addAction(self._act("Sugestie…", self.show_suggestions))
         hp.addAction(self._act("O autorze", self.show_about))
         # to samo menu jako wyskakujące (przycisk ☰ / prawy klik na pasku panelu), działa przy ukrytym pasku
         self.popup = QMenu(self)
@@ -1231,16 +1228,72 @@ class MainWindow(QMainWindow):
         title = QLabel(f"<span style='font-size:16pt;font-weight:600'>{APP_NAME}</span>")
         ver = QLabel(f"Wersja {APP_VERSION}")
         author = QLabel(f"Autor: {APP_AUTHOR}")
-        for w in (title, ver, author):
+        contact = QLabel(f"Kontakt: <a href='mailto:{APP_CONTACT}'>{APP_CONTACT}</a>")
+        contact.setOpenExternalLinks(True)
+        for w in (title, ver, author, contact):
             w.setAlignment(center)
         ok = QPushButton("OK")
         ok.setDefault(True)
         ok.clicked.connect(d.accept)
-        for w in (ic, title, ver, author):
+        sug = QPushButton("Sugestie…")
+        want: list[int] = []
+        sug.clicked.connect(lambda: want.append(1))
+        sug.clicked.connect(d.accept)
+        for w in (ic, title, ver, author, contact):
             lay.addWidget(w)
         lay.addSpacing(8)
-        lay.addWidget(ok, 0, Qt.AlignmentFlag.AlignHCenter)
+        row = QHBoxLayout()
+        row.addStretch(1)
+        row.addWidget(sug)
+        row.addWidget(ok)
+        row.addStretch(1)
+        lay.addLayout(row)
         d.exec()
+        d.deleteLater()
+        if want:
+            self.show_suggestions()
+
+    def show_suggestions(self):
+        d = QDialog(self)
+        d.setWindowTitle("Sugestie")
+        d.resize(480, 320)
+        lay = QVBoxLayout(d)
+        lay.addWidget(QLabel("Co sprawiłoby, że ta aplikacja byłaby jeszcze lepsza?"))
+        box = QPlainTextEdit()
+        lay.addWidget(box, 1)
+        info = QLabel("")
+        info.setWordWrap(True)
+        lay.addWidget(info)
+        row = QHBoxLayout()
+        send, copy, close = QPushButton(f"Wyślij e-mailem ({APP_CONTACT})"), QPushButton("Kopiuj"), QPushButton("Zamknij")
+        for b in (send, copy):
+            row.addWidget(b)
+        row.addStretch(1)
+        row.addWidget(close)
+        lay.addLayout(row)
+
+        def mailto(text: str) -> QUrl:
+            enc = lambda t: bytes(QUrl.toPercentEncoding(t)).decode()
+            return QUrl(f"mailto:{APP_CONTACT}?subject={enc(f'{APP_NAME} {APP_VERSION} - sugestia')}&body={enc(text)}")
+
+        def do_send():
+            txt = box.toPlainText().strip()
+            if not txt:
+                info.setText("Wpisz najpierw sugestię.")
+                return
+            QApplication.clipboard().setText(txt)
+            QDesktopServices.openUrl(mailto(txt))
+            info.setText("Otwieram program pocztowy. Treść jest też w schowku (Ctrl+V), gdyby się nie wkleiła.")
+
+        def do_copy():
+            QApplication.clipboard().setText(box.toPlainText())
+            info.setText("Skopiowano do schowka.")
+
+        send.clicked.connect(do_send)
+        copy.clicked.connect(do_copy)
+        close.clicked.connect(d.accept)
+        d.exec()
+        d.deleteLater()
 
     # --- ustawienia widoku ---
     def set_menu_visible(self, on: bool):

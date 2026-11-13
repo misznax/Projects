@@ -1,4 +1,4 @@
-name: Build StartupBoard exe
+name: Build StartupBoard
 on:
   push:
     branches: [main]
@@ -18,11 +18,11 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install PySide6-Essentials pypdfium2 pyinstaller
-      - run: pyinstaller --onefile --windowed --name StartupBoard --icon icon.ico --collect-all pypdfium2 --collect-all pypdfium2_raw startup_board.py
+      - run: python build.py
       - name: Publish release
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release delete startupboard-latest -y --cleanup-tag || true
-          gh release create startupboard-latest dist/StartupBoard.exe --title "StartupBoard (exe)" --notes "Automatyczny build z ostatniego commita"
+          gh release create startupboard-latest dist/StartupBoard.zip --title "StartupBoard (ZIP)" --notes "Rozpakuj ZIP i uruchom StartupBoard/StartupBoard.exe. Automatyczny build z ostatniego commita."
