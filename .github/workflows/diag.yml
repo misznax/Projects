@@ -18,6 +18,6 @@ jobs:
           npx --yes wrangler@4 dev --remote --port 8787 > /tmp/dev.log 2>&1 &
           for i in $(seq 1 40); do curl -s -o /dev/null localhost:8787/api/x && break; sleep 3; done
           for id in fvkrD5fuHP4 dQw4w9WgXcQ; do
-            echo "== $id"; curl -sS -m 60 "localhost:8787/api/transcript?id=$id" | cut -c1-700; echo
+            echo "== $id"; curl -sS -m 60 -H "Cf-Access-Jwt-Assertion: a.b.c" "localhost:8787/api/transcript?id=$id" | cut -c1-700; echo
           done
           echo "== dev.log"; tail -15 /tmp/dev.log
