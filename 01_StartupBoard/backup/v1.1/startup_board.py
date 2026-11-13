@@ -23,7 +23,7 @@ from pathlib import Path
 from PySide6.QtCore import (QByteArray, QEvent, QLockFile, QPoint, QPointF, QRect, QRectF, QStandardPaths, Qt,
                             QTimer, QUrl, Signal)
 from PySide6.QtGui import (QAction, QActionGroup, QColor, QDesktopServices, QFont, QIcon, QImage, QKeySequence,
-                           QPainter, QPen, QPixmap, QPolygonF, QShortcut, QSyntaxHighlighter, QTextCharFormat,
+                           QPainter, QPalette, QPen, QPixmap, QPolygonF, QShortcut, QSyntaxHighlighter, QTextCharFormat,
                            QTextCursor)
 from PySide6.QtWidgets import (
     QAbstractButton, QApplication, QColorDialog, QDialog, QFileDialog, QMenu, QFrame, QHBoxLayout, QLabel, QMainWindow,
@@ -44,21 +44,24 @@ FONTS = ["Consolas", "Arial", "Courier New", "Segoe UI"]
 MONO = {"Consolas", "Courier New"}
 LANGS = [("auto", "Automatycznie (wg rozszerzenia)"), ("text", "Zwykły tekst"),
          ("python", "Python"), ("html", "HTML"), ("sql", "SQL")]
-BORDERS = [0, 1, 2, 3, 4, 6]
+BORDERS = [1, 2, 3, 4, 6, 8, 0]  # grubość ramki w px (0 = brak)
+DEFAULT_BORDER = 2
+DEFAULT_SCHEME = "night"
 DEFAULT_PANES, MAX_PANES = 6, 8
+SCHEME_ORDER = ["night", "graphite", "contrast", "light", "paper"]
 ICON_COLORS = [("red", "Czerwony", "#e53935"), ("orange", "Pomarańczowy", "#fb8c00"),
                ("yellow", "Żółty", "#fdd835"), ("green", "Zielony", "#43a047"),
                ("cyan", "Turkusowy", "#00acc1"), ("blue", "Niebieski", "#1e88e5"),
                ("purple", "Fioletowy", "#8e24aa"), ("pink", "Różowy", "#ec407a")]
 EXT_LANG = {".py": "python", ".pyw": "python", ".html": "html", ".htm": "html",
             ".xhtml": "html", ".sql": "sql"}
-HDR_CSS = (
-    "#hdr{{background:{bg};border-bottom:1px solid #d6d6d6;}}"
-    "#hdr QLabel{{color:#666;font-size:8pt;}}"
-    "#hdr QToolButton{{border:none;color:#777;padding:0 5px;font-size:9pt;}}"
-    "#hdr QToolButton:hover{{background:#dedede;}}"
-    "#hdr QToolButton:checked{{color:#000;}}"
-)
+def hdr_css(active: bool) -> str:
+    u = UI
+    return (f"#hdr{{background:{u['hdr_bg_a'] if active else u['hdr_bg']};border-bottom:1px solid {u['border']};}}"
+            f"#hdr QLabel{{color:{u['hdr_fg']};font-size:8pt;}}"
+            f"#hdr QToolButton{{border:none;color:{u['mute']};padding:0 5px;font-size:9pt;}}"
+            f"#hdr QToolButton:hover{{background:{u['border']};color:{u['hdr_fg']};}}"
+            f"#hdr QToolButton:checked{{color:{u['hdr_fg']};}}")
 
 
 # ---------- pomocnicze ----------
@@ -145,14 +148,56 @@ def _fmt(color: str, bold=False, italic=False) -> QTextCharFormat:
     return f
 
 
-DEFAULT_COLORS = {
-    "bg": "#ffffff", "text": "#1f1f1f", "num": "#ff7a00", "str": "#2fb344", "com": "#9aa0a6",
-    "kw": "#3b82f6", "other": "#b455e6",
-    "p;": "#ff3b30", "p?": "#ff2d95", "p!": "#ff9500", "p-": "#00c2a8", "p_": "#b266ff", "p=": "#2f80ff",
-    "p+": "#34c759", "p*/%": "#ff8a00", "p<>": "#8a63ff", "p&|^~": "#ff5e3a", "p,.:": "#18b8d9",
-    "p()": "#d9a400", "p[]": "#4f6bff", "p{}": "#ff5252", "p\\@$": "#c9a300",
+# Gotowe schematy: każdy kolor ma policzony kontrast względem tła (jasne >= 4.8:1, ciemne >= 6:1).
+SCHEMES = {
+    "night": {"name": "Ciemny – Nocna sowa (jak na miniaturce)", "dark": True,
+        "colors": {"bg": "#0b1529", "text": "#e3ebf7", "com": "#8da0bd", "kw": "#c29cf7", "str": "#12e23f", "num": "#ec9c13", "other": "#92c8f6",
+                   "p;": "#f69090", "p*/%": "#f6b495", "p!": "#d0c611",
+                   "p()": "#8ebd0f", "p{}": "#67de12", "p+": "#23c810",
+                   "p[]": "#10c671", "p-": "#12dbbd", "p,.:": "#12bddb",
+                   "p=": "#95aaf6", "p<>": "#c3bdfa", "p_": "#e5aff8",
+                   "p\\@$": "#f582ef", "p?": "#f8aadc", "p&|^~": "#f68eaf",
+        },
+        "ui": {"hdr_bg": "#15233f", "hdr_bg_a": "#1d3358", "hdr_fg": "#d7e2f5", "mute": "#8da0bd", "border": "#2a3d62", "border_a": "#7aa7d9", "canvas": "#060d1c", "sel": "#2a4a80", "ok": "#4cc38a", "warn": "#f0994c", "err": "#ff7b7b", "info": "#7aa7d9"}},
+    "graphite": {"name": "Ciemny – grafit", "dark": True,
+        "colors": {"bg": "#1e1e1e", "text": "#e6e6e6", "com": "#9aa0a6", "kw": "#c7a5f5", "str": "#35e95c", "num": "#e9a837", "other": "#a5d0f5",
+                   "p;": "#f49c9c", "p*/%": "#f5bfa5", "p!": "#dad018",
+                   "p()": "#95c316", "p{}": "#6ee619", "p+": "#2ad117",
+                   "p[]": "#17cf79", "p-": "#19e6c7", "p,.:": "#19c5e3",
+                   "p=": "#a1b3f5", "p<>": "#cbc6f9", "p_": "#e8bcf8",
+                   "p\\@$": "#f391ee", "p?": "#f7b8e0", "p&|^~": "#f49ab6",
+        },
+        "ui": {"hdr_bg": "#2a2a2a", "hdr_bg_a": "#353a42", "hdr_fg": "#e0e0e0", "mute": "#9aa0a6", "border": "#454545", "border_a": "#6aa5ff", "canvas": "#141414", "sel": "#3a4a66", "ok": "#6fcf97", "warn": "#f2994a", "err": "#ff7b7b", "info": "#6aa5ff"}},
+    "contrast": {"name": "Ciemny – wysoki kontrast (czarny)", "dark": True,
+        "colors": {"bg": "#000000", "text": "#ffffff", "com": "#b0b8c4", "kw": "#ceadfd", "str": "#06ef39", "num": "#faad29", "other": "#a3d3fd",
+                   "p;": "#fda5a5", "p*/%": "#fdc1a5", "p!": "#ddd206",
+                   "p()": "#99ce05", "p{}": "#65ea06", "p+": "#1bdb06",
+                   "p[]": "#06d876", "p-": "#06e7c5", "p,.:": "#06cef1",
+                   "p=": "#a8bafd", "p<>": "#cec8fe", "p_": "#edbefd",
+                   "p\\@$": "#fc99f7", "p?": "#fdb9e4", "p&|^~": "#fda1be",
+        },
+        "ui": {"hdr_bg": "#101010", "hdr_bg_a": "#1c1c1c", "hdr_fg": "#ffffff", "mute": "#c0c0c0", "border": "#707070", "border_a": "#ffd400", "canvas": "#000000", "sel": "#1f4aa0", "ok": "#3dff7a", "warn": "#ffb000", "err": "#ff6b6b", "info": "#66b3ff"}},
+    "light": {"name": "Jasny – wyraźny", "dark": False,
+        "colors": {"bg": "#ffffff", "text": "#1b1f2a", "com": "#6b7280", "kw": "#6f1ce3", "str": "#0e7124", "num": "#986713", "other": "#1563a8",
+                   "p;": "#de1b1b", "p*/%": "#a64214", "p!": "#68640d",
+                   "p()": "#5e7b0f", "p{}": "#366f0e", "p+": "#1c8410",
+                   "p[]": "#10814c", "p-": "#0d6d5f", "p,.:": "#127c8f",
+                   "p=": "#1c47e3", "p<>": "#301ce3", "p_": "#9b19ca",
+                   "p\\@$": "#c819bf", "p?": "#b6167b", "p&|^~": "#dc1b58",
+        },
+        "ui": {"hdr_bg": "#eef1f6", "hdr_bg_a": "#dce8f8", "hdr_fg": "#2b3340", "mute": "#5f6673", "border": "#c3cad6", "border_a": "#2f6fd6", "canvas": "#d5dbe5", "sel": "#bcd7ff", "ok": "#1f7a3a", "warn": "#b4531a", "err": "#b3261e", "info": "#2f55b5"}},
+    "paper": {"name": "Jasny – papier", "dark": False,
+        "colors": {"bg": "#fbf4e4", "text": "#2a2418", "com": "#6f695a", "kw": "#7024db", "str": "#116723", "num": "#8a6016", "other": "#195c97",
+                   "p;": "#cc2121", "p*/%": "#954018", "p!": "#605c10",
+                   "p()": "#577012", "p{}": "#346510", "p+": "#1e7914",
+                   "p[]": "#137648", "p-": "#106558", "p,.:": "#157384",
+                   "p=": "#244bdb", "p<>": "#3624db", "p_": "#8d1eb6",
+                   "p\\@$": "#b61eae", "p?": "#a41b72", "p&|^~": "#c82055",
+        },
+        "ui": {"hdr_bg": "#efe6cf", "hdr_bg_a": "#e4d8b8", "hdr_fg": "#3a3222", "mute": "#6f695a", "border": "#cdbf9c", "border_a": "#b4691f", "canvas": "#dccfae", "sel": "#e8cf9a", "ok": "#2e6b2e", "warn": "#a84a12", "err": "#a8201a", "info": "#40569c"}},
 }
-COLORS = dict(DEFAULT_COLORS)  # aktualna paleta (globalna dla wszystkich paneli)
+COLORS = dict(SCHEMES[DEFAULT_SCHEME]["colors"])  # aktualna paleta składni (globalna)
+UI = dict(SCHEMES[DEFAULT_SCHEME]["ui"])          # aktualne kolory interfejsu (paski, ramki, tło)
 COLOR_LABELS = [("text", "Tekst"), ("bg", "Tło edytora"), ("str", "Wartości w 'x' i \"x\""),
                 ("num", "Cyfry"), ("com", "Komentarze"), ("kw", "Słowa kluczowe i znaczniki"),
                 ("other", "Funkcje, atrybuty, wbudowane")]
@@ -229,6 +274,23 @@ def _lang_def(lang: str):
     else:  # zwykły tekst: także wartości w 'x' i "x" (apostrof w słowie, np. it's, jest pomijany)
         strcom = (re.compile(r"(?P<s>\"[^\"\n]*\"|(?<!\w)'[^'\n]*'(?!\w))"), {"s": F["str"]})
     return rules, strcom, ml
+
+
+def make_palette(dark: bool) -> QPalette:
+    """Paleta Qt zgodna ze schematem (menu, okna dialogowe, przyciski)."""
+    P, R, G = QPalette(), QPalette.ColorRole, QPalette.ColorGroup
+    c, u = COLORS, UI
+    roles = {R.Window: u["hdr_bg"], R.WindowText: u["hdr_fg"], R.Base: c["bg"], R.AlternateBase: u["hdr_bg_a"],
+             R.Text: c["text"], R.Button: u["hdr_bg"], R.ButtonText: u["hdr_fg"], R.ToolTipBase: u["hdr_bg_a"],
+             R.ToolTipText: u["hdr_fg"], R.Highlight: u["sel"], R.HighlightedText: c["text"],
+             R.PlaceholderText: u["mute"], R.Link: u["info"], R.BrightText: "#ffffff" if dark else "#000000",
+             R.Light: QColor(u["hdr_bg_a"]).lighter(125).name(), R.Mid: u["border"], R.Dark: u["canvas"],
+             R.Shadow: u["canvas"]}
+    for r, col in roles.items():
+        P.setColor(r, QColor(col))
+    for r in (R.WindowText, R.Text, R.ButtonText):
+        P.setColor(G.Disabled, r, QColor(u["mute"]))
+    return P
 
 
 class Highlighter(QSyntaxHighlighter):
@@ -470,7 +532,7 @@ class TextPane(QFrame):
         self.missing = self.conflict = False
         self.lang = "auto"
         self.family = "Consolas"
-        self.border = 1
+        self.border = DEFAULT_BORDER
         self._active = False
         self.setAcceptDrops(True)
 
@@ -498,13 +560,14 @@ class TextPane(QFrame):
             lambda: self.menuRequested.emit(self.btn_menu.mapToGlobal(QPoint(0, self.btn_menu.height()))))
 
         self.stack = QStackedWidget()
-        ph = QWidget()
+        ph = self.ph = QWidget()
+        ph.setObjectName("ph")
+        ph.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         pv = QVBoxLayout(ph)
         pv.addStretch(1)
         self.lbl_hint = QLabel()
         self.lbl_hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.lbl_hint.setWordWrap(True)
-        self.lbl_hint.setStyleSheet("color:#999;")
         self.btn_ph = QPushButton("Otwórz plik…")
         self.btn_ph.setFixedWidth(130)
         pv.addWidget(self.lbl_hint)
@@ -540,10 +603,10 @@ class TextPane(QFrame):
 
     # --- wygląd ---
     def _restyle(self):
-        col = "#7aa7d9" if self._active else "#c9c9c9"
+        col = UI["border_a"] if self._active else UI["border"]
         css = f"TextPane{{border:{self.border}px solid {col};}}" if self.border > 0 else "TextPane{border:none;}"
         self.setStyleSheet(css)
-        self.header.setStyleSheet(HDR_CSS.format(bg="#e6eef7" if self._active else "#f3f3f3"))
+        self.header.setStyleSheet(hdr_css(self._active))
 
     def set_active(self, on: bool):
         self._active = on
@@ -551,7 +614,12 @@ class TextPane(QFrame):
 
     def apply_colors(self):
         self.editor.setStyleSheet(
-            f"QPlainTextEdit{{background:{COLORS['bg']};color:{COLORS['text']};}}")
+            f"QPlainTextEdit{{background:{COLORS['bg']};color:{COLORS['text']};"
+            f"selection-background-color:{UI['sel']};selection-color:{COLORS['text']};}}")
+        self.ph.setStyleSheet(f"#ph{{background:{COLORS['bg']};}}")
+        self.lbl_hint.setStyleSheet(f"color:{UI['mute']};")
+        self._restyle()
+        self.refresh_header()
         if self.hl.document() is not None:
             self.hl.rehighlight()
 
@@ -616,15 +684,15 @@ class TextPane(QFrame):
         self.lbl_name.setText(Path(self.path).name)
         self.lbl_name.setToolTip(self.path)
         if self.missing:
-            txt, col = "⚠ nie otwarto", "#b00020"
+            txt, col = "⚠ nie otwarto", UI["err"]
         elif self.conflict:
-            txt, col = "⚠ zmieniony na dysku", "#b00020"
+            txt, col = "⚠ zmieniony na dysku", UI["err"]
         elif self.kind == "pdf":
-            txt, col = f"PDF · {self.pdf.page_count()} str.", "#5a6a8a"
+            txt, col = f"PDF · {self.pdf.page_count()} str.", UI["info"]
         elif self.is_modified():
-            txt, col = "● niezapisany", "#c0562a"
+            txt, col = "● niezapisany", UI["warn"]
         else:
-            txt, col = "zapisany", "#5a8a5a"
+            txt, col = "zapisany", UI["ok"]
         if not self.missing:
             txt += f" · {human_size(self.disk_size)}"
         self.lbl_state.setText(txt)
@@ -813,6 +881,8 @@ class Canvas(QWidget):
         self.order = list(panes)  # od spodu do góry
         self.rel: dict[TextPane, QRectF] = {}
         self.snap_on = True
+        self.setObjectName("cv")
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self._drag: dict | None = None
         self._cursor_on = False
         for p in panes:
@@ -854,6 +924,9 @@ class Canvas(QWidget):
         for i, q in enumerate(self.panes):
             q.index = i
         self.layoutChanged.emit()
+
+    def set_bg(self, color: str):
+        self.setStyleSheet(f"#cv{{background:{color};}}")
 
     def apply_all(self):
         for p in self.panes:
@@ -1020,7 +1093,9 @@ class MainWindow(QMainWindow):
         self.setWindowTitle(APP_NAME)
         self.state_path = state_path or self._default_state_path()
         self._ready = False
-        self.border = 1
+        self.border = DEFAULT_BORDER
+        self.scheme_key = DEFAULT_SCHEME
+        self.ui_over: dict[str, str] = {}
         self.icon_key = "yellow"
         self.canvas = Canvas([TextPane(i) for i in range(DEFAULT_PANES)])
         self.panes = self.canvas.panes
@@ -1037,6 +1112,7 @@ class MainWindow(QMainWindow):
             QShortcut(QKeySequence(f"Alt+{i + 1}"), self,
                       activated=lambda i=i: self.panes[i].focus_editor() if i < len(self.panes) else None)
         self.resize(1500, 900)
+        self.apply_scheme(DEFAULT_SCHEME, save=False)
         self.load_state()
         self.set_icon_color(self.icon_key)
         self.set_current(self.current)
@@ -1096,6 +1172,9 @@ class MainWindow(QMainWindow):
         m.addAction(self._act("Zakończ", self.close, "Ctrl+Q"))
 
         v = mb.addMenu("&Widok")
+        self.scheme_acts = self._radio(
+            v.addMenu("Schemat kolorów"), [(k, SCHEMES[k]["name"]) for k in SCHEME_ORDER], self.apply_scheme,
+            icons={k: self._scheme_icon(k) for k in SCHEME_ORDER})
         self.font_acts = self._radio(v.addMenu("Czcionka (aktywny panel)"), [(f, f) for f in FONTS],
                                      lambda k: self.current.set_font(k))
         self.lang_acts = self._radio(v.addMenu("Składnia (aktywny panel)"), LANGS,
@@ -1103,13 +1182,21 @@ class MainWindow(QMainWindow):
         self.act_wrap = self._act("Zawijanie wierszy (aktywny panel)", lambda: self.current.btn_wrap.toggle(),
                                   "Ctrl+Shift+W", checkable=True)
         v.addAction(self.act_wrap)
+        mfr = v.addMenu("Ramki paneli")
         self.border_acts = self._radio(
-            v.addMenu("Grubość ramki paneli"),
-            [(b, "0 px (brak)" if b == 0 else f"{b} px") for b in BORDERS], self.set_border)
+            mfr.addMenu("Grubość"), [(b, "0 px (brak)" if b == 0 else f"{b} px") for b in BORDERS], self.set_border)
+        self.border_color_acts: dict[str, QAction] = {}
+        for key, label in (("border_a", "Kolor ramki aktywnego panelu…"), ("border", "Kolor ramki pozostałych paneli…")):
+            a = QAction(label, self)
+            a.setIcon(self._swatch(UI[key]))
+            a.triggered.connect(lambda _c=False, k=key, l=label: self.pick_border_color(k, l))
+            mfr.addAction(a)
+            self.border_color_acts[key] = a
+        mfr.addAction(self._act("Przywróć kolory ramek ze schematu", self.reset_border_colors))
         self.icon_acts = self._radio(
             v.addMenu("Kolor ikony (gwiazda)"), [(k, n) for k, n, _c in ICON_COLORS], self.set_icon_color,
             icons={k: QIcon(star_pixmap(c, 16)) for k, _n, c in ICON_COLORS})
-        mc = v.addMenu("Kolory składni")
+        mc = v.addMenu("Własne kolory składni")
         self.color_acts: dict[str, QAction] = {}
         for key, label in COLOR_LABELS:
             mc.addAction(self._color_action(key, label))
@@ -1117,7 +1204,7 @@ class MainWindow(QMainWindow):
         for key, label in PUNCT_GROUPS:
             mz.addAction(self._color_action(key, label))
         mc.addSeparator()
-        mc.addAction(self._act("Przywróć domyślne kolory", self.reset_colors))
+        mc.addAction(self._act("Przywróć kolory schematu", self.reset_colors))
         v.addSeparator()
         self.act_menu = self._act("Pokaż pasek menu", lambda: self.set_menu_visible(not self.menuBar().isVisible()),
                                   "Ctrl+M", checkable=True)
@@ -1168,20 +1255,81 @@ class MainWindow(QMainWindow):
         c = QColorDialog.getColor(QColor(COLORS[key]), self, f"Kolor: {label}")
         if c.isValid():
             COLORS[key] = c.name()
-            self.apply_colors()
+            self.apply_look()
+
+    def pick_border_color(self, key: str, label: str):
+        c = QColorDialog.getColor(QColor(UI[key]), self, label.rstrip("…"))
+        if c.isValid():
+            UI[key] = self.ui_over[key] = c.name()
+            self.apply_look()
+
+    def reset_border_colors(self):
+        for k in ("border", "border_a"):
+            UI[k] = SCHEMES[self.scheme_key]["ui"][k]
+        self.ui_over.clear()
+        self.apply_look()
 
     def reset_colors(self):
-        COLORS.clear()
-        COLORS.update(DEFAULT_COLORS)
-        self.apply_colors()
+        self.apply_scheme(self.scheme_key)
 
-    def apply_colors(self):
+    @staticmethod
+    def _scheme_icon(key: str) -> QIcon:
+        c, u = SCHEMES[key]["colors"], SCHEMES[key]["ui"]
+        pm = QPixmap(22, 16)
+        pm.fill(QColor(c["bg"]))
+        p = QPainter(pm)
+        for i, k in enumerate(("kw", "str", "num", "other")):
+            p.fillRect(2 + i * 5, 4, 4, 8, QColor(c[k]))
+        p.setPen(QColor(u["border_a"]))
+        p.drawRect(0, 0, 21, 15)
+        p.end()
+        return QIcon(pm)
+
+    def apply_scheme(self, key: str, save: bool = True):
+        if key not in SCHEMES:
+            key = DEFAULT_SCHEME
+        self.scheme_key, self.ui_over = key, {}
+        COLORS.clear()
+        COLORS.update(SCHEMES[key]["colors"])
+        UI.clear()
+        UI.update(SCHEMES[key]["ui"])
+        self.apply_look(save)
+
+    def apply_look(self, save: bool = True):
+        """Zastosuj COLORS/UI: paleta Qt, tło, panele, ramki, ikony w menu, pasek tytułu."""
         refresh_colors()
+        app = QApplication.instance()
+        app.setStyle("Fusion")
+        app.setPalette(make_palette(SCHEMES[self.scheme_key]["dark"]))
+        self.canvas.set_bg(UI["canvas"])
         for p in self.panes:
             p.apply_colors()
         for key, a in self.color_acts.items():
             a.setIcon(self._swatch(COLORS[key]))
-        self.schedule_save()
+        for key, a in self.border_color_acts.items():
+            a.setIcon(self._swatch(UI[key]))
+        self._dark_titlebar()
+        if save:
+            self.schedule_save()
+
+    def apply_colors(self):
+        self.apply_look()
+
+    def _dark_titlebar(self):
+        """Windows 10/11: ciemny lub jasny pasek tytułu okna zgodnie ze schematem."""
+        if sys.platform != "win32" or not self.isVisible():
+            return
+        try:
+            import ctypes
+            v = ctypes.c_int(1 if SCHEMES[self.scheme_key]["dark"] else 0)
+            for attr in (20, 19):
+                ctypes.windll.dwmapi.DwmSetWindowAttribute(int(self.winId()), attr, ctypes.byref(v), ctypes.sizeof(v))
+        except Exception:
+            pass
+
+    def showEvent(self, e):
+        super().showEvent(e)
+        self._dark_titlebar()
 
     def _sync_menu(self):
         c = self.current
@@ -1189,6 +1337,7 @@ class MainWindow(QMainWindow):
             self.font_acts[c.family].setChecked(True)
         self.lang_acts[c.lang].setChecked(True)
         self.border_acts[self.border].setChecked(True)
+        self.scheme_acts[self.scheme_key].setChecked(True)
         self.icon_acts[self.icon_key].setChecked(True)
         self.act_wrap.setChecked(c.btn_wrap.isChecked())
         self.act_menu.setChecked(self.menuBar().isVisible())
@@ -1372,7 +1521,9 @@ class MainWindow(QMainWindow):
                 "rects": [[r.x(), r.y(), r.width(), r.height()] for r in (self.canvas.rel[p] for p in self.panes)],
                 "z": [p.index for p in self.canvas.order],
                 "border": self.border, "snap": self.canvas.snap_on, "icon": self.icon_key,
-                "colors": {k: v for k, v in COLORS.items() if v != DEFAULT_COLORS.get(k)},
+                "scheme": self.scheme_key,
+                "colors": {k: v for k, v in COLORS.items() if v != SCHEMES[self.scheme_key]["colors"].get(k)},
+                "ui_over": dict(self.ui_over),
                 "menu": self.menuBar().isVisible(),
                 "current": self.current.index,
                 "panes": [p.state() for p in self.panes],
@@ -1391,10 +1542,14 @@ class MainWindow(QMainWindow):
             self._log(f"load_state (odczyt): {ex!r}")
             return
         try:
+            self.apply_scheme(data.get("scheme") or "light", save=False)  # stary stan bez schematu = jasny
             for k, v in (data.get("colors") or {}).items():
-                if k in DEFAULT_COLORS and QColor(v).isValid():
+                if k in COLORS and QColor(v).isValid():
                     COLORS[k] = v
-            self.apply_colors()
+            for k, v in (data.get("ui_over") or {}).items():
+                if k in ("border", "border_a") and QColor(v).isValid():
+                    UI[k] = self.ui_over[k] = v
+            self.apply_look(save=False)
             n = max(1, min(len(data.get("panes", [])) or DEFAULT_PANES, MAX_PANES))
             while len(self.panes) < n:
                 self._new_pane()
