@@ -1,0 +1,23 @@
+name: Diag napisów (jednorazowo)
+on:
+  push:
+    paths: [".github/workflows/diag.yml"]
+  workflow_dispatch:
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 00_Worker/build.py
+      - name: wrangler dev --remote (kod chodzi na serwerach Cloudflare)
+        working-directory: 00_Worker
+        run: |
+          npx --yes wrangler@4 dev --remote --port 8787 > /tmp/dev.log 2>&1 &
+          for i in $(seq 1 40); do curl -s -o /dev/null localhost:8787/api/x && break; sleep 3; done
+          for id in fvkrD5fuHP4 dQw4w9WgXcQ; do
+            echo "== $id"; curl -sS -m 60 "localhost:8787/api/transcript?id=$id" | cut -c1-700; echo
+          done
+          echo "== dev.log"; tail -15 /tmp/dev.log
