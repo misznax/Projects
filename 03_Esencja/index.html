@@ -204,7 +204,7 @@ dialog a{color:var(--acc)}
 <script>
 (()=>{
 'use strict';
-const VER='v0.04', MAIL='michus@gmail.com', LS='esencja.v1';
+const VER='v0.05', MAIL='michus@gmail.com', LS='esencja.v1';
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
 
 /*LOGIC-START*/
@@ -505,7 +505,7 @@ function loadVoices(){
   $voice.innerHTML=pl.length?pl.map(v=>'<option value="'+esc(v.voiceURI)+'">'+esc(vName(v))+'</option>').join(''):'<option value="">domyślny głos</option>';
   const pick=pl.find(v=>v.voiceURI===S.set.voice)||pl[0]||null;
   TTS.voice=pick;if(pick)$voice.value=pick.voiceURI;
-  pmsg(pl.length?'':'Brak polskiego głosu w tej przeglądarce — w Edge są głosy „Natural” (Zofia, Marek).');
+  pmsg(!pl.length?'Brak polskiego głosu w tej przeglądarce. Otwórz tę stronę w Microsoft Edge: ma głosy „Natural” (Zofia, Marek).':vScore(pl[0])<4?'Ten głos jest syntetyczny. Naturalny (Zofia, Marek) ma przeglądarka Microsoft Edge: otwórz w niej tę stronę.':'');
 }
 
 /* ───────── PROMPTY ───────── */
