@@ -21,7 +21,7 @@ input,textarea,select{width:100%;margin:4px 0}
 <header><h1 onclick="go()">🎓 Notatnik Słuchacza</h1><button onclick="menu()">☰</button></header>
 <div id="app"></div>
 <script>
-const $=s=>document.querySelector(s),cfg=k=>localStorage.getItem(k)||'',VER='v0.03';
+const $=s=>document.querySelector(s),cfg=k=>localStorage.getItem(k)||'',VER='v0.04';
 const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 const tm=s=>{s=Math.floor(s);const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60,p=n=>String(n).padStart(2,'0');return(h?h+':':'')+p(m)+':'+p(x)};
 const SYS='Jesteś asystentem studenta na wykładzie. Odpowiadaj po polsku, zwięźle, rzeczowo.';
@@ -38,18 +38,25 @@ const dur=l=>l.chunks.reduce((a,c)=>a+c.dur,0);
 // ---------- widoki
 async function go(){if(S.rec)return;L=null;LS=(await tx('lec','readonly',s=>s.getAll())||[]).sort((a,b)=>b.date-a.date);render()}
 function render(){
+ _pp=-1;
  if(!L){$('#app').innerHTML=`<button class=p onclick="newL()">＋ Nowy wykład</button>`+LS.map(l=>`<div class=card onclick="openL('${l.id}')"><div>${esc(l.title)}</div><div class=mut>${new Date(l.date).toLocaleString('pl')} · ${tm(dur(l))}</div></div>`).join('')+(LS.length?'':'<p class=mut>Brak wykładów.</p>');return}
  const pend=L.chunks.filter(c=>!c.done).length,on=navigator.onLine;
- let h=`<div style="display:flex;gap:8px"><button onclick="go()" ${S.rec?'disabled':''}>← Wykłady</button><button class=p onclick="newL()" ${S.rec?'disabled':''}>＋ Nowy</button></div><div class=card style="display:flex;gap:12px;align-items:center"><button class="${S.rec?'r':'p'}" onclick="toggle()" style="font-size:22px">${S.rec?'⏹ Stop':'⏺ Nagraj'}</button><div><div id=el style="font-size:20px">${tm(S.rec?elapsed():dur(L))}</div><div class=mut>${on?'🌐 ☁️ chmura':'✈️ 📴 offline'}${pend?' · ⏳'+pend:''}</div></div></div>`;
+ let h=`<div style="display:flex;gap:8px"><button onclick="go()" ${S.rec?'disabled':''}>← Wykłady</button><button class=p onclick="newL()" ${S.rec?'disabled':''}>＋ Nowy</button></div><div style="display:flex;align-items:center;gap:8px;margin:8px 0"><span style="font-weight:600">${esc(L.title)}</span><button class=s onclick="ren()">✎</button></div><div class=card style="display:flex;gap:12px;align-items:center"><button class="${S.rec?'r':'p'}" onclick="toggle()" style="font-size:22px">${S.rec?'⏹ Stop':(L.pend?'⏺ Część '+(P().length+1):'⏺ Nagraj')}</button>${S.rec?'<button onclick="pause()">⏸ Przerwa</button>':''}<div><div id=el style="font-size:20px">${tm(S.rec?elapsed():dur(L))}</div><div class=mut>${on?'🌐 ☁️ chmura':'✈️ 📴 offline'}${pend?' · ⏳'+pend:''}</div></div></div>`;
  if(S.msg)h+=`<div class=mut style="color:#fbbf24">${esc(S.msg)}</div>`;
  if(pend&&!canSTT())h+=`<div class=mut style="color:#f87171">⏳ Audio czeka na transkrypcję: ${!on?'brak internetu':cfg('mode')==='offline'?'tryb „Tylko offline”':'brak klucza OpenAI (☰ → Ustawienia lub sekret OPENAI_API_KEY w Workerze)'}. Pierwszy tekst pojawia się ok. 30 s po starcie.</div>`;
  h+=`<div class=tabs><button class="${tab?'':'on'}" onclick="tab=0;render()">Notatki</button><button class="${tab?'on':''}" onclick="tab=1;render()">Transkrypcja</button><button onclick="exp()">⇪</button></div>`;
  if(!tab){h+=L.notes.length?'':'<p class=mut>Notatki po ok. 5 min nagrania (internet + klucz Anthropic).</p>';
-  h+=L.notes.map((n,i)=>`<div class=card><b>${tm(n.start)}–${tm(n.end)}</b><div style="font-weight:600">${esc(n.title)}</div><pre>${esc(n.summary)}</pre>${n.authors?`<div class=card><b>AUTORZY</b><pre>${esc(n.authors)}</pre></div>`:''}${n.ver?`<div class=card><b>WERYFIKACJA</b><pre>${esc(n.ver)}</pre></div>`:''}<button class=s onclick="enrich(${i},0)">Autorzy</button> <button class=s onclick="enrich(${i},1)">Zweryfikuj</button> ${n.busy?'⏳':''}</div>`).join('')}
- else{const R=roles();h+=L.utt.map((u,i)=>`<div class=card><b class=${R[i]==='Pytanie'?'P':R[i]==='Odpowiedź'?'O':'W'}>${tm(u.s)} · ${R[i]}${u.tmp?' (podgląd)':''}</b><div>${esc(u.t)}</div></div>`).join('')||'<p class=mut>Pusto.</p>'}
+  h+=L.notes.map((n,i)=>hdr(n.start)+`<div class=card><b>${tm(n.start)}–${tm(n.end)}</b><div style="font-weight:600">${esc(n.title)}</div><pre>${esc(n.summary)}</pre>${n.authors?`<div class=card><b>AUTORZY</b><pre>${esc(n.authors)}</pre></div>`:''}${n.ver?`<div class=card><b>WERYFIKACJA</b><pre>${esc(n.ver)}</pre></div>`:''}<button class=s onclick="enrich(${i},0)">Autorzy</button> <button class=s onclick="enrich(${i},1)">Zweryfikuj</button> ${n.busy?'⏳':''}</div>`).join('')}
+ else{const R=roles();h+=L.utt.map((u,i)=>hdr(u.s)+`<div class=card><b class=${R[i]==='Pytanie'?'P':R[i]==='Odpowiedź'?'O':'W'}>${tm(u.s)} · ${R[i]}${u.tmp?' (podgląd)':''}</b><div>${esc(u.t)}</div></div>`).join('')||'<p class=mut>Pusto.</p>'}
  $('#app').innerHTML=h}
+const P=()=>L.parts||(L.parts=[{start:0,name:'Część 1'}]);
+let _pp=-1;
+function hdr(t){const ps=P();if(ps.length<2)return'';let k=0;ps.forEach((p,i)=>{if(t>=p.start-0.5)k=i});if(k===_pp)return'';_pp=k;return`<div class=mut style="margin-top:12px" onclick="renPart(${k})">— ${esc(ps[k].name)} ✎ —</div>`}
+function renPart(k){const q=s=>esc(s).replace(/"/g,'&quot;');dlg(`<h3>Nazwa części</h3><input id=rn value="${q(P()[k].name)}"><button class=p onclick="P()[${k}].name=rn.value.trim()||P()[${k}].name;saveL();dlg();render()">Zapisz</button> <button onclick="dlg()">Anuluj</button>`)}
+function ren(){const q=esc(L.title).replace(/"/g,'&quot;');dlg(`<h3>Nazwa wykładu</h3><input id=rn value="${q}" placeholder="np. Psychologia – wykład 3"><button class=p onclick="L.title=rn.value.trim()||L.title;saveL();dlg();render()">Zapisz</button> <button onclick="dlg()">Anuluj</button>`)}
+function pause(){stopRec();L.pend=true;saveL();render()}
 function roles(l=L){return l.utt.map((u,i)=>u.sp==='O'?'Pytanie':(i&&l.utt[i-1].sp==='O'?'Odpowiedź':'Wykładowca'))}
-async function newL(){if(S.rec)return;L={id:crypto.randomUUID(),title:'Wykład '+new Date().toLocaleString('pl'),date:Date.now(),chunks:[],utt:[],notes:[],notedUntil:0};await saveL();render()}
+async function newL(){if(S.rec)return;L={id:crypto.randomUUID(),title:'Wykład '+new Date().toLocaleString('pl'),date:Date.now(),chunks:[],utt:[],notes:[],notedUntil:0};await saveL();render();ren()}
 async function openL(id){L=LS.find(l=>l.id===id);render();pump()}
 const elapsed=()=>dur(L)+(Date.now()-S.cs)/1000;
 // ---------- nagrywanie (pliki 30 s, tylko mikrofon = mało baterii)
@@ -57,6 +64,7 @@ async function toggle(){S.rec?stopRec():startRec()}
 async function startRec(){
  try{S.stream=await navigator.mediaDevices.getUserMedia({audio:{channelCount:1,echoCancellation:false,noiseSuppression:false,autoGainControl:true}})}catch(e){S.msg='Brak zgody na mikrofon';render();return}
  S.mime=['audio/webm;codecs=opus','audio/mp4'].find(m=>MediaRecorder.isTypeSupported(m))||'';
+ if(L.pend){P().push({start:dur(L),name:'Część '+(P().length+1)});L.pend=false;saveL()}
  S.rec=true;S.cursor=dur(L);S.idx=L.chunks.length;S.msg='';S.last=Date.now();wake();cycle();startSR();
  S.tick=setInterval(tick,1000);render()}
 function cycle(){
