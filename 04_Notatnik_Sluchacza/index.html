@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="pl"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="theme-color" content="#111">
+<title>Notatnik Słuchacza</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font:16px/1.4 -apple-system,system-ui,sans-serif;background:#111;color:#eee;padding:env(safe-area-inset-top) 12px env(safe-area-inset-bottom)}
+header{display:flex;align-items:center;gap:10px;padding:10px 0}h1{font-size:18px;margin:0;flex:1}
+button,select,input,textarea{font:inherit;border-radius:10px;border:1px solid #444;background:#222;color:#eee;padding:8px 12px}
+button.p{background:#2563eb;border-color:#2563eb}button.r{background:#dc2626;border-color:#dc2626}button.s{padding:4px 10px;font-size:13px}
+.card{background:#1b1b1b;border-radius:12px;padding:10px 12px;margin:8px 0}.mut{color:#999;font-size:13px}
+.tabs{display:flex;gap:6px;margin:8px 0}.tabs button{flex:1}.tabs .on{background:#333}
+.P{color:#fb923c}.O{color:#4ade80}.W{color:#60a5fa}b{font-size:12px}
+pre{white-space:pre-wrap;font:inherit;margin:4px 0}
+#dim{position:fixed;inset:0;background:#000;display:none;z-index:9;align-items:center;justify-content:center;color:#333}
+#dlg{position:fixed;inset:0;background:#000c;display:none;z-index:8;padding:20px;overflow:auto}#dlg>div{background:#1b1b1b;border-radius:14px;padding:16px;max-width:520px;margin:auto}
+input,textarea,select{width:100%;margin:4px 0}
+</style></head><body>
+<div id="dim" onclick="touch()">● REC <span id="dt"></span></div>
+<div id="dlg"><div id="dc"></div></div>
+<header><h1 onclick="go()">🎓 Notatnik Słuchacza</h1><button onclick="menu()">☰</button></header>
+<div id="app"></div>
+<script>
+const $=s=>document.querySelector(s),cfg=k=>localStorage.getItem(k)||'',VER='v0.01';
+const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const tm=s=>{s=Math.floor(s);const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60,p=n=>String(n).padStart(2,'0');return(h?h+':':'')+p(m)+':'+p(x)};
+const SYS='Jesteś asystentem studenta na wykładzie. Odpowiadaj po polsku, zwięźle, rzeczowo.';
+// ---------- IndexedDB
+const dbp=new Promise((res,rej)=>{const r=indexedDB.open('ns',1);r.onupgradeneeded=()=>{r.result.createObjectStore('lec',{keyPath:'id'});r.result.createObjectStore('chunk')};r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)});
+const tx=async(st,mode,fn)=>{const d=await dbp;return new Promise((res,rej)=>{const t=d.transaction(st,mode);const r=fn(t.objectStore(st));t.oncomplete=()=>res(r&&r.result);t.onerror=()=>rej(t.error)})};
+const saveL=()=>tx('lec','readwrite',s=>s.put(L));
+let L=null,LS=[],tab=0;
+const S={rec:false,cursor:0,idx:0,stream:null,mr:null,to:null,wl:null,last:Date.now(),busy:false,msg:''};
+const cap={stt:false,claude:false}; // czy serwer ma klucze (sekrety Workera) – wtedy nic nie wpisujesz w telefonie
+const canSTT=()=>navigator.onLine&&cfg('mode')!=='offline'&&(cap.stt||cfg('oai'));
+const canAI=()=>navigator.onLine&&(cap.claude||cfg('ant'));
+const dur=l=>l.chunks.reduce((a,c)=>a+c.dur,0);
+// ---------- widoki
+async function go(){if(S.rec)return;L=null;LS=(await tx('lec','readonly',s=>s.getAll())||[]).sort((a,b)=>b.date-a.date);render()}
+function render(){
+ if(!L){$('#app').innerHTML=`<button class=p onclick="newL()">＋ Nowy wykład</button>`+LS.map(l=>`<div class=card onclick="openL('${l.id}')"><div>${esc(l.title)}</div><div class=mut>${new Date(l.date).toLocaleString('pl')} · ${tm(dur(l))}</div></div>`).join('')+(LS.length?'':'<p class=mut>Brak wykładów.</p>');return}
+ const pend=L.chunks.filter(c=>!c.done).length,on=navigator.onLine;
+ let h=`<div class=card style="display:flex;gap:12px;align-items:center"><button class="${S.rec?'r':'p'}" onclick="toggle()" style="font-size:22px">${S.rec?'⏹ Stop':'⏺ Nagraj'}</button><div><div id=el style="font-size:20px">${tm(S.rec?elapsed():dur(L))}</div><div class=mut>${on?'🌐 ☁️ chmura':'✈️ 📴 offline'}${pend?' · ⏳'+pend:''}</div></div></div>`;
+ if(S.msg)h+=`<div class=mut style="color:#fbbf24">${esc(S.msg)}</div>`;
+ h+=`<div class=tabs><button class="${tab?'':'on'}" onclick="tab=0;render()">Notatki</button><button class="${tab?'on':''}" onclick="tab=1;render()">Transkrypcja</button><button onclick="exp()">⇪</button></div>`;
+ if(!tab){h+=L.notes.length?'':'<p class=mut>Notatki po ok. 5 min nagrania (internet + klucz Anthropic).</p>';
+  h+=L.notes.map((n,i)=>`<div class=card><b>${tm(n.start)}–${tm(n.end)}</b><div style="font-weight:600">${esc(n.title)}</div><pre>${esc(n.summary)}</pre>${n.authors?`<div class=card><b>AUTORZY</b><pre>${esc(n.authors)}</pre></div>`:''}${n.ver?`<div class=card><b>WERYFIKACJA</b><pre>${esc(n.ver)}</pre></div>`:''}<button class=s onclick="enrich(${i},0)">Autorzy</button> <button class=s onclick="enrich(${i},1)">Zweryfikuj</button> ${n.busy?'⏳':''}</div>`).join('')}
+ else{const R=roles();h+=L.utt.map((u,i)=>`<div class=card><b class=${R[i]==='Pytanie'?'P':R[i]==='Odpowiedź'?'O':'W'}>${tm(u.s)} · ${R[i]}${u.tmp?' (podgląd)':''}</b><div>${esc(u.t)}</div></div>`).join('')||'<p class=mut>Pusto.</p>'}
+ $('#app').innerHTML=h}
+function roles(l=L){return l.utt.map((u,i)=>u.sp==='O'?'Pytanie':(i&&l.utt[i-1].sp==='O'?'Odpowiedź':'Wykładowca'))}
+async function newL(){L={id:crypto.randomUUID(),title:'Wykład '+new Date().toLocaleString('pl'),date:Date.now(),chunks:[],utt:[],notes:[],notedUntil:0};await saveL();render()}
+async function openL(id){L=LS.find(l=>l.id===id);render();pump()}
+const elapsed=()=>dur(L)+(Date.now()-S.cs)/1000;
+// ---------- nagrywanie (pliki 30 s, tylko mikrofon = mało baterii)
+async function toggle(){S.rec?stopRec():startRec()}
+async function startRec(){
+ try{S.stream=await navigator.mediaDevices.getUserMedia({audio:{channelCount:1,echoCancellation:false,noiseSuppression:false,autoGainControl:true}})}catch(e){S.msg='Brak zgody na mikrofon';render();return}
+ S.mime=['audio/webm;codecs=opus','audio/mp4'].find(m=>MediaRecorder.isTypeSupported(m))||'';
+ S.rec=true;S.cursor=dur(L);S.idx=L.chunks.length;S.msg='';S.last=Date.now();wake();cycle();startSR();
+ S.tick=setInterval(tick,1000);render()}
+function cycle(){
+ if(!S.rec)return;
+ const mr=new MediaRecorder(S.stream,{mimeType:S.mime,audioBitsPerSecond:64000}),parts=[],i=S.idx++,start=S.cursor,t0=Date.now();S.cs=t0;
+ let end=0;mr.ondataavailable=e=>e.data.size&&parts.push(e.data);
+ mr.onstop=async()=>{const blob=new Blob(parts,{type:S.mime});if(blob.size<500)return;
+  await tx('chunk','readwrite',s=>s.put(blob,L.id+':'+i));L.chunks.push({i,start,dur:end,done:false});await saveL();pump()};
+ mr.start();S.mr=mr;
+ S.to=setTimeout(()=>{end=(Date.now()-t0)/1000;S.cursor+=end;mr.stop();cycle()},30000);
+ mr._fin=()=>{end=(Date.now()-t0)/1000;S.cursor+=end;mr.stop()}}
+function stopRec(){S.rec=false;clearTimeout(S.to);clearInterval(S.tick);S.mr&&S.mr._fin();S.stream&&S.stream.getTracks().forEach(t=>t.stop());
+ S.wl&&S.wl.release().catch(()=>{});$('#dim').style.display='none';try{S.sr&&S.sr.stop()}catch(e){}S.sr=null;setTimeout(()=>{render();pump(true)},400)}
+async function wake(){try{S.wl=await navigator.wakeLock.request('screen')}catch(e){}}
+function tick(){const e=elapsed();const x=$('#el');if(x)x.textContent=tm(e);$('#dt').textContent=tm(e);
+ if(cfg('dim')!=='0'&&Date.now()-S.last>20000)$('#dim').style.display='flex'}
+function touch(){S.last=Date.now();$('#dim').style.display='none'}
+['touchstart','mousedown','keydown'].forEach(e=>addEventListener(e,()=>{S.last=Date.now()},{passive:true}));
+document.addEventListener('visibilitychange',async()=>{if(document.visibilityState!=='visible'||!S.rec)return;
+ wake();if(S.stream.getTracks().some(t=>t.readyState!=='live')){S.msg='⚠ Przeglądarka wstrzymała mikrofon (blokada ekranu) – wznowiono. Nie blokuj ekranu, użyj zaciemnienia.';
+  try{S.stream=await navigator.mediaDevices.getUserMedia({audio:true});clearTimeout(S.to);S.mr&&S.mr._fin();cycle()}catch(e){S.rec=false}render()}});
+// ---------- offline: podgląd na żywo (Web Speech) – zastępowany wynikiem z chmury
+function startSR(){const R=window.SpeechRecognition||window.webkitSpeechRecognition;if(!R)return;
+ const r=new R();r.lang='pl-PL';r.continuous=true;r.interimResults=false;S.sr=r;
+ r.onresult=e=>{if(canSTT())return;const x=e.results[e.results.length-1];if(!x.isFinal)return;
+  const t=elapsed();L.utt.push({s:Math.max(0,t-4),e:t,sp:'L',t:x[0].transcript.trim(),tmp:1});saveL();if(!tab)return;render()};
+ r.onend=()=>{if(S.rec)try{r.start()}catch(e){}};try{r.start()}catch(e){}}
+// ---------- transkrypcja: kolejka, automatycznie chmura ↔ offline
+addEventListener('online',()=>{render();pump()});addEventListener('offline',render);
+async function pump(final){if(S.busy||!L)return;S.busy=true;
+ try{for(let c;c=L.chunks.find(x=>!x.done);){
+  if(!canSTT())break;
+  const blob=await tx('chunk','readonly',s=>s.get(L.id+':'+c.i));
+  try{await cloud(c,blob)}catch(e){S.msg='Chmura: '+e.message;render();break}
+  c.done=true;S.msg='';await saveL();render()}}
+ finally{S.busy=false}await notes(final)}
+async function cloud(c,blob){
+ const f=new FormData();f.append('file',blob,'c.'+(blob.type.includes('mp4')?'m4a':'webm'));f.append('model','gpt-4o-transcribe-diarize');
+ f.append('response_format','diarized_json');f.append('chunking_strategy','auto');f.append('language','pl');
+ const r=cap.stt?await fetch('/api/n/stt',{method:'POST',body:f}):await fetch('https://api.openai.com/v1/audio/transcriptions',{method:'POST',headers:{Authorization:'Bearer '+cfg('oai')},body:f});
+ if(!r.ok)throw new Error(r.status+' '+(await r.text()).slice(0,80));
+ const segs=(await r.json()).segments||[],tt={};
+ segs.forEach(s=>tt[s.speaker]=(tt[s.speaker]||0)+(s.end-s.start));
+ const dom=Object.keys(tt).sort((a,b)=>tt[b]-tt[a])[0]; // najdłużej mówiący w fragmencie = wykładowca
+ L.utt=L.utt.filter(u=>!(u.tmp&&u.s>=c.start-1&&u.s<c.start+c.dur+1));
+ const out=[];for(const s of segs){const u={s:c.start+s.start,e:c.start+s.end,sp:s.speaker===dom?'L':'O',t:(s.text||'').trim()};if(!u.t)continue;
+  const p=out[out.length-1];if(p&&p.sp===u.sp&&u.s-p.e<1.5){p.e=u.e;p.t+=' '+u.t}else out.push(u)}
+ L.utt.push(...out);L.utt.sort((a,b)=>a.s-b.s)}
+// ---------- Claude: notatki, autorzy, weryfikacja
+async function claude(p,{model='claude-haiku-5-5',web=0,max=1800}={}){
+ const body={model,max_tokens:max,system:SYS,messages:[{role:'user',content:p}]};if(web)body.tools=[{type:'web_search_20250305',name:'web_search',max_uses:3}];
+ const r=cap.claude?await fetch('/api/n/claude',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)})
+  :await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'x-api-key':cfg('ant'),'anthropic-version':'2023-06-01','content-type':'application/json','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify(body)});
+ if(!r.ok)throw new Error(r.status);return(await r.json()).content.filter(b=>b.type==='text').map(b=>b.text).join('')}
+const line=(u,r)=>`[${Math.floor(u.s)}] ${r==='Pytanie'?'PYTANIE':r==='Odpowiedź'?'ODPOWIEDŹ':'WYKŁADOWCA'}: ${u.t}`;
+async function notes(force){if(!canAI()||!L)return;
+ const R=roles(),fresh=L.utt.map((u,i)=>[u,R[i]]).filter(([u])=>!u.tmp&&u.s>=L.notedUntil);if(!fresh.length)return;
+ const last=fresh[fresh.length-1][0],span=last.e-L.notedUntil;if(span<300&&!(force&&span>20))return;
+ try{const raw=await claude(`Podziel transkrypt wykładu na tematyczne notatki (każda ok. 2–6 min). Linie: [sekundy] ROLA: tekst (WYKŁADOWCA, PYTANIE z sali, ODPOWIEDŹ wykładowcy). Dla każdej: title, start_s, end_s, summary (3–6 punktów „• ” oddzielonych \\n; pytania z sali jako „❓ pytanie → odpowiedź”). Zwróć WYŁĄCZNIE tablicę JSON: [{"title":"","start_s":0,"end_s":0,"summary":""}]\n\n`+fresh.map(([u,r])=>line(u,r)).join('\n'));
+  const a=JSON.parse(raw.slice(raw.indexOf('['),raw.lastIndexOf(']')+1));
+  a.forEach(n=>L.notes.push({title:n.title,start:n.start_s,end:n.end_s,summary:n.summary}));L.notedUntil=last.e;await saveL();render()}catch(e){S.msg='Notatki: '+e.message;render()}}
+async function enrich(i,v){const n=L.notes[i];if(!canAI()){S.msg='Wymaga internetu i klucza Anthropic';render();return}
+ const R=roles(),src=L.utt.map((u,k)=>[u,R[k]]).filter(([u])=>u.s>=n.start-1&&u.e<=n.end+1).map(([u,r])=>line(u,r)).join('\n');n.busy=1;render();
+ try{n[v?'ver':'authors']=await claude(v?`Zweryfikuj prawdziwość tez z fragmentu wykładu. Dla każdej tezy: werdykt (potwierdzona / sporna / nieaktualna / fałszywa / brak danych), 1 zdanie uzasadnienia, źródło (URL). Nie zgaduj.\n\n${src}`:`Dla fragmentu wykładu wskaż autorów/twórców wspomnianych teorii, pojęć i tez (imię, nazwisko, rok, główne dzieło). Dopisz brakujących autorów. Jeśli nie jesteś pewien – zaznacz. Krótka lista.\n\n${src}`,{model:'claude-sonnet-5-5',web:1,max:2500})}catch(e){S.msg='Błąd AI: '+e.message}
+ n.busy=0;await saveL();render()}
+// ---------- eksport i okna
+function exp(){let o=`# ${L.title}\n\n`;L.notes.forEach(n=>{o+=`## ${n.title} (${tm(n.start)}–${tm(n.end)})\n${n.summary}\n\n`+(n.authors?`**Autorzy:** ${n.authors}\n\n`:'')+(n.ver?`**Weryfikacja:** ${n.ver}\n\n`:'')});
+ o+='## Transkrypcja\n';const R=roles();L.utt.forEach((u,i)=>o+=`- [${tm(u.s)}] **${R[i]}**: ${u.t}\n`);
+ dlg(`<h3>Eksport (Markdown)</h3><textarea rows=12 readonly id=ex>${esc(o)}</textarea><button class=p onclick="ex.select();navigator.clipboard.writeText(ex.value).catch(()=>{})">Kopiuj</button> <button onclick="dlg()">Zamknij</button>`)}
+function dlg(h){$('#dlg').style.display=h?'block':'none';if(h)$('#dc').innerHTML=h}
+function menu(){dlg(`<button onclick="sett()">⚙ Ustawienia</button> <button onclick="sug()">💡 Sugestie</button> <button onclick="about()">ℹ O autorze</button> <button onclick="dlg()">✕</button>`)}
+function sett(){dlg(`<h3>Ustawienia</h3><label class=mut>Tryb transkrypcji</label><select id=m onchange="localStorage.mode=this.value"><option value="">Auto (chmura ↔ offline)</option><option value=cloud ${cfg('mode')==='cloud'?'selected':''}>Tylko chmura</option><option value=offline ${cfg('mode')==='offline'?'selected':''}>Tylko offline (audio + podgląd)</option></select>
+ <p class=mut>Klucze na serwerze: transkrypcja ${cap.stt?'✅':'❌'} · notatki/AI ${cap.claude?'✅':'❌'}. Poniżej tylko gdy ❌ (zapis w tym telefonie).</p>
+ <label class=mut>Klucz OpenAI (transkrypcja + mówcy)</label><input type=password value="${esc(cfg('oai'))}" oninput="localStorage.oai=this.value">
+ <label class=mut>Klucz Anthropic (notatki, autorzy, weryfikacja)</label><input type=password value="${esc(cfg('ant'))}" oninput="localStorage.ant=this.value">
+ <label><input type=checkbox style="width:auto" ${cfg('dim')!=='0'?'checked':''} onchange="localStorage.dim=this.checked?1:0"> Zaciemnij ekran po 20 s nagrywania</label><br><br><button onclick="dlg()">Zamknij</button>`)}
+function about(){dlg(`<h3>Notatnik Słuchacza</h3><p>Wersja ${VER}<br>Autor: Michał Rzekiecki<br>Kontakt: michus@gmail.com</p><button onclick="dlg()">Zamknij</button>`)}
+function sug(){dlg(`<h3>Sugestie</h3><p class=mut>Co sprawiłoby, że aplikacja byłaby jeszcze lepsza?</p><textarea rows=6 id=sg></textarea><a href="#" onclick="this.href='mailto:michus@gmail.com?subject='+encodeURIComponent('Notatnik Słuchacza - sugestia')+'&body='+encodeURIComponent(sg.value)"><button class=p>Wyślij (michus@gmail.com)</button></a> <button onclick="dlg()">Zamknij</button>`)}
+fetch('/api/n/status').then(r=>r.ok?r.json():{}).then(j=>{cap.stt=!!j.stt;cap.claude=!!j.claude;pump()}).catch(()=>{});
+go();
+</script></body></html>

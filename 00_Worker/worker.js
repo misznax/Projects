@@ -1,5 +1,5 @@
 // Worker "projects": jedna usługa dla wszystkich aplikacji z repo (foldery NN_*).
-// Adres -> aplikacja: apps.json (host) albo ścieżka /NN/. API wspólne: /api/transcript, /api/ask.
+// Adres -> aplikacja: apps.json (host) albo ścieżka /NN/. API wspólne: /api/transcript, /api/ask, /api/n/* (Notatnik).
 // Dostęp: Cloudflare Access przed Workerem; /api/* dodatkowo sprawdza token Access (zmienna ACCESS_TEAM).
 import APPS from './apps.json';
 
@@ -159,6 +159,23 @@ export default {
         if (!/^[\w-]{11}$/.test(id)) return J({ code: 'bad' }, 400);
         const t = await transcript(id);
         return t.code ? J(t, t.code === 'no_captions' ? 404 : 502) : J(t);
+      }
+      if (url.pathname === '/api/n/status') return J({ stt: !!env.OPENAI_API_KEY, claude: !!env.ANTHROPIC_API_KEY });
+      // 04 Notatnik Słuchacza: proxy do OpenAI (transkrypcja + mówcy) i Claude (notatki, autorzy, weryfikacja); klucze tylko jako sekrety Workera
+      if (url.pathname === '/api/n/stt' && request.method === 'POST') {
+        if (!env.OPENAI_API_KEY) return J({ code: 'no_key' }, 501);
+        if (+(request.headers.get('content-length') || 0) > 8e6) return J({ code: 'too_big' }, 413);
+        const r = await fetch('https://api.openai.com/v1/audio/transcriptions', { method: 'POST', headers: { Authorization: 'Bearer ' + env.OPENAI_API_KEY, 'content-type': request.headers.get('content-type') || '' }, body: request.body });
+        return new Response(r.body, { status: r.status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
+      }
+      if (url.pathname === '/api/n/claude' && request.method === 'POST') {
+        if (!env.ANTHROPIC_API_KEY) return J({ code: 'no_key' }, 501);
+        let b; try { b = await request.json(); } catch { return J({ code: 'bad' }, 400); }
+        const models = ['claude-haiku-5-5', 'claude-sonnet-5-5'];
+        const body = { model: models.includes(b.model) ? b.model : models[0], max_tokens: Math.min(+b.max_tokens || 1800, 3000), system: String(b.system || '').slice(0, 2000), messages: Array.isArray(b.messages) ? b.messages.slice(0, 1) : [] };
+        if (b.tools) body.tools = [{ type: 'web_search_20250305', name: 'web_search', max_uses: 3 }];
+        const r = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' }, body: JSON.stringify(body) });
+        return new Response(r.body, { status: r.status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
       }
       if (url.pathname === '/api/ask' && request.method === 'POST') return ask(request, env);
       return J({ code: 'not_found' }, 404);
