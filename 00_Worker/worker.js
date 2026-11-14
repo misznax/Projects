@@ -160,11 +160,19 @@ export default {
         const t = await transcript(id);
         return t.code ? J(t, t.code === 'no_captions' ? 404 : 502) : J(t);
       }
-      if (url.pathname === '/api/n/status') return J({ stt: !!env.OPENAI_API_KEY, claude: !!env.ANTHROPIC_API_KEY });
+      if (url.pathname === '/api/n/status') return J({ stt: !!(env.OPENAI_API_KEY || env.AI), diar: !!env.OPENAI_API_KEY, claude: !!env.ANTHROPIC_API_KEY });
       // 04 Notatnik Słuchacza: proxy do OpenAI (transkrypcja + mówcy) i Claude (notatki, autorzy, weryfikacja); klucze tylko jako sekrety Workera
       if (url.pathname === '/api/n/stt' && request.method === 'POST') {
-        if (!env.OPENAI_API_KEY) return J({ code: 'no_key' }, 501);
         if (+(request.headers.get('content-length') || 0) > 8e6) return J({ code: 'too_big' }, 413);
+        if (!env.OPENAI_API_KEY) { // bez klucza OpenAI: Whisper z Workers AI (bez rozpoznawania mówców)
+          if (!env.AI) return J({ code: 'no_key' }, 501);
+          const f = (await request.formData()).get('file');
+          if (!f) return J({ code: 'bad' }, 400);
+          const u8 = new Uint8Array(await f.arrayBuffer()); let bin = ''; for (let i = 0; i < u8.length; i += 8192) bin += String.fromCharCode.apply(null, u8.subarray(i, i + 8192));
+          const o = await env.AI.run('@cf/openai/whisper-large-v3-turbo', { audio: btoa(bin), language: 'pl' });
+          const segs = (o.segments || []).map((s) => ({ speaker: 'A', start: s.start, end: s.end, text: s.text }));
+          return J({ segments: segs.length ? segs : [{ speaker: 'A', start: 0, end: 30, text: o.text || '' }] });
+        }
         const r = await fetch('https://api.openai.com/v1/audio/transcriptions', { method: 'POST', headers: { Authorization: 'Bearer ' + env.OPENAI_API_KEY, 'content-type': request.headers.get('content-type') || '' }, body: request.body });
         return new Response(r.body, { status: r.status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
       }

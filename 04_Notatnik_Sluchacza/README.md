@@ -8,7 +8,7 @@ Aplikacja WWW (jeden `index.html`, mobilna) do nagrywania wykładów:
 - eksport Markdown; menu: Ustawienia, Sugestie, O autorze.
 
 ## Klucze (sekrety Workera `projects`, nic w kodzie)
-`OPENAI_API_KEY` (transkrypcja) i `ANTHROPIC_API_KEY` (już używany przez /api/ask). Endpointy: `/api/n/status`, `/api/n/stt`, `/api/n/claude`. Bez sekretów aplikacja prosi o klucze w Ustawieniach (zapis w telefonie).
+`OPENAI_API_KEY` (opcjonalnie: rozpoznawanie mówców; bez niego transkrypcja przez Workers AI Whisper, bez podziału na mówców) i `ANTHROPIC_API_KEY` (już używany przez /api/ask). Endpointy: `/api/n/status`, `/api/n/stt`, `/api/n/claude`. Bez sekretów aplikacja prosi o klucze w Ustawieniach (zapis w telefonie).
 
 ## Ograniczenia
 iOS Safari ubija mikrofon przy blokadzie ekranu → nagrywać z włączonym ekranem (zaciemnienie je zastępuje). Rozpoznanie wykładowcy: najdłużej mówiący w 30 s fragmencie.
