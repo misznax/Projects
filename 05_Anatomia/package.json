@@ -1,0 +1,9 @@
+{
+  "name": "anatomia",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Anatomia — model 3D kończyny górnej (kości i mięśnie, nazwy PL + łacina)",
+  "scripts": { "build": "python3 build.py" },
+  "dependencies": { "three": "^0.187.0", "three-mesh-bvh": "^0.9.18" },
+  "devDependencies": { "esbuild": "^0.28.2" }
+}
