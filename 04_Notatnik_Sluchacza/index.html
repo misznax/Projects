@@ -21,7 +21,7 @@ input,textarea,select{width:100%;margin:4px 0}
 <header><h1 onclick="go()">🎓 Notatnik Słuchacza</h1><button onclick="menu()">☰</button></header>
 <div id="app"></div>
 <script>
-const $=s=>document.querySelector(s),cfg=k=>localStorage.getItem(k)||'',VER='v0.01';
+const $=s=>document.querySelector(s),cfg=k=>localStorage.getItem(k)||'',VER='v0.02';
 const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 const tm=s=>{s=Math.floor(s);const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60,p=n=>String(n).padStart(2,'0');return(h?h+':':'')+p(m)+':'+p(x)};
 const SYS='Jesteś asystentem studenta na wykładzie. Odpowiadaj po polsku, zwięźle, rzeczowo.';
@@ -42,6 +42,7 @@ function render(){
  const pend=L.chunks.filter(c=>!c.done).length,on=navigator.onLine;
  let h=`<div class=card style="display:flex;gap:12px;align-items:center"><button class="${S.rec?'r':'p'}" onclick="toggle()" style="font-size:22px">${S.rec?'⏹ Stop':'⏺ Nagraj'}</button><div><div id=el style="font-size:20px">${tm(S.rec?elapsed():dur(L))}</div><div class=mut>${on?'🌐 ☁️ chmura':'✈️ 📴 offline'}${pend?' · ⏳'+pend:''}</div></div></div>`;
  if(S.msg)h+=`<div class=mut style="color:#fbbf24">${esc(S.msg)}</div>`;
+ if(pend&&!canSTT())h+=`<div class=mut style="color:#f87171">⏳ Audio czeka na transkrypcję: ${!on?'brak internetu':cfg('mode')==='offline'?'tryb „Tylko offline”':'brak klucza OpenAI (☰ → Ustawienia lub sekret OPENAI_API_KEY w Workerze)'}. Pierwszy tekst pojawia się ok. 30 s po starcie.</div>`;
  h+=`<div class=tabs><button class="${tab?'':'on'}" onclick="tab=0;render()">Notatki</button><button class="${tab?'on':''}" onclick="tab=1;render()">Transkrypcja</button><button onclick="exp()">⇪</button></div>`;
  if(!tab){h+=L.notes.length?'':'<p class=mut>Notatki po ok. 5 min nagrania (internet + klucz Anthropic).</p>';
   h+=L.notes.map((n,i)=>`<div class=card><b>${tm(n.start)}–${tm(n.end)}</b><div style="font-weight:600">${esc(n.title)}</div><pre>${esc(n.summary)}</pre>${n.authors?`<div class=card><b>AUTORZY</b><pre>${esc(n.authors)}</pre></div>`:''}${n.ver?`<div class=card><b>WERYFIKACJA</b><pre>${esc(n.ver)}</pre></div>`:''}<button class=s onclick="enrich(${i},0)">Autorzy</button> <button class=s onclick="enrich(${i},1)">Zweryfikuj</button> ${n.busy?'⏳':''}</div>`).join('')}

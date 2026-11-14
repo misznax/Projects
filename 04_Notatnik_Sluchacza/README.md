@@ -1,4 +1,4 @@
-# 04_Notatnik_Sluchacza (v0.01)
+# 04_Notatnik_Sluchacza (v0.02)
 Autor: Michał Rzekiecki, michus@gmail.com · adres: `projects.smialo.org/04/` (po dodaniu DNS/trasy także `notatnik.smialo.org`)
 
 Aplikacja WWW (jeden `index.html`, mobilna) do nagrywania wykładów:
