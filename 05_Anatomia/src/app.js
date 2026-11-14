@@ -464,13 +464,20 @@ $('#panelBtn').addEventListener('click', () => $('#layers').classList.toggle('op
 const modal = $('#modal'), mbody = $('#mbody');
 function showModal(html) { mbody.innerHTML = html; modal.classList.add('show'); }
 $('#menuBtn').addEventListener('click', () => $('#menu').classList.toggle('show'));
-document.addEventListener('click', (e) => { if (!e.target.closest('#menu') && !e.target.closest('#menuBtn')) $('#menu').classList.remove('show'); });
+document.addEventListener('pointerdown', (e) => {
+  let closed = false; const t = e.target;
+  if (!t.closest('#menu,#menuBtn') && $('#menu').classList.contains('show')) { $('#menu').classList.remove('show'); closed = true; }
+  if (!t.closest('#layers,#panelBtn') && $('#layers').classList.contains('open')) { $('#layers').classList.remove('open'); closed = true; }
+  if (window.innerWidth < 820 && !t.closest('#side,#burger') && drawer.classList.contains('open')) { closeDrawer(); closed = true; }
+  if (closed && t === canvas) { e.stopPropagation(); e.preventDefault(); }
+}, true);
 $('#menu').addEventListener('click', (e) => {
   const a = e.target.closest('button'); if (!a) return; $('#menu').classList.remove('show');
   if (a.dataset.m === 'about') showModal(`<h3>O autorze</h3><p><b>Anatomia</b> — wersja <b>v${VERSION}</b></p><p>Autor: <b>Michał Rzekiecki</b><br>Kontakt: <a href="mailto:michus@gmail.com">michus@gmail.com</a></p><hr><p class="small">Model 3D: <a href="https://www.z-anatomy.com" target="_blank" rel="noopener">Z-Anatomy</a> (CC BY-SA 4.0), oparty na BodyParts3D © The Database Center for Life Science (CC BY-SA 2.1 Japan). Nazwy łacińskie wg Terminologia Anatomica. Opisy mają charakter edukacyjny — w razie wątpliwości sprawdź w podręczniku anatomii.</p>`);
   if (a.dataset.m === 'sug') showModal(`<h3>Sugestie</h3><p class="small">Napisz, co sprawiłoby, że aplikacja będzie jeszcze lepsza.</p><textarea id="sugTxt" rows="6" placeholder="Twoja sugestia…"></textarea><div class="btns"><button id="sugSend" class="pri">Wyślij e-mailem</button><button id="sugCopy">Kopiuj</button></div><p class="small">Otworzy się Twój program pocztowy (adres: michus@gmail.com).</p>`);
   if (a.dataset.m === 'help') showModal(`<h3>Obsługa</h3><ul class="small"><li><b>Obrót</b> — przeciągnij myszą / palcem; <b>przesuwanie</b> — prawy przycisk lub dwa palce; <b>zoom</b> — kółko / uszczypnięcie.</li><li><b>Klik</b> w strukturę — wybór; kolejny klik w mięsień wielogłowy — wybór konkretnej głowy.</li><li><b>Niebieski</b> = początek mięśnia, <b>pomarańczowy</b> = przyczep końcowy.</li><li>Klawisz <b>/</b> — szukaj. Szukajka obejmuje nazwy polskie, łacińskie i angielskie.</li></ul>`);
 });
+modal.addEventListener('pointerdown', (e) => { if (e.target === modal) modal.classList.remove('show'); });
 modal.addEventListener('click', (e) => {
   if (e.target === modal || e.target.closest('#mclose')) { modal.classList.remove('show'); return; }
   const t = () => ($('#sugTxt') ? $('#sugTxt').value.trim() : '');
