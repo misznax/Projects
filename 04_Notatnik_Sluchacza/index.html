@@ -21,7 +21,8 @@ input,textarea,select{width:100%;margin:4px 0}
 <header><h1 onclick="go()">🎓 Notatnik Słuchacza</h1><button onclick="menu()">☰</button></header>
 <div id="app"></div>
 <script>
-const $=s=>document.querySelector(s),cfg=k=>localStorage.getItem(k)||'',VER='v0.05';
+const gcid=()=>localStorage.getItem('gcid')||'567326129811-v1fvoqoao7r34ju0u3quni9c4pkdkemp.apps.googleusercontent.com'; // Client ID jest publiczny z założenia
+const $=s=>document.querySelector(s),cfg=k=>localStorage.getItem(k)||'',VER='v0.06';
 const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 const tm=s=>{s=Math.floor(s);const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60,p=n=>String(n).padStart(2,'0');return(h?h+':':'')+p(m)+':'+p(x)};
 const SYS='Jesteś asystentem studenta na wykładzie. Odpowiadaj po polsku, zwięźle, rzeczowo.';
@@ -142,7 +143,7 @@ function sett(){dlg(`<h3>Ustawienia</h3><label class=mut>Tryb transkrypcji</labe
  <label class=mut>Klucz OpenAI (transkrypcja + mówcy)</label><input type=password value="${esc(cfg('oai'))}" oninput="localStorage.oai=this.value">
  <label class=mut>Klucz Anthropic (notatki, autorzy, weryfikacja)</label><input type=password value="${esc(cfg('ant'))}" oninput="localStorage.ant=this.value">
  <label class=mut>Czas w transkrypcji</label><select onchange="localStorage.tmode=this.value"><option value=both ${cfg('tmode')==='both'||!cfg('tmode')?'selected':''}>Godzina · czas nagrania</option><option value=clock ${cfg('tmode')==='clock'?'selected':''}>Tylko godzina</option><option value=len ${cfg('tmode')==='len'?'selected':''}>Tylko czas nagrania</option></select>
- <label class=mut>Google Client ID (kopia na Drive)</label><input value="${esc(cfg('gcid'))}" oninput="localStorage.gcid=this.value">
+ <label class=mut>Google Client ID (kopia na Drive)</label><input value="${esc(gcid())}" oninput="localStorage.gcid=this.value">
  <label><input type=checkbox style="width:auto" ${cfg('dim')!=='0'?'checked':''} onchange="localStorage.dim=this.checked?1:0"> Zaciemnij ekran po 20 s nagrywania</label><br><br><button onclick="dlg()">Zamknij</button>`)}
 function about(){dlg(`<h3>Notatnik Słuchacza</h3><p>Wersja ${VER}<br>Autor: Michał Rzekiecki<br>Kontakt: michus@gmail.com</p><button onclick="dlg()">Zamknij</button>`)}
 function sug(){dlg(`<h3>Sugestie</h3><p class=mut>Co sprawiłoby, że aplikacja byłaby jeszcze lepsza?</p><textarea rows=6 id=sg></textarea><a href="#" onclick="this.href='mailto:michus@gmail.com?subject='+encodeURIComponent('Notatnik Słuchacza - sugestia')+'&body='+encodeURIComponent(sg.value)"><button class=p>Wyślij (michus@gmail.com)</button></a> <button onclick="dlg()">Zamknij</button>`)}
@@ -164,8 +165,8 @@ async function zipAudio(){try{S.msg='ZIP: przygotowuję…';render();await loadJ
  z.file('transkrypcja.md',md());S.msg='ZIP: pakuję…';render();dl(await z.generateAsync({type:'blob',streamFiles:true}),safe(L.title)+'.zip');S.msg='✅ ZIP gotowy (sprawdź Pobrane)'}catch(e){S.msg='ZIP: '+e.message}render()}
 async function mkNotes(){if(!canAI()){S.msg='Notatki wymagają internetu i klucza Anthropic (☰ → Ustawienia: „notatki/AI” musi być ✅)';render();return}
  const n0=L.notes.length;S.msg='✨ Tworzę notatki…';render();S.busy=false;await pump(true);S.msg=L.notes.length>n0?'':'Brak nowego tekstu do notatek (lub błąd – sprawdź komunikat)';render()}
-const gtoken=()=>new Promise(async(res,rej)=>{try{if(!cfg('gcid'))throw new Error('Wpisz Google Client ID w Ustawieniach');await loadJS('https://accounts.google.com/gsi/client');
- google.accounts.oauth2.initTokenClient({client_id:cfg('gcid'),scope:'https://www.googleapis.com/auth/drive.file',callback:r=>r.access_token?res(r.access_token):rej(new Error(r.error||'brak zgody'))}).requestAccessToken()}catch(e){rej(e)}});
+const gtoken=()=>new Promise(async(res,rej)=>{try{if(!gcid())throw new Error('Wpisz Google Client ID w Ustawieniach');await loadJS('https://accounts.google.com/gsi/client');
+ google.accounts.oauth2.initTokenClient({client_id:gcid(),scope:'https://www.googleapis.com/auth/drive.file',callback:r=>r.access_token?res(r.access_token):rej(new Error(r.error||'brak zgody'))}).requestAccessToken()}catch(e){rej(e)}});
 async function gfolder(tok,name,parent){const r=await fetch('https://www.googleapis.com/drive/v3/files',{method:'POST',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({name,mimeType:'application/vnd.google-apps.folder',...(parent?{parents:[parent]}:{})})});if(!r.ok)throw new Error('Drive '+r.status);return(await r.json()).id}
 async function gput(tok,name,blob,parent){const b='B'+Math.random().toString(36).slice(2),meta=JSON.stringify({name,parents:[parent]});
  const body=new Blob([`--${b}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${meta}\r\n--${b}\r\nContent-Type: ${blob.type||'application/octet-stream'}\r\n\r\n`,blob,`\r\n--${b}--`]);
@@ -180,7 +181,7 @@ async function toDrive(){try{S.msg='Drive: logowanie…';render();const tok=awai
  await gput(tok,'kopia_'+stamp()+'.json',new Blob([JSON.stringify(L)],{type:'application/json'}),L.gdir);
  S.msg='✅ Kopia na Google Drive gotowa (folder „Notatnik Słuchacza”)'}catch(e){S.msg='Drive: '+e.message}render()}
 try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
-if(cfg('gcid'))loadJS('https://accounts.google.com/gsi/client').catch(()=>{});
+if(gcid())loadJS('https://accounts.google.com/gsi/client').catch(()=>{});
 fetch('/api/n/status').then(r=>r.ok?r.json():{}).then(j=>{cap.stt=!!j.stt;cap.claude=!!j.claude;pump()}).catch(()=>{});
 go();
 </script></body></html>
