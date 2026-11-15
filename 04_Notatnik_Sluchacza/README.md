@@ -1,4 +1,4 @@
-# 04_Notatnik_Sluchacza (v0.04)
+# 04_Notatnik_Sluchacza (v0.05)
 Autor: Michał Rzekiecki, michus@gmail.com · adres: `projects.smialo.org/04/` (po dodaniu DNS/trasy także `notatnik.smialo.org`)
 
 Aplikacja WWW (jeden `index.html`, mobilna) do nagrywania wykładów:
@@ -13,3 +13,7 @@ Aplikacja WWW (jeden `index.html`, mobilna) do nagrywania wykładów:
 ## Ograniczenia
 iOS Safari ubija mikrofon przy blokadzie ekranu → nagrywać z włączonym ekranem (zaciemnienie je zastępuje). Rozpoznanie wykładowcy: najdłużej mówiący w 30 s fragmencie.
 Wersja natywna iOS (SwiftUI, nagrywanie przy zablokowanym ekranie, rozpoznawanie głosu offline): źródła w dokumentach projektu „App Startup" (`claude/04_Notatnik_Sluchacza/Sources`).
+
+## v0.05
+Godzina zegarowa w transkrypcji (Ustawienia: godzina / czas nagrania / oba), przycisk ⛁ Kopia (JSON, ZIP z audio, Google Drive), „Sporządź notatki”, prośba o trwały zapis danych (storage.persist). Baza IndexedDB `ns` bez zmian — aktualizacje nie kasują wykładów.
+Google Drive: Cloud Console → Credentials → OAuth client ID (Web), origin `https://projects.smialo.org`, włączone Drive API; ID wpisać w Ustawieniach. Zakres `drive.file` (aplikacja widzi tylko własne pliki).
