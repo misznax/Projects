@@ -98,8 +98,41 @@ for i,en0 in sorted(bid.items()):
     if i not in LPOS: print('brak pozycji',en0); continue
     lms.append(dict(id=i,en=en,pl=pl,la=la,d=d,bone=en2id[lmparent[en0]],p=LPOS[i]))
 # usuń z GLB nieużywane id? (pominięte: korzenie L) — aplikacja ignoruje węzły spoza data.json
-REG=[('all','Cała kończyna'),('bark','Bark'),('ramie','Ramię'),('przedramie','Przedramię'),('dlon','Dłoń')]
-out=dict(version='0.01',regions=REG,groups=groups,muscles=muscles,bones=bones,patches=patches,lms=lms)
+# ---- czaszka + kręgi szyjne (axial.glb), stawy (joint_pos.json, joints.glb)
+import joints as JD
+O2='/home/claude/work/out2/'
+axid=json.load(open(O2+'axial_ids.json')); capid=json.load(open(O2+'cap_ids.json')); jp=json.load(open(O2+'joint_pos.json'))
+for i,en0 in sorted(axid.items()):
+    m=re.match(r'^(.*)\.([lr])$',en0)
+    if m and m.group(1) in JD.AXIAL_PAIRED:
+        pl,la=JD.AXIAL_PAIRED[m.group(1)]; side='lewa' if m.group(2)=='l' else 'prawa'; sl='sinistra' if m.group(2)=='l' else 'dextra'
+        pl,la,d=f'{pl} {side}',f'{la} {sl}','Kość czaszki.'
+    elif en0 in JD.AXIAL_BONES: pl,la,d=JD.AXIAL_BONES[en0]
+    else: raise KeyError(en0)
+    bones.append(dict(id=i,en=en0,pl=pl,la=la,d=d,kind='axial',region='glowa'))
+ax_en2id={v:k for k,v in axid.items()}
+cap_en2id={v:k for k,v in capid.items()}
+def bone_id(en):
+    if en in ax_en2id: return ax_en2id[en]
+    n=en if en.endswith(('.r','.l')) or en in ('Manubrium of sternum','Body of sternum') else en+'.r'
+    return en2id[n]
+joints=[]
+for j in JD.J:
+    marks=[]
+    for k in j['mk']: marks+= [dict(p=m['p'],r=m['r']) for m in jp['joints'][k]]
+    if not marks: print('brak znaczników',j['id'])
+    caps=[cap_en2id[c] for c in j['caps']]
+    shp=JD.SHAPES[j['shape']]
+    joints.append(dict(id='J_'+j['id'],pl=j['pl'],la=j['la'],reg=j['reg'],rodzaj=j['rodzaj'],shape=j['shape'],ksztalt=j.get('ksztalt',shp[0]),osie=j['osie'],n=j['n'],pow=j['pow'],cechy=j['cechy'],piet=j['piet'],alt=j['alt'],
+        bones=[bone_id(b_) for b_ in j['bones']],pairs=[list(p) for p in j['pairs']],caps=caps,marks=marks,mid=bool(j.get('mid')),parent=('J_'+j['parent']) if j.get('parent') else None,children=['J_'+c for c in j.get('children',[])]))
+for j in joints:
+    for pr in j['pairs']:
+        for lst in (pr[1],pr[3]):
+            for m in lst:
+                if m in C.M or m.startswith('m. ') : continue
+                if m not in C.M: print('? klucz mięśnia',m,j['id'])
+REG=[('all','Cała kończyna'),('bark','Bark'),('ramie','Ramię'),('przedramie','Przedramię'),('dlon','Dłoń'),('glowa','Głowa i szyja')]
+out=dict(version='0.02',regions=REG,groups=groups,muscles=muscles,bones=bones,patches=patches,lms=lms,joints=joints,shapes={k:dict(pl=v[0],c=v[1],d=v[2]) for k,v in JD.SHAPES.items()},mid=jp['mid'])
 json.dump(out,open(O+'data.json','w'),ensure_ascii=False,separators=(',',':'))
 print('muscles',len(muscles),'groups',len(groups),'bones',len(bones),'patches',len(patches),'lms',len(lms))
 missing=[b for b in bid if b[0]=='P' and re.sub(r'\.(o|e)\d?r$','',bid[b]) not in C.PATCH]

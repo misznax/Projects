@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Anatomia — kończyna górna 3D</title>
-<meta name="description" content="Interaktywny model 3D kończyny górnej: kości i mięśnie z nazwami polskimi i łacińskimi.">
+<title>Anatomia 3D — kości, mięśnie i stawy</title>
+<meta name="description" content="Interaktywny model 3D: kończyna górna (kości, mięśnie, stawy) oraz staw głowy i szyi, z nazwami polskimi i łacińskimi.">
 <meta name="theme-color" content="#11151c">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%276%27 fill=%27%23b3322a%27/%3E%3Cpath d=%27M8 24c4-2 6-6 6-10s2-6 5-6 5 2 5 6-3 8-8 10z%27 fill=%27%23f2e8d5%27/%3E%3C/svg%3E">
 <style>/*CSS*/</style>
@@ -13,7 +13,8 @@
 <div id="app">
   <header>
     <button id="burger" aria-label="Lista struktur">☰</button>
-    <div class="brand">Anatomia<small>kończyna górna 3D · v/*VER*/</small></div>
+    <div class="brand">Anatomia<small>3D · v/*VER*/</small></div>
+    <div id="sides" role="group" aria-label="Strona ciała"><button data-s="r" class="on">Prawa</button><button data-s="l">Lewa</button><button data-s="b">Obie</button></div>
     <div class="grow"></div>
     <button id="menuBtn" aria-label="Menu">Menu ▾</button>
     <div id="menu"><button data-m="about">O autorze</button><button data-m="sug">Sugestie</button><button data-m="help">Obsługa</button></div>
@@ -21,17 +22,17 @@
   <aside id="side">
     <div class="sidehead"><input id="q" type="search" autocomplete="off" placeholder="Szukaj: np. dwugłowy, biceps, humerus…" aria-label="Szukaj"><button id="closeSide" aria-label="Zamknij">×</button></div>
     <div id="regions"></div>
-    <div id="tabs"><button data-tab="mus" class="on">Mięśnie</button><button data-tab="bone">Kości</button></div>
+    <div id="tabs"><button data-tab="mus" class="on">Mięśnie</button><button data-tab="bone">Kości</button><button data-tab="jnt">Stawy</button></div>
     <div id="results"></div>
     <div id="list"></div>
   </aside>
   <main>
     <canvas id="c"></canvas>
     <div id="loading"><div class="ld"><div id="loadtxt">Ładowanie modelu 3D…</div><div class="bar"><i id="loadbar"></i></div></div></div>
-    <div id="pinlabel"></div><div id="tip"></div>
+    <div id="pinlabel"></div><div id="tip"></div><div id="toast"></div>
     <div id="views">
       <button data-v="front">Przód</button><button data-v="back">Tył</button><button data-v="lat">Bok zewn.</button><button data-v="med">Bok wewn.</button><button data-v="top">Góra</button>
-      <span class="sep"></span><button data-v="rot" title="Automatyczny obrót">⟳ Obrót</button><button data-v="reset">Reset</button><span class="sep"></span><button id="panelBtn">Warstwy ▾</button>
+      <span class="sep"></span><button data-v="rot" title="Automatyczny obrót">⟳ Obrót</button><button data-v="reset">Reset</button><span class="sep"></span><button id="multiBtn" title="Zaznaczanie kilku mięśni naraz">☑ Wiele mięśni</button><button id="panelBtn">Warstwy ▾</button>
     </div>
     <div id="layers">
       <label><input type="checkbox" id="lMus" checked> Mięśnie</label>
@@ -39,8 +40,12 @@
       <label><input type="checkbox" id="lCtx"> Tułów (żebra, mostek, kręgi)</label>
       <label><input type="checkbox" id="lOther"> Troczki i rozcięgno dłoniowe</label>
       <label><input type="checkbox" id="lAtt"> Wszystkie przyczepy</label>
+      <label><input type="checkbox" id="lJoints"> Stawy (znaczniki w kolorze typu)</label>
+      <label><input type="checkbox" id="lCap"> Torebki i krążki stawowe</label>
+      <label><input type="checkbox" id="lSkull"> Czaszka i kręgi szyjne</label>
       <label><input type="checkbox" id="ghostBg" checked> Reszta kończyny jako tło</label>
       <label class="rng">Przezroczystość mięśni<input type="range" id="opa" min="0.15" max="1" step="0.05" value="1"></label>
+      <div class="lg" id="legendJ"></div>
     </div>
     <div id="info"></div>
     <div class="hint">LPM obrót · PPM przesuwanie · kółko zoom · klik = wybór</div>

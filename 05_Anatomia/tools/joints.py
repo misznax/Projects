@@ -1,0 +1,139 @@
+# Stawy: treść (PL/łac.), parametry, ruchy z mięśniami (klucze grup z content.M lub zwykły tekst dla mięśni spoza modelu).
+# Opisy edukacyjne wg standardowych podręczników anatomii; przy wątpliwościach sprawdź w podręczniku.
+
+AXIAL_BONES = {  # nazwa EN -> (PL, łac., opis)
+ 'Frontal bone': ('Kość czołowa', 'Os frontale', 'Tworzy czoło i sklepienie czaszki oraz górną ścianę oczodołów.'),
+ 'Occipital bone': ('Kość potyliczna', 'Os occipitale', 'Tylna i dolna część czaszki; kłykcie potyliczne tworzą z atlasem staw szczytowo-potyliczny.'),
+ 'Sphenoid bone': ('Kość klinowa', 'Os sphenoidale', 'Nieparzysta kość podstawy czaszki; zawiera siodło tureckie.'),
+ 'Ethmoid bone': ('Kość sitowa', 'Os ethmoidale', 'Delikatna kość między oczodołami; część ściany jamy nosowej.'),
+ 'Vomer': ('Lemiesz', 'Vomer', 'Tworzy tylno-dolną część przegrody nosa.'),
+ 'Mandible': ('Żuchwa', 'Mandibula', 'Jedyna ruchoma kość czaszki; głowa żuchwy tworzy staw skroniowo-żuchwowy.'),
+ 'Atlas (C1)': ('Kręg szczytowy (atlas)', 'Atlas (vertebra C1)', 'Pierwszy kręg szyjny, bez trzonu; dołki stawowe górne przyjmują kłykcie potyliczne, dołek zęba łączy się z zębem kręgu obrotowego.'),
+ 'Axis (C2)': ('Kręg obrotowy (axis)', 'Axis (vertebra C2)', 'Drugi kręg szyjny; ząb kręgu obrotowego jest osią obrotu atlasu i głowy.'),
+}
+for _n, _r in (('3', 'III'), ('4', 'IV'), ('5', 'V'), ('6', 'VI')):
+    AXIAL_BONES['Vertebra C' + _n] = (f'Kręg szyjny {_r}', f'Vertebra cervicalis {_r}', 'Kręg szyjny (kontekst dla stawów głowy i szyi).')
+AXIAL_PAIRED = {  # nazwa bazowa EN -> (PL, łac.)
+ 'Parietal bone': ('Kość ciemieniowa', 'Os parietale'), 'Temporal bone': ('Kość skroniowa', 'Os temporale'),
+ 'Maxilla': ('Szczęka', 'Maxilla'), 'Zygomatic bone': ('Kość jarzmowa', 'Os zygomaticum'), 'Nasal bone': ('Kość nosowa', 'Os nasale'),
+ 'Lacrimal bone': ('Kość łzowa', 'Os lacrimale'), 'Palatine bone': ('Kość podniebienna', 'Os palatinum'),
+ 'Inferior nasal concha bone': ('Małżowina nosowa dolna', 'Concha nasalis inferior'),
+}
+
+SHAPES = {  # klucz -> (nazwa, kolor, opis)
+ 'kulisty': ('kulisty (panewkowy)', '#14b8a6', 'Głowa kulista w panewce; 3 osie ruchu: zginanie–wyprost, odwodzenie–przywodzenie, rotacja.'),
+ 'elipsoidalny': ('elipsoidalny (kłykciowy)', '#a855f7', 'Wypukła powierzchnia w kształcie elipsoidy w odpowiadającym wgłębieniu; 2 osie ruchu, bez rotacji czynnej.'),
+ 'siodelkowy': ('siodełkowy', '#ec4899', 'Obie powierzchnie mają kształt siodła, ustawione prostopadle; 2 osie ruchu (+ rotacja towarzysząca).'),
+ 'zawiasowy': ('zawiasowy (bloczkowy)', '#84cc16', 'Walcowata powierzchnia w rowku; ruch tylko w jednej osi: zginanie–wyprost.'),
+ 'obrotowy': ('obrotowy (czopowy)', '#eab308', 'Czop obraca się w pierścieniu; 1 oś, ruch obrotowy.'),
+ 'plaski': ('płaski (ślizgowy)', '#e5e7eb', 'Płaskie powierzchnie; tylko niewielkie ruchy ślizgowe, często stawy sztywne (amfiartrozy).'),
+ 'nieregularny': ('nieregularny / złożony', '#22d3ee', 'Powierzchnie o niepowtarzalnym kształcie (np. szczelina esowata); ruchy sprzężone z sąsiednimi stawami.'),
+}
+
+# pary ruchów: (ruch A, [mięśnie A], ruch B, [mięśnie B]) — mięśnie A i B są wobec siebie antagonistami
+SH_GIRDLE = [
+ ('Unoszenie łopatki / obręczy', ['trapezius', 'levator', 'rhomboids'], 'Opuszczanie łopatki / obręczy', ['pecminor', 'subclavius', 'latissimus']),
+ ('Protrakcja (ruch do przodu)', ['serratus', 'pecminor', 'pecmajor'], 'Retrakcja (ruch do tyłu)', ['rhomboids', 'trapezius']),
+]
+GH_PAIRS = [
+ ('Zgięcie', ['deltoid', 'pecmajor', 'coracobrachialis', 'biceps'], 'Wyprost', ['latissimus', 'teresmajor', 'deltoid', 'triceps']),
+ ('Odwodzenie', ['deltoid', 'supraspinatus'], 'Przywodzenie', ['pecmajor', 'latissimus', 'teresmajor', 'coracobrachialis']),
+ ('Rotacja zewnętrzna', ['infraspinatus', 'teresminor'], 'Rotacja wewnętrzna', ['subscapularis', 'pecmajor', 'latissimus', 'teresmajor']),
+]
+ELBOW_FLEX = ('Zgięcie', ['biceps', 'brachialis', 'brachioradialis', 'pronatorteres'], 'Wyprost', ['triceps', 'anconeus'])
+PRON = ('Nawrócenie (pronacja)', ['pronatorteres', 'pq'], 'Odwrócenie (supinacja)', ['supinator', 'biceps'])
+WRIST = [
+ ('Zgięcie dłoniowe', ['fcr', 'fcu', 'pl', 'fds', 'fdp', 'fpl', 'apl'], 'Zgięcie grzbietowe (wyprost)', ['ecrl', 'ecrb', 'ecu', 'ed', 'ei', 'edm', 'epl']),
+ ('Odchylenie promieniowe', ['fcr', 'ecrl', 'ecrb', 'apl', 'epb'], 'Odchylenie łokciowe', ['fcu', 'ecu']),
+]
+FING_EXT = ['ed', 'lumb', 'dio', 'pio', 'ei', 'edm']
+
+# id, nazwa, łac., region, rodzaj, kształt-klucz, nazwa kształtu (opcjonalnie), osie, liczba pow., opis pow., cechy, piętrowy, alt, kości(EN, bez przyrostka), pary, torebki(EN)
+J = [
+ dict(id='scj', pl='Staw mostkowo-obojczykowy', la='Articulatio sternoclavicularis', reg='bark', rodzaj='złożony (krążek stawowy)', shape='siodelkowy', osie='3 (czynnościowo jak staw kulisty)', n=2,
+      pow='Koniec mostkowy obojczyka ↔ wcięcie obojczykowe rękojeści mostka i chrząstka I żebra; między nimi krążek stawowy.', piet=True,
+      cechy='Jedyny staw łączący kończynę górną ze szkieletem osiowym. Silnie zabezpieczony więzadłami (m.in. żebrowo-obojczykowym).',
+      alt='staw dwujamowy piętrowy', bones=['Clavicle', 'Manubrium of sternum'], pairs=SH_GIRDLE, caps=['Articular capsule of sternoclavicular joint.r', 'Articular disc of sternoclavicular joint.r'], mk=['scj']),
+ dict(id='acj', pl='Staw barkowo-obojczykowy', la='Articulatio acromioclavicularis', reg='bark', rodzaj='prosty (krążek niekompletny, często brak)', shape='plaski', osie='3 (zakres bardzo mały, ruchy ślizgowe)', n=2,
+      pow='Powierzchnia stawowa barkowa obojczyka ↔ powierzchnia stawowa obojczykowa wyrostka barkowego łopatki.', piet=False,
+      cechy='Stabilizują go więzadła: stożkowate i czworoboczne (przyczepowo-obojczykowe), kruczo-barkowe. Umożliwia dostosowanie położenia łopatki.',
+      alt='', bones=['Clavicle', 'Scapula'], pairs=SH_GIRDLE, caps=['Articular capsule of acromioclavicular joint.r', 'Articular disc of acromioclavicular joint.r'], mk=['acj']),
+ dict(id='ghj', pl='Staw ramienny', la='Articulatio humeri (glenohumeralis)', reg='bark', rodzaj='prosty', shape='kulisty', osie='3', n=2,
+      pow='Głowa kości ramiennej ↔ panewka stawowa łopatki (powiększona przez obrąbek stawowy).', piet=False,
+      cechy='Najbardziej ruchomy staw ciała; torebka luźna, stabilizacja głównie przez mięśnie stożka rotatorów (nad- i podgrzebieniowy, obły mniejszy, podłopatkowy).',
+      alt='staw barkowy', bones=['Humerus', 'Scapula'], pairs=GH_PAIRS, caps=['Articular capsule of glenohumeral joint.r'], mk=['ghj']),
+ dict(id='lok', pl='Staw łokciowy', la='Articulatio cubiti', reg='ramie', rodzaj='złożony (3 stawy we wspólnej torebce)', shape='zawiasowy', ksztalt='zawiasowy (z elementem obrotowym)', osie='1 (zgięcie–wyprost); obrót w st. promieniowo-łokciowym dodaje 2. oś', n=6,
+      pow='3 pary: bloczek kości ramiennej ↔ wcięcie bloczkowe łokcia; główeczka kości ramiennej ↔ dołek głowy promienia; obwód stawowy głowy promienia ↔ wcięcie promieniowe łokcia.', piet=False,
+      cechy='Obejmuje: staw ramienno-łokciowy, ramienno-promieniowy i promieniowo-łokciowy bliższy. Wspólna jama stawowa i torebka.',
+      alt='stawy łokcia', bones=['Humerus', 'Ulna', 'Radius'], pairs=[ELBOW_FLEX, PRON], caps=['Articular capsule of elbow joint.r', 'Annular ligament of radius.r'], mk=['hu', 'hr', 'pru'], children=['hu', 'hr', 'pru']),
+ dict(id='hu', pl='Staw ramienno-łokciowy', la='Articulatio humeroulnaris', reg='ramie', rodzaj='prosty', shape='zawiasowy', ksztalt='zawiasowy (bloczkowy)', osie='1', n=2,
+      pow='Bloczek kości ramiennej ↔ wcięcie bloczkowe kości łokciowej.', piet=False, cechy='Część stawu łokciowego; prowadzi ruch zgięcia i wyprostu. Ogranicza go wyrostek łokciowy w dole łokciowym.',
+      alt='', bones=['Humerus', 'Ulna'], pairs=[ELBOW_FLEX], caps=[], mk=['hu'], parent='lok'),
+ dict(id='hr', pl='Staw ramienno-promieniowy', la='Articulatio humeroradialis', reg='ramie', rodzaj='prosty', shape='kulisty', ksztalt='kulisty (ograniczony)', osie='2 (zgięcie–wyprost, obrót głowy promienia)', n=2,
+      pow='Główeczka kości ramiennej ↔ dołek głowy kości promieniowej.', piet=False, cechy='Część stawu łokciowego; głowa promienia obraca się w nim podczas nawracania i odwracania.',
+      alt='', bones=['Humerus', 'Radius'], pairs=[ELBOW_FLEX, PRON], caps=[], mk=['hr'], parent='lok'),
+ dict(id='pru', pl='Staw promieniowo-łokciowy bliższy', la='Articulatio radioulnaris proximalis', reg='przedramie', rodzaj='prosty', shape='obrotowy', ksztalt='obrotowy (czopowy)', osie='1', n=2,
+      pow='Obwód stawowy głowy kości promieniowej ↔ wcięcie promieniowe kości łokciowej.', piet=False, cechy='Głowa promienia obraca się w pierścieniu utworzonym przez wcięcie promieniowe i więzadło obrączkowe promienia. Pracuje razem z dalszym stawem promieniowo-łokciowym.',
+      alt='', bones=['Radius', 'Ulna'], pairs=[PRON], caps=['Annular ligament of radius.r'], mk=['pru'], parent='lok'),
+ dict(id='dru', pl='Staw promieniowo-łokciowy dalszy', la='Articulatio radioulnaris distalis', reg='przedramie', rodzaj='prosty (z krążkiem trójkątnym)', shape='obrotowy', ksztalt='obrotowy (czopowy)', osie='1', n=2,
+      pow='Głowa kości łokciowej ↔ wcięcie łokciowe kości promieniowej; od strony nadgarstka krążek stawowy.', piet=False, cechy='Krążek trójkątny oddziela jamę stawu od stawu promieniowo-nadgarstkowego. Podczas nawracania promień obiega głowę łokcia.',
+      alt='', bones=['Radius', 'Ulna'], pairs=[PRON], caps=['Articular disc of distal radio-ulnar joint.r'], mk=['dru']),
+ dict(id='rcj', pl='Staw promieniowo-nadgarstkowy', la='Articulatio radiocarpalis', reg='dlon', rodzaj='złożony', shape='elipsoidalny', osie='2', n=2,
+      pow='Panewka: powierzchnia nadgarstkowa kości promieniowej + krążek stawowy ↔ głowa: kość łódeczkowata, księżycowata i trójgraniasta.', piet=False,
+      cechy='Staw nadgarstka (właściwy); z kością łokciową styka się tylko pośrednio, przez krążek. Ruchy łączą się ze stawem śródnadgarstkowym.',
+      alt='staw nadgarstkowy', bones=['Radius', 'Scaphoid bone', 'Lunate bone'], pairs=WRIST, caps=['Articular capsule of radiocarpal joint.r'], mk=['rcj']),
+ dict(id='mcj', pl='Staw śródnadgarstkowy', la='Articulatio mediocarpalis', reg='dlon', rodzaj='złożony', shape='nieregularny', ksztalt='nieregularny (szczelina esowata)', osie='2 (ruchy sprzężone z rcj)', n=4,
+      pow='Rząd bliższy (łódeczkowata, księżycowata, trójgraniasta) ↔ rząd dalszy (czworoboczna większa i mniejsza, główkowata, haczykowata).', piet=False,
+      cechy='Szczelina o przebiegu esowatym; ruchy zgięcia i wyprostu nadgarstka odbywają się łącznie z stawem promieniowo-nadgarstkowym.',
+      alt='', bones=['Scaphoid bone', 'Lunate bone', 'Triquetrum bone', 'Trapezium bone', 'Capitate bone', 'Hamate bone'], pairs=WRIST, caps=[], mk=['mcj']),
+ dict(id='icj', pl='Stawy międzynadgarstkowe', la='Articulationes intercarpales', reg='dlon', rodzaj='prosty (wiele małych stawów)', shape='plaski', osie='0 (tylko ślizgi)', n=2,
+      pow='Sąsiadujące powierzchnie kości nadgarstka (każdy staw: 2 powierzchnie).', piet=False, cechy='Stawy sztywne (amfiartrozy), zwarte licznymi więzadłami; kość grochowata tworzy własny staw z trójgraniastą.',
+      alt='', bones=['Scaphoid bone', 'Lunate bone', 'Triquetrum bone', 'Pisiform bone', 'Trapezium bone', 'Trapezoid bone', 'Capitate bone', 'Hamate bone'], pairs=[], caps=[], mk=['icj']),
+ dict(id='cmc1', pl='Staw nadgarstkowo-śródręczny kciuka', la='Articulatio carpometacarpalis pollicis', reg='dlon', rodzaj='prosty', shape='siodelkowy', osie='2 (+ rotacja towarzysząca)', n=2,
+      pow='Kość czworoboczna większa ↔ podstawa I kości śródręcza (obie powierzchnie siodłowate).', piet=False,
+      cechy='Umożliwia przeciwstawienie kciuka — kluczowe dla chwytu. Torebka stosunkowo luźna.',
+      alt='staw kciuka', bones=['Trapezium bone', 'First metacarpal bone'],
+      pairs=[('Przeciwstawienie / zgięcie', ['opp', 'fpb', 'abp', 'adp'], 'Odstawienie / wyprost', ['epl', 'epb', 'apl']), ('Odwodzenie dłoniowe', ['abp', 'apl'], 'Przywodzenie', ['adp', 'dio'])], caps=[], mk=['cmc1']),
+ dict(id='cmc2', pl='Stawy nadgarstkowo-śródręczne II–V', la='Articulationes carpometacarpales II–V', reg='dlon', rodzaj='prosty (4 stawy)', shape='plaski', osie='0–1 (ruchomość znikoma; największa w V)', n=2,
+      pow='Rząd dalszy nadgarstka (czworoboczna mniejsza, główkowata, haczykowata) ↔ podstawy kości śródręcza II–V.', piet=False, cechy='Sztywne stawy tworzące stabilne łuki dłoni; staw V ma większą ruchomość (ułatwia chwyt).',
+      alt='', bones=['Trapezoid bone', 'Capitate bone', 'Hamate bone', 'Second metacarpal bone', 'Third metacarpal bone', 'Fourth metacarpal bone', 'Fifth metacarpal bone'], pairs=[], caps=[], mk=['cmc2']),
+ dict(id='mcp1', pl='Staw śródręczno-paliczkowy kciuka', la='Articulatio metacarpophalangea pollicis', reg='dlon', rodzaj='prosty', shape='zawiasowy', osie='1 (zgięcie–wyprost)', n=2,
+      pow='Głowa I kości śródręcza ↔ podstawa paliczka bliższego kciuka.', piet=False, cechy='W kciuku działa głównie jak zawias; w torebce leżą dwie kostki trzeszczkowe.',
+      alt='', bones=['First metacarpal bone', 'Proximal phalanx of first finger of hand'], pairs=[('Zgięcie', ['fpb', 'fpl', 'abp', 'adp'], 'Wyprost', ['epb', 'epl'])], caps=['Articular capsules of metacarpophalangeal joints.r'], mk=['mcp1']),
+ dict(id='mcp2', pl='Stawy śródręczno-paliczkowe II–V', la='Articulationes metacarpophalangeae II–V', reg='dlon', rodzaj='prosty (4 stawy)', shape='elipsoidalny', ksztalt='elipsoidalny (kłykciowy, kulisty ograniczony)', osie='2 (zgięcie–wyprost, odwodzenie–przywodzenie)', n=2,
+      pow='Głowy kości śródręcza II–V ↔ podstawy paliczków bliższych.', piet=False, cechy='Więzadła poboczne napinają się w zgięciu, dlatego odwodzenie palców jest możliwe głównie w wyproście.',
+      alt='stawy palców', bones=['Second metacarpal bone', 'Third metacarpal bone', 'Fourth metacarpal bone', 'Fifth metacarpal bone', 'Proximal phalanx of second finger of hand', 'Proximal phalanx of third finger of hand', 'Proximal phalanx of fourth finger of hand', 'Proximal phalanx of fifth finger of hand'],
+      pairs=[('Zgięcie', ['lumb', 'dio', 'pio', 'fds', 'fdp', 'fdm'], 'Wyprost', ['ed', 'ei', 'edm']), ('Odwodzenie (od palca III)', ['dio', 'adm'], 'Przywodzenie (do palca III)', ['pio'])], caps=['Articular capsules of metacarpophalangeal joints.r'], mk=['mcp2']),
+ dict(id='ip1', pl='Staw międzypaliczkowy kciuka', la='Articulatio interphalangealis pollicis', reg='dlon', rodzaj='prosty', shape='zawiasowy', ksztalt='zawiasowy (bloczkowy)', osie='1', n=2,
+      pow='Głowa paliczka bliższego ↔ podstawa paliczka dalszego kciuka.', piet=False, cechy='Jedyny staw międzypaliczkowy kciuka.', alt='', bones=['Proximal phalanx of first finger of hand', 'Distal phalanx of first finger of hand'],
+      pairs=[('Zgięcie', ['fpl'], 'Wyprost', ['epl'])], caps=[], mk=['ip1']),
+ dict(id='pip', pl='Stawy międzypaliczkowe bliższe (PIP)', la='Articulationes interphalangeales proximales manus', reg='dlon', rodzaj='prosty (4 stawy)', shape='zawiasowy', ksztalt='zawiasowy (bloczkowy)', osie='1', n=2,
+      pow='Głowa paliczka bliższego ↔ podstawa paliczka środkowego.', piet=False, cechy='Ruch wyłącznie zgięcia i wyprostu; więzadła poboczne i płytka dłoniowa.', alt='',
+      bones=['Proximal phalanx of second finger of hand', 'Proximal phalanx of third finger of hand', 'Proximal phalanx of fourth finger of hand', 'Proximal phalanx of fifth finger of hand', 'Middle phalanx of second finger of hand', 'Middle phalanx of third finger of hand', 'Middle phalanx of fourth finger of hand', 'Middle phalanx of fifth finger of hand'],
+      pairs=[('Zgięcie', ['fds', 'fdp'], 'Wyprost', FING_EXT)], caps=['Articular capsules of proximal interphalangeal joints.r'], mk=['pip']),
+ dict(id='dip', pl='Stawy międzypaliczkowe dalsze (DIP)', la='Articulationes interphalangeales distales manus', reg='dlon', rodzaj='prosty (4 stawy)', shape='zawiasowy', ksztalt='zawiasowy (bloczkowy)', osie='1', n=2,
+      pow='Głowa paliczka środkowego ↔ podstawa paliczka dalszego.', piet=False, cechy='Zgina go tylko zginacz głęboki palców.', alt='',
+      bones=['Middle phalanx of second finger of hand', 'Middle phalanx of third finger of hand', 'Middle phalanx of fourth finger of hand', 'Middle phalanx of fifth finger of hand', 'Distal phalanx of second finger of hand', 'Distal phalanx of third finger of hand', 'Distal phalanx of fourth finger of hand', 'Distal phalanx of fifth finger of hand'],
+      pairs=[('Zgięcie', ['fdp'], 'Wyprost', FING_EXT)], caps=['Articular capsules of distal interphalangeal joints.r'], mk=['dip']),
+ dict(id='aoj', pl='Staw szczytowo-potyliczny', la='Articulatio atlantooccipitalis', reg='glowa', rodzaj='złożony (parzysty: dwa stawy pracujące razem)', shape='elipsoidalny', osie='2', n=4, mid=True,
+      pow='2 pary: kłykcie potyliczne kości potylicznej ↔ dołki stawowe górne atlasu (po stronie prawej i lewej).', piet=False,
+      cechy='Łączy czaszkę z kręgosłupem. Pozwala na skłon i odgięcie głowy („tak”) oraz niewielki przechył boczny. Brak rotacji — obrót głowy zachodzi w stawach szczytowo-obrotowych.',
+      alt='staw kłykciowy głowy', bones=['Occipital bone', 'Atlas (C1)'],
+      pairs=[('Skłon głowy (zgięcie)', ['m. prosty przedni głowy', 'm. długi głowy', 'm. mostkowo-obojczykowo-sutkowy (obustronnie)'], 'Odgięcie głowy (wyprost)', ['m. prosty tylny mniejszy głowy', 'm. skośny górny głowy', 'm. półkolcowy głowy', 'trapezius'])],
+      caps=[], mk=['aoj']),
+ dict(id='aam', pl='Staw szczytowo-obrotowy pośrodkowy', la='Articulatio atlantoaxialis mediana', reg='glowa', rodzaj='prosty', shape='obrotowy', ksztalt='obrotowy (czopowy)', osie='1 (pionowa)', n=2, mid=True,
+      pow='Ząb kręgu obrotowego ↔ dołek zęba na łuku przednim atlasu oraz więzadło poprzeczne atlasu (od tyłu).', piet=False,
+      cechy='Ząb osiowy jest czopem, wokół którego obraca się atlas z czaszką („nie”): około połowa całkowitego obrotu głowy. Więzadło poprzeczne atlasu utrzymuje ząb na miejscu.',
+      alt='staw atlasowo-obrotowy', bones=['Atlas (C1)', 'Axis (C2)'],
+      pairs=[('Obrót głowy w prawo', ['m. skośny dolny głowy (str. prawa)', 'm. prosty tylny większy głowy (str. prawa)', 'm. mostkowo-obojczykowo-sutkowy (str. lewa)'], 'Obrót głowy w lewo', ['m. skośny dolny głowy (str. lewa)', 'm. prosty tylny większy głowy (str. lewa)', 'm. mostkowo-obojczykowo-sutkowy (str. prawa)'])], caps=[], mk=['aam']),
+ dict(id='aal', pl='Staw szczytowo-obrotowy boczny', la='Articulatio atlantoaxialis lateralis', reg='glowa', rodzaj='prosty (parzysty)', shape='plaski', ksztalt='płaski (ślizgowy)', osie='ślizgi sprzężone z obrotem', n=4, mid=True,
+      pow='2 pary: dołki stawowe dolne atlasu ↔ powierzchnie stawowe górne kręgu obrotowego.', piet=False,
+      cechy='Dwa boczne stawy ślizgowe; razem ze stawem pośrodkowym tworzą zespół umożliwiający obrót głowy.', alt='', bones=['Atlas (C1)', 'Axis (C2)'], pairs=[], caps=[], mk=['aal']),
+ dict(id='tmj', pl='Staw skroniowo-żuchwowy', la='Articulatio temporomandibularis', reg='glowa', rodzaj='złożony (krążek stawowy)', shape='nieregularny', ksztalt='zawiasowo-ślizgowy (dwukłykciowy)', osie='3 (ruchy zawiasowe, ślizgowe i boczne)', n=2, mid=True,
+      pow='Głowa żuchwy ↔ dołek żuchwowy i guzek stawowy kości skroniowej; między nimi krążek stawowy.', piet=True,
+      cechy='Komora górna (nad krążkiem) — ruchy ślizgowe, dolna — zawiasowe. Staw obustronny: oba stawy skroniowo-żuchwowe pracują zawsze razem (staw szczękowy, żuchwowy).',
+      alt='staw szczękowy żuchwowy dwujamowy piętrowy', bones=['Mandible', 'Temporal bone.r', 'Temporal bone.l'],
+      pairs=[('Opuszczanie żuchwy (otwieranie)', ['m. skrzydłowy boczny', 'm. dwubrzuścowy', 'm. żuchwowo-gnykowy'], 'Podnoszenie żuchwy (zamykanie)', ['m. żwacz', 'm. skroniowy', 'm. skrzydłowy przyśrodkowy']),
+             ('Wysunięcie żuchwy', ['m. skrzydłowy boczny', 'm. skrzydłowy przyśrodkowy'], 'Cofnięcie żuchwy', ['m. skroniowy (włókna tylne)'])],
+      caps=['Articular capsule of temporomandibular joint.r', 'Articular capsule of temporomandibular joint.l', 'Articular disc of temporomandibular joint.r', 'Articular disc of temporomandibular joint.l'], mk=['tmj']),
+]

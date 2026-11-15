@@ -149,8 +149,28 @@ async function ask(request, env) {
 
 const hostApp = (host) => APPS[host.split('.')[0]];
 
+// ── Licznik odwiedzin: unikalne adresy IP (tylko hash SHA-256 z solą, bez surowego IP), per aplikacja ──
+const PUBLIC_UNTIL = { anatomia: '2026-12-31T23:59:59+01:00' }; // adres publiczny działa do tej daty, potem 410
+async function track(request, env, app) {
+  if (!env.DB) return;
+  const ua = request.headers.get('user-agent') || '';
+  if (/bot|crawl|spider|uptime|monitor|curl|wget|preview/i.test(ua)) return;
+  const ip = request.headers.get('cf-connecting-ip') || '';
+  if (!ip) return;
+  const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(ip + '|' + (env.STATS_SALT || 'projects')));
+  const h = [...new Uint8Array(d)].slice(0, 12).map((b) => b.toString(16).padStart(2, '0')).join('');
+  const now = Date.now();
+  await env.DB.prepare('INSERT INTO visits (h, app, first_ts, last_ts, n, country) VALUES (?1, ?2, ?3, ?3, 1, ?4) ON CONFLICT(h, app) DO UPDATE SET last_ts = ?3, n = n + 1').bind(h, app, now, request.cf?.country || null).run();
+}
+async function stats(env) {
+  if (!env.DB) return { code: 'no_db' };
+  const a = await env.DB.prepare('SELECT app, COUNT(*) AS unique_ip, SUM(n) AS views, MAX(last_ts) AS last FROM visits GROUP BY app ORDER BY app').all();
+  const c = await env.DB.prepare('SELECT app, country, COUNT(*) AS ip FROM visits GROUP BY app, country ORDER BY ip DESC LIMIT 30').all();
+  return { apps: a.results, countries: c.results };
+}
+
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
     if (url.pathname.startsWith('/api/')) {
       if (!(await accessOk(request, env))) return J({ code: 'forbidden' }, 403);
@@ -160,6 +180,7 @@ export default {
         const t = await transcript(id);
         return t.code ? J(t, t.code === 'no_captions' ? 404 : 502) : J(t);
       }
+      if (url.pathname === '/api/stats') return J(await stats(env));
       if (url.pathname === '/api/n/status') return J({ stt: !!(env.OPENAI_API_KEY || env.AI), diar: !!env.OPENAI_API_KEY, claude: !!env.ANTHROPIC_API_KEY });
       // 04 Notatnik Słuchacza: proxy do OpenAI (transkrypcja + mówcy) i Claude (notatki, autorzy, weryfikacja); klucze tylko jako sekrety Workera
       if (url.pathname === '/api/n/stt' && request.method === 'POST') {
@@ -189,6 +210,11 @@ export default {
       return J({ code: 'not_found' }, 404);
     }
     const nn = hostApp(url.hostname);
+    const exp = PUBLIC_UNTIL[url.hostname.split('.')[0]];
+    if (nn && exp && Date.now() > Date.parse(exp)) return new Response('Ten tymczasowy adres wygasł.', { status: 410, headers: { 'content-type': 'text/plain; charset=utf-8' } });
+    const pm = url.pathname.match(/^\/(\d\d)(\/|\/index\.html)?$/);
+    const page = nn ? (url.pathname === '/' || url.pathname === '/index.html') : !!pm;
+    if (page && request.method === 'GET' && env.DB) ctx.waitUntil(track(request, env, nn || pm[1]).catch(() => {}));
     if (nn) url.pathname = '/' + nn + (url.pathname === '/' ? '/' : url.pathname);
     return env.ASSETS.fetch(new Request(url, request));
   },
