@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pl">
+<html lang="pl" data-dark="1">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -9,93 +9,90 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#12161a;--ink:#dfe2de;--mute:#97a09f;--acc:#9cc5a8;--acc-ink:#10241a;--warm:#d6b98a;--menu:#1b2428;--line:#2a3436}
-@media (prefers-color-scheme:light){:root{--bg:#eef1ec;--ink:#232927;--mute:#59625f;--acc:#2f6b4d;--acc-ink:#fff;--warm:#865f1f;--menu:#f8faf6;--line:#cfd7d0}}
+html{--h:168}
+html[data-dark="1"]{--bg:hsl(var(--h) 16% 8%);--glow:hsl(var(--h) 30% 14%);--ink:hsl(var(--h) 14% 90%);--mute:hsl(var(--h) 9% 66%);--acc:hsl(var(--h) 42% 72%);--acc-ink:hsl(var(--h) 40% 10%);--warm:hsl(36 52% 72%);--menu:hsl(var(--h) 18% 13%);--line:hsl(var(--h) 14% 26%);--shadow:#0006}
+html[data-dark="0"]{--bg:hsl(var(--h) 22% 95%);--glow:hsl(var(--h) 40% 88%);--ink:hsl(var(--h) 26% 13%);--mute:hsl(var(--h) 10% 36%);--acc:hsl(var(--h) 46% 28%);--acc-ink:#fff;--warm:hsl(32 70% 30%);--menu:hsl(var(--h) 24% 98%);--line:hsl(var(--h) 14% 76%);--shadow:#2a403c22}
 *{box-sizing:border-box}
-html{-webkit-text-size-adjust:100%}
-body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
-.wrap{max-width:760px;margin:0 auto;padding:22px 16px 56px}
-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}
-h1{font:600 28px/1.15 Fraunces,Georgia,serif;margin:0;letter-spacing:.2px}
-h1 span{font-weight:400;color:var(--mute);font-size:.72em;display:block;margin-top:2px}
+html{-webkit-text-size-adjust:100%;background:var(--bg)}
+body{margin:0;min-height:100vh;background:radial-gradient(ellipse 80% 40% at 50% 0,var(--glow),transparent 70%),var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+.wrap{max-width:780px;margin:0 auto;padding:22px 16px 72px}
+header.top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.greet{color:var(--acc);font-size:14px;letter-spacing:.04em}
+h1{font:600 30px/1.1 Fraunces,Georgia,serif;margin:2px 0 0;letter-spacing:.2px}
+h1 span{font-weight:400;color:var(--mute);font-size:.7em;display:block;margin-top:4px}
 .date{color:var(--mute);font-size:14px;margin-top:6px}
 .date:first-letter{text-transform:uppercase}
-.hr{position:relative}
-.icon{font:inherit;width:38px;height:38px;border-radius:50%;border:1px solid var(--line);background:transparent;color:var(--mute);cursor:pointer;font-size:20px;line-height:1}
+.hr{display:flex;align-items:center;gap:12px;position:relative}
+.ring{position:relative;width:52px;height:52px}
+.ring svg{width:52px;height:52px;transform:rotate(-90deg)}
+.ring circle{fill:none;stroke-width:4;stroke-linecap:round}
+.ring .rt{stroke:var(--line)}
+.ring .rp{stroke:var(--acc);transition:stroke-dashoffset .5s ease}
+.ring b{position:absolute;inset:0;display:grid;place-items:center;font-size:13px;font-weight:600}
+.icon{font:inherit;width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:transparent;color:var(--mute);cursor:pointer;font-size:20px;line-height:1}
 .icon:hover{border-color:var(--acc);color:var(--ink)}
-.menu{position:absolute;right:0;top:46px;z-index:5;min-width:240px;background:var(--menu);border:1px solid var(--line);border-radius:14px;padding:8px;box-shadow:0 10px 30px #0005}
+.menu{position:absolute;right:0;top:56px;z-index:20;min-width:230px;background:var(--menu);border:1px solid var(--line);border-radius:14px;padding:8px;box-shadow:0 12px 34px var(--shadow)}
 .menu[hidden]{display:none}
-.chk{display:flex;gap:10px;align-items:flex-start;padding:8px 10px;font-size:14px;cursor:pointer;border-radius:8px}
-.chk:hover,.mi:hover{background:color-mix(in srgb,var(--acc) 12%,transparent)}
-.chk input{margin-top:3px;accent-color:var(--acc)}
+.mi{display:flex;gap:10px;align-items:center;width:100%;text-align:left;font:inherit;font-size:14px;background:none;border:0;color:var(--ink);padding:10px 12px;border-radius:9px;cursor:pointer}
+.mi:hover{background:color-mix(in srgb,var(--acc) 14%,transparent)}
+.mi i{font-style:normal;width:20px;text-align:center}
 .menu hr{border:0;border-top:1px solid var(--line);margin:6px 0}
-.mi{display:block;width:100%;text-align:left;font:inherit;font-size:14px;background:none;border:0;color:var(--ink);padding:9px 10px;border-radius:8px;cursor:pointer}
-.sync{font-size:12px;color:var(--mute);padding:6px 10px 2px}
-.prog{margin:4px 0 16px}
-.prow{display:flex;align-items:center;gap:12px;color:var(--mute);font-size:14px}
-.dots{display:flex;gap:6px}
-.dots i{width:10px;height:10px;border-radius:50%;border:1.5px solid var(--mute);transition:background .3s}
-.dots i.on{background:var(--acc);border-color:var(--acc)}
+.sync{font-size:12px;color:var(--mute);padding:6px 12px 2px}
+.prog{margin:2px 0 16px}
+.prow{display:flex;align-items:center;gap:12px;color:var(--mute);font-size:14px;flex-wrap:wrap}
 .prow .sp{flex:1}
 .hint{color:var(--mute);font-size:13px;margin-top:6px}
+.hint.ok{color:var(--acc)}
 .strip{display:flex;gap:4px;margin-top:10px}
-.strip i{flex:1;height:6px;border-radius:3px;background:var(--line)}
-.strip i.l1{background:color-mix(in srgb,var(--acc) 25%,var(--line))}
-.strip i.l2{background:color-mix(in srgb,var(--acc) 45%,var(--line))}
-.strip i.l3{background:color-mix(in srgb,var(--acc) 65%,var(--line))}
-.strip i.l4{background:color-mix(in srgb,var(--acc) 82%,var(--line))}
+.strip i{flex:1;height:7px;border-radius:4px;background:var(--line)}
+.strip i.l1{background:color-mix(in srgb,var(--acc) 28%,var(--line))}
+.strip i.l2{background:color-mix(in srgb,var(--acc) 48%,var(--line))}
+.strip i.l3{background:color-mix(in srgb,var(--acc) 68%,var(--line))}
+.strip i.l4{background:color-mix(in srgb,var(--acc) 84%,var(--line))}
 .strip i.l5{background:var(--acc)}
 .strip i.today{outline:1px solid var(--mute);outline-offset:1px}
 
-/* sekcje: ten sam odcień zieleni, różna ciemność */
-details.card{--tone:hsl(168 34% 12%);--edge:hsl(168 42% 32%);--line:color-mix(in srgb,var(--ink) 17%,transparent);background:var(--tone);border:1px solid var(--edge);border-left:6px solid var(--edge);border-radius:16px;margin:0 0 10px;transition:opacity .25s,border-color .25s}
-#card-g{--tone:hsl(168 34% 11%);--edge:hsl(168 40% 30%)}
-#card-c{--tone:hsl(168 34% 15%);--edge:hsl(168 40% 36%)}
-#card-r{--tone:hsl(168 34% 19%);--edge:hsl(168 40% 42%)}
-#card-d{--tone:hsl(168 34% 23%);--edge:hsl(168 40% 48%)}
-#card-z{--tone:hsl(168 34% 27%);--edge:hsl(168 40% 54%)}
-@media (prefers-color-scheme:light){
- #card-g{--tone:hsl(168 30% 92%);--edge:hsl(168 36% 62%)}
- #card-c{--tone:hsl(168 30% 87%);--edge:hsl(168 36% 55%)}
- #card-r{--tone:hsl(168 30% 82%);--edge:hsl(168 36% 48%)}
- #card-d{--tone:hsl(168 30% 77%);--edge:hsl(168 36% 41%)}
- #card-z{--tone:hsl(168 30% 72%);--edge:hsl(168 36% 34%)}
-}
-body.quiet details.card:not([open]):not(:hover):not(:focus-within){opacity:.78}
-summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:16px}
+details.card{--tone:hsl(168 28% 14%);--edge:hsl(168 40% 36%);background:var(--tone);border:1px solid color-mix(in srgb,var(--edge) 55%,transparent);border-left:6px solid var(--edge);border-radius:18px;margin:0 0 12px;box-shadow:0 4px 18px var(--shadow);transition:opacity .25s}
+body.quiet details.card:not([open]):not(:hover):not(:focus-within){opacity:.8}
+summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:18px}
 summary::-webkit-details-marker{display:none}
-:is(summary,.btn,.icon,.mi,.seg button,.tick,input,textarea):focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+:is(summary,.btn,.icon,.mi,.seg button,.tick,.sw,input,textarea,select):focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.ic{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;font-size:20px;flex:none;background:color-mix(in srgb,var(--edge) 28%,transparent)}
 .ttl{flex:1;min-width:0;display:flex;flex-direction:column}
 .ttl b{font:600 18px/1.25 Fraunces,Georgia,serif}
 .ttl small{color:var(--mute);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.card.done .ttl b{opacity:.65}
+.card.done .ttl b{opacity:.7}
 .chev{width:8px;height:8px;border-right:2px solid var(--mute);border-bottom:2px solid var(--mute);transform:rotate(45deg);transition:transform .2s;margin:0 4px 3px 0;flex:none}
 details[open]>summary .chev{transform:rotate(-135deg);margin-bottom:-3px}
 .tick{width:30px;height:30px;border-radius:50%;border:1.5px solid var(--mute);background:transparent;cursor:pointer;flex:none;position:relative;padding:0}
 .tick:hover{border-color:var(--acc)}
 .tick[aria-pressed=true]{background:var(--acc);border-color:var(--acc)}
 .tick[aria-pressed=true]::after{content:"";position:absolute;left:10px;top:5px;width:7px;height:13px;border:solid var(--acc-ink);border-width:0 2px 2px 0;transform:rotate(45deg)}
-.body{padding:4px 16px 16px;border-top:1px solid var(--line)}
-.sec{margin-top:18px}
-.sec h3{font:600 12px/1.3 system-ui,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);margin:0 0 8px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.body{padding:2px 16px 16px;border-top:1px solid color-mix(in srgb,var(--ink) 14%,transparent)}
+.blk{margin-top:18px}
+.blk>h3{font:600 12px/1.3 system-ui,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);margin:0 0 8px}
+.rowline{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:6px;color:var(--mute);font-size:13px}
 .btn{font:inherit;font-size:14px;padding:8px 14px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
 .btn:hover{border-color:var(--acc)}
 .btn.pri{background:var(--acc);color:var(--acc-ink);border-color:var(--acc)}
 .btn.sm{padding:5px 11px;font-size:13px}
 .btn.ghost{color:var(--mute)}
+.btn.danger{color:var(--warm);border-color:var(--warm)}
 .fin{margin-top:16px;display:flex;gap:8px;flex-wrap:wrap}
-.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;padding:2px;gap:2px;flex-wrap:wrap}
-.seg button{font:inherit;font-size:13px;border:0;background:transparent;color:var(--mute);padding:6px 12px;border-radius:999px;cursor:pointer;text-transform:none;letter-spacing:0}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:18px;padding:2px;gap:2px;flex-wrap:wrap}
+.seg button{font:inherit;font-size:13px;border:0;background:transparent;color:var(--mute);padding:6px 12px;border-radius:999px;cursor:pointer}
 .seg button[aria-pressed=true]{background:color-mix(in srgb,var(--acc) 24%,transparent);color:var(--ink)}
 .q{font-size:15px;margin:0 0 8px}
-input[type=text],input[type=url],textarea{font:inherit;font-size:14px;color:var(--ink);background:transparent;border:1px solid var(--line);border-radius:10px;padding:8px 10px;width:100%}
+input[type=text],input[type=url],input[type=number],textarea,select{font:inherit;font-size:14px;color:var(--ink);background:color-mix(in srgb,var(--bg) 40%,transparent);border:1px solid var(--line);border-radius:10px;padding:8px 10px;width:100%}
+select option{background:var(--menu);color:var(--ink)}
 textarea{resize:vertical;min-height:56px}
 .msg{font-size:12px;color:var(--mute);min-height:16px;margin-top:2px}
 .msg.err{color:var(--warm)}
+.note{margin:8px 0 0;color:var(--mute);font-size:13px}
+.note.warn{color:var(--warm)}
 
-/* nagrania */
 .trk{list-style:none;margin:0;padding:0}
-.trk li{padding:10px 0;border-bottom:1px solid var(--line)}
+.trk li{padding:10px 0;border-bottom:1px solid color-mix(in srgb,var(--ink) 12%,transparent)}
 .trk li:last-child{border-bottom:0}
 .trk-top{display:flex;gap:8px;align-items:center}
 .trk-top .tn{font-weight:500}
@@ -105,14 +102,10 @@ textarea{resize:vertical;min-height:56px}
 .ytw{position:relative;margin-top:8px}
 .ytw iframe{width:100%;aspect-ratio:16/9;border:0;border-radius:10px;background:#000;display:block}
 .blocked{margin-top:8px;padding:10px 12px;border:1px dashed var(--warm);border-radius:10px;color:var(--warm);font-size:13px}
-.note{margin:8px 0 0;color:var(--mute);font-size:13px}
-.note.warn{color:var(--warm)}
 
-/* ćwiczenia */
 .ex h4{font:600 20px/1.25 Fraunces,Georgia,serif;margin:2px 0 6px}
 .pill{display:inline-block;font-size:12px;padding:2px 10px;border-radius:999px;border:1px solid var(--line);color:var(--warm);margin-bottom:4px}
 .ex h5{font:600 12px/1.3 system-ui,sans-serif;letter-spacing:.07em;text-transform:uppercase;color:var(--acc);margin:12px 0 3px}
-.ex h5:first-child{margin-top:0}
 .ex p{margin:0;font-size:15px}
 .ex p.say{padding:8px 12px;border-left:3px solid var(--acc);background:color-mix(in srgb,var(--acc) 10%,transparent);border-radius:0 8px 8px 0}
 .exsteps{margin:0;padding-left:22px;font-size:15px}
@@ -120,20 +113,20 @@ textarea{resize:vertical;min-height:56px}
 .fig{margin:12px 0 4px;max-width:540px;padding:10px;border:1px solid var(--line);border-radius:12px;background:color-mix(in srgb,var(--ink) 4%,transparent)}
 .fig svg{width:100%;height:auto;display:block}
 .fig .l{fill:none;stroke:var(--ink);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.fig .l2{fill:none;stroke:var(--ink);stroke-opacity:.5;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
 .fig .a{fill:none;stroke:var(--acc);stroke-width:2.2;stroke-linecap:round}
 .fig .w{fill:none;stroke:var(--warm);stroke-width:2.2;stroke-linecap:round}
 .fig .ar{fill:none;stroke:var(--acc);stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
 .fig .d{fill:var(--ink)}
 .fig .da{fill:var(--acc)}
 .fig .fa{fill:var(--acc);fill-opacity:.28;stroke:none}
-.fig .fa2{fill:var(--acc);fill-opacity:.55;stroke:none}
+.fig .fa2{fill:var(--acc);fill-opacity:.5;stroke:none}
 .fig .t{fill:var(--mute);font:11px system-ui,sans-serif}
 .steps{margin:8px 0 0;padding-left:20px;color:var(--mute);font-size:14px}
 .steps li{margin-bottom:3px}
 .steps b{color:var(--ink);font-weight:500}
 
-/* timer */
-.tm{margin-top:12px;padding:14px;border:1px solid var(--line);border-radius:14px;text-align:center}
+.tm{margin-top:12px;padding:14px;border:1px solid var(--line);border-radius:14px;text-align:center;background:color-mix(in srgb,var(--bg) 30%,transparent)}
 .tm-tag{font-size:12px;color:var(--mute);letter-spacing:.06em;text-transform:uppercase;min-height:16px}
 .tm-lbl{font:600 20px/1.25 Fraunces,Georgia,serif;margin-top:2px}
 .tm-sub{color:var(--mute);font-size:14px;min-height:21px;margin-top:2px;max-width:56ch;margin-inline:auto}
@@ -146,17 +139,16 @@ textarea{resize:vertical;min-height:56px}
 .tm-tot{font-size:12px;color:var(--mute);margin-top:8px;min-height:18px}
 .tm-pace{display:flex;align-items:center;justify-content:center;gap:18px;margin:10px 0 4px}
 .tm-pace[hidden]{display:none}
-.ring{width:96px;height:96px;display:grid;place-items:center}
-.ring i{display:block;width:96px;height:96px;border-radius:50%;background:color-mix(in srgb,var(--acc) 35%,transparent);border:2px solid var(--acc);transform:scale(.55);transition:transform .3s linear}
+.pring{width:96px;height:96px;display:grid;place-items:center}
+.pring i{display:block;width:96px;height:96px;border-radius:50%;background:color-mix(in srgb,var(--acc) 35%,transparent);border:2px solid var(--acc);transform:scale(.55);transition:transform .3s linear}
 .pp{text-align:left;min-width:130px}
 .pp b{display:block;font:600 18px/1.2 Fraunces,Georgia,serif}
 .pp span{font-size:30px;font-variant-numeric:tabular-nums;color:var(--acc)}
 
-/* lista, dziennik */
-.addrow{display:flex;gap:6px;flex-wrap:wrap}
+.addrow{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
 .addrow input{flex:1 1 150px;width:auto}
 .td{list-style:none;margin:10px 0 0;padding:0}
-.td li{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line)}
+.td li{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid color-mix(in srgb,var(--ink) 12%,transparent)}
 .td li.empty{color:var(--mute);font-size:14px;border:0}
 .td label{flex:1;display:flex;gap:10px;align-items:flex-start;cursor:pointer;font-size:15px}
 .td input{margin-top:4px;accent-color:var(--acc);width:17px;height:17px}
@@ -165,48 +157,84 @@ textarea{resize:vertical;min-height:56px}
 .x:hover{color:var(--ink)}
 .jl{display:block;font-size:14px;color:var(--mute);margin:12px 0 4px}
 .prev{font-size:13px;color:var(--warm);margin-top:10px}
+
+/* tryb edycji */
+.edcard,.edblk{display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding:10px;margin:12px 0 0;border:1px dashed var(--edge,var(--line));border-radius:12px;background:color-mix(in srgb,var(--bg) 35%,transparent)}
+.edcard input.et{flex:1 1 150px;width:auto;font-weight:600}
+.edcard select{width:auto}
+.edblk .chip{font-size:12px;color:var(--acc);border:1px solid var(--line);border-radius:999px;padding:2px 10px;white-space:nowrap}
+.edblk input.eh{flex:1 1 150px;width:auto}
+.bcfg{margin:8px 0 0;padding:10px;border-radius:12px;border:1px dashed var(--line)}
+.bcfg label{display:block;font-size:12px;color:var(--mute);margin:8px 0 3px}
+.bcfg label:first-child{margin-top:0}
+.owns{list-style:none;margin:8px 0 0;padding:0}
+.owns li{display:flex;justify-content:space-between;gap:8px;align-items:center;padding:4px 0;font-size:14px;border-bottom:1px solid color-mix(in srgb,var(--ink) 10%,transparent)}
+.adder{display:flex;gap:6px;flex-wrap:wrap;margin-top:14px;padding-top:12px;border-top:1px dashed var(--line)}
+.adder select,.adder input{width:auto;flex:1 1 140px}
+#addCard{margin-top:6px}
+.editbar{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:30;display:flex;gap:12px;align-items:center;background:var(--menu);border:1px solid var(--acc);border-radius:999px;padding:8px 10px 8px 18px;box-shadow:0 10px 30px var(--shadow);font-size:14px;max-width:92vw}
+.editbar[hidden]{display:none}
+
 footer{margin-top:28px;text-align:center;color:var(--mute);font-size:13px;line-height:1.6;padding:0 12px}
 footer b{display:block;font:600 15px Fraunces,Georgia,serif;color:var(--ink);opacity:.85;margin-bottom:2px}
-dialog{background:var(--menu);color:var(--ink);border:1px solid var(--line);border-radius:16px;width:min(92vw,460px);padding:22px}
+dialog{background:var(--menu);color:var(--ink);border:1px solid var(--line);border-radius:18px;width:min(94vw,520px);max-height:88vh;padding:22px}
 dialog::backdrop{background:#0009}
 dialog h2{font:600 22px Fraunces,Georgia,serif;margin:0 0 10px}
+dialog h4{margin:16px 0 6px;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);font-weight:600}
 dialog p{margin:6px 0;font-size:15px}
 dialog a{color:var(--acc)}
+dialog .chk{display:flex;gap:10px;align-items:center;font-size:14px;padding:6px 0;cursor:pointer}
+dialog .chk input{accent-color:var(--acc)}
 .drow{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
 .src{font-size:12px;color:var(--mute);margin-top:12px}
+.sws{display:flex;gap:10px;flex-wrap:wrap}
+.sw{display:flex;flex-direction:column;align-items:center;gap:4px;border:2px solid transparent;border-radius:14px;padding:6px 8px;background:none;color:var(--ink);cursor:pointer;font:inherit;font-size:12px}
+.sw i{width:34px;height:34px;border-radius:50%;display:block}
+.sw[aria-pressed=true]{border-color:var(--acc)}
+.tpl{border:1px solid var(--line);border-radius:14px;padding:12px;margin:8px 0}
+.tpl b{font:600 16px Fraunces,Georgia,serif}
+.tpl p{color:var(--mute);font-size:13px;margin:4px 0 8px}
+textarea.mono{font:12px/1.4 ui-monospace,Consolas,monospace;min-height:110px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
 <body class="quiet">
 <div class="wrap">
-  <header>
+  <header class="top">
     <div>
+      <div class="greet" id="greet"></div>
       <h1>Nawyk <span>menedżer dnia</span></h1>
       <div class="date" id="date"></div>
     </div>
     <div class="hr">
+      <div class="ring" id="ring" aria-label="Postęp dnia"></div>
       <button class="icon" id="menuBtn" aria-label="Menu" aria-haspopup="true" aria-expanded="false">⋯</button>
       <div class="menu" id="menu" hidden>
-        <label class="chk"><input type="checkbox" id="setQuiet"><span>Tryb cichy (75%)</span></label>
-        <label class="chk"><input type="checkbox" id="setSnd"><span>Dźwięki timera</span></label>
+        <button class="mi" id="miLook"><i>🎨</i>Wygląd i kolory</button>
+        <button class="mi" id="miEdit"><i>✏️</i><span id="miEditT">Edytuj układ</span></button>
+        <button class="mi" id="miPacks"><i>🧩</i>Zestawy nawyków</button>
+        <button class="mi" id="miBackup"><i>💾</i>Kopia danych</button>
         <hr>
-        <button class="mi" id="miAbout">O autorze</button>
-        <button class="mi" id="miSug">Sugestie</button>
+        <button class="mi" id="miAbout"><i>ℹ️</i>O autorze</button>
+        <button class="mi" id="miSug"><i>💬</i>Sugestie</button>
         <div class="sync" id="sync"></div>
       </div>
     </div>
   </header>
 
   <section class="prog" aria-label="Postęp dnia">
-    <div class="prow"><div class="dots" id="dots"></div><span id="ptxt"></span><span class="sp"></span><span id="streak"></span></div>
+    <div class="prow"><span id="ptxt"></span><span class="sp"></span><span id="week"></span><span id="streak"></span></div>
     <div class="hint" id="hint">Dotknij kółka przy zadaniu, gdy zrobione. Jedno wystarczy.</div>
     <div class="strip" id="strip" aria-label="Ostatnie 14 dni"></div>
   </section>
 
   <main id="cards"></main>
+  <div id="addCard"></div>
 
   <footer><b>Done is better than perfect.</b> W kształtowaniu nawyku najbardziej liczy się wykonane zadanie, nie jak duże ono było. Miłego dnia :)</footer>
 </div>
+
+<div class="editbar" id="editBar" hidden><span>Tryb edycji</span><button class="btn pri sm" id="editDone" type="button">Gotowe</button></div>
 
 <dialog id="dAbout">
   <h2>O autorze</h2>
@@ -214,7 +242,7 @@ dialog a{color:var(--acc)}
   <p>Wersja: <span id="verA"></span></p>
   <p>Autor: Michał Rzekiecki</p>
   <p>Kontakt: <a href="mailto:michus@gmail.com">michus@gmail.com</a></p>
-  <p class="src">Model charyzmy: Obecność · Moc · Ciepło (O. Fox Cabane, „The Charisma Myth”). Rozgrzewka głosu oparta na ćwiczeniach J. Treasure (TED). Ćwiczenia głosu mają charakter ogólny — przy bólu lub chrypce przerwij.</p>
+  <p class="src">Model charyzmy: Obecność · Moc · Ciepło (O. Fox Cabane, „The Charisma Myth”). Rozgrzewka głosu oparta na ćwiczeniach J. Treasure (TED). Ćwiczenia mają charakter ogólny — przy bólu, zawrotach głowy lub chrypce przerwij i skonsultuj się ze specjalistą.</p>
   <div class="drow"><button class="btn" data-close>Zamknij</button></div>
 </dialog>
 
@@ -227,7 +255,38 @@ dialog a{color:var(--acc)}
   <div class="drow"><button class="btn pri" id="sugCopy">Kopiuj</button><a class="btn" id="sugMail" href="mailto:michus@gmail.com">Otwórz w poczcie ↗</a><button class="btn ghost" data-close>Zamknij</button></div>
 </dialog>
 
+<dialog id="dLook">
+  <h2>Wygląd i kolory</h2>
+  <h4>Kolor</h4><div class="sws" id="sws"></div>
+  <h4>Jasność</h4><div id="modeSeg"></div>
+  <h4>Inne</h4>
+  <label class="chk"><input type="checkbox" id="setQuiet"><span>Tryb cichy: zwinięte sekcje lekko przygaszone (75%)</span></label>
+  <label class="chk"><input type="checkbox" id="setSnd"><span>Dźwięki timera</span></label>
+  <div class="drow"><button class="btn" data-close>Zamknij</button></div>
+</dialog>
+
+<dialog id="dPacks">
+  <h2>Zestawy nawyków</h2>
+  <p class="src" style="margin-top:0">Wczytanie zestawu zastępuje układ sekcji. Historia, lista zadań i dziennik zostają. Potem możesz wszystko zmienić w trybie edycji.</p>
+  <div id="tplList"></div>
+  <div class="drow"><button class="btn" data-close>Zamknij</button></div>
+</dialog>
+
+<dialog id="dBackup">
+  <h2>Kopia danych</h2>
+  <h4>Zapisz</h4>
+  <textarea class="mono" id="bkOut" readonly aria-label="Kopia danych"></textarea>
+  <div class="drow" style="margin-top:8px"><button class="btn pri" id="bkCopy">Kopiuj kopię</button></div>
+  <h4>Wczytaj</h4>
+  <textarea class="mono" id="bkIn" placeholder="Wklej tu skopiowaną kopię danych…" aria-label="Wklej kopię"></textarea>
+  <div class="drow" style="margin-top:8px"><button class="btn" id="bkLoad">Wczytaj kopię</button></div>
+  <div class="msg" id="bkMsg"></div>
+  <div class="drow"><button class="btn ghost" data-close>Zamknij</button></div>
+</dialog>
+
 <script>
+(function(){
+'use strict';
 const FIGS={
 face:`<svg viewBox="0 0 420 275" role="img" aria-label="Profil twarzy: zęby się nie dotykają (odstęp ok. 5 mm), język płasko, mięsień żucia miękki">
 <g transform="translate(96,0)">
@@ -379,17 +438,78 @@ trill:`<svg viewBox="0 0 320 190" role="img" aria-label="Twarz z drżącymi warg
 </svg>`
 };
 
+/* Rysunki pozycji rozciągania (postać patyczkowa, generowana z współrzędnych) */
 (()=>{
-'use strict';
-const VER='v0.02', MAIL='michus@gmail.com', LS='nawyk.v1';
-const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
-const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const pad=n=>String(n).padStart(2,'0');
-const keyOf=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
-const dnum=d=>Math.floor(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())/864e5);
-let TODAY=keyOf(new Date()), DN=dnum(new Date());
-const BREATH=[['WDECH nosem',4,1],['WYDECH ustami',6,0]];
+const P=a=>'M'+a.map(p=>p[0]+' '+p[1]).join('L');
+const ln=(c,a)=>`<path class="${c}" d="${P(a)}"/>`;
+const tx=(x,y,s,an)=>`<text class="t" x="${x}" y="${y}"${an?` text-anchor="${an}"`:''}>${s}</text>`;
+const ar=(a,b)=>{const dx=b[0]-a[0],dy=b[1]-a[1],L=Math.hypot(dx,dy),ux=dx/L,uy=dy/L,h=7;
+  const p1=[b[0]-ux*h+uy*h*.6,b[1]-uy*h-ux*h*.6],p2=[b[0]-ux*h-uy*h*.6,b[1]-uy*h+ux*h*.6];
+  return `<path class="ar" d="M${a[0]} ${a[1]}L${b[0]} ${b[1]}M${p1[0].toFixed(1)} ${p1[1].toFixed(1)}L${b[0]} ${b[1]}L${p2[0].toFixed(1)} ${p2[1].toFixed(1)}"/>`};
+const hd=(x,y,r)=>`<circle class="l" cx="${x}" cy="${y}" r="${r||10}"/>`;
+const gr=(x1,x2,y)=>`<path class="l2" d="M${x1} ${y}H${x2}"/>`;
+const zone=(x,y,rx,ry,rot)=>`<ellipse class="fa2" cx="${x}" cy="${y}" rx="${rx}" ry="${ry}"${rot?` transform="rotate(${rot} ${x} ${y})"`:''}/>`;
+const svg=(vb,aria,b)=>`<svg viewBox="${vb}" role="img" aria-label="${aria}">${b}</svg>`;
 
+// Poza dziecka
+FIGS.child=svg('0 0 320 220','Poza dziecka: klęk, pośladki na piętach, tułów złożony do przodu, ręce wyciągnięte, czoło na podłodze',
+ gr(20,300,198)+zone(100,160,22,12,-8)+
+ ln('l',[[60,196],[116,196],[78,168]])+          // goleń i udo
+ ln('l',[[78,168],[138,158]])+                   // tułów
+ ln('l',[[138,158],[190,184],[238,196]])+        // ręka
+ hd(158,180,10)+
+ tx(14,120,'pośladki na piętach')+ar([50,126],[72,158])+
+ tx(160,140,'czoło na podłodze')+
+ tx(200,214,'ręce przed siebie')+
+ tx(150,56,'oddychaj w plecy:')+tx(150,71,'wdech rozszerza żebra')+ar([140,80],[112,148]));
+
+// Koci grzbiet
+{const one=(ox,cow)=>{
+  const sp=cow?`M${ox+50} 126Q${ox+90} 150 ${ox+130} 126`:`M${ox+50} 126Q${ox+90} 92 ${ox+130} 126`;
+  const head=cow?[ox+162,100]:[ox+146,156];
+  const neck=cow?[[ox+130,126],[ox+152,108]]:[[ox+130,126],[ox+142,148]];
+  return `<path class="l" d="${sp}"/>`+ln('l',neck)+hd(head[0],head[1],9)+
+    ln('l',[[ox,190],[ox+50,190],[ox+50,126]])+ln('l',[[ox+130,126],[ox+130,190]]);};
+  FIGS.catcow=svg('0 0 360 220','Koci grzbiet: na czworaka; krowa (plecy w dół, głowa w górę) i kot (plecy w górę, broda do klatki)',
+   gr(0,350,192)+one(8,true)+tx(62,40,'KROWA — wdech',null)+tx(46,56,'brzuch w dół, głowa w górę')+
+   one(190,false)+tx(240,40,'KOT — wydech')+tx(232,56,'plecy w górę,')+tx(232,71,'broda do klatki')+
+   ar([60,98],[60,112])+ar([268,84],[268,70]));}
+
+// Wykrok biodrowy
+FIGS.lunge=svg('0 0 320 220','Wykrok biodrowy: klęk na jednym kolanie, druga stopa z przodu, tułów prosto, biodra lekko do przodu',
+ gr(10,300,198)+ln('l',[[40,196],[95,194],[110,128]])+ln('l',[[110,128],[180,138],[186,198]])+
+ ln('l',[[110,128],[112,68]])+ln('l',[[112,72],[92,98],[106,126]])+hd(112,56,10)+
+ zone(126,142,14,18)+ar([112,150],[146,150])+
+ tx(180,100,'biodra lekko do przodu')+tx(180,114,'zielone pole:')+tx(180,128,'tu czuć rozciąganie')+
+ tx(14,176,'kolano na poduszce')+tx(194,176,'kolano nad kostką'));
+
+// Tył uda na krześle
+FIGS.ham=svg('0 0 320 220','Rozciąganie tyłu uda w siadzie na krześle: jedna noga wyprostowana piętą na podłodze, tułów prosto pochylony od bioder',
+ gr(10,300,200)+ln('l2',[[50,70],[50,128],[120,128]])+ln('l2',[[55,128],[55,200]])+ln('l2',[[115,128],[115,200]])+
+ ln('l',[[80,124],[132,124],[132,198]])+ln('l',[[80,124],[180,190],[192,178]])+
+ ln('l',[[80,124],[118,76]])+ln('l',[[118,78],[146,100],[172,128]])+hd(131,66,10)+
+ zone(130,158,34,8,32)+ar([100,70],[128,86])+
+ tx(190,72,'plecy proste,')+tx(190,86,'ruch z bioder')+tx(196,150,'prosta noga:')+tx(196,164,'tu czuć rozciąganie')+tx(14,60,'krzesło'));
+
+// Przód uda (czwórka) przy ścianie
+FIGS.quad=svg('0 0 320 220','Rozciąganie przodu uda w staniu: dłoń na ścianie, drugą ręką pięta przy pośladku, kolana obok siebie',
+ ln('l2',[[262,12],[262,204]])+gr(60,262,204)+
+ ln('l',[[150,204],[152,148],[150,98]])+ln('l',[[150,98],[158,150],[112,120]])+
+ ln('l',[[150,98],[150,38]])+ln('l',[[150,42],[200,52],[258,62]])+ln('l',[[150,42],[130,72],[114,118]])+hd(150,26,10)+
+ zone(154,126,10,18)+ar([150,108],[178,108])+
+ tx(168,90,'biodra do przodu')+tx(20,100,'pięta do pośladka')+ar([50,106],[100,118])+
+ tx(176,30,'dłoń na ścianie')+tx(14,176,'kolana obok siebie'));
+
+// Kark w bok
+FIGS.neck=svg('0 0 320 220','Rozciąganie karku w bok: ucho do barku, dłoń lekko na głowie, drugi bark w dół',
+ ln('l',[[150,102],[150,196]])+ln('l',[[92,102],[208,102]])+ln('l',[[92,102],[84,150],[88,190]])+ln('l',[[208,102],[216,150],[212,190]])+
+ ln('l',[[150,102],[164,88]])+hd(178,66,22)+ln('l',[[92,102],[72,62],[120,26],[176,40]])+
+ zone(138,92,8,18)+ar([186,34],[208,52])+ar([240,104],[240,134])+
+ tx(206,76,'dłoń tylko opiera')+tx(206,90,'się o głowę')+tx(206,104,'(bez siły)')+
+ tx(226,150,'ten bark w dół')+tx(8,184,'tu czuć rozciąganie')+ar([30,172],[128,104])+tx(200,24,'ucho do barku'));
+})();
+
+const BREATH=[['WDECH nosem',4,1],['WYDECH ustami',6,0]];
 /* ───────── ĆWICZENIA CHARYZMY (cykl 42 dni) ───────── */
 // c kategoria · t tytuł · m minuty · when kiedy · steps kroki · say przykład · solo gdy nie ma z kim · ok kryterium · img rysunek · sec timer
 const CH=[
@@ -510,57 +630,233 @@ const GR=[
 ['Zginanie nadgarstków','Usiądź, oprzyj przedramię na udzie, dłoń poza kolanem trzyma butelkę z wodą. Zginaj nadgarstek w górę i w dół, powoli.'],
 ];
 const TRAIN={upper:'Góra',lower:'Dół',grip:'Chwyt',mix:'Mix'};
-const CARDS=[['g','Głos'],['c','Charyzma'],['r','Ruch'],['d','Dziennik 3 zdań'],['z','Lista na dziś']];
+
+/* ───────── Zestawy: rozciąganie, skupienie, sesje z timerem, szablony układu ───────── */
+const BOX=[['WDECH',4,1],['ZATRZYMAJ',4,2],['WYDECH',4,0],['ZATRZYMAJ',4,3]];
+const SD=(s)=>[['Lewa strona',s],['Prawa strona',s]];   // dwie strony po s sekund
+
+/* ROZCIĄGANIE I RUCH — 30 ćwiczeń, co dzień inny rodzaj: relaks → statyczne → dynamiczne → zabawa → biuro */
+const ST=[
+// 1
+{c:'Relaks',t:'Oddech 4–6 na leżąco',m:3,img:'belly',tm:[['Oddychaj według kółka',180]],pace:BREATH,when:'Wieczorem albo po pracy. Potrzebujesz 3 minut i podłogi lub łóżka.',steps:['Połóż się na plecach, kolana ugięte, stopy płasko na podłodze.','Jedną dłoń połóż na brzuchu tuż nad pępkiem.','WDECH nosem przez 4 sekundy: brzuch unosi się pod dłonią.','WYDECH ustami przez 6 sekund: brzuch opada. Aplikacja liczy rytm za Ciebie (kółko rośnie i maleje).','Po 3 minutach leż jeszcze 10 sekund bez liczenia.'],ok:'brzuch rusza się pod dłonią, a barki i szczęka są luźne.'},
+{c:'Statyczne',t:'Kark w bok',m:2,img:'neck',tm:SD(30),when:'Teraz, po 30 sekund na każdą stronę. Dobre po pracy przy komputerze.',steps:['Usiądź prosto albo stań, barki luźno w dół.','Przechyl głowę tak, żeby prawe ucho zbliżało się do prawego barku. Nie podnoś barku do ucha.','Lewy bark opuść w dół (możesz chwycić lewą dłonią brzeg krzesła).','Prawą dłoń połóż na lewej stronie głowy, tylko opierasz — bez ciągnięcia. Poczujesz rozciąganie po lewej stronie szyi.','Oddychaj spokojnie przez 30 sekund. Potem druga strona (aplikacja przełączy).'],ok:'czujesz delikatne rozciąganie z boku szyi, bez bólu i bez mrowienia w ręce.'},
+{c:'Dynamiczne',t:'Krążenia ramion',m:2,tm:[['Ramiona do przodu',30],['Ramiona do tyłu',30]],when:'Rano albo przed pracą. Przy lekkim rozruchu 1 minuta.',steps:['Stań, stopy na szerokość bioder, ręce proste po bokach.','Rób duże, wolne koła obiema rękami naraz, do przodu: około 10 kółek w 30 sekund.','Aplikacja przełączy kierunek: teraz kółka do tyłu, też ok. 10.','Zaczynaj od małych kół, z każdym kółkiem trochę większych.'],ok:'ramiona są cieplejsze i luźniejsze, ruch jest płynny.'},
+{c:'Zabawa',t:'Bocian: stanie na jednej nodze',m:2,tm:[['Lewa noga',30],['Prawa noga',30],['Poziom 2: oczy zamknięte, lewa',20],['Poziom 2: oczy zamknięte, prawa',20]],when:'Dziś, 2 minuty. Stań przy ścianie lub stole, żeby się w razie czego złapać.',steps:['Stań na lewej nodze, prawe kolano unieś do wysokości biodra (jak bocian). Patrz w jeden punkt przed sobą.','Utrzymaj 30 sekund. Potem prawa noga.','Poziom 2: to samo, ale z zamkniętymi oczami, po 20 sekund na nogę. Trudniejsze, niż się wydaje!','Łapiesz równowagę? Dotknij ściany palcem, nie całą dłonią.'],ok:'utrzymasz poziom 1 przez pełne 30 sekund na każdą nogę.'},
+{c:'Biuro',t:'Nadgarstki i dłonie',m:2,tm:[['Lewa ręka',30],['Prawa ręka',30]],when:'Przy biurku, raz na kilka godzin pracy z myszą i klawiaturą.',steps:['Wyprostuj lewą rękę przed sobą, dłonią do góry.','Prawą dłonią odciągnij palce lewej ręki ku podłodze i trzymaj 15 sekund. Poczujesz ciągnięcie po wewnętrznej stronie przedramienia.','Obróć lewą dłoń do dołu (grzbietem do góry) i lekko dociśnij ją prawą dłonią do siebie na 15 sekund.','Aplikacja przełączy rękę: powtórz to samo prawą ręką.'],ok:'czujesz lekkie ciągnięcie w przedramieniu, nie ostry ból.'},
+// 2
+{c:'Relaks',t:'Skan ciała (napnij i puść)',m:5,tm:[['Stopy i łydki',50],['Uda i pośladki',50],['Brzuch i klatka',50],['Dłonie i ramiona',50],['Szyja i twarz',50],['Całe ciało',50]],when:'Wieczorem, 5 minut, leżąc na plecach.',steps:['Połóż się wygodnie, oczy zamknięte.','Aplikacja podaje partię ciała co 50 sekund.','W każdej partii: napnij ją mocno na 3 sekundy, potem puść i przez resztę czasu poczuj, że jest cięższa i luźniejsza.','Oddychaj spokojnie, nie wstrzymuj powietrza.'],ok:'po ostatnim kroku ciało jest wyraźnie luźniejsze i cięższe.'},
+{c:'Statyczne',t:'Klatka piersiowa w drzwiach',m:2,tm:[['Rozciąganie klatki',30],['Odpocznij',10],['Powtórka',30]],when:'Dziś, 1,5 minuty. Potrzebujesz drzwi bez klamki na wysokości łokci lub ściany.',steps:['Stań w otwartych drzwiach. Unieś ręce zgięte w łokciach pod kątem 90° i oprzyj przedramiona na framudze (łokcie na wysokości barków).','Zrób mały krok jedną nogą do przodu, tułów zostaje prosto.','Poczuj rozciąganie z przodu barków i klatki. Trzymaj 30 sekund, oddychaj normalnie.','Odpocznij 10 sekund i powtórz.'],ok:'czujesz rozciąganie z przodu barków i klatki bez bólu w barku.'},
+{c:'Dynamiczne',t:'Koci grzbiet',m:2,img:'catcow',tm:[['Koci grzbiet w rytmie oddechu',90]],pace:[['WDECH — krowa',4,1],['WYDECH — kot',4,0]],when:'Rano albo przy przerwie. Potrzebujesz podłogi lub maty.',steps:['Uklęknij na czworaka: dłonie pod barkami, kolana pod biodrami.','WDECH (4 s): brzuch opada w dół, głowa i klatka idą w górę (krowa).','WYDECH (4 s): wypchnij plecy w górę jak kot, broda do klatki.','Ruch idzie z kręgosłupa, ręce i nogi zostają w miejscu. Aplikacja podpowiada wdech i wydech.'],ok:'kręgosłup rusza się płynnie, bez bólu w nadgarstkach (jeśli bolą: zrób pięści zamiast płaskiej dłoni).'},
+{c:'Zabawa',t:'Taniec strząsania',m:2,tm:[['Tańcz i strząsaj',120]],when:'Dziś, 2 minuty, gdy jesteś sam albo z kimś w domu. Włącz ulubioną piosenkę.',steps:['Włącz muzykę. Zacznij od strząsania dłoni, jakbyś otrząsał wodę.','Dodaj ręce, potem ramiona, nogi, a na końcu całe ciało lekko podskakuje.','Rób, co chcesz: celem jest rozluźnienie i uśmiech.'],ok:'robisz przez 2 minuty, a na koniec jesteś rozgrzany i rozbawiony.'},
+{c:'Biuro',t:'Skręt na krześle',m:2,tm:SD(30),when:'Przy biurku, 1 minuta (30 sekund na stronę).',steps:['Usiądź prosto na brzegu krzesła, stopy płasko na podłodze.','Prawą dłoń połóż na zewnętrznej stronie lewego kolana, lewą dłoń na oparciu krzesła za sobą.','Wydech: skręć tułów w lewo, patrz przez lewe ramię. Biodra zostają zwrócone do przodu.','Trzymaj 30 sekund, oddychaj. Aplikacja przełączy stronę.'],ok:'czujesz skręt w środkowej części pleców, bez bólu.'},
+// 3
+{c:'Relaks',t:'Nogi na ścianie',m:5,tm:[['Leż z nogami na ścianie',300]],when:'Po pracy albo wieczorem, 5 minut. Potrzebujesz kawałka wolnej ściany i podłogi.',steps:['Usiądź bokiem do ściany, pośladki blisko niej.','Połóż się na plecach i oprzyj wyprostowane nogi o ścianę. Pośladki mogą być 10–20 cm od ściany.','Ręce luźno po bokach, dłonie do góry. Oddychaj spokojnie.','Mrowią Cię nogi? Zegnij kolana i połóż stopy na ścianie.'],ok:'leżysz 5 minut, a nogi czują się lżejsze.'},
+{c:'Statyczne',t:'Przód uda przy ścianie',m:2,img:'quad',tm:SD(30),when:'Po spacerze albo treningu, 1 minuta (30 sekund na nogę).',steps:['Stań przodem do ściany i oprzyj na niej lewą dłoń na wysokości barku.','Zegnij prawe kolano i chwyć prawą dłonią prawą stopę. Pięta idzie ku pośladkowi.','Kolana trzymaj obok siebie, biodra lekko wsuń do przodu, tułów prosto.','Poczujesz rozciąganie z przodu uda. Trzymaj 30 sekund i zmień nogę (aplikacja przełączy).'],ok:'czujesz ciągnięcie z przodu uda, a kolano nie boli.'},
+{c:'Dynamiczne',t:'Wymachy nóg',m:2,tm:SD(30),when:'Przed spacerem lub treningiem, po 30 sekund na nogę.',steps:['Stań bokiem do ściany lub krzesła i podeprzyj się jedną dłonią.','Wymachuj zewnętrzną nogą do przodu i do tyłu jak wahadło, tułów prosto.','Zacznij od małych wymachów, z każdym trochę większy (ok. 10–15 razy).','Po 30 sekundach aplikacja każe zmienić nogę.'],ok:'biodro i tył uda czują się luźniejsze, ruch jest swobodny.'},
+{c:'Zabawa',t:'Zwierzęce chody',m:3,tm:[['Niedźwiedź',40],['Krab',40],['Żaba',40],['Kaczka',40]],when:'Dziś, 3 minuty. Potrzebujesz ok. 3 metrów wolnej podłogi.',steps:['Niedźwiedź: dłonie i stopy na podłodze, kolana lekko nad podłogą, idź na czterech kończynach.','Krab: usiądź, dłonie za sobą, unieś biodra i idź na czterech kończynach brzuchem do góry.','Żaba: kucnij, dłonie przed sobą, skacz do przodu małymi skokami.','Kaczka: zejdź do przysiadu i idź w przysiadzie, ręce na biodrach.','Każdy chód 40 sekund, aplikacja przełącza.'],ok:'zrobisz wszystkie cztery po 40 sekund (możesz w miejscu, jeśli brak miejsca).'},
+{c:'Biuro',t:'Barki w górę i w dół',m:1,tm:[['10 powtórzeń',45]],when:'Przy biurku, gdy czujesz napięcie karku. 45 sekund.',steps:['Usiądź prosto, ręce luźno.','WDECH: unieś barki jak najbliżej uszu i przytrzymaj 3 sekundy.','WYDECH ustami z dźwiękiem „fuuu”: opuść barki w dół i rozluźnij.','Powtórz 10 razy w swoim tempie.'],ok:'kark i barki czują się luźniejsze po ostatnim powtórzeniu.'},
+// 4
+{c:'Relaks',t:'Luźna lalka (zwis tułowia)',m:2,tm:[['Zwis tułowia',90]],when:'Rano albo po pracy, 1,5 minuty.',steps:['Stań, stopy na szerokość bioder, kolana lekko ugięte (nie blokuj ich).','Pochyl się od bioder i pozwól tułowi zwisać. Głowa i ręce są ciężkie. Możesz chwycić łokcie dłońmi.','Delikatnie kiwaj głową „tak” i „nie” i oddychaj spokojnie, bez napięcia.','Wstań powoli, rolując kręgosłup od dołu, głowa na końcu.'],ok:'plecy i kark są luźne, nie ciągnie Cię w kolanach.'},
+{c:'Statyczne',t:'Tył uda na krześle',m:2,img:'ham',tm:SD(30),when:'Wieczorem albo po siedzeniu, 1 minuta (30 sekund na nogę).',steps:['Usiądź na brzegu krzesła. Prawą nogę wyprostuj przed sobą piętą na podłodze, palce stopy do góry.','Lewą stopę oprzyj płasko na podłodze.','Plecy proste, pochyl tułów do przodu od bioder (jak ukłon), aż poczujesz ciągnięcie z tyłu prawego uda.','Trzymaj 30 sekund. Aplikacja przełączy nogę.'],ok:'czujesz rozciąganie z tyłu uda, a plecy są proste.'},
+{c:'Dynamiczne',t:'Skręty tułowia',m:1,tm:[['Skręty tułowia',60]],when:'Rano albo na przerwie, 1 minuta.',steps:['Stań, stopy nieco szerzej niż biodra, kolana miękkie.','Ręce luźno zwisają. Skręcaj tułów w prawo i w lewo, ręce „owijają się” wokół ciała.','Ruch jest płynny, nie szarpany. Ok. 10 skrętów na stronę.'],ok:'plecy są cieplejsze, ruch jest swobodny.'},
+{c:'Zabawa',t:'Rzuty skarpetką',m:2,tm:[['Prawa ręka',60],['Lewa ręka',60]],when:'Dziś, 2 minuty. Potrzebujesz skarpetki (zwiniętej w kulkę) i kosza lub pudełka.',steps:['Postaw kosz lub pudełko ok. 2 metry od siebie.','Rzucaj zwiniętą skarpetką prawą ręką przez 60 sekund, potem lewą przez 60 sekund.','Trafiasz? Zrób krok do tyłu. Nie trafiasz? Zrób krok bliżej.'],ok:'zrobisz oba podejścia i trafisz co najmniej raz każdą ręką.'},
+{c:'Biuro',t:'Oczy: 20-20-20',m:1,tm:[['Patrz daleko',20],['Dłonie na oczach',30],['Mruganie',10]],when:'Przy biurku, co ok. 20 minut pracy przy ekranie. Teraz 1 minuta.',steps:['Odwróć wzrok od ekranu i patrz 20 sekund na coś oddalonego o ok. 6 metrów (okno, ściana korytarza).','Zamknij oczy, zakryj je ciepłymi dłońmi (bez dociskania gałek) na 30 sekund.','Mrugnij szybko 10 razy.'],ok:'oczy są mniej zmęczone, wzrok ostrzejszy.'},
+// 5
+{c:'Relaks',t:'Poza dziecka',m:3,img:'child',tm:[['Poza dziecka',120]],when:'Wieczorem albo gdy bolą plecy. 2 minuty, podłoga lub mata.',steps:['Uklęknij i usiądź pośladkami na piętach (kolana razem albo lekko szerzej).','Pochyl tułów do przodu, ręce wyciągnij przed siebie na podłogę. Czoło oprzyj na podłodze lub na poduszce.','Oddychaj w plecy: wdech rozszerza żebra z tyłu, wydech je puszcza.','Za bolesne kolana? Włóż złożony ręcznik między łydki i uda.'],ok:'plecy się rozluźniają przy każdym wydechu.'},
+{c:'Statyczne',t:'Wykrok biodrowy',m:2,img:'lunge',tm:SD(40),when:'Po całym dniu siedzenia, 80 sekund (40 na stronę).',steps:['Uklęknij na lewym kolanie (podłóż poduszkę), prawą stopę postaw przed sobą (kąt w kolanie ok. 90°).','Tułów prosto, ręce na biodrach.','Ściśnij lewy pośladek i lekko wsuń biodra do przodu. Poczujesz ciągnięcie z przodu lewego biodra.','Trzymaj 40 sekund, oddychaj. Aplikacja przełączy stronę.'],ok:'czujesz rozciąganie z przodu biodra, plecy nie wyginają się w łuk.'},
+{c:'Dynamiczne',t:'Przysiad z rękami w górę',m:1,tm:[['10 przysiadów',60]],when:'Rano, 1 minuta.',steps:['Stań, stopy nieco szerzej niż biodra, czubki stóp lekko na zewnątrz.','Zejdź w głęboki przysiad (pięty na podłodze, jeśli możesz), ręce złożone przy klatce.','Wstawaj i unieś ręce wysoko nad głowę.','Powtórz ok. 10 razy powoli.'],ok:'biodra i kostki są luźniejsze, ruch płynny.'},
+{c:'Zabawa',t:'Alfabet stopą',m:2,tm:SD(45),when:'Siedząc, 90 sekund (45 na nogę). Dobre dla kostek.',steps:['Usiądź na krześle, wyprostuj prawą nogę przed sobą.','Pisz w powietrzu stopą wielkie litery alfabetu, od A do Z. Ruch idzie z kostki, nie z kolana.','Zdążysz do końca? Zmień nogę (aplikacja przełączy po 45 sekundach).'],ok:'napiszesz przynajmniej do połowy alfabetu każdą stopą.'},
+{c:'Biuro',t:'Przeciągnięcie w górę',m:1,tm:[['Ręce w górę',30],['Przechył w lewo',15],['Przechył w prawo',15]],when:'Przy biurku, 1 minuta.',steps:['Wstań lub usiądź prosto. Spleć dłonie, obróć je dłońmi do góry i wyprostuj ręce nad głową.','Wydłuż się w górę i oddychaj 30 sekund.','Przechyl tułów w lewo i trzymaj 15 sekund. Potem w prawo 15 sekund.'],ok:'czujesz rozciągnięcie od bioder po palce, bez bólu.'},
+// 6
+{c:'Relaks',t:'Samomasaż karku i barków',m:3,tm:[['Kark kciukami',60],['Lewy bark',45],['Prawy bark',45]],when:'Wieczorem albo po pracy przy biurku, 2,5 minuty.',steps:['Kark: kciuki połóż pod potylicą (tuż pod czaszką) po obu stronach kręgosłupa. Rób małe kółka, mocno, ale bez bólu, 60 sekund.','Lewy bark: prawa dłoń na mięśniu między szyją a lewym ramieniem. Ugniataj mięsień 45 sekund.','Prawy bark: to samo lewą dłonią.'],ok:'kark i barki są cieplejsze i luźniejsze.'},
+{c:'Statyczne',t:'Skręt leżąc',m:2,tm:SD(40),when:'Wieczorem, 80 sekund (40 na stronę). Podłoga lub łóżko.',steps:['Połóż się na plecach, ramiona rozłożone na boki (litera T).','Zegnij prawe kolano i przenieś je przez ciało na lewą stronę. Lewa dłoń może lekko je dociskać.','Głowę możesz odwrócić w prawo. Oba barki zostają na podłodze.','Trzymaj 40 sekund i oddychaj. Aplikacja przełączy stronę.'],ok:'czujesz skręt w dolnych plecach i biodrze, bark nie odrywa się od podłogi.'},
+{c:'Dynamiczne',t:'Robak (inchworm)',m:2,tm:[['6 powtórzeń robaka',90]],when:'Rano, 1,5 minuty.',steps:['Stań prosto, stopy blisko siebie.','Pochyl się i postaw dłonie na podłodze (kolana mogą być ugięte).','Przejdź rękami do przodu do pozycji „deski” (jak do pompki), ciało w jednej linii.','Cofnij ręce do stóp małymi krokami i wstań. To jedno powtórzenie. Zrób ok. 6.'],ok:'zrobisz 6 powtórzeń bez bólu w nadgarstkach i plecach.'},
+{c:'Zabawa',t:'Wstań bez rąk',m:2,tm:[['Próby wstawania',120]],when:'Dziś, 2 minuty. Potrzebujesz kawałka podłogi.',steps:['Usiądź na podłodze ze skrzyżowanymi nogami (po turecku).','Spróbuj wstać bez podpierania się rękami i kolanami.','Nie wychodzi? Pozwól sobie na jedną rękę. Z czasem odstaw i ją.','Zrób ok. 5 prób w 2 minuty.'],ok:'zrobisz co najmniej 3 próby i zanotujesz, ile rąk potrzebujesz.'},
+{c:'Biuro',t:'Klatka za plecami',m:1,tm:[['Otwórz klatkę',45]],when:'Przy biurku, gdy czujesz zgarbienie. 45 sekund.',steps:['Usiądź lub stań prosto.','Spleć dłonie za plecami i wyprostuj ręce.','Unieś je lekko do tyłu i ściągnij łopatki do siebie. Broda prosto, nie wypychaj głowy.','Trzymaj 30 sekund, oddychaj spokojnie.'],ok:'klatka się otwiera, a plecy nie wyginają się w łuk.'},
+];
+
+/* SKUPIENIE I PORZĄDEK — 15 ćwiczeń */
+const FO=[
+{c:'Start',t:'Trzy priorytety dnia',m:3,when:'Rano, zanim otworzysz pocztę i media.',steps:['Weź kartkę albo notatnik w telefonie.','Napisz 3 rzeczy, które dziś naprawdę mają się wydarzyć (nie więcej).','Ponumeruj je według ważności: 1, 2, 3.','Zacznij od numeru 1 przed sprawdzaniem poczty.'],ok:'masz zapisane dokładnie 3 priorytety i zaczęty numer 1.'},
+{c:'Fokus',t:'Pomodoro 25/5',m:30,tm:[['Praca — jedna rzecz',1500],['Przerwa — wstań i się ruszaj',300]],when:'Gdy masz zadanie, które wymaga skupienia. Potrzebujesz 30 minut.',steps:['Wybierz jedno zadanie i zapisz je na kartce.','Wyciszyć powiadomienia, telefon poza zasięgiem wzroku.','Przez 25 minut robisz tylko to jedno zadanie. Przychodzą inne myśli? Zapisz je na kartce i wróć do pracy.','5 minut przerwy: wstań, napij się wody, rozciągnij się.'],ok:'przepracujesz 25 minut bez przełączania się na coś innego.'},
+{c:'Reset',t:'Oddech pudełkowy',m:3,tm:[['Oddychaj według kółka',180]],pace:BOX,when:'Gdy czujesz stres albo rozproszenie. 3 minuty, siedząc.',steps:['Usiądź prosto, stopy na podłodze.','WDECH nosem 4 sekundy, ZATRZYMAJ 4 sekundy, WYDECH ustami 4 sekundy, ZATRZYMAJ 4 sekundy.','Aplikacja podpowiada kolejny krok, kółko rośnie przy wdechu, maleje przy wydechu.','Ramiona opuszczone, szczęka luźna.'],ok:'po 3 minutach jesteś spokojniejszy i łatwiej Ci skupić myśli.'},
+{c:'Porządek',t:'Biurko w 5 minut',m:5,tm:[['Sprzątanie biurka',300]],when:'Dziś, na początku albo na końcu pracy.',steps:['Odłóż na miejsce wszystko, czego nie użyjesz w najbliższej godzinie.','Wyrzuć śmieci, zanieś kubki i talerze.','Papiery podziel na dwie kupki: do załatwienia i do odłożenia.','Zostaw na biurku tylko to, co jest potrzebne do jednego zadania.'],ok:'na biurku leży tylko to, co dziś potrzebne.'},
+{c:'Wieczór',t:'Trzy rzeczy, które się udały',m:3,when:'Wieczorem, przed snem. Notatnik lub telefon.',steps:['Napisz 3 rzeczy, które dziś się udały (także małe: „wypiłem wodę”, „zadzwoniłem do mamy”).','Przy każdej dopisz jedno zdanie, dlaczego się udała.','Przeczytaj je raz.'],ok:'masz zapisane trzy rzeczy i powody.'},
+{c:'Start',t:'Szklanka wody i okno',m:2,when:'Zaraz po wstaniu albo przed pierwszą pracą.',steps:['Wypij szklankę wody.','Otwórz okno albo wyjdź na balkon.','Zrób 5 głębokich oddechów patrząc daleko (ulica, niebo).'],ok:'wypijesz wodę i zrobisz 5 oddechów.'},
+{c:'Fokus',t:'Telefon w innym pokoju',m:25,tm:[['Praca bez telefonu',1500]],when:'Podczas jednego bloku pracy lub nauki, 25 minut.',steps:['Wyłącz powiadomienia w telefonie.','Odnieś telefon do innego pokoju (nie kładź go obok).','Pracuj 25 minut, potem sprawdź wiadomości.'],ok:'przez 25 minut telefon leży w innym pokoju.'},
+{c:'Reset',t:'Oczy 20-20-20 i dłonie',m:2,tm:[['Patrz daleko',20],['Dłonie na oczach',40],['Mruganie i krążenie oczami',20],['Rozprostuj dłonie',20]],when:'Co ok. 20 minut przed ekranem. 2 minuty.',steps:['Odwróć wzrok od ekranu na 20 sekund (patrz na coś ok. 6 metrów dalej).','Zakryj zamknięte oczy ciepłymi dłońmi, bez dociskania, 40 sekund.','Mrugnij 10 razy, potem zatocz wolno oczami koło w jedną i drugą stronę.','Rozprostuj dłonie: otwórz szeroko palce i zaciśnij pięści kilka razy.'],ok:'oczy i dłonie są mniej zmęczone.'},
+{c:'Porządek',t:'Reguła dwóch minut',m:5,when:'Dziś, w przerwie między zadaniami.',steps:['Zrób listę 3 drobnych rzeczy, które zajmą mniej niż 2 minuty (odpowiedź na wiadomość, odłożenie dokumentu, telefon).','Zrób je od razu, jedna po drugiej.','Skreśl każdą po zrobieniu.'],ok:'zrobisz wszystkie 3 rzeczy od razu.'},
+{c:'Wieczór',t:'Domknięcie dnia',m:5,when:'Pod koniec pracy albo wieczorem.',steps:['Zapisz, co dziś nie zostało skończone.','Przy każdej rzeczy napisz pierwszy konkretny krok na jutro.','Wybierz jedną rzecz numer 1 na jutro.','Zamknij laptop i odłóż notatnik.'],ok:'masz listę niedokończonych rzeczy i wybraną jedną na jutro.'},
+{c:'Start',t:'Plan pierwszych 25 minut',m:3,when:'Rano, przed pierwszą pracą.',steps:['Wybierz jedno zadanie.','Zapisz pierwszy fizyczny krok (np. „otworzyć plik i napisać nagłówek”).','Ustaw na telefonie 25 minut i zacznij od razu.'],ok:'masz zapisany pierwszy krok i zaczęty timer.'},
+{c:'Fokus',t:'Jedna karta, jedno zadanie',m:5,when:'Przed pracą przy komputerze.',steps:['Zamknij wszystkie karty przeglądarki poza jedną potrzebną do zadania.','Zamknij komunikatory i pocztę.','Pracuj w tej jednej karcie, aż skończysz zadanie lub minie 25 minut.'],ok:'pracujesz w jednej karcie do końca zadania.'},
+{c:'Reset',t:'Przerwa na ruch',m:2,tm:[['Marsz w miejscu i wymachy rąk',60],['Wspięcia na palce',30],['Głębokie oddechy',30]],when:'W połowie pracy, 2 minuty.',steps:['Wstań od biurka.','Maszeruj w miejscu 60 sekund, ręce poruszają się naturalnie.','Zrób wspięcia na palce przez 30 sekund.','30 sekund głębokich oddechów, ręce w górę przy wdechu, w dół przy wydechu.'],ok:'wstaniesz od biurka i się ruszysz przez 2 minuty.'},
+{c:'Porządek',t:'Skrzynka mailowa w 15 minut',m:15,tm:[['Poczta: odpowiedz, usuń, zaplanuj',900]],when:'Dziś, raz. Potrzebujesz 15 minut.',steps:['Przejrzyj wiadomości od najnowszych.','Do każdej zastosuj jedną z trzech decyzji: odpowiedz (jeśli < 2 minuty), usuń/zarchiwizuj, albo zaplanuj (dopisz do listy zadań).','Nie zostawiaj wiadomości „na później” bez decyzji.'],ok:'każda wiadomość ma decyzję.'},
+{c:'Wieczór',t:'Ekrany off 30 minut przed snem',m:30,when:'Wieczorem, ostatnie 30 minut przed snem.',steps:['Ustaw przypomnienie na 30 minut przed snem.','Odłóż telefon i wyłącz komputer i telewizor.','Zrób coś spokojnego: książka, rozciąganie, rozmowa, herbata.'],ok:'przez 30 minut przed snem nie patrzysz na ekran.'},
+];
+
+/* Pakiety ćwiczeń dla bloku „Ćwiczenie dnia” */
+const PACKS={
+  charyzma:{n:'Charyzma (42 ćwiczenia)',items:CH},
+  glos:{n:'Niski głos (14 ćwiczeń)',items:VL},
+  roz:{n:'Rozciąganie i ruch (30 ćwiczeń)',items:ST},
+  skup:{n:'Skupienie i porządek (15 ćwiczeń)',items:FO},
+  wlasne:{n:'Tylko moje ćwiczenia',items:[]},
+};
+
+/* Sesje z timerem (blok „Prowadzona sesja”): sec = czas kroku, sides = ten sam krok dla obu stron */
+const GS={
+  voice:{n:'Rozgrzewka głosu',steps:WU},
+  mob:{n:'Poranna mobilność (dynamiczna)',steps:[
+    {t:'Wyprost i oddech',sec:30,sub:'Stań prosto. Wdech: ręce w górę nad głowę. Wydech: ręce w dół. Powtarzaj spokojnie.'},
+    {t:'Krążenia ramion',sec:40,sub:'Duże koła obiema rękami: 20 sekund do przodu, 20 do tyłu.'},
+    {t:'Skręty tułowia',sec:40,sub:'Stopy szerzej niż biodra. Skręcaj tułów w prawo i w lewo, ręce luźno owijają się wokół ciała.'},
+    {t:'Wymachy nogą',sec:20,sides:true,sub:'Przytrzymaj się ściany. Noga wymachuje do przodu i do tyłu jak wahadło.'},
+    {t:'Przysiad z rękami w górę',sec:50,sub:'Zejdź w głęboki przysiad, wstań i unieś ręce nad głowę. Powoli, ok. 8 razy.'},
+    {t:'Luźna lalka',sec:40,sub:'Pochyl się od bioder, tułów i ręce zwisają. Kolana lekko ugięte. Oddychaj spokojnie.'},
+    {t:'Wspięcia i krążenia kostek',sec:40,sub:'20 sekund: wspięcia na palce. Potem 10 sekund krążeń kostką prawej i 10 sekund lewej stopy.'},
+    {t:'Strząśnij całe ciało',sec:20,sub:'Strząsaj dłonie, ręce, nogi i całe ciało. Luźno.'},
+  ]},
+  eve:{n:'Wieczorny relaks (statyczne)',steps:[
+    {t:'Poza dziecka',sec:50,sub:'Klęk, pośladki na piętach, tułów na udach, ręce wyciągnięte, czoło na podłodze. Oddychaj w plecy.'},
+    {t:'Koci grzbiet',sec:50,sub:'Na czworaka. Wdech: brzuch w dół, głowa w górę. Wydech: plecy w górę, broda do klatki.'},
+    {t:'Skręt leżąc',sec:30,sides:true,sub:'Leżysz na plecach, ramiona na boki. Jedno kolano przenosisz przez ciało na drugą stronę. Barki na podłodze.'},
+    {t:'Motylek',sec:50,sub:'Siad: stopy złączone podeszwami, kolana opadają na boki. Plecy proste, pochyl się lekko od bioder.'},
+    {t:'Oddech 4–6 na leżąco',sec:90,pace:BREATH,sub:'Leżysz na plecach, dłoń na brzuchu. Wdech nosem 4 s, wydech ustami 6 s. Idź za kółkiem.'},
+  ]},
+  desk:{n:'Reset przy biurku',steps:[
+    {t:'Barki w górę i w dół',sec:40,sub:'Wdech: barki do uszu 3 s. Wydech z dźwiękiem „fuuu”: barki w dół. Powtarzaj.'},
+    {t:'Kark w bok',sec:30,sides:true,sub:'Ucho do barku (strona z komunikatu). Dłoń lekko opiera się o głowę. Drugi bark w dół.'},
+    {t:'Nadgarstki i dłonie',sec:40,sub:'Wyprostuj rękę dłonią do góry, drugą dłonią odciągnij palce w dół 10 s. Zmieniaj ręce, potem dłonią w dół.'},
+    {t:'Skręt na krześle',sec:25,sides:true,sub:'Dłoń na zewnętrznym kolanie, druga na oparciu. Skręt w tę stronę, patrz przez ramię.'},
+    {t:'Oddech pudełkowy',sec:60,pace:BOX,sub:'Wdech 4 s, zatrzymaj 4 s, wydech 4 s, zatrzymaj 4 s. Idź za kółkiem.'},
+    {t:'Oczy 20-20-20',sec:40,sub:'20 sekund patrz na coś odległego o ok. 6 metrów, potem zakryj oczy dłońmi na 20 sekund.'},
+    {t:'Szklanka wody',sec:10,sub:'Wstań, napij się wody.'},
+  ]},
+};
+const SET_NAMES=()=>Object.keys(GS).map(k=>[k,GS[k].n]);
+
+/* Szablony układu (zestawy nawyków) */
+const LINK_Q=(t,q,len)=>({id:null,title:t,q,len:len||''});
+const J3=['Co dziś wyszło (nawet drobiazg)?','Za co jestem wdzięczny/a?','Jedna rzecz na jutro'];
+const TEMPLATES=[
+ {id:'charyzma',n:'Charyzma',ic:'✨',d:'Głos (nagrania, rozgrzewka, niski głos), 42 ćwiczenia charyzmy, ruch, dziennik 3 zdań, lista.',layout:[
+  {id:'g',title:'Głos',ic:'🎙️',blocks:[
+    {id:'g_m',type:'media',h:'Nagrania z YouTube',cfg:{tracks:TRK.map(t=>({id:t[0],title:t[1],len:t[2]}))}},
+    {id:'g_w',type:'guided',h:'Prowadzona rozgrzewka',cfg:{set:'voice'}},
+    {id:'g_v',type:'daily',h:'Niski głos — ćwiczenie dnia',cfg:{pack:'glos',own:[]}}]},
+  {id:'c',title:'Charyzma',ic:'✨',blocks:[{id:'c_d',type:'daily',h:'',cfg:{pack:'charyzma',own:[]}}]},
+  {id:'r',title:'Ruch',ic:'💪',blocks:[{id:'r_w',type:'workout',h:'',cfg:{}}]},
+  {id:'d',title:'Dziennik 3 zdań',ic:'📓',blocks:[{id:'b_j',type:'journal',h:'',cfg:{p:J3.slice()}}]},
+  {id:'z',title:'Lista na dziś',ic:'✅',blocks:[{id:'z_t',type:'todo',h:'',cfg:{}}]}]},
+ {id:'rozciaganie',n:'Rozciąganie i ruch',ic:'🧘',d:'Poranna mobilność, ćwiczenie dnia (relaks, statyczne, dynamiczne, zabawa, biuro), wideo, wieczorny relaks, dziennik ciała.',layout:[
+  {id:'rz_a',title:'Poranna mobilność',ic:'🔥',blocks:[{id:'rz_a1',type:'guided',h:'5 minut dynamicznego rozruchu',cfg:{set:'mob'}}]},
+  {id:'rz_d',title:'Ćwiczenie dnia',ic:'🧘',blocks:[{id:'rz_d1',type:'daily',h:'',cfg:{pack:'roz',own:[]}}]},
+  {id:'rz_m',title:'Wideo',ic:'▶️',blocks:[{id:'rz_m1',type:'media',h:'Nagrania do wspólnego ćwiczenia',cfg:{tracks:[
+     LINK_Q('Rozciąganie całego ciała, 10 min','rozciąganie całego ciała 10 minut dla początkujących','10 min'),
+     LINK_Q('Poranna mobilność, 5 min','poranna mobilność rozciąganie 5 minut','5 min'),
+     LINK_Q('Wieczorne rozciąganie, 10 min','wieczorne rozciąganie relaks przed snem 10 minut','10 min')]}}]},
+  {id:'rz_e',title:'Wieczorny relaks',ic:'🌙',blocks:[{id:'rz_e1',type:'guided',h:'5 minut spokojnego rozciągania',cfg:{set:'eve'}}]},
+  {id:'rz_j',title:'Dziennik ciała',ic:'📓',blocks:[{id:'rz_j1',type:'journal',h:'',cfg:{p:['Gdzie dziś czuję napięcie?','Co mi dziś pomogło?','Co zrobię jutro dla ciała?']}}]},
+  {id:'rz_z',title:'Lista na dziś',ic:'✅',blocks:[{id:'rz_z1',type:'todo',h:'',cfg:{}}]}]},
+ {id:'skupienie',n:'Skupienie i porządek',ic:'🎯',d:'Rytuał startu dnia, ćwiczenie dnia (start, fokus, reset, porządek, wieczór), reset przy biurku, dziennik pracy.',layout:[
+  {id:'sk_s',title:'Rytuał startu',ic:'☀️',blocks:[{id:'sk_s1',type:'routine',h:'Poranna checklista',cfg:{items:[{id:'i1',x:'Szklanka wody'},{id:'i2',x:'Trzy priorytety na dziś zapisane'},{id:'i3',x:'Telefon poza zasięgiem na pierwszy blok pracy'}]}}]},
+  {id:'sk_d',title:'Ćwiczenie dnia',ic:'🎯',blocks:[{id:'sk_d1',type:'daily',h:'',cfg:{pack:'skup',own:[]}}]},
+  {id:'sk_r',title:'Reset przy biurku',ic:'🪑',blocks:[{id:'sk_r1',type:'guided',h:'5 minut resetu',cfg:{set:'desk'}}]},
+  {id:'sk_j',title:'Dziennik pracy',ic:'📓',blocks:[{id:'sk_j1',type:'journal',h:'',cfg:{p:['Co dziś zrobiłem najważniejszego?','Co mnie rozproszyło?','Pierwszy krok na jutro']}}]},
+  {id:'sk_z',title:'Lista na dziś',ic:'✅',blocks:[{id:'sk_z1',type:'todo',h:'',cfg:{}}]}]},
+ {id:'pusty',n:'Pusty (mój własny nawyk)',ic:'🌱',d:'Zacznij od czystej karty: dodaj swoje sekcje, linki, ćwiczenia i checklisty w trybie edycji.',layout:[
+  {id:'m_1',title:'Mój nawyk',ic:'🌱',blocks:[{id:'m_r',type:'routine',h:'Co robię codziennie',cfg:{items:[]}}]},
+  {id:'m_z',title:'Lista na dziś',ic:'✅',blocks:[{id:'m_t',type:'todo',h:'',cfg:{}}]}]},
+];
+
+/* ───────── Nawyk v0.03 — logika aplikacji ───────── */
+const VER='v0.03', MAIL='michus@gmail.com', LS='nawyk.v1', APPKEY='nawyk';
+const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad=n=>String(n).padStart(2,'0');
+const keyOf=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const dnum=d=>Math.floor(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())/864e5);
+const uid=()=>'x'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const clone=o=>JSON.parse(JSON.stringify(o));
+let TODAY=keyOf(new Date()), DN=dnum(new Date());
 
 /* ───────── STAN ───────── */
-const DEF=()=>({v:2,t:0,days:{},todos:[],journal:{},tracks:null,links:[],set:{quiet:1,snd:1,train:'mix',len:5,wlen:5}});
-const thaw=d=>{let c;try{c=JSON.parse(JSON.stringify(d))}catch(e){c={}}const n=Object.assign(DEF(),c);n.set=Object.assign(DEF().set,c.set||{});return n};
-let S=DEF(), ref=null, cloudTimer=0, writing=Promise.resolve(), syncState='local';
-try{const raw=localStorage.getItem(LS);if(raw)S=thaw(JSON.parse(raw))}catch(e){}
-const defTracks=()=>TRK.map(t=>({id:t[0],title:t[1],len:t[2]}));
-function tracks(){
-  if(S.tracks&&S.tracks.length)return S.tracks;
-  const base=defTracks();
-  (S.links||[]).forEach(l=>base.push({id:l.id,title:l.title,len:''}));
-  return base;
+const DEF=()=>({v:3,t:0,days:{},todos:[],journal:{},chk:{},layout:null,tpl:'charyzma',prev:null,set:{quiet:1,snd:1,hue:168,mode:'auto'}});
+let S=DEF(), ref=null, cloudTimer=0, writing=Promise.resolve(), syncState='local', EDIT=false, EMBED_BLOCKED=false;
+const OFF={}, CUR={}, TIM={};
+const LAY=()=>S.layout||(S.layout=clone(TEMPLATES[0].layout));
+const okLayout=l=>Array.isArray(l)&&l.every(c=>c&&c.id&&Array.isArray(c.blocks)&&c.blocks.every(b=>b&&b.id&&BT[b.type]&&b.cfg));
+function migrate(c){
+  if(!c||typeof c!=='object')return {};
+  if((c.v||1)<3){
+    const L=clone(TEMPLATES[0].layout), s=c.set||{};
+    const tr=c.tracks&&c.tracks.length?c.tracks:null;
+    const fb=(c.links||[]).map(l=>({id:l.id,title:l.title,len:''}));
+    const fix=(id,fn)=>L.forEach(cd=>cd.blocks.forEach(b=>{if(b.id===id)fn(b)}));
+    fix('g_m',b=>{b.cfg.tracks=tr||b.cfg.tracks.concat(fb)});
+    fix('r_w',b=>{if(s.train)b.cfg.train=s.train;if(s.len)b.cfg.len=s.len});
+    fix('g_w',b=>{if(s.wlen)b.cfg.len=s.wlen});
+    c.layout=L;c.tpl='charyzma';
+    const j={};
+    Object.keys(c.journal||{}).forEach(k=>{const e=c.journal[k]||{};j[k]=('a' in e||'b' in e||'c' in e)?{b_j:[e.a||'',e.b||'',e.c||'']}:e});
+    c.journal=j;c.v=3;
+    if(c.set){delete c.set.train;delete c.set.len;delete c.set.wlen}
+  }
+  return c;
 }
+const thaw=d=>{
+  let c;try{c=migrate(clone(d))}catch(e){c={}}
+  const n=Object.assign(DEF(),c);n.set=Object.assign(DEF().set,c.set||{});
+  if(!okLayout(n.layout)){n.layout=clone(TEMPLATES[0].layout);n.tpl='charyzma'}
+  return n;
+};
 function prune(){
   const lim=new Date();lim.setDate(lim.getDate()-7);const lk=keyOf(lim);
   S.todos=S.todos.filter(t=>!(t.done&&t.done<lk));
-  const jk=Object.keys(S.journal).sort();
-  while(jk.length>120)delete S.journal[jk.shift()];
+  const jk=Object.keys(S.journal).sort();while(jk.length>120)delete S.journal[jk.shift()];
+  const ck=Object.keys(S.chk).sort();while(ck.length>40)delete S.chk[ck.shift()];
 }
 function persistLocal(){try{localStorage.setItem(LS,JSON.stringify(S))}catch(e){}}
 function save(){prune();S.t=Date.now();persistLocal();queueCloud()}
 function queueCloud(){
   if(!ref)return;
   clearTimeout(cloudTimer);
-  cloudTimer=setTimeout(()=>{
-    writing=writing.then(()=>ref.set(JSON.parse(JSON.stringify(S)))).then(()=>setSync('ok')).catch(()=>setSync('err'));
-  },900);
+  cloudTimer=setTimeout(()=>{writing=writing.then(()=>ref.set(clone(S))).then(()=>setSync('ok')).catch(()=>setSync('err'))},900);
 }
 const SYNC={local:'Zapis tylko na tym urządzeniu',wait:'Łączenie z chmurą…',ok:'Zapisane w chmurze',err:'Chmura niedostępna — zapis lokalny',slow:'Chmura odpowiada wolno'};
 function setSync(s){syncState=s;const e=$('#sync');if(e)e.textContent=SYNC[s]||''}
-async function initCloud(){
+const anyRunning=()=>Object.values(TIM).some(t=>t.running());
+function applyRemote(d,live){
+  if(anyRunning())return;
+  S=thaw(d);persistLocal();renderAll();if(live)setSync('ok');
+}
+async function initCloud(){      // podgląd w Claude (artefakt)
   try{
-    if(!window.claude||!window.claude.use)return;
     const [db,user]=await Promise.all([window.claude.use('db'),window.claude.use('user')]);
     if(!db||!user||!user.id)return;
-    const id=await user.id();
-    if(!id)return;
-    ref=db.collection('data/users/'+id).doc('nawyk');
+    const id=await user.id();if(!id)return;
+    ref=db.collection('data/users/'+id).doc(APPKEY);
     setSync('wait');
     const slow=setTimeout(()=>setSync('slow'),10000);
     ref.onSnapshot(snap=>{
-      const live=!snap.metadata.fromCache;
-      if(live)clearTimeout(slow);
+      const live=!snap.metadata.fromCache;if(live)clearTimeout(slow);
       const d=snap.exists?snap.data():null;
-      if(d&&(d.t||0)>S.t){S=thaw(d);persistLocal();renderAll();if(live)setSync('ok')}
-      else if(live&&!snap.metadata.hasPendingWrites){
-        if(S.t>0&&(!d||(d.t||0)<S.t))queueCloud(); else setSync('ok');
-      }
+      if(d&&(d.t||0)>S.t)applyRemote(d,live);
+      else if(live&&!snap.metadata.hasPendingWrites){if(S.t>0&&(!d||(d.t||0)<S.t))queueCloud();else setSync('ok')}
     },()=>setSync('err'));
   }catch(e){setSync('err')}
+}
+async function initWorker(){     // własny hosting (smialo.org): D1 przez Workera, użytkownik z Cloudflare Access
+  try{
+    const url='/api/state/'+APPKEY, opt={credentials:'same-origin',cache:'no-store'};
+    setSync('wait');
+    const r=await fetch(url,opt);if(!r.ok)throw new Error('http '+r.status);
+    const j=await r.json();
+    ref={set:d=>fetch(url,{method:'PUT',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify(d)}).then(x=>{if(!x.ok)throw new Error('put')})};
+    const d=j&&j.data;
+    if(d&&(d.t||0)>S.t)applyRemote(d,true);
+    else{if(S.t>0)queueCloud();setSync('ok')}
+  }catch(e){ref=null;setSync('local')}
 }
 
 /* ───────── DŹWIĘK ───────── */
@@ -571,14 +867,15 @@ function beep(f,d){
   try{const o=AC.createOscillator(),g=AC.createGain();o.frequency.value=f;g.gain.value=.04;o.connect(g);g.connect(AC.destination);o.start();o.stop(AC.currentTime+d)}catch(e){}
 }
 
-/* ───────── TIMER (z rytmem oddechu) ───────── */
+/* ───────── TIMER (z rytmem oddechu; dir: 1 wdech, 0 wydech, 2 zatrzymanie pełne, 3 zatrzymanie puste) ───────── */
 function pacePhase(pace,el){
   const cyc=pace.reduce((a,p)=>a+p[1],0);let pos=el%cyc,i=0;
   while(pos>=pace[i][1]){pos-=pace[i][1];i++}
   return{i,n:Math.floor(pos)+1,len:pace[i][1],f:pos/pace[i][1]};
 }
+const pscale=(dir,f)=>.55+.45*(dir===1?f:dir===0?1-f:dir===2?1:0);
 function makeTimer(root,build,onDone){
-  root.innerHTML='<div class="tm" data-kind="idle"><div class="tm-tag"></div><div class="tm-lbl"></div><div class="tm-sub"></div><div class="tm-pace" hidden><div class="ring"><i></i></div><div class="pp"><b></b><span></span></div></div><div class="tm-clock">0:00</div><div class="bar"><i></i></div><div class="tm-row"><button class="btn pri" data-a="go" type="button">Start</button><button class="btn" data-a="skip" type="button">Dalej ›</button><button class="btn ghost" data-a="rst" type="button">Od nowa</button></div><div class="tm-tot"></div></div>';
+  root.innerHTML='<div class="tm" data-kind="idle"><div class="tm-tag"></div><div class="tm-lbl"></div><div class="tm-sub"></div><div class="tm-pace" hidden><div class="pring"><i></i></div><div class="pp"><b></b><span></span></div></div><div class="tm-clock">0:00</div><div class="bar"><i></i></div><div class="tm-row"><button class="btn pri" data-a="go" type="button">Start</button><button class="btn" data-a="skip" type="button">Dalej ›</button><button class="btn ghost" data-a="rst" type="button">Od nowa</button></div><div class="tm-tot"></div></div>';
   const q=s=>$(s,root), tm=$('.tm',root);
   const T={steps:[],i:0,rem:0,end:0,run:false,iv:0,started:false,total:0,lp:-1};
   const fmt=s=>Math.floor(s/60)+':'+pad(s%60);
@@ -605,8 +902,8 @@ function makeTimer(root,build,onDone){
       if(T.started){
         const p=pacePhase(s.pace,Math.max(0,s.sec-ms/1000));
         q('.pp b').textContent=s.pace[p.i][0];q('.pp span').textContent=p.n+' / '+p.len;
-        q('.ring i').style.transform='scale('+(.55+.45*(s.pace[p.i][2]?p.f:1-p.f)).toFixed(3)+')';
-      }else{q('.pp b').textContent='Gotowy?';q('.pp span').textContent='Start';q('.ring i').style.transform='scale(.55)'}
+        q('.pring i').style.transform='scale('+pscale(s.pace[p.i][2],p.f).toFixed(3)+')';
+      }else{q('.pp b').textContent='Gotowy?';q('.pp span').textContent='Start';q('.pring i').style.transform='scale(.55)'}
     }else pc.hidden=true;
   }
   function load(){
@@ -622,7 +919,7 @@ function makeTimer(root,build,onDone){
     if(!T.run)return;
     if(Date.now()>=T.end){adv();return}
     const s=T.steps[T.i];
-    if(s&&s.pace){const p=pacePhase(s.pace,s.sec-(T.end-Date.now())/1000);if(p.i!==T.lp){if(T.lp!==-1)beep(s.pace[p.i][2]?520:400,.1);T.lp=p.i}}
+    if(s&&s.pace){const p=pacePhase(s.pace,s.sec-(T.end-Date.now())/1000);if(p.i!==T.lp){if(T.lp!==-1)beep(s.pace[p.i][2]===1||s.pace[p.i][2]===2?520:400,.1);T.lp=p.i}}
     paint();
   }
   function go(){
@@ -632,14 +929,14 @@ function makeTimer(root,build,onDone){
     else{T.run=true;T.started=true;T.end=Date.now()+T.rem;clearInterval(T.iv);T.iv=setInterval(tick,250);beep(660,.1)}
     paint();
   }
-  root.addEventListener('click',e=>{
+  root.onclick=e=>{
     const b=e.target.closest('[data-a]');if(!b)return;
     if(b.dataset.a==='go')go();
     else if(b.dataset.a==='skip'){if(T.steps[T.i])adv()}
     else load();
-  });
+  };
   load();
-  return{load,running:()=>T.run};
+  return{load,running:()=>T.run,destroy:()=>{clearInterval(T.iv);T.run=false}};
 }
 
 /* ───────── POMOCNICZE ───────── */
@@ -654,212 +951,250 @@ const isDone=k=>!!doneKeys()[k];
 function setDone(k,v){
   const d=S.days[TODAY]||(S.days[TODAY]={});
   if(v)d[k]=1;else delete d[k];
+  if(!Object.keys(d).length)delete S.days[TODAY];
   save();paintDone();
 }
 const yid=u=>{const s=String(u).trim();const m=s.match(/(?:v=|youtu\.be\/|embed\/|shorts\/|live\/)([\w-]{11})/);if(m)return m[1];return /^[\w-]{11}$/.test(s)?s:null};
+const exMin=e=>e.m||Math.max(1,Math.round((e.sec||60)/60));
+const exLabel=e=>(e.c?e.c+' · ':'')+'ok. '+exMin(e)+' min';
 function exHTML(e,label){
   const fig=e.img&&FIGS[e.img]?`<figure class="fig">${FIGS[e.img]}</figure>`:'';
   return `<span class="pill">${esc(label)}</span><h4>${esc(e.t)}</h4>
-  <div class="extext">
   ${e.when?`<h5>Kiedy</h5><p>${esc(e.when)}</p>`:''}
-  <h5>Krok po kroku</h5><ol class="exsteps">${e.steps.map(s=>`<li>${esc(s)}</li>`).join('')}</ol>
+  <h5>Krok po kroku</h5><ol class="exsteps">${(e.steps||[]).map(s=>`<li>${esc(s)}</li>`).join('')}</ol>
   ${fig}
   ${e.say?`<h5>Powiedz np.</h5><p class="say">${esc(e.say)}</p>`:''}
   ${e.solo?`<h5>Nie masz dziś z kim?</h5><p>${esc(e.solo)}</p>`:''}
-  <h5>Zaliczone, gdy</h5><p>${esc(e.ok)}</p></div>`;
+  <h5>Zaliczone, gdy</h5><p>${esc(e.ok||'wykonasz ćwiczenie do końca, bez bólu.')}</p>`;
 }
-
-/* ───────── BUDOWA UI ───────── */
-let chOff=0, moveOff=0, wuTimer=null, mvTimer=null, chTimer=null, vlTimer=null, curCh=null, curVl=null, EMBED_BLOCKED=false;
-function doneBtn(k){return `<div class="fin"><button class="btn pri" data-done="${k}" type="button"></button></div>`}
-function build(){
-  const bodies={
-    g:`<div class="sec"><h3>Nagrania z YouTube</h3>
-        <ul class="trk" id="trk"></ul>
-        <div class="note warn" id="embedNote" hidden></div>
-        <div class="fin"><button class="btn sm" id="trkAdd" type="button">+ Dodaj nagranie</button><button class="btn sm ghost" id="trkReset" type="button">Przywróć domyślne</button></div></div>
-       <div class="sec"><h3>Prowadzona rozgrzewka <span id="wuSeg"></span></h3><ol class="steps" id="wuSteps"></ol><div id="wuTimer"></div></div>
-       <div class="sec"><h3>Niski głos — ćwiczenie dnia</h3><div class="ex" id="vl"></div><div id="vlTimer"></div>
-        <p class="note">Głębia głosu to rezonans i przestrzeń, nie wciskanie krtani w dół. Ból albo chrypka — przerwij i napij się wody o temperaturze pokojowej.</p></div>${doneBtn('g')}`,
-    c:`<div class="sec ex" id="ch"></div><div id="chTimer"></div><div class="fin"><button class="btn ghost" id="chNext" type="button">Inne ćwiczenie ↻</button></div>${doneBtn('c')}`,
-    r:`<div class="sec"><p class="q">Jaki trening dziś?</p><div id="trSeg"></div></div>
-       <div class="sec"><h3>Czas <span id="lenSeg"></span></h3><ol class="steps" id="mvList"></ol><div id="mvTimer"></div>
-        <div class="fin"><button class="btn ghost" id="mvNext" type="button">Inne ćwiczenia ↻</button></div>
-        <p class="note">Lekko, byle zrobić. 40 s pracy, 20 s przerwy. Rób tyle powtórzeń, ile dasz radę bez zadyszki — liczy się, że był ruch.</p></div>${doneBtn('r')}`,
-    d:`<div class="prev" id="jPrev" hidden></div>
-       <label class="jl" for="j1">Co dziś wyszło (nawet drobiazg)?</label><textarea id="j1" rows="2"></textarea>
-       <label class="jl" for="j2">Za co jestem wdzięczny/a?</label><textarea id="j2" rows="2"></textarea>
-       <label class="jl" for="j3">Jedna rzecz na jutro</label><textarea id="j3" rows="2"></textarea>${doneBtn('d')}`,
-    z:`<div class="addrow"><input id="tdIn" type="text" placeholder="Dodaj rzecz do zrobienia i Enter" aria-label="Nowe zadanie" maxlength="140"><button class="btn" id="tdAdd" type="button">Dodaj</button></div>
-       <ul class="td" id="tdList"></ul><p class="note">Niedokończone przechodzą na kolejny dzień.</p>${doneBtn('z')}`
-  };
-  $('#cards').innerHTML=CARDS.map(([k,t])=>`<details class="card" id="card-${k}"><summary><button class="tick" type="button" data-tick="${k}" aria-pressed="false" aria-label="Oznacz: ${esc(t)}"></button><span class="ttl"><b>${esc(t)}</b><small id="sum-${k}"></small></span><span class="chev"></span></summary><div class="body">${bodies[k]}</div></details>`).join('');
-
-  $('#cards').addEventListener('click',e=>{
-    const t=e.target.closest('[data-tick]');
-    if(t){e.preventDefault();e.stopPropagation();setDone(t.dataset.tick,!isDone(t.dataset.tick));return}
-    const b=e.target.closest('[data-done]');
-    if(b)setDone(b.dataset.done,!isDone(b.dataset.done));
-  });
-
-  // GŁOS: nagrania (edytowalne linki + odtwarzacz)
-  const trk=$('#trk');
-  const rowOf=el=>el.closest('li[data-i]');
-  const mat=()=>{if(!(S.tracks&&S.tracks.length))S.tracks=tracks().map(t=>Object.assign({},t))};
-  trk.addEventListener('change',e=>{
-    const li=rowOf(e.target);if(!li)return;const i=+li.dataset.i;mat();
-    if(e.target.classList.contains('tn')){S.tracks[i].title=e.target.value.trim().slice(0,60)||'Nagranie';save();return}
-    if(e.target.classList.contains('tu')){
-      const id=yid(e.target.value),m=$('.msg',li);
-      $('.pl',li).innerHTML='';
-      if(!id){m.textContent='To nie wygląda na link YouTube. Wklej adres z paska przeglądarki.';m.className='msg err';return}
-      S.tracks[i].id=id;m.textContent='Zapisano.';m.className='msg';
-      $('[data-a=yt]',li).href='https://www.youtube.com/watch?v='+id;
-      e.target.value='https://www.youtube.com/watch?v='+id;save();
-    }
-  });
-  trk.addEventListener('click',e=>{
-    const b=e.target.closest('[data-a]');if(!b)return;
-    const li=rowOf(b);if(!li)return;const i=+li.dataset.i;
-    if(b.dataset.a==='del'){mat();S.tracks.splice(i,1);save();renderTracks();return}
-    if(b.dataset.a==='play'){
-      const box=$('.pl',li),m=$('.msg',li);
-      if(box.firstChild){box.innerHTML='';return}
-      const id=yid($('.tu',li).value);
-      if(!id){m.textContent='Najpierw wklej poprawny link YouTube.';m.className='msg err';return}
-      box.innerHTML=`<div class="ytw"><iframe src="https://www.youtube-nocookie.com/embed/${id}?rel=0&autoplay=1" title="YouTube" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div>`;
-    }
-  });
-  $('#trkAdd').onclick=()=>{mat();S.tracks.push({id:null,title:'Nowe nagranie',len:''});save();renderTracks();const l=$$('#trk .tu');l[l.length-1].focus()};
-  $('#trkReset').onclick=()=>{S.tracks=null;S.links=[];save();renderTracks()};
-  document.addEventListener('securitypolicyviolation',e=>{
-    const d=e.effectiveDirective||e.violatedDirective||'';
-    if(!/frame|child/.test(d))return;
-    EMBED_BLOCKED=true;
-    $$('#trk .pl').forEach(b=>{if(b.querySelector('iframe'))b.innerHTML='<div class="blocked">Claude blokuje osadzone wideo na tej stronie. Użyj „YouTube ↗”.</div>'});
-    showEmbedNote();
-  });
-
-  wuTimer=makeTimer($('#wuTimer'),()=>{const k=S.set.wlen/5;return WU.map(w=>({label:w.t,sub:w.sub,sec:w.sec*k,kind:'work',pace:w.pace}))},()=>setDone('g',true));
-  chTimer=makeTimer($('#chTimer'),()=>curCh&&curCh.sec?[{label:curCh.t,sub:'Ćwicz teraz — aplikacja odmierza czas.',sec:curCh.sec,kind:'work'}]:[],()=>setDone('c',true));
-  vlTimer=makeTimer($('#vlTimer'),()=>curVl?[{label:curVl.t,sub:'Rób ćwiczenie według kroków powyżej.',sec:curVl.sec,kind:'work',pace:curVl.pace}]:[],()=>setDone('g',true));
-  $('#chNext').onclick=()=>{chOff++;renderCharisma()};
-  $('#mvNext').onclick=()=>{moveOff++;renderMove()};
-  mvTimer=makeTimer($('#mvTimer'),moveSteps,()=>setDone('r',true));
-
-  // DZIENNIK
-  let jt=0;
-  ['j1','j2','j3'].forEach(id=>$('#'+id).addEventListener('input',()=>{
-    clearTimeout(jt);
-    jt=setTimeout(()=>{
-      const v=['j1','j2','j3'].map(i=>$('#'+i).value.trim());
-      if(v.some(Boolean))S.journal[TODAY]={a:v[0],b:v[1],c:v[2]};else delete S.journal[TODAY];
-      if(v.some(Boolean)&&!isDone('d'))setDone('d',true);else save();
-    },700);
-  }));
-
-  // LISTA
-  const addTodo=()=>{
-    const i=$('#tdIn'),x=i.value.trim();if(!x)return;
-    S.todos.push({id:Date.now().toString(36)+Math.random().toString(36).slice(2,5),x:x.slice(0,140),done:0,c:TODAY});
-    i.value='';save();renderTodos();
-  };
-  $('#tdAdd').onclick=addTodo;
-  $('#tdIn').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();addTodo()}});
-  $('#tdList').addEventListener('click',e=>{
-    const c=e.target.closest('input[data-t]'),x=e.target.closest('[data-x]');
-    if(c){const t=S.todos.find(t=>t.id===c.dataset.t);if(t){t.done=c.checked?TODAY:0;save();renderTodos();setDone('z',S.todos.some(t=>t.done===TODAY))}}
-    else if(x){S.todos=S.todos.filter(t=>t.id!==x.dataset.x);save();renderTodos()}
-  });
-
-  // MENU
-  const menu=$('#menu'),mb=$('#menuBtn');
-  const closeMenu=()=>{menu.hidden=true;mb.setAttribute('aria-expanded','false')};
-  mb.onclick=e=>{e.stopPropagation();menu.hidden=!menu.hidden;mb.setAttribute('aria-expanded',String(!menu.hidden))};
-  document.addEventListener('click',e=>{if(!menu.hidden&&!e.target.closest('#menu'))closeMenu()});
-  document.addEventListener('keydown',e=>{if(e.key==='Escape')closeMenu()});
-  $('#setQuiet').onchange=e=>{S.set.quiet=e.target.checked?1:0;save();paintSettings()};
-  $('#setSnd').onchange=e=>{S.set.snd=e.target.checked?1:0;save()};
-  const openD=d=>{closeMenu();typeof d.showModal==='function'?d.showModal():d.setAttribute('open','')};
-  $('#miAbout').onclick=()=>{$('#verA').textContent=VER;openD($('#dAbout'))};
-  $('#miSug').onclick=()=>openD($('#dSug'));
-  $$('dialog [data-close]').forEach(b=>b.onclick=()=>{const d=b.closest('dialog');typeof d.close==='function'?d.close():d.removeAttribute('open')});
-  $$('dialog').forEach(d=>d.addEventListener('click',e=>{if(e.target===d&&typeof d.close==='function')d.close()}));
-  const sugT=$('#sugT'),updMail=()=>{$('#sugMail').href='mailto:'+MAIL+'?subject='+encodeURIComponent('Nawyk '+VER+' – sugestia')+'&body='+encodeURIComponent(sugT.value)};
-  sugT.addEventListener('input',updMail);updMail();
-  $('#sugCopy').onclick=async()=>{
-    const m=$('#sugM');
-    try{await navigator.clipboard.writeText(sugT.value);m.textContent='Skopiowano. Wklej w wiadomości na '+MAIL+'.'}
-    catch(e){sugT.select();m.textContent='Zaznaczone — skopiuj (Ctrl/Cmd+C) i wyślij na '+MAIL+'.'}
-  };
+const exTimer=e=>{
+  if(e.tm&&e.tm.length)return e.tm.map(x=>({label:x[0],sub:x[2]||'Według opisu powyżej.',tag:e.t,sec:x[1],kind:'work',pace:e.pace}));
+  if(e.sec)return[{label:e.t,sub:'Ćwicz teraz — aplikacja odmierza czas.',sec:e.sec,kind:'work',pace:e.pace}];
+  return[];
+};
+function armed(btn,fn){
+  if(btn.dataset.armed){fn();return}
+  btn.dataset.armed='1';const o=btn.textContent;btn.textContent='Na pewno?';
+  setTimeout(()=>{if(btn.isConnected){delete btn.dataset.armed;btn.textContent=o}},3000);
 }
-
-/* ───────── RENDER ───────── */
+const findC=id=>LAY().find(c=>c.id===id);
+function findB(bid){const L=LAY();for(const c of L){const i=c.blocks.findIndex(b=>b.id===bid);if(i>=0)return{c,b:c.blocks[i],i}}return null}
+const blockEl=bid=>$('section.blk[data-b="'+bid+'"]');
+const mountAll=type=>LAY().forEach(c=>c.blocks.forEach(b=>{if(b.type===type)mountBlock(b.id)}));
+function mountBlock(bid){
+  const f=findB(bid);if(!f)return;
+  const sec=blockEl(bid),el=sec&&$('.bb',sec);if(!el)return;
+  if(TIM[bid]){TIM[bid].destroy();delete TIM[bid]}
+  BT[f.b.type].mount(el,f.b,f.c);
+}
 function showEmbedNote(){
-  const n=$('#embedNote');if(!n)return;
-  n.hidden=!EMBED_BLOCKED;
-  if(EMBED_BLOCKED)n.textContent='Ta strona (podgląd w Claude) nie pozwala osadzać wideo — nagrania otwieraj przyciskiem „YouTube ↗”. Na własnym hostingu odtwarzacz zagra tutaj, z przyciskiem play i paskiem postępu.';
-}
-function renderTracks(){
-  $('#trk').innerHTML=tracks().map((t,i)=>`<li data-i="${i}"><div class="trk-top"><input class="tn" type="text" value="${esc(t.title)}" maxlength="60" aria-label="Nazwa nagrania ${i+1}"><span class="len">${esc(t.len||'')}</span></div><div class="trk-url"><input class="tu" type="url" value="${t.id?'https://www.youtube.com/watch?v='+esc(t.id):''}" placeholder="Wklej link YouTube" aria-label="Link YouTube ${i+1}"><button class="btn sm" type="button" data-a="play">▶ Odtwórz</button><a class="btn sm" data-a="yt" href="${t.id?'https://www.youtube.com/watch?v='+esc(t.id):'https://www.youtube.com/'}" target="_blank" rel="noopener noreferrer">YouTube ↗</a><button class="btn sm ghost" type="button" data-a="del" aria-label="Usuń nagranie">×</button></div><div class="msg"></div><div class="pl"></div></li>`).join('');
-  showEmbedNote();
-}
-function renderWU(){
-  const k=S.set.wlen/5;
-  $('#wuSteps').innerHTML=WU.map(w=>`<li><b>${esc(w.t)}</b> · ${Math.round(w.sec*k)} s — ${esc(w.sub)}</li>`).join('');
-  if(!wuTimer.running())wuTimer.load();
-}
-function renderVL(){
-  curVl=VL[DN%VL.length];
-  $('#vl').innerHTML=exHTML(curVl,'Niski głos · ok. '+Math.max(1,Math.round(curVl.sec/60))+' min');
-  $('#sum-g').textContent='Rozgrzewka · '+curVl.t;
-  if(!vlTimer.running())vlTimer.load();
-}
-function renderCharisma(){
-  if(chTimer&&chTimer.running())return;
-  curCh=CH[(DN+chOff)%CH.length];
-  $('#ch').innerHTML=exHTML(curCh,curCh.c+' · ok. '+curCh.m+' min');
-  $('#chTimer').hidden=!curCh.sec;
-  chTimer.load();
-  $('#sum-c').textContent=curCh.t+' · '+curCh.c;
-}
-function moveList(){
-  const t=S.set.train,d=DN+moveOff;
-  if(t==='upper')return pk(UP,5,d);
-  if(t==='lower')return pk(LO,5,d);
-  if(t==='grip')return pk(GR,5,d);
-  return [...pk(UP,2,d),...pk(LO,2,d+1),...pk(GR,1,d+2)];
-}
-function moveSteps(){
-  const list=moveList(),rounds=S.set.len>=10?2:1,out=[{label:'Przygotuj się',sub:'Pierwsze ćwiczenie: '+list[0][0],sec:5,kind:'rest'}];
-  for(let r=0;r<rounds;r++)list.forEach((e,i)=>{
-    out.push({label:e[0],sub:e[1],sec:40,kind:'work',tag:(rounds>1?'Runda '+(r+1)+' · ':'')+(i+1)+'/'+list.length});
-    if(!(r===rounds-1&&i===list.length-1))out.push({label:'Odpoczynek',sub:'Następne: '+list[(i+1)%list.length][0],sec:20,kind:'rest'});
+  $$('.embedNote').forEach(n=>{
+    n.hidden=!EMBED_BLOCKED;
+    if(EMBED_BLOCKED)n.textContent='Ta strona (podgląd w Claude) nie pozwala osadzać wideo — nagrania otwieraj przyciskiem „YouTube ↗”. Na własnym hostingu odtwarzacz zagra tutaj, z przyciskiem play i paskiem postępu.';
   });
-  return out;
 }
-function renderMove(){
-  if(mvTimer.running())return;
-  $('#mvList').innerHTML=moveList().map(e=>`<li><b>${esc(e[0])}</b> — ${esc(e[1])}</li>`).join('');
-  mvTimer.load();
-  $('#sum-r').textContent=TRAIN[S.set.train]+' · '+S.set.len+' min';
+const ytUrl=t=>t.id?'https://www.youtube.com/watch?v='+t.id:'';
+const ytHref=t=>t.id?ytUrl(t):(t.q?'https://www.youtube.com/results?search_query='+encodeURIComponent(t.q):'https://www.youtube.com/');
+const PARSE={
+  lines:v=>v.split('\n').map(s=>s.trim().slice(0,120)).filter(Boolean).slice(0,12),
+  steps:v=>v.split('\n').map(l=>l.split('|').map(s=>s.trim())).filter(p=>p[0]).slice(0,30).map(p=>({t:p[0].slice(0,50),sec:Math.min(1800,Math.max(5,parseInt(p[1],10)||30)),sub:(p[2]||'').slice(0,200)})),
+  items:(v,b)=>{const old=b.cfg.items||[];return v.split('\n').map(s=>s.trim().slice(0,100)).filter(Boolean).slice(0,30).map(x=>{const o=old.find(i=>i.x===x);return{id:o?o.id:uid(),x}})},
+};
+const selOpts=(arr,cur)=>arr.map(([k,n])=>`<option value="${esc(k)}" ${String(cur)===String(k)?'selected':''}>${esc(n)}</option>`).join('');
+
+/* ───────── BLOKI ───────── */
+const dItems=b=>((PACKS[b.cfg.pack]||PACKS.wlasne).items).concat(b.cfg.own||[]);
+const gSteps=b=>b.cfg.set==='custom'?(b.cfg.steps||[]):(GS[b.cfg.set]||GS.mob).steps;
+const moveList=(t,d)=>t==='upper'?pk(UP,5,d):t==='lower'?pk(LO,5,d):t==='grip'?pk(GR,5,d):[...pk(UP,2,d),...pk(LO,2,d+1),...pk(GR,1,d+2)];
+const BT={
+  media:{ic:'▶️',n:'Nagrania YouTube',sp:7,
+    def:()=>({h:'Nagrania',cfg:{tracks:[]}}),
+    sum:b=>(b.cfg.tracks||[]).length+' nagrań',
+    mount(el,b){
+      const tr=b.cfg.tracks||(b.cfg.tracks=[]);
+      const row=(t,i)=>`<li data-i="${i}"><div class="trk-top"><input class="tn" type="text" value="${esc(t.title)}" maxlength="60" aria-label="Nazwa nagrania ${i+1}"><span class="len">${esc(t.len||'')}</span></div><div class="trk-url"><input class="tu" type="url" value="${esc(ytUrl(t))}" placeholder="${t.q?'Kliknij „Szukaj ↗”, wybierz film i wklej tu jego link':'Wklej link YouTube'}" aria-label="Link YouTube ${i+1}"><button class="btn sm" type="button" data-a="play">▶ Odtwórz</button><a class="btn sm" data-a="yt" href="${esc(ytHref(t))}" target="_blank" rel="noopener noreferrer">${t.id?'YouTube ↗':'Szukaj ↗'}</a><button class="btn sm ghost" type="button" data-a="del" aria-label="Usuń nagranie">×</button></div><div class="msg"></div><div class="pl"></div></li>`;
+      el.innerHTML=`<ul class="trk">${tr.map(row).join('')}</ul><div class="note warn embedNote" hidden></div><div class="fin"><button class="btn sm" data-a="add" type="button">+ Dodaj nagranie</button></div>`;
+      showEmbedNote();
+      el.onchange=e=>{
+        const li=e.target.closest('li[data-i]');if(!li)return;const t=tr[+li.dataset.i];if(!t)return;
+        if(e.target.classList.contains('tn')){t.title=e.target.value.trim().slice(0,60)||'Nagranie';save();return}
+        if(e.target.classList.contains('tu')){
+          const id=yid(e.target.value),m=$('.msg',li);$('.pl',li).innerHTML='';
+          if(!e.target.value.trim()){t.id=null;m.textContent='';save();return}
+          if(!id){m.textContent='To nie wygląda na link YouTube. Wklej adres z paska przeglądarki.';m.className='msg err';return}
+          t.id=id;m.textContent='Zapisano.';m.className='msg';
+          const a=$('[data-a=yt]',li);a.href=ytUrl(t);a.textContent='YouTube ↗';
+          e.target.value=ytUrl(t);save();
+        }
+      };
+      el.onclick=e=>{
+        const bt=e.target.closest('[data-a]');if(!bt)return;
+        if(bt.dataset.a==='add'){tr.push({id:null,title:'Nowe nagranie',len:''});save();mountBlock(b.id);const l=$$('.tu',el);l[l.length-1].focus();return}
+        const li=bt.closest('li[data-i]');if(!li)return;const i=+li.dataset.i;
+        if(bt.dataset.a==='del'){tr.splice(i,1);save();mountBlock(b.id);paintSums();return}
+        if(bt.dataset.a==='play'){
+          const box=$('.pl',li),m=$('.msg',li);
+          if(box.firstChild){box.innerHTML='';return}
+          const id=yid($('.tu',li).value);
+          if(!id){m.textContent='Najpierw wklej poprawny link YouTube (przycisk „Szukaj ↗” otwiera wyniki).';m.className='msg err';return}
+          box.innerHTML=`<div class="ytw"><iframe src="https://www.youtube-nocookie.com/embed/${id}?rel=0&autoplay=1" title="YouTube" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div>`;
+        }
+      };
+    }},
+
+  guided:{ic:'⏱️',n:'Prowadzona sesja z timerem',sp:2,
+    def:()=>({h:'Sesja z timerem',cfg:{set:'mob',len:5}}),
+    sum:b=>b.cfg.set==='custom'?'Własna sesja':(GS[b.cfg.set]||GS.mob).n,
+    cfgUI:b=>`<label>Sesja</label><select data-cf="set" data-rc="1" data-b="${b.id}">${selOpts(SET_NAMES().concat([['custom','Własna sesja (wpiszę kroki)']]),b.cfg.set)}</select>${b.cfg.set==='custom'?`<label>Kroki — jedna linia: Nazwa | sekundy | opis</label><textarea data-cf="steps" data-ty="steps" data-b="${b.id}" rows="5" placeholder="Rozciąganie karku | 30 | Ucho do barku">${esc((b.cfg.steps||[]).map(s=>[s.t,s.sec,s.sub||''].join(' | ')).join('\n'))}</textarea>`:''}`,
+    mount(el,b,c){
+      const custom=b.cfg.set==='custom',k=custom?1:(b.cfg.len||5)/5,base=gSteps(b);
+      const scale=s=>Math.max(5,Math.round(s*k));
+      el.innerHTML=(custom?'':'<div class="rowline"><span>Czas sesji</span><span class="lenSeg"></span></div>')+
+        (base.length?`<ol class="steps">${base.map(s=>`<li><b>${esc(s.t)}</b> · ${s.sides?'2 × ':''}${scale(s.sec)} s — ${esc(s.sub||'')}</li>`).join('')}</ol><div class="tmr"></div>`:'<p class="note">Brak kroków. Włącz „Edytuj układ” (menu ⋯) i wpisz kroki sesji.</p>');
+      if(!custom)seg($('.lenSeg',el),[[5,'5 min'],[10,'10 min']],b.cfg.len||5,v=>{b.cfg.len=+v;save();mountBlock(b.id)});
+      if(!base.length)return;
+      TIM[b.id]=makeTimer($('.tmr',el),()=>{
+        const out=[];
+        base.forEach(s=>{
+          const sec=scale(s.sec);
+          if(s.sides)['Lewa strona','Prawa strona'].forEach(sd=>out.push({label:s.t,tag:sd,sub:s.sub,sec,kind:'work',pace:s.pace}));
+          else out.push({label:s.t,sub:s.sub,sec,kind:'work',pace:s.pace});
+        });
+        return out;
+      },()=>setDone(c.id,true));
+    }},
+
+  daily:{ic:'🎯',n:'Ćwiczenie dnia',sp:1,
+    def:()=>({h:'',cfg:{pack:'roz',own:[],cat:''}}),
+    sum:b=>CUR[b.id]?CUR[b.id].t:'',
+    cfgUI:b=>`<label>Zestaw ćwiczeń</label><select data-cf="pack" data-b="${b.id}">${selOpts(Object.entries(PACKS).map(([k,p])=>[k,p.n]),b.cfg.pack)}</select>
+      <label>Moje ćwiczenia (dołączone do zestawu)</label>
+      <ul class="owns">${(b.cfg.own||[]).map((o,i)=>`<li><span>${esc(o.t)} <small>· ${esc(o.c||'Moje')}</small></span><button class="btn sm danger" type="button" data-act="owndel" data-b="${b.id}" data-i="${i}">Usuń</button></li>`).join('')||'<li><span class="note">Brak.</span></li>'}</ul>
+      <div class="addrow"><input class="ow-t" type="text" placeholder="Nazwa" maxlength="60" aria-label="Nazwa ćwiczenia"><input class="ow-c" type="text" placeholder="Rodzaj, np. Relaks" maxlength="20" aria-label="Rodzaj"><input class="ow-m" type="number" min="1" max="60" placeholder="Min" style="flex:0 0 74px" aria-label="Minuty"></div>
+      <textarea class="ow-s" rows="3" placeholder="Kroki — każdy w osobnej linii" aria-label="Kroki ćwiczenia" style="margin-top:6px"></textarea>
+      <div class="drow" style="margin-top:6px"><button class="btn sm" type="button" data-act="ownadd" data-b="${b.id}">+ Dodaj ćwiczenie</button></div>`,
+    mount(el,b,c){
+      const all=dItems(b),cats=[...new Set(all.map(e=>e.c).filter(Boolean))];
+      const cat=cats.includes(b.cfg.cat)?b.cfg.cat:'',list=cat?all.filter(e=>e.c===cat):all;
+      if(!list.length){CUR[b.id]=null;el.innerHTML='<p class="note">Brak ćwiczeń w tym zestawie. Włącz „Edytuj układ” (menu ⋯) i dodaj własne albo zmień zestaw.</p>';return}
+      const ex=list[(DN+(OFF[b.id]||0))%list.length];CUR[b.id]=ex;
+      el.innerHTML=(cats.length>1?'<div class="rowline"><span>Rodzaj ćwiczenia</span><span class="catSeg"></span></div>':'')+`<div class="ex">${exHTML(ex,exLabel(ex))}</div><div class="tmr"></div><div class="fin"><button class="btn ghost" data-a="next" type="button">Inne ćwiczenie ↻</button></div>`;
+      if(cats.length>1)seg($('.catSeg',el),[['','Wszystkie']].concat(cats.map(x=>[x,x])),cat,v=>{b.cfg.cat=v;OFF[b.id]=0;save();mountBlock(b.id);paintSums()});
+      const steps=exTimer(ex);
+      if(steps.length)TIM[b.id]=makeTimer($('.tmr',el),()=>steps,()=>setDone(c.id,true));else $('.tmr',el).remove();
+      $('[data-a=next]',el).onclick=()=>{OFF[b.id]=(OFF[b.id]||0)+1;mountBlock(b.id);paintSums()};
+    }},
+
+  workout:{ic:'💪',n:'Trening (losowy zestaw)',sp:3,
+    def:()=>({h:'Trening',cfg:{train:'mix',len:5}}),
+    sum:b=>TRAIN[b.cfg.train||'mix']+' · '+(b.cfg.len||5)+' min',
+    mount(el,b,c){
+      const cfg=b.cfg,list=moveList(cfg.train||'mix',DN+(OFF[b.id]||0)),rounds=(cfg.len||5)>=10?2:1;
+      el.innerHTML=`<p class="q">Jaki trening dziś?</p><span class="trSeg"></span><div class="rowline" style="margin-top:10px"><span>Czas</span><span class="lenSeg"></span></div><ol class="steps">${list.map(e=>`<li><b>${esc(e[0])}</b> — ${esc(e[1])}</li>`).join('')}</ol><div class="tmr"></div><div class="fin"><button class="btn ghost" data-a="next" type="button">Inne ćwiczenia ↻</button></div><p class="note">Lekko, byle zrobić. 40 s pracy, 20 s przerwy. Rób tyle powtórzeń, ile dasz radę bez zadyszki — liczy się, że był ruch.</p>`;
+      seg($('.trSeg',el),Object.entries(TRAIN),cfg.train||'mix',v=>{cfg.train=v;OFF[b.id]=0;save();mountBlock(b.id);paintSums()});
+      seg($('.lenSeg',el),[[5,'5 min'],[10,'10 min']],cfg.len||5,v=>{cfg.len=+v;save();mountBlock(b.id);paintSums()});
+      TIM[b.id]=makeTimer($('.tmr',el),()=>{
+        const out=[{label:'Przygotuj się',sub:'Pierwsze ćwiczenie: '+list[0][0],sec:5,kind:'rest'}];
+        for(let r=0;r<rounds;r++)list.forEach((e,i)=>{
+          out.push({label:e[0],sub:e[1],sec:40,kind:'work',tag:(rounds>1?'Runda '+(r+1)+' · ':'')+(i+1)+'/'+list.length});
+          if(!(r===rounds-1&&i===list.length-1))out.push({label:'Odpoczynek',sub:'Następne: '+list[(i+1)%list.length][0],sec:20,kind:'rest'});
+        });
+        return out;
+      },()=>setDone(c.id,true));
+      $('[data-a=next]',el).onclick=()=>{OFF[b.id]=(OFF[b.id]||0)+1;mountBlock(b.id)};
+    }},
+
+  journal:{ic:'📓',n:'Dziennik (pytania)',sp:6,
+    def:()=>({h:'Dziennik',cfg:{p:J3.slice()}}),
+    sum:b=>{const n=(b.cfg.p||[]).length;return n+' '+(n===1?'pytanie':n<5?'pytania':'pytań')},
+    cfgUI:b=>`<label>Pytania — jedno w linii</label><textarea data-cf="p" data-ty="lines" data-b="${b.id}" rows="4">${esc((b.cfg.p||[]).join('\n'))}</textarea>`,
+    mount(el,b,c){
+      const P=b.cfg.p&&b.cfg.p.length?b.cfg.p:J3,cur=(S.journal[TODAY]||{})[b.id]||[];
+      const y=new Date();y.setDate(y.getDate()-1);
+      const prev=((S.journal[keyOf(y)]||{})[b.id]||[])[P.length-1];
+      el.innerHTML=(prev?`<div class="prev">Wczoraj — ${esc(P[P.length-1])}: „${esc(prev)}”</div>`:'')+P.map((q,i)=>`<label class="jl" for="j-${b.id}-${i}">${esc(q)}</label><textarea id="j-${b.id}-${i}" rows="2" maxlength="600">${esc(cur[i]||'')}</textarea>`).join('');
+      let jt=0;
+      const flush=()=>{
+        clearTimeout(jt);
+        const v=$$('textarea',el).map(t=>t.value.trim()),day=S.journal[TODAY]||(S.journal[TODAY]={});
+        if(v.some(Boolean))day[b.id]=v;else delete day[b.id];
+        if(!Object.keys(day).length)delete S.journal[TODAY];
+        if(v.some(Boolean)&&!isDone(c.id))setDone(c.id,true);else save();
+      };
+      el.oninput=()=>{clearTimeout(jt);jt=setTimeout(flush,700)};
+      el.onchange=flush;
+    }},
+
+  todo:{ic:'✅',n:'Lista zadań',sp:4,
+    def:()=>({h:'',cfg:{}}),
+    sum:()=>{const it=S.todos.filter(t=>!t.done||t.done===TODAY),o=it.filter(t=>!t.done).length;return it.length?(o?o+' do zrobienia':'Wszystko zrobione'):'Pusta lista'},
+    mount(el,b,c){
+      const items=S.todos.filter(t=>!t.done||t.done===TODAY);
+      el.innerHTML=`<div class="addrow"><input class="tdIn" type="text" placeholder="Dodaj rzecz do zrobienia i Enter" aria-label="Nowe zadanie" maxlength="140"><button class="btn" data-a="add" type="button">Dodaj</button></div><ul class="td">${items.length?items.map(t=>`<li class="${t.done?'on':''}"><label><input type="checkbox" data-t="${esc(t.id)}" ${t.done?'checked':''}><span>${esc(t.x)}</span></label><button class="x" type="button" data-x="${esc(t.id)}" aria-label="Usuń">×</button></li>`).join(''):'<li class="empty">Pusto. Dodaj jedną małą rzecz.</li>'}</ul><p class="note">Niedokończone przechodzą na kolejny dzień.</p>`;
+      const add=()=>{
+        const i=$('.tdIn',el),x=i.value.trim();if(!x)return;
+        S.todos.push({id:uid(),x:x.slice(0,140),done:0,c:TODAY});save();mountAll('todo');paintSums();
+        const n=blockEl(b.id)&&$('.tdIn',blockEl(b.id));if(n)n.focus();
+      };
+      el.onclick=e=>{
+        if(e.target.closest('[data-a=add]'))return add();
+        const x=e.target.closest('[data-x]');
+        if(x){S.todos=S.todos.filter(t=>t.id!==x.dataset.x);save();mountAll('todo');paintSums()}
+      };
+      el.onkeydown=e=>{if(e.key==='Enter'&&e.target.classList.contains('tdIn')){e.preventDefault();add()}};
+      el.onchange=e=>{
+        const ch=e.target.closest('input[data-t]');if(!ch)return;
+        const t=S.todos.find(t=>t.id===ch.dataset.t);if(!t)return;
+        t.done=ch.checked?TODAY:0;save();mountAll('todo');paintSums();
+        if(S.todos.some(t=>t.done===TODAY))setDone(c.id,true);
+      };
+    }},
+
+  routine:{ic:'☑️',n:'Checklista dnia',sp:5,
+    def:()=>({h:'Checklista',cfg:{items:[]}}),
+    sum:b=>{const it=b.cfg.items||[],ck=S.chk[TODAY]||{};return it.length?it.filter(i=>ck[i.id]).length+'/'+it.length+' zrobione':''},
+    cfgUI:b=>`<label>Pozycje — jedna w linii</label><textarea data-cf="items" data-ty="items" data-b="${b.id}" rows="4" placeholder="Szklanka wody&#10;10 minut spaceru">${esc((b.cfg.items||[]).map(i=>i.x).join('\n'))}</textarea>`,
+    mount(el,b,c){
+      const it=b.cfg.items||[],ck=S.chk[TODAY]||{};
+      el.innerHTML=it.length?`<ul class="td">${it.map(i=>`<li class="${ck[i.id]?'on':''}"><label><input type="checkbox" data-i="${esc(i.id)}" ${ck[i.id]?'checked':''}><span>${esc(i.x)}</span></label></li>`).join('')}</ul>`:'<p class="note">Pusto. Włącz „Edytuj układ” (menu ⋯) i dopisz pozycje.</p>';
+      el.onchange=e=>{
+        const t=e.target.closest('input[data-i]');if(!t)return;
+        const day=S.chk[TODAY]||(S.chk[TODAY]={});
+        if(t.checked)day[t.dataset.i]=1;else delete day[t.dataset.i];
+        t.closest('li').classList.toggle('on',t.checked);
+        if(it.length&&it.every(i=>day[i.id]))setDone(c.id,true);else save();
+        paintSums();
+      };
+    }},
+};
+
+/* ───────── KARTY ───────── */
+function blockHTML(c,b){
+  const T=BT[b.type];
+  const ed=EDIT?`<div class="edblk"><span class="chip">${T.ic} ${esc(T.n)}</span><input class="eh" type="text" data-f="bh" data-b="${b.id}" value="${esc(b.h||'')}" placeholder="Nagłówek (opcjonalny)" maxlength="60" aria-label="Nagłówek bloku"><button class="btn sm" type="button" data-act="bup" data-b="${b.id}" aria-label="Wyżej">↑</button><button class="btn sm" type="button" data-act="bdn" data-b="${b.id}" aria-label="Niżej">↓</button><button class="btn sm danger" type="button" data-act="bdel" data-b="${b.id}">Usuń blok</button></div>${T.cfgUI?`<div class="bcfg">${T.cfgUI(b)}</div>`:''}`:'';
+  return `<section class="blk" data-b="${b.id}">${ed}${b.h?`<h3 class="bh">${esc(b.h)}</h3>`:''}<div class="bb"></div></section>`;
 }
-function renderTodos(){
-  const items=S.todos.filter(t=>!t.done||t.done===TODAY);
-  $('#tdList').innerHTML=items.length?items.map(t=>`<li class="${t.done?'on':''}"><label><input type="checkbox" data-t="${esc(t.id)}" ${t.done?'checked':''}><span>${esc(t.x)}</span></label><button class="x" type="button" data-x="${esc(t.id)}" aria-label="Usuń">×</button></li>`).join(''):'<li class="empty">Pusto. Dodaj jedną małą rzecz.</li>';
-  const open=items.filter(t=>!t.done).length;
-  $('#sum-z').textContent=items.length?(open?open+' do zrobienia':'Wszystko zrobione'):'Pusta lista';
+function cardHTML(c,i,n){
+  const ed=EDIT?`<div class="edcard"><input class="et" type="text" data-f="ctitle" data-c="${c.id}" value="${esc(c.title)}" maxlength="40" aria-label="Nazwa sekcji"><input class="et" type="text" style="flex:0 0 64px;width:64px;text-align:center" data-f="cicon" data-c="${c.id}" value="${esc(c.ic||'')}" maxlength="4" aria-label="Ikona sekcji"><button class="btn sm" type="button" data-act="cup" data-c="${c.id}" ${i?'':'disabled'} aria-label="Sekcja wyżej">↑</button><button class="btn sm" type="button" data-act="cdn" data-c="${c.id}" ${i<n-1?'':'disabled'} aria-label="Sekcja niżej">↓</button><button class="btn sm danger" type="button" data-act="cdel" data-c="${c.id}">Usuń sekcję</button></div>`:'';
+  const add=EDIT?`<div class="adder"><select class="addType" aria-label="Typ nowego bloku">${Object.entries(BT).map(([k,t])=>`<option value="${k}">${t.ic} ${esc(t.n)}</option>`).join('')}</select><button class="btn sm" type="button" data-act="badd" data-c="${c.id}">+ Dodaj blok</button></div>`:'';
+  return `<details class="card" id="card-${c.id}" data-card="${c.id}"><summary><button class="tick" type="button" data-tick="${c.id}" aria-pressed="false" aria-label="Oznacz: ${esc(c.title)}"></button><span class="ic">${esc(c.ic||'•')}</span><span class="ttl"><b>${esc(c.title)}</b><small id="sum-${c.id}"></small></span><span class="chev"></span></summary><div class="body">${ed}${c.blocks.map(b=>blockHTML(c,b)).join('')}${add}<div class="fin"><button class="btn pri" data-done="${c.id}" type="button"></button></div></div></details>`;
 }
-function renderJournal(){
-  const j=S.journal[TODAY]||{},act=document.activeElement&&document.activeElement.id;
-  [['j1','a'],['j2','b'],['j3','c']].forEach(([id,f])=>{if(act!==id)$('#'+id).value=j[f]||''});
-  const y=new Date();y.setDate(y.getDate()-1);const yj=S.journal[keyOf(y)],p=$('#jPrev');
-  if(yj&&yj.c){p.hidden=false;p.textContent='Zapisane wczoraj na dziś: „'+yj.c+'”'}else p.hidden=true;
-  $('#sum-d').textContent='Sekcja dodatkowa · 3 zdania na koniec dnia';
+function renderCards(){
+  const open=new Set($$('#cards details[open]').map(d=>d.dataset.card));
+  Object.values(TIM).forEach(t=>t.destroy());for(const k in TIM)delete TIM[k];
+  const L=LAY();
+  $('#cards').innerHTML=L.length?L.map((c,i)=>cardHTML(c,i,L.length)).join(''):'<p class="note">Brak sekcji. Menu ⋯ → „Zestawy nawyków” albo „Edytuj układ”.</p>';
+  $$('#cards details.card').forEach(d=>{if(EDIT||open.has(d.dataset.card))d.open=true});
+  L.forEach(c=>c.blocks.forEach(b=>mountBlock(b.id)));
+  $('#addCard').innerHTML=EDIT?'<button class="btn" data-act="cadd" type="button">+ Nowa sekcja</button>':'';
+  applyTones();paintDone();paintSums();
 }
-function paintSettings(){
-  document.body.classList.toggle('quiet',!!S.set.quiet);
-  $('#setQuiet').checked=!!S.set.quiet;$('#setSnd').checked=!!S.set.snd;
+function paintSums(){
+  LAY().forEach(c=>{
+    const e=$('#sum-'+c.id);if(!e)return;
+    const parts=c.blocks.slice().sort((a,b)=>BT[a.type].sp-BT[b.type].sp).map(b=>BT[b.type].sum?BT[b.type].sum(b):'').filter(Boolean);
+    e.textContent=parts.slice(0,2).join(' · ');
+  });
 }
 function streak(){
   const n=k=>Object.keys(S.days[k]||{}).length;let c=0,d=new Date();
@@ -867,37 +1202,197 @@ function streak(){
   while(n(keyOf(d))){c++;d.setDate(d.getDate()-1)}
   return c;
 }
+const RC=2*Math.PI*22;
 function paintDone(){
-  const dk=doneKeys(),cnt=CARDS.filter(([k])=>dk[k]).length;
-  CARDS.forEach(([k,t])=>{
-    const on=!!dk[k];
-    $('#card-'+k).classList.toggle('done',on);
-    $('[data-tick='+k+']').setAttribute('aria-pressed',on);
-    const b=$('#card-'+k+' [data-done]');if(b){b.textContent=on?'✓ Zrobione — cofnij':'Zrobione';b.classList.toggle('pri',!on);b.classList.toggle('ghost',on)}
+  const L=LAY(),dk=doneKeys(),total=L.length,cnt=L.filter(c=>dk[c.id]).length;
+  L.forEach(c=>{
+    const on=!!dk[c.id],e=$('#card-'+c.id);if(!e)return;
+    e.classList.toggle('done',on);
+    $('[data-tick]',e).setAttribute('aria-pressed',on);
+    const b=$('[data-done]',e);b.textContent=on?'✓ Zrobione — cofnij':'Zrobione';b.classList.toggle('pri',!on);b.classList.toggle('ghost',on);
   });
-  $('#dots').innerHTML=CARDS.map(([k],i)=>`<i class="${i<cnt?'on':''}"></i>`).join('');
-  $('#ptxt').textContent=cnt+' / '+CARDS.length+' dziś';
-  $('#hint').hidden=cnt>0;
-  const s=streak();$('#streak').textContent=s?'seria: '+s+' '+(s===1?'dzień':'dni'):'';
-  let h='';
-  for(let i=13;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);const k=keyOf(d),n=Object.keys(S.days[k]||{}).length;h+=`<i class="l${n}${i===0?' today':''}" title="${esc(d.toLocaleDateString('pl-PL',{weekday:'short',day:'numeric',month:'short'}))}: ${n}/5"></i>`}
+  const r=$('#ring');
+  if(!$('svg',r))r.innerHTML=`<svg viewBox="0 0 52 52" aria-hidden="true"><circle class="rt" cx="26" cy="26" r="22"/><circle class="rp" cx="26" cy="26" r="22" stroke-dasharray="${RC.toFixed(1)}" stroke-dashoffset="${RC.toFixed(1)}"/></svg><b></b>`;
+  $('.rp',r).setAttribute('stroke-dashoffset',(RC*(1-(total?cnt/total:0))).toFixed(1));
+  $('b',r).textContent=cnt+'/'+total;
+  $('#ptxt').textContent=cnt+' / '+total+' dziś';
+  $('#hint').hidden=cnt>0||!total;
+  let wk=0,h='';
+  for(let i=13;i>=0;i--){
+    const d=new Date();d.setDate(d.getDate()-i);const k=keyOf(d),n=Object.keys(S.days[k]||{}).length;
+    if(i<7&&n)wk++;
+    const lv=n?Math.min(5,Math.ceil(5*Math.min(n,total||n)/(total||n))):0;
+    h+=`<i class="l${lv}${i===0?' today':''}" title="${esc(d.toLocaleDateString('pl-PL',{weekday:'short',day:'numeric',month:'short'}))}: ${n}"></i>`;
+  }
   $('#strip').innerHTML=h;
+  $('#week').textContent='tydzień: '+wk+'/7';
+  const s=streak();$('#streak').textContent=s?'seria: '+s+' '+(s===1?'dzień':'dni'):'';
 }
+const HUES=[[168,'Morski'],[210,'Niebo'],[262,'Fiolet'],[328,'Róż'],[10,'Koral'],[38,'Bursztyn'],[100,'Mech'],[190,'Turkus']];
+const OFFS=[0,26,-26,52,-52,78];
+function applyTones(){
+  const dark=document.documentElement.dataset.dark==='1',h=+S.set.hue||168;
+  LAY().forEach((c,i)=>{
+    const e=$('#card-'+c.id);if(!e)return;
+    const ch=(h+OFFS[i%OFFS.length]+360)%360;
+    e.style.setProperty('--tone',dark?`hsl(${ch} 22% 15%)`:`hsl(${ch} 38% 92%)`);
+    e.style.setProperty('--edge',dark?`hsl(${ch} 42% 50%)`:`hsl(${ch} 40% 42%)`);
+  });
+}
+function applyLook(){
+  const m=S.set.mode,mq=window.matchMedia?matchMedia('(prefers-color-scheme: dark)').matches:true;
+  const dark=m==='dark'||(m!=='light'&&mq),r=document.documentElement;
+  r.dataset.dark=dark?'1':'0';r.style.setProperty('--h',+S.set.hue||168);
+  document.body.classList.toggle('quiet',!!S.set.quiet);
+  applyTones();
+}
+function renderLook(){
+  $('#sws').innerHTML=HUES.map(([h,n])=>`<button class="sw" type="button" data-h="${h}" aria-pressed="${+S.set.hue===h}"><i style="background:hsl(${h} 50% 55%)"></i>${esc(n)}</button>`).join('');
+  seg($('#modeSeg'),[['auto','Auto'],['dark','Ciemny'],['light','Jasny']],S.set.mode,v=>{S.set.mode=v;save();applyLook()});
+  $('#setQuiet').checked=!!S.set.quiet;$('#setSnd').checked=!!S.set.snd;
+}
+function greet(){const h=new Date().getHours();return h<12?'Dzień dobry':h<18?'Miłego dnia':'Dobry wieczór'}
 function renderAll(){
   TODAY=keyOf(new Date());DN=dnum(new Date());
+  $('#greet').textContent=greet();
   $('#date').textContent=new Date().toLocaleDateString('pl-PL',{weekday:'long',day:'numeric',month:'long'});
-  paintSettings();
-  seg($('#wuSeg'),[[5,'5 min'],[10,'10 min']],S.set.wlen,v=>{S.set.wlen=+v;save();renderWU()});
-  seg($('#trSeg'),Object.entries(TRAIN),S.set.train,v=>{S.set.train=v;moveOff=0;save();renderMove()});
-  seg($('#lenSeg'),[[5,'5 min'],[10,'10 min']],S.set.len,v=>{S.set.len=+v;save();renderMove()});
-  renderTracks();renderWU();renderVL();renderCharisma();renderMove();renderTodos();renderJournal();
-  paintDone();setSync(syncState);
+  applyLook();renderCards();setSync(syncState);
 }
 
-build();
+/* ───────── EDYCJA UKŁADU ───────── */
+const moveIn=(arr,i,d)=>{const j=i+d;if(j<0||j>=arr.length)return;const t=arr[i];arr[i]=arr[j];arr[j]=t};
+function setBH(b){
+  const sec=blockEl(b.id);if(!sec)return;let h=$('h3.bh',sec);
+  if(b.h){if(!h){h=document.createElement('h3');h.className='bh';sec.insertBefore(h,$('.bb',sec))}h.textContent=b.h}else if(h)h.remove();
+}
+function refreshCfg(b){const f=blockEl(b.id),x=f&&$('.bcfg',f);if(x)x.innerHTML=BT[b.type].cfgUI(b)}
+function act(a){
+  const d=a.dataset,L=LAY();
+  switch(d.act){
+    case'cadd':L.push({id:uid(),title:'Nowa sekcja',ic:'🌱',blocks:[]});break;
+    case'cup':case'cdn':moveIn(L,L.findIndex(c=>c.id===d.c),d.act==='cup'?-1:1);break;
+    case'cdel':return armed(a,()=>{S.layout=L.filter(c=>c.id!==d.c);save();renderCards()});
+    case'badd':{const c=findC(d.c),t=$('.addType',a.closest('.adder')).value,df=BT[t].def();c.blocks.push({id:uid(),type:t,h:df.h,cfg:df.cfg});break}
+    case'bup':case'bdn':{const f=findB(d.b);moveIn(f.c.blocks,f.i,d.act==='bup'?-1:1);break}
+    case'bdel':return armed(a,()=>{const f=findB(d.b);f.c.blocks.splice(f.i,1);save();renderCards()});
+    case'ownadd':{
+      const f=findB(d.b),w=a.closest('.bcfg'),t=$('.ow-t',w).value.trim();
+      if(!t){$('.ow-t',w).focus();return}
+      const m=Math.min(60,Math.max(1,parseInt($('.ow-m',w).value,10)||2));
+      const steps=$('.ow-s',w).value.split('\n').map(s=>s.trim()).filter(Boolean);
+      (f.b.cfg.own||(f.b.cfg.own=[])).push({c:$('.ow-c',w).value.trim().slice(0,20)||'Moje',t:t.slice(0,60),m,sec:m*60,steps:steps.length?steps:['Wykonaj ćwiczenie spokojnie, bez bólu.'],ok:'wykonasz ćwiczenie do końca, bez bólu.'});
+      save();refreshCfg(f.b);mountBlock(f.b.id);paintSums();return;
+    }
+    case'owndel':return armed(a,()=>{const f=findB(d.b);f.b.cfg.own.splice(+d.i,1);save();refreshCfg(f.b);mountBlock(f.b.id);paintSums()});
+    default:return;
+  }
+  save();renderCards();
+}
+function toggleEdit(on){
+  EDIT=on;$('#miEditT').textContent=on?'Zakończ edycję':'Edytuj układ';$('#editBar').hidden=!on;
+  renderCards();
+}
+function renderTpl(){
+  $('#tplList').innerHTML=TEMPLATES.map(t=>`<div class="tpl"><b>${t.ic} ${esc(t.n)}</b><p>${esc(t.d)}</p><button class="btn sm pri" type="button" data-tpl="${t.id}">${S.tpl===t.id?'Wczytaj ponownie':'Wczytaj'}</button></div>`).join('')+(S.prev?'<div class="tpl"><b>↩ Poprzedni układ</b><p>Przywróć układ sprzed ostatniego wczytania zestawu.</p><button class="btn sm" type="button" data-tpl="__prev">Przywróć</button></div>':'');
+}
+function loadTpl(id){
+  const cur={layout:clone(LAY()),tpl:S.tpl};
+  if(id==='__prev'){if(!S.prev)return;S.layout=S.prev.layout;S.tpl=S.prev.tpl}
+  else{const t=TEMPLATES.find(x=>x.id===id);if(!t)return;S.layout=clone(t.layout);S.tpl=t.id}
+  S.prev=cur;
+  for(const k in OFF)delete OFF[k];
+  save();renderCards();renderTpl();
+}
+
+/* ───────── OKNA I MENU ───────── */
+function wire(){
+  const cards=$('#cards');
+  cards.addEventListener('click',e=>{
+    const t=e.target.closest('[data-tick]');
+    if(t){e.preventDefault();e.stopPropagation();setDone(t.dataset.tick,!isDone(t.dataset.tick));return}
+    const a=e.target.closest('[data-act]');if(a){act(a);return}
+    const b=e.target.closest('[data-done]');
+    if(b)setDone(b.dataset.done,!isDone(b.dataset.done));
+  });
+  $('#addCard').addEventListener('click',e=>{const a=e.target.closest('[data-act]');if(a)act(a)});
+  cards.addEventListener('change',e=>{
+    const t=e.target,f=t.dataset.f,cf=t.dataset.cf;
+    if(f==='ctitle'){const c=findC(t.dataset.c);if(!c)return;c.title=t.value.trim().slice(0,40)||'Sekcja';save();$('#card-'+c.id+' .ttl b').textContent=c.title}
+    else if(f==='cicon'){const c=findC(t.dataset.c);if(!c)return;c.ic=t.value.trim().slice(0,4)||'•';save();$('#card-'+c.id+' .ic').textContent=c.ic}
+    else if(f==='bh'){const x=findB(t.dataset.b);if(!x)return;x.b.h=t.value.trim().slice(0,60);save();setBH(x.b)}
+    else if(cf){
+      const x=findB(t.dataset.b);if(!x)return;
+      x.b.cfg[cf]=t.dataset.ty&&PARSE[t.dataset.ty]?PARSE[t.dataset.ty](t.value,x.b):t.value;
+      if(cf==='pack'||cf==='set'){x.b.cfg.cat='';OFF[x.b.id]=0}
+      save();if(t.dataset.rc)refreshCfg(x.b);
+      mountBlock(x.b.id);paintSums();
+    }
+  });
+  document.addEventListener('securitypolicyviolation',e=>{
+    const d=e.effectiveDirective||e.violatedDirective||'';
+    if(!/frame|child/.test(d))return;
+    EMBED_BLOCKED=true;
+    $$('.pl').forEach(b=>{if(b.querySelector('iframe'))b.innerHTML='<div class="blocked">Claude blokuje osadzone wideo na tej stronie. Użyj „YouTube ↗”.</div>'});
+    showEmbedNote();
+  });
+
+  const menu=$('#menu'),mb=$('#menuBtn');
+  const closeMenu=()=>{menu.hidden=true;mb.setAttribute('aria-expanded','false')};
+  mb.onclick=e=>{e.stopPropagation();menu.hidden=!menu.hidden;mb.setAttribute('aria-expanded',String(!menu.hidden))};
+  document.addEventListener('click',e=>{if(!menu.hidden&&!e.target.closest('#menu'))closeMenu()});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape')closeMenu()});
+  const openD=d=>{closeMenu();typeof d.showModal==='function'?d.showModal():d.setAttribute('open','')};
+  const closeD=d=>typeof d.close==='function'?d.close():d.removeAttribute('open');
+  $$('dialog [data-close]').forEach(b=>b.onclick=()=>closeD(b.closest('dialog')));
+  $$('dialog').forEach(d=>d.addEventListener('click',e=>{if(e.target===d)closeD(d)}));
+
+  $('#miAbout').onclick=()=>{$('#verA').textContent=VER;openD($('#dAbout'))};
+  $('#miSug').onclick=()=>openD($('#dSug'));
+  $('#miLook').onclick=()=>{renderLook();openD($('#dLook'))};
+  $('#miEdit').onclick=()=>{closeMenu();toggleEdit(!EDIT)};
+  $('#editDone').onclick=()=>toggleEdit(false);
+  $('#miPacks').onclick=()=>{renderTpl();openD($('#dPacks'))};
+  $('#miBackup').onclick=()=>{$('#bkOut').value=JSON.stringify(S);$('#bkMsg').textContent='';$('#bkIn').value='';openD($('#dBackup'))};
+
+  $('#sws').onclick=e=>{const b=e.target.closest('[data-h]');if(!b)return;S.set.hue=+b.dataset.h;save();applyLook();renderLook()};
+  $('#setQuiet').onchange=e=>{S.set.quiet=e.target.checked?1:0;save();applyLook()};
+  $('#setSnd').onchange=e=>{S.set.snd=e.target.checked?1:0;save()};
+  $('#tplList').onclick=e=>{const b=e.target.closest('[data-tpl]');if(b)armed(b,()=>loadTpl(b.dataset.tpl))};
+
+  $('#bkCopy').onclick=async()=>{
+    const m=$('#bkMsg');
+    try{await navigator.clipboard.writeText($('#bkOut').value);m.textContent='Skopiowano. Wklej do notatki lub pliku w bezpiecznym miejscu.'}
+    catch(e){$('#bkOut').select();m.textContent='Zaznaczone — skopiuj (Ctrl/Cmd+C).'}
+  };
+  $('#bkLoad').onclick=()=>{
+    const m=$('#bkMsg');
+    try{
+      const d=JSON.parse($('#bkIn').value);
+      if(!d||typeof d!=='object'||!(d.layout||d.days||d.todos))throw new Error('format');
+      S=thaw(d);save();renderAll();m.textContent='Wczytano kopię.';m.className='msg';
+    }catch(e){m.textContent='To nie wygląda na kopię danych Nawyku. Wklej cały tekst z „Kopiuj kopię”.';m.className='msg err'}
+  };
+
+  const sugT=$('#sugT'),updMail=()=>{$('#sugMail').href='mailto:'+MAIL+'?subject='+encodeURIComponent('Nawyk '+VER+' – sugestia')+'&body='+encodeURIComponent(sugT.value)};
+  sugT.addEventListener('input',updMail);updMail();
+  $('#sugCopy').onclick=async()=>{
+    const m=$('#sugM');
+    try{await navigator.clipboard.writeText(sugT.value);m.textContent='Skopiowano. Wklej w wiadomości na '+MAIL+'.'}
+    catch(e){sugT.select();m.textContent='Zaznaczone — skopiuj (Ctrl/Cmd+C) i wyślij na '+MAIL+'.'}
+  };
+  if(window.matchMedia)try{matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if(S.set.mode==='auto')applyLook()})}catch(e){}
+  document.addEventListener('visibilitychange',()=>{
+    if(!document.hidden&&keyOf(new Date())!==TODAY&&!anyRunning()){for(const k in OFF)delete OFF[k];renderAll()}
+  });
+}
+
+/* ───────── START ───────── */
+S=thaw({});
+try{const raw=localStorage.getItem(LS);if(raw)S=thaw(JSON.parse(raw))}catch(e){}
+wire();
 renderAll();
-initCloud();
-document.addEventListener('visibilitychange',()=>{if(!document.hidden&&keyOf(new Date())!==TODAY){chOff=0;moveOff=0;renderAll()}});
+if(window.claude&&window.claude.use)initCloud();else if(/^https?:$/.test(location.protocol))initWorker();
+
 })();
 </script>
 </body>

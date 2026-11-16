@@ -169,6 +169,34 @@ async function stats(env) {
   return { apps: a.results, countries: c.results };
 }
 
+// ── Zapis stanu aplikacji w chmurze (np. Nawyk): D1, klucz = e-mail z Cloudflare Access + nazwa aplikacji ──
+const STATE_APPS = ['nawyk'];
+let stateReady = false;
+async function appState(request, env, app) {
+  if (!env.DB) return J({ code: 'no_db' }, 501);
+  if (!STATE_APPS.includes(app)) return J({ code: 'not_found' }, 404);
+  const u = (request.headers.get('Cf-Access-Authenticated-User-Email') || '').trim().toLowerCase().slice(0, 120);
+  if (!u) return J({ code: 'no_user' }, 401); // bez zalogowanego użytkownika Access nic nie zapisujemy ani nie oddajemy
+  if (!stateReady) {
+    await env.DB.prepare('CREATE TABLE IF NOT EXISTS app_state (u TEXT NOT NULL, app TEXT NOT NULL, t INTEGER NOT NULL, data TEXT NOT NULL, PRIMARY KEY (u, app))').run();
+    stateReady = true;
+  }
+  if (request.method === 'GET') {
+    const r = await env.DB.prepare('SELECT t, data FROM app_state WHERE u = ?1 AND app = ?2').bind(u, app).first();
+    return J({ ok: true, data: r ? JSON.parse(r.data) : null });
+  }
+  if (request.method === 'PUT') {
+    if (+(request.headers.get('content-length') || 0) > 4e5) return J({ code: 'too_big' }, 413);
+    let b; try { b = await request.json(); } catch { return J({ code: 'bad' }, 400); }
+    if (!b || typeof b !== 'object' || Array.isArray(b)) return J({ code: 'bad' }, 400);
+    const data = JSON.stringify(b);
+    if (data.length > 4e5) return J({ code: 'too_big' }, 413);
+    await env.DB.prepare('INSERT INTO app_state (u, app, t, data) VALUES (?1, ?2, ?3, ?4) ON CONFLICT(u, app) DO UPDATE SET t = ?3, data = ?4').bind(u, app, Math.floor(+b.t || Date.now()), data).run();
+    return J({ ok: true });
+  }
+  return J({ code: 'method' }, 405);
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -181,6 +209,8 @@ export default {
         return t.code ? J(t, t.code === 'no_captions' ? 404 : 502) : J(t);
       }
       if (url.pathname === '/api/stats') return J(await stats(env));
+      const sm = url.pathname.match(/^\/api\/state\/([a-z0-9_-]+)$/);
+      if (sm) return appState(request, env, sm[1]);
       if (url.pathname === '/api/n/status') return J({ stt: !!(env.OPENAI_API_KEY || env.AI), diar: !!env.OPENAI_API_KEY, claude: !!env.ANTHROPIC_API_KEY });
       // 04 Notatnik Słuchacza: proxy do OpenAI (transkrypcja + mówcy) i Claude (notatki, autorzy, weryfikacja); klucze tylko jako sekrety Workera
       if (url.pathname === '/api/n/stt' && request.method === 'POST') {

@@ -1,13 +1,8 @@
-"""Buduje index.html (src/) i worker.js (Cloudflare Worker serwujący index.html)."""
-import json, pathlib
+"""Buduje index.html z src/ (jedna samowystarczalna strona). Wdrożenie: wspólny Worker `projects` (00_Worker) kopiuje index.html do dist/02/."""
+import pathlib
 r = pathlib.Path(__file__).parent
-html = (r/'src/app.src.html').read_text(encoding='utf-8').replace('/*FIGS*/', (r/'src/figs.js').read_text(encoding='utf-8'))
-(r/'index.html').write_text(html, encoding='utf-8')
-(r/'worker.js').write_text(
- "const HTML = " + json.dumps(html, ensure_ascii=False) + ";\n"
- "export default { async fetch(req) {\n"
- "  const u = new URL(req.url);\n"
- "  if (u.pathname !== '/' && u.pathname !== '/index.html') return new Response('Not found', {status: 404});\n"
- "  return new Response(HTML, {headers: {'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-cache'}});\n"
- "} };\n", encoding='utf-8')
+parts = ['figs.js', 'figs_stretch.js', 'data_charyzma.js', 'data_zestawy.js', 'core.js']
+js = '\n'.join((r / 'src' / p).read_text(encoding='utf-8') for p in parts)
+html = (r / 'src/app.src.html').read_text(encoding='utf-8').replace('/*SCRIPT*/', "(function(){\n'use strict';\n" + js + "\n})();")
+(r / 'index.html').write_text(html, encoding='utf-8')
 print('OK', len(html))
