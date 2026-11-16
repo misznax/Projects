@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Startup Board - 6 swobodnych paneli roboczych z pamięcią stanu.
+"""Startup Board - do 8 swobodnych paneli roboczych z pamięcią stanu.
 
-Skróty: Ctrl+O otwórz | Ctrl+S zapisz | Ctrl+W zamknij plik | Alt+1..6 panel
-        Ctrl+M pokaż/ukryj pasek menu | Ctrl+Shift+E układ siatki 3x2
+Skróty: Ctrl+N nowy plik | Ctrl+O otwórz | Ctrl+S zapisz | Ctrl+Shift+S zapisz jako | Ctrl+W zamknij plik
+        Ctrl+F znajdź (F3 / Shift+F3 dalej / wstecz) | Ctrl+Shift+V wklej obraz ze schowka
+        Ctrl+, ustawienia | Ctrl+M pokaż/ukryj pasek menu | Ctrl+Shift+E układ siatki | Alt+1..8 panel
 Panele: przeciągaj za pasek tytułowy, zmieniaj rozmiar łapiąc krawędź/róg.
         Przyciąganie magnetyczne do krawędzi innych paneli (Alt = wyłącz).
 """
@@ -20,14 +21,15 @@ import time
 from functools import lru_cache
 from pathlib import Path
 
-from PySide6.QtCore import (QByteArray, QEvent, QLockFile, QPoint, QPointF, QRect, QRectF, QStandardPaths, Qt,
-                            QTimer, QUrl, Signal)
-from PySide6.QtGui import (QAction, QActionGroup, QColor, QDesktopServices, QFont, QIcon, QImage, QKeySequence,
-                           QPainter, QPalette, QPen, QPixmap, QPolygonF, QShortcut, QSyntaxHighlighter, QTextCharFormat,
-                           QTextCursor)
+from PySide6.QtCore import (QByteArray, QEvent, QLockFile, QPoint, QPointF, QRect, QRectF, QSize, QStandardPaths,
+                            Qt, QTimer, QUrl, Signal)
+from PySide6.QtGui import (QAction, QActionGroup, QColor, QDesktopServices, QFont, QIcon, QImage, QImageReader,
+                           QKeySequence, QPainter, QPalette, QPen, QPixmap, QPolygonF, QShortcut, QSyntaxHighlighter,
+                           QTextCharFormat, QTextCursor, QTextDocument)
 from PySide6.QtWidgets import (
-    QAbstractButton, QApplication, QColorDialog, QDialog, QFileDialog, QMenu, QFrame, QHBoxLayout, QLabel, QMainWindow,
-    QMessageBox, QPlainTextEdit, QPushButton, QScrollArea, QSizePolicy, QStackedWidget,
+    QAbstractButton, QApplication, QBoxLayout, QButtonGroup, QCheckBox, QColorDialog, QComboBox, QDialog, QFileDialog,
+    QFrame, QGridLayout, QGroupBox, QHBoxLayout, QInputDialog, QLabel, QLineEdit, QListWidget, QListWidgetItem,
+    QMainWindow, QMenu, QMessageBox, QPlainTextEdit, QPushButton, QScrollArea, QSizePolicy, QSpinBox, QStackedWidget,
     QToolButton, QVBoxLayout, QWidget,
 )
 
@@ -38,6 +40,9 @@ APP_CONTACT = "michus@gmail.com"
 
 MAX_BYTES = 10 * 1024 * 1024        # limit pliku tekstowego
 MAX_PDF_BYTES = 200 * 1024 * 1024   # limit PDF
+MAX_IMG_BYTES = 60 * 1024 * 1024    # limit pliku obrazu
+MAX_IMG_PIXELS = 120_000_000        # limit rozdzielczości obrazu (pamięć)
+IMG_EXTS = {".png", ".jpg", ".jpeg", ".bmp", ".gif", ".webp", ".ico", ".tif", ".tiff"}
 HL_MAX_CHARS = 2_000_000            # powyżej: bez kolorowania
 STATE_VERSION = 2
 FONTS = ["Consolas", "Arial", "Courier New", "Segoe UI"]
@@ -55,6 +60,10 @@ ICON_COLORS = [("red", "Czerwony", "#e53935"), ("orange", "Pomarańczowy", "#fb8
                ("purple", "Fioletowy", "#8e24aa"), ("pink", "Różowy", "#ec407a")]
 EXT_LANG = {".py": "python", ".pyw": "python", ".html": "html", ".htm": "html",
             ".xhtml": "html", ".sql": "sql"}
+LAST = {"dir": ""}        # ostatnio używany folder w oknach wyboru pliku (zapisywany w stanie)
+THEME = {"dark": True}    # czy aktualny schemat jest ciemny (pasek tytułu okien)
+
+
 def hdr_css(active: bool) -> str:
     u = UI
     return (f"#hdr{{background:{u['hdr_bg_a'] if active else u['hdr_bg']};border-bottom:1px solid {u['border']};}}"
@@ -134,6 +143,39 @@ def star_icon(color: str) -> QIcon:
     for sz in (16, 24, 32, 48, 64, 128, 256):
         ic.addPixmap(star_pixmap(color, sz))
     return ic
+
+
+def clipboard_image_source() -> str | None:
+    """Co jest w schowku: "image" (obraz), "file" (skopiowany plik graficzny) albo None."""
+    md = QApplication.clipboard().mimeData()
+    if md is None:
+        return None
+    if md.hasImage():
+        return "image"
+    if md.hasUrls() and any(u.isLocalFile() and Path(u.toLocalFile()).suffix.lower() in IMG_EXTS for u in md.urls()):
+        return "file"
+    return None
+
+
+def set_titlebar_dark(w: QWidget, dark: bool):
+    """Windows 10/11: ciemny lub jasny pasek tytułu okna zgodnie ze schematem."""
+    if sys.platform != "win32" or not w.isVisible():
+        return
+    try:
+        import ctypes
+        v = ctypes.c_int(1 if dark else 0)
+        for attr in (20, 19):
+            ctypes.windll.dwmapi.DwmSetWindowAttribute(int(w.winId()), attr, ctypes.byref(v), ctypes.sizeof(v))
+    except Exception:
+        pass
+
+
+class ThemedDialog(QDialog):
+    """Okno dialogowe z paskiem tytułu zgodnym ze schematem kolorów."""
+
+    def showEvent(self, e):
+        super().showEvent(e)
+        set_titlebar_dark(self, THEME["dark"])
 
 
 # ---------- kolorowanie składni (Python / HTML / SQL + cyfry) ----------
@@ -489,6 +531,180 @@ class PdfViewer(QScrollArea):
             super().wheelEvent(e)
 
 
+# ---------- podgląd obrazu i pusty panel z plusem ----------
+
+class ImageViewer(QScrollArea):
+    """Podgląd obrazu. Domyślnie dopasowany do panelu (nie powiększa ponad 100%).
+    Ctrl+kółko = zoom, dwuklik = dopasuj / 100%, przeciąganie myszą = przesuwanie."""
+    MAX_PIXELS = 16_000_000  # limit pikseli skalowanej kopii (pamięć)
+
+    def __init__(self):
+        super().__init__()
+        self.pix = QPixmap()
+        self.zoom = 0.0  # 0 = dopasuj do panelu
+        self._pan: QPoint | None = None
+        self.setFrameShape(QFrame.Shape.NoFrame)
+        self.setWidgetResizable(True)
+        self.lbl = QLabel()
+        self.lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.setWidget(self.lbl)
+
+    def load(self, img: QImage):
+        self.pix = QPixmap.fromImage(img)
+        self._render()
+
+    def clear(self):
+        self.pix = QPixmap()
+        self.lbl.clear()
+
+    def eff_scale(self) -> float:
+        if self.pix.isNull():
+            return 1.0
+        w, h = self.pix.width(), self.pix.height()
+        if self.zoom > 0:
+            s = self.zoom
+        else:
+            vp = self.viewport().size()
+            s = min(1.0, max(vp.width(), 1) / w, max(vp.height(), 1) / h)
+        if w * h * s * s > self.MAX_PIXELS:
+            s = math.sqrt(self.MAX_PIXELS / (w * h))
+        return max(0.02, s)
+
+    def _render(self):
+        if self.pix.isNull():
+            self.lbl.clear()
+            return
+        s = self.eff_scale()
+        w, h = max(1, round(self.pix.width() * s)), max(1, round(self.pix.height() * s))
+        same = (w, h) == (self.pix.width(), self.pix.height())
+        self.lbl.setPixmap(self.pix if same else self.pix.scaled(
+            w, h, Qt.AspectRatioMode.IgnoreAspectRatio, Qt.TransformationMode.SmoothTransformation))
+        pol = (Qt.ScrollBarPolicy.ScrollBarAlwaysOff if self.zoom <= 0 else Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self.setHorizontalScrollBarPolicy(pol)
+        self.setVerticalScrollBarPolicy(pol)
+
+    def set_zoom(self, z: float):
+        self.zoom = z
+        self._render()
+
+    def resizeEvent(self, e):
+        super().resizeEvent(e)
+        if self.zoom <= 0:
+            self._render()
+
+    def wheelEvent(self, e):
+        if e.modifiers() & Qt.KeyboardModifier.ControlModifier:
+            cur = self.eff_scale()
+            self.set_zoom(max(0.05, min(cur * (1.15 if e.angleDelta().y() > 0 else 1 / 1.15), 16.0)))
+            e.accept()
+        else:
+            super().wheelEvent(e)
+
+    def mouseDoubleClickEvent(self, e):
+        self.set_zoom(0.0 if self.zoom > 0 else 1.0)
+
+    def mousePressEvent(self, e):
+        if e.button() == Qt.MouseButton.LeftButton and self.zoom > 0:
+            self._pan = e.globalPosition().toPoint()
+            self.setCursor(Qt.CursorShape.ClosedHandCursor)
+        super().mousePressEvent(e)
+
+    def mouseMoveEvent(self, e):
+        if self._pan is not None:
+            gp = e.globalPosition().toPoint()
+            d, self._pan = gp - self._pan, gp
+            self.horizontalScrollBar().setValue(self.horizontalScrollBar().value() - d.x())
+            self.verticalScrollBar().setValue(self.verticalScrollBar().value() - d.y())
+        else:
+            super().mouseMoveEvent(e)
+
+    def mouseReleaseEvent(self, e):
+        self._pan = None
+        self.unsetCursor()
+        super().mouseReleaseEvent(e)
+
+
+class Placeholder(QWidget):
+    """Pusty panel: duży plus (nowy plik tekstowy) + skróty do obrazu i otwierania plików.
+    Dopasowuje się do wielkości panelu (w małym zostaje sam plus)."""
+    DEFAULT_HINT = "albo przeciągnij tu plik · wklej obraz (Ctrl+Shift+V)"
+
+    def __init__(self):
+        super().__init__()
+        self.setObjectName("ph")
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        self._err = False
+        self._cur: str | None = None
+        self._sz = 0
+        v = QVBoxLayout(self)
+        v.setContentsMargins(8, 6, 8, 6)
+        v.setSpacing(6)
+        self.btn_plus = QToolButton(text="+", toolTip="Nowy plik tekstowy (Ctrl+N)")
+        self.btn_plus.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.lbl_plus = QLabel("Nowy plik tekstowy")
+        self.lbl_hint = QLabel(self.DEFAULT_HINT)
+        for lb in (self.lbl_plus, self.lbl_hint):
+            lb.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            lb.setWordWrap(True)
+        self.row = QWidget()
+        self.row_l = QBoxLayout(QBoxLayout.Direction.LeftToRight, self.row)
+        self.row_l.setContentsMargins(0, 0, 0, 0)
+        self.row_l.setSpacing(6)
+        self.btn_open = QPushButton("Otwórz plik…", toolTip="Otwórz plik tekstowy, PDF lub obraz (Ctrl+O)")
+        self.btn_clip = QPushButton("Obraz ze schowka", toolTip="Wklej obraz ze schowka (Ctrl+Shift+V)")
+        self.btn_img = QPushButton("Obraz z pliku…", toolTip="Otwórz plik graficzny (PNG, JPG, BMP, GIF, WEBP…)")
+        for b in (self.btn_open, self.btn_clip, self.btn_img):
+            b.setCursor(Qt.CursorShape.PointingHandCursor)
+            self.row_l.addWidget(b)
+        v.addStretch(1)
+        v.addWidget(self.btn_plus, 0, Qt.AlignmentFlag.AlignHCenter)
+        v.addWidget(self.lbl_plus)
+        v.addWidget(self.lbl_hint)
+        v.addWidget(self.row, 0, Qt.AlignmentFlag.AlignHCenter)
+        v.addStretch(1)
+        self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self._layout_for(self.size())
+
+    def set_hint(self, text: str | None):
+        """Komunikat (np. błąd otwarcia) albo domyślna podpowiedź (None)."""
+        if text == self._cur:
+            return
+        self._cur, self._err = text, bool(text)
+        self.lbl_hint.setText(text or self.DEFAULT_HINT)
+        self._layout_for(self.size())
+        self.apply_colors()
+
+    def _layout_for(self, size: QSize):
+        w, h = size.width(), size.height()
+        horiz = w >= 480
+        self.lbl_plus.setVisible(h >= 105)
+        self.lbl_hint.setVisible(h >= 215 or (self._err and h >= 130))
+        self.row.setVisible((horiz and h >= 150) or (not horiz and h >= 250))
+        self.row_l.setDirection(QBoxLayout.Direction.LeftToRight if horiz else QBoxLayout.Direction.TopToBottom)
+        sz = 56 if h >= 190 else 44 if h >= 120 else 32
+        if sz != self._sz:
+            self._sz = sz
+            self.btn_plus.setFixedSize(sz, sz)
+            self.apply_colors()
+
+    def resizeEvent(self, e):
+        super().resizeEvent(e)
+        self._layout_for(e.size())
+
+    def apply_colors(self):
+        sz, mute, acc = self._sz or 56, UI["mute"], UI["border_a"]
+        self.setStyleSheet(
+            f"#ph{{background:{COLORS['bg']};}}"
+            f"QLabel{{color:{mute};}}"
+            f"QToolButton{{border:2px dashed {mute};border-radius:{sz // 2}px;color:{mute};"
+            f"background:transparent;font-size:{int(sz * 0.62)}px;}}"
+            f"QToolButton:hover{{border:2px solid {acc};color:{acc};background:{UI['hdr_bg']};}}"
+            f"QPushButton{{background:{UI['hdr_bg']};color:{UI['hdr_fg']};border:1px solid {UI['border']};"
+            f"border-radius:4px;padding:3px 10px;}}"
+            f"QPushButton:hover{{border-color:{acc};}}")
+        self.lbl_hint.setStyleSheet(f"color:{UI['err'] if self._err else mute};")
+
+
 # ---------- edytor ----------
 
 class Editor(QPlainTextEdit):
@@ -520,12 +736,19 @@ class Editor(QPlainTextEdit):
 class TextPane(QFrame):
     activated = Signal(object)
     menuRequested = Signal(QPoint)  # globalna pozycja, gdzie pokazać menu
+    pathChanged = Signal(str)       # plik otwarty / zapisany przez użytkownika (lista ostatnich)
+    img_dir = Path(tempfile.gettempdir()) / "startupboard_obrazy"  # obrazy wklejone ze schowka (ustawia okno)
+    PH, ED, PDF, IMG = 0, 1, 2, 3   # strony QStackedWidget
 
     def __init__(self, index: int):
         super().__init__()
         self.index = index
         self.path: str | None = None
-        self.kind = "text"  # text | pdf
+        self.kind = "text"  # text | pdf | image
+        self.untitled = False  # nowy dokument jeszcze bez pliku
+        self.clip = False      # obraz wklejony ze schowka (plik w folderze aplikacji)
+        self.img_size = (0, 0)
+        self.demo: tuple[str, str, str] | None = None  # (nazwa, stan, klucz koloru) – podgląd w Ustawieniach
         self.encoding, self.newline = "utf-8", "\n"
         self.mtime: float | None = None
         self.disk_size = 0
@@ -560,43 +783,63 @@ class TextPane(QFrame):
             lambda: self.menuRequested.emit(self.btn_menu.mapToGlobal(QPoint(0, self.btn_menu.height()))))
 
         self.stack = QStackedWidget()
-        ph = self.ph = QWidget()
-        ph.setObjectName("ph")
-        ph.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
-        pv = QVBoxLayout(ph)
-        pv.addStretch(1)
-        self.lbl_hint = QLabel()
-        self.lbl_hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.lbl_hint.setWordWrap(True)
-        self.btn_ph = QPushButton("Otwórz plik…")
-        self.btn_ph.setFixedWidth(130)
-        pv.addWidget(self.lbl_hint)
-        pv.addWidget(self.btn_ph, 0, Qt.AlignmentFlag.AlignHCenter)
-        pv.addStretch(1)
+        self.ph = Placeholder()
+        self.lbl_hint = self.ph.lbl_hint
         self.editor = Editor()
         self.editor.setFrameShape(QFrame.Shape.NoFrame)
         self.editor.setLineWrapMode(QPlainTextEdit.LineWrapMode.WidgetWidth)
         self.hl = Highlighter(self.editor.document(), "text")
         self.pdf = PdfViewer()
-        self.stack.addWidget(ph)
-        self.stack.addWidget(self.editor)
-        self.stack.addWidget(self.pdf)
+        self.imgv = ImageViewer()
+        for w in (self.ph, self.editor, self.pdf, self.imgv):
+            self.stack.addWidget(w)
+
+        # pasek wyszukiwania (Ctrl+F)
+        self.find_bar = QWidget()
+        self.find_bar.setObjectName("fnd")
+        self.find_bar.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        fl = QHBoxLayout(self.find_bar)
+        fl.setContentsMargins(6, 2, 2, 2)
+        fl.setSpacing(2)
+        self.find_edit = QLineEdit()
+        self.find_edit.setPlaceholderText("Znajdź…")
+        self.find_edit.setClearButtonEnabled(True)
+        self.find_edit.installEventFilter(self)
+        self.btn_fprev = QToolButton(text="▲", toolTip="Poprzedni (Shift+F3 / Shift+Enter)")
+        self.btn_fnext = QToolButton(text="▼", toolTip="Następny (F3 / Enter)")
+        self.btn_fcase = QToolButton(text="Aa", checkable=True, toolTip="Uwzględniaj wielkość liter")
+        self.lbl_fcount = QLabel("")
+        self.btn_fclose = QToolButton(text="×", toolTip="Zamknij wyszukiwanie (Esc)")
+        fl.addWidget(self.find_edit, 1)
+        for w in (self.lbl_fcount, self.btn_fprev, self.btn_fnext, self.btn_fcase, self.btn_fclose):
+            fl.addWidget(w)
+        self.find_bar.hide()
 
         lay = QVBoxLayout(self)
         lay.setContentsMargins(0, 0, 0, 0)
         lay.setSpacing(0)
         lay.addWidget(self.header)
         lay.addWidget(self.stack, 1)
+        lay.addWidget(self.find_bar)
 
         self.set_font(self.family, 10)
         self.btn_wrap.toggled.connect(self.set_wrap)
         self.btn_open.clicked.connect(self.ask_open)
-        self.btn_ph.clicked.connect(self.ask_open)
         self.btn_close.clicked.connect(self.close_file)
+        self.ph.btn_plus.clicked.connect(lambda: self.new_document())
+        self.ph.btn_open.clicked.connect(self.ask_open)
+        self.ph.btn_clip.clicked.connect(lambda: self.paste_image())
+        self.ph.btn_img.clicked.connect(self.ask_open_image)
+        self.ph.customContextMenuRequested.connect(lambda pos: self.menuRequested.emit(self.ph.mapToGlobal(pos)))
+        self.find_edit.textChanged.connect(self._find_live)
+        self.find_edit.returnPressed.connect(lambda: self.find_next())
+        self.btn_fnext.clicked.connect(lambda: self.find_next())
+        self.btn_fprev.clicked.connect(lambda: self.find_next(True))
+        self.btn_fcase.toggled.connect(lambda _c: self._find_live())
+        self.btn_fclose.clicked.connect(self.hide_find)
         self.editor.document().modificationChanged.connect(lambda _m: self.refresh_header())
         self.editor.fileDropped.connect(self.open_file)
         self.editor.focused.connect(self._on_focus)
-        self._reset_hint()
         self.set_active(False)
         self.apply_colors()
         self.refresh_header()
@@ -616,8 +859,14 @@ class TextPane(QFrame):
         self.editor.setStyleSheet(
             f"QPlainTextEdit{{background:{COLORS['bg']};color:{COLORS['text']};"
             f"selection-background-color:{UI['sel']};selection-color:{COLORS['text']};}}")
-        self.ph.setStyleSheet(f"#ph{{background:{COLORS['bg']};}}")
-        self.lbl_hint.setStyleSheet(f"color:{UI['mute']};")
+        self.ph.apply_colors()
+        self.imgv.setStyleSheet(f"QScrollArea{{background:{UI['canvas']};}}")
+        u = UI
+        self.find_bar.setStyleSheet(
+            f"#fnd{{background:{u['hdr_bg']};border-top:1px solid {u['border']};}}"
+            f"#fnd QLabel{{color:{u['mute']};font-size:8pt;}}"
+            f"#fnd QToolButton{{border:none;color:{u['mute']};padding:1px 6px;font-size:9pt;}}"
+            f"#fnd QToolButton:hover,#fnd QToolButton:checked{{color:{u['hdr_fg']};background:{u['border']};}}")
         self._restyle()
         self.refresh_header()
         if self.hl.document() is not None:
@@ -651,8 +900,23 @@ class TextPane(QFrame):
         self.lang = lang
         self.apply_lang()
 
-    def _reset_hint(self):
-        self.lbl_hint.setText("Pusty panel\nprzeciągnij tu plik lub kliknij")
+    def set_demo(self, name: str, state: str, ukey: str, text: str, lang: str, select: str = ""):
+        """Panel poglądowy (okno Ustawienia): przykładowy tekst, nieinteraktywny."""
+        self.demo = (name, state, ukey)
+        self.lang = lang
+        self.editor.setReadOnly(True)
+        self.editor.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+        self.editor.setPlainText(text)
+        self.apply_lang()
+        self.stack.setCurrentIndex(self.ED)
+        if select and select in text:
+            cur = QTextCursor(self.editor.document())
+            a = text.index(select)
+            cur.setPosition(a)
+            cur.setPosition(a + len(select), QTextCursor.MoveMode.KeepAnchor)
+            self.editor.setTextCursor(cur)
+        self.refresh_header()
 
     def dragEnterEvent(self, e):
         e.acceptProposedAction() if e.mimeData().hasUrls() else None
@@ -667,15 +931,42 @@ class TextPane(QFrame):
         self.check_external()
 
     def focus_editor(self):
-        w = {1: self.editor, 2: self.pdf}.get(self.stack.currentIndex(), self.btn_ph)
+        w = {self.ED: self.editor, self.PDF: self.pdf, self.IMG: self.imgv}.get(
+            self.stack.currentIndex(), self.ph.btn_plus)
         w.setFocus()
         self.activated.emit(self)
 
     def is_modified(self) -> bool:
         return self.kind == "text" and self.editor.document().isModified()
 
+    def is_empty(self) -> bool:
+        return self.path is None and not self.untitled and self.demo is None
+
+    def flash(self, msg: str):
+        """Krótki komunikat w pustym panelu (w zajętym: okienko)."""
+        if self.stack.currentIndex() == self.PH:
+            self.ph.set_hint(msg)
+            QTimer.singleShot(2800, lambda: self.ph.set_hint(None) if self.stack.currentIndex() == self.PH else None)
+        else:
+            QMessageBox.information(self, APP_NAME, msg)
+
     # --- nagłówek ---
     def refresh_header(self):
+        if self.demo:
+            name, state, ukey = self.demo
+            self.lbl_name.setText(name)
+            self.lbl_name.setToolTip("")
+            self.lbl_state.setText(state)
+            self.lbl_state.setStyleSheet(f"color:{UI[ukey]};")
+            return
+        if self.untitled:
+            self.lbl_name.setText("Bez tytułu")
+            self.lbl_name.setToolTip("Nowy dokument – Ctrl+S pozwoli wybrać nazwę i miejsce zapisu")
+            txt, col = ("● niezapisany", UI["warn"]) if self.is_modified() else ("nowy", UI["info"])
+            self.lbl_state.setText(txt)
+            self.lbl_state.setStyleSheet(f"color:{col};")
+            self.lbl_state.setToolTip("")
+            return
         if self.path is None:
             self.lbl_name.setText("— pusty —")
             self.lbl_name.setToolTip("")
@@ -689,6 +980,8 @@ class TextPane(QFrame):
             txt, col = "⚠ zmieniony na dysku", UI["err"]
         elif self.kind == "pdf":
             txt, col = f"PDF · {self.pdf.page_count()} str.", UI["info"]
+        elif self.kind == "image":
+            txt, col = f"obraz · {self.img_size[0]}×{self.img_size[1]}", UI["info"]
         elif self.is_modified():
             txt, col = "● niezapisany", UI["warn"]
         else:
@@ -699,43 +992,148 @@ class TextPane(QFrame):
         self.lbl_state.setStyleSheet(f"color:{col};")
         self.lbl_state.setToolTip(f"Kodowanie: {self.encoding}" if self.kind == "text" else "")
 
+    # --- szukanie ---
+    def eventFilter(self, obj, ev):
+        if obj is self.find_edit and ev.type() == QEvent.Type.KeyPress:
+            if ev.key() == Qt.Key.Key_Escape:
+                self.hide_find()
+                return True
+            if ev.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter) and ev.modifiers() & Qt.KeyboardModifier.ShiftModifier:
+                self.find_next(True)
+                return True
+        return super().eventFilter(obj, ev)
+
+    def can_find(self) -> bool:
+        return self.kind == "text" and self.stack.currentIndex() == self.ED and self.demo is None
+
+    def show_find(self):
+        if not self.can_find():
+            return
+        sel = self.editor.textCursor().selectedText()
+        if sel and " " not in sel and len(sel) < 200:
+            self.find_edit.setText(sel)
+        self.find_bar.show()
+        self.find_edit.setFocus()
+        self.find_edit.selectAll()
+        self._find_count()
+
+    def hide_find(self):
+        self.find_bar.hide()
+        if self.stack.currentIndex() == self.ED:
+            self.editor.setFocus()
+
+    def find_next(self, backwards: bool = False) -> bool:
+        q = self.find_edit.text()
+        if not q or not self.can_find():
+            return False
+        flags = QTextDocument.FindFlag(0)
+        if backwards:
+            flags |= QTextDocument.FindFlag.FindBackward
+        if self.btn_fcase.isChecked():
+            flags |= QTextDocument.FindFlag.FindCaseSensitively
+        ed = self.editor
+        if ed.find(q, flags):
+            return True
+        keep = QTextCursor(ed.textCursor())
+        wrap = QTextCursor(ed.document())  # zawinięcie: od początku / od końca dokumentu
+        wrap.movePosition(QTextCursor.MoveOperation.End if backwards else QTextCursor.MoveOperation.Start)
+        ed.setTextCursor(wrap)
+        if ed.find(q, flags):
+            return True
+        ed.setTextCursor(keep)
+        return False
+
+    def _find_live(self, _t=None):
+        q = self.find_edit.text()
+        ok = True
+        if q and self.can_find():
+            cur = self.editor.textCursor()
+            cur.setPosition(min(cur.anchor(), cur.position()))  # zostań na bieżącym trafieniu, gdy dopisujesz znaki
+            self.editor.setTextCursor(cur)
+            ok = self.find_next()
+        self.find_edit.setStyleSheet("" if ok else f"color:{UI['err']};")
+        self._find_count()
+
+    def _find_count(self):
+        q = self.find_edit.text()
+        if not q or not self.can_find():
+            self.lbl_fcount.setText("")
+            return
+        txt = self.editor.toPlainText()
+        n = txt.count(q) if self.btn_fcase.isChecked() else txt.lower().count(q.lower())
+        self.lbl_fcount.setText(f"{n}×" if n else "brak")
+
     # --- pliki ---
+    def _start_dir(self) -> str:
+        if self.path:
+            return str(Path(self.path).parent)
+        return LAST["dir"] or QStandardPaths.writableLocation(QStandardPaths.StandardLocation.DocumentsLocation)
+
+    def _note_path(self):
+        if self.path:
+            LAST["dir"] = str(Path(self.path).parent)
+            self.pathChanged.emit(self.path)
+
     def ask_open(self):
         if not self.confirm_close():
             return
-        start = str(Path(self.path).parent) if self.path else ""
         fn, _ = QFileDialog.getOpenFileName(
-            self, "Otwórz plik", start, "Obsługiwane (*.txt *.py *.html *.htm *.sql *.md *.csv *.json *.log *.pdf);;Wszystkie (*)")
+            self, "Otwórz plik", self._start_dir(),
+            "Obsługiwane (*.txt *.py *.html *.htm *.sql *.md *.csv *.json *.log *.pdf *.png *.jpg *.jpeg *.bmp "
+            "*.gif *.webp);;Wszystkie (*)")
         if fn:
             self.open_file(fn, ask=False)
+
+    def ask_open_image(self):
+        if not self.confirm_close():
+            return
+        fn, _ = QFileDialog.getOpenFileName(
+            self, "Otwórz obraz", self._start_dir(),
+            "Obrazy (*.png *.jpg *.jpeg *.bmp *.gif *.webp *.ico *.tif *.tiff);;Wszystkie (*)")
+        if fn:
+            self.open_file(fn, ask=False)
+
+    def _release(self):
+        """Zwolnij bieżącą zawartość (PDF, obraz, flagi) przed wczytaniem innej."""
+        self.pdf.close_doc()
+        self.imgv.clear()
+        self.find_bar.hide()
+        self.kind, self.untitled, self.clip = "text", False, False
+        self.missing = self.conflict = False
+        self.ph.set_hint(None)
 
     def open_file(self, path: str, st: dict | None = None, ask: bool = True) -> bool:
         if ask and not self.confirm_close():
             return False
+        fresh = not st  # otwarcie zrobione przez użytkownika (nie odtwarzanie stanu) -> lista ostatnich
         st = st or {}
         p = Path(path)
-        is_pdf = p.suffix.lower() == ".pdf"
+        ext = p.suffix.lower()
+        kind = "pdf" if ext == ".pdf" else "image" if ext in IMG_EXTS else "text"
         try:
             stt = p.stat()
-            limit = MAX_PDF_BYTES if is_pdf else MAX_BYTES
+            limit = {"pdf": MAX_PDF_BYTES, "image": MAX_IMG_BYTES}.get(kind, MAX_BYTES)
             if stt.st_size > limit:
                 raise ValueError(f"plik większy niż {human_size(limit)}")
-            raw = p.read_bytes()
+            raw = b"" if kind == "image" else p.read_bytes()
         except Exception as ex:
             self._set_missing(str(p), str(ex))
             return False
-        if is_pdf:
-            return self._open_pdf(p, raw, stt, st)
+        ok = (self._open_pdf(p, raw, stt, st) if kind == "pdf" else
+              self._open_image(p, stt, st) if kind == "image" else self._open_text(p, raw, stt, st))
+        if ok and fresh and not self.clip:
+            self._note_path()
+        return ok
+
+    def _open_text(self, p: Path, raw: bytes, stt, st: dict) -> bool:
         if b"\x00" in raw[:8192] and not raw.startswith((codecs.BOM_UTF16_LE, codecs.BOM_UTF16_BE)):
             self._set_missing(str(p), "plik binarny; ten format nie jest jeszcze obsługiwany")
             return False
         text, enc = decode_bytes(raw)
-        self.pdf.close_doc()
-        self.kind = "text"
+        self._release()
         self.path, self.encoding = str(p), enc
         self.newline = "\r\n" if b"\r\n" in raw else "\n"
         self.mtime, self.disk_size = stt.st_mtime, stt.st_size
-        self.missing = self.conflict = False
         self.btn_wrap.setEnabled(True)
         self.lang = st.get("lang", self.lang if st else "auto")
         if st.get("family") in FONTS:
@@ -744,7 +1142,7 @@ class TextPane(QFrame):
         self.editor.setPlainText(text)
         self.editor.document().setModified(False)
         self.apply_lang()
-        self.stack.setCurrentIndex(1)
+        self.stack.setCurrentIndex(self.ED)
         self._apply_view_state(st)
         self.refresh_header()
         return True
@@ -757,11 +1155,14 @@ class TextPane(QFrame):
             return False
         self.editor.setPlainText("")
         self.editor.document().setModified(False)
-        self.kind, self.path = "pdf", str(p)
+        self.imgv.clear()
+        self.find_bar.hide()
+        self.kind, self.path, self.untitled, self.clip = "pdf", str(p), False, False
         self.mtime, self.disk_size = stt.st_mtime, stt.st_size
         self.missing = self.conflict = False
+        self.ph.set_hint(None)
         self.btn_wrap.setEnabled(False)
-        self.stack.setCurrentIndex(2)
+        self.stack.setCurrentIndex(self.PDF)
         z = float(st.get("pdf_zoom", 0) or 0)
         if z > 0:
             self.pdf.zoom = z
@@ -771,14 +1172,107 @@ class TextPane(QFrame):
         self.refresh_header()
         return True
 
+    def _open_image(self, p: Path, stt, st: dict) -> bool:
+        rd = QImageReader(str(p))
+        rd.setAutoTransform(True)
+        sz = rd.size()
+        if sz.isValid() and sz.width() * sz.height() > MAX_IMG_PIXELS:
+            self._set_missing(str(p), f"obraz zbyt duży ({sz.width()}×{sz.height()} px)")
+            return False
+        img = rd.read()
+        if img.isNull():
+            self._set_missing(str(p), f"nie można odczytać obrazu: {rd.errorString()}")
+            return False
+        self._release()
+        self.editor.setPlainText("")
+        self.editor.document().setModified(False)
+        self.kind, self.path, self.clip = "image", str(p), bool(st.get("clip"))
+        self.mtime, self.disk_size = stt.st_mtime, stt.st_size
+        self.img_size = (img.width(), img.height())
+        self.btn_wrap.setEnabled(False)
+        self.imgv.zoom = max(0.0, float(st.get("img_zoom", 0) or 0))
+        self.imgv.load(img)
+        self.stack.setCurrentIndex(self.IMG)
+        self.refresh_header()
+        return True
+
+    def paste_image(self) -> bool:
+        """Wstaw obraz ze schowka (lub plik graficzny skopiowany w Eksploratorze)."""
+        src = clipboard_image_source()
+        if src is None:
+            self.flash("Schowek nie zawiera obrazu")
+            return False
+        if not self.confirm_close():
+            return False
+        md = QApplication.clipboard().mimeData()
+        if src == "file":
+            fn = next(u.toLocalFile() for u in md.urls() if u.isLocalFile() and Path(u.toLocalFile()).suffix.lower() in IMG_EXTS)
+            return self.open_file(fn, ask=False)
+        img = QApplication.clipboard().image()
+        try:
+            self.img_dir.mkdir(parents=True, exist_ok=True)
+            base = time.strftime("schowek_%Y%m%d_%H%M%S")
+            path, n = self.img_dir / f"{base}.png", 1
+            while path.exists():
+                n += 1
+                path = self.img_dir / f"{base}_{n}.png"
+            if not img.save(str(path), "PNG"):
+                raise OSError("zapis PNG nie powiódł się")
+        except Exception as ex:
+            self.flash(f"Nie można zapisać obrazu: {ex}")
+            return False
+        return self.open_file(str(path), {"clip": True}, ask=False)
+
+    def save_image_as(self) -> bool:
+        if self.kind != "image" or self.imgv.pix.isNull():
+            return False
+        stem = Path(self.path).stem if self.path else "obraz"
+        fn, flt = QFileDialog.getSaveFileName(
+            self, "Zapisz obraz jako", str(Path(self._start_dir()) / f"{stem}.png"),
+            "PNG (*.png);;JPEG (*.jpg *.jpeg);;BMP (*.bmp)")
+        if not fn:
+            return False
+        if not Path(fn).suffix:
+            fn += ".jpg" if "JPEG" in flt else ".bmp" if "BMP" in flt else ".png"
+        if not self.imgv.pix.save(fn):
+            QMessageBox.warning(self, "Błąd zapisu", f"Nie można zapisać obrazu:\n{fn}")
+            return False
+        LAST["dir"] = str(Path(fn).parent)
+        return True
+
+    def new_document(self, text: str = "", modified: bool = False, st: dict | None = None, ask: bool = True) -> bool:
+        """Nowy, pusty dokument tekstowy gotowy do pisania; nazwę dostaje przy pierwszym zapisie."""
+        if ask and not self.confirm_close():
+            return False
+        fresh = st is None
+        st = st or {}
+        self._release()
+        self.path, self.untitled = None, True
+        self.encoding, self.newline = "utf-8", "\r\n" if sys.platform == "win32" else "\n"
+        self.mtime, self.disk_size = None, 0
+        self.btn_wrap.setEnabled(True)
+        if st.get("lang") in dict(LANGS):
+            self.lang = st["lang"]
+        if st.get("family") in FONTS:
+            self.family = st["family"]
+        self.set_font(self.family, st.get("font") or None)
+        self.editor.setPlainText(text)
+        self.editor.document().setModified(bool(modified))
+        self.apply_lang()
+        self.stack.setCurrentIndex(self.ED)
+        self._apply_view_state(st)
+        self.refresh_header()
+        if fresh:
+            self.focus_editor()
+        return True
+
     def _set_missing(self, path: str, why: str):
-        self.pdf.close_doc()
-        self.kind = "text"
+        self._release()
         self.path, self.missing, self.mtime = path, True, None
         self.editor.setPlainText("")
         self.editor.document().setModified(False)
-        self.lbl_hint.setText(f"Nie można otworzyć:\n{path}\n({why})")
-        self.stack.setCurrentIndex(0)
+        self.ph.set_hint(f"Nie można otworzyć:\n{path}\n({why})")
+        self.stack.setCurrentIndex(self.PH)
         self.refresh_header()
 
     def _apply_view_state(self, st: dict):
@@ -794,8 +1288,29 @@ class TextPane(QFrame):
                                     else QPlainTextEdit.LineWrapMode.NoWrap)
 
     def save(self) -> bool:
-        if self.path is None or self.kind != "text" or self.stack.currentIndex() != 1:
+        if self.kind != "text" or self.stack.currentIndex() != self.ED or self.demo:
             return True
+        if self.untitled:
+            return self.save_as()
+        if self.path is None:
+            return True
+        return self._write(self.path)
+
+    def save_as(self) -> bool:
+        if self.kind != "text" or self.stack.currentIndex() != self.ED or self.demo:
+            return False
+        name = Path(self.path).name if self.path else "Bez tytułu.txt"
+        fn, flt = QFileDialog.getSaveFileName(
+            self, "Zapisz jako", str(Path(self._start_dir()) / name),
+            "Tekst (*.txt);;Python (*.py);;HTML (*.html *.htm);;SQL (*.sql);;Wszystkie (*)")
+        if not fn:
+            return False
+        if not Path(fn).suffix:
+            m = re.search(r"\*(\.\w+)", flt)
+            fn += m.group(1) if m and "Wszystkie" not in flt else ".txt"
+        return self._write(fn)
+
+    def _write(self, path: str) -> bool:
         text = self.editor.toPlainText().replace("\n", self.newline)
         try:
             data = text.encode(self.encoding)
@@ -803,38 +1318,45 @@ class TextPane(QFrame):
             self.encoding = "utf-8"
             data = text.encode("utf-8")
         try:
-            atomic_write(Path(self.path), data)
+            atomic_write(Path(path), data)
+            s = Path(path).stat()
         except Exception as ex:
-            QMessageBox.warning(self, "Błąd zapisu", f"{self.path}\n\n{ex}")
+            QMessageBox.warning(self, "Błąd zapisu", f"{path}\n\n{ex}")
             return False
-        s = Path(self.path).stat()
+        moved = path != self.path
+        self.path, self.untitled, self.missing = path, False, False
         self.mtime, self.disk_size, self.conflict = s.st_mtime, s.st_size, False
         self.editor.document().setModified(False)
+        self.apply_lang()
         self.refresh_header()
+        if moved:
+            self._note_path()
         return True
 
     def confirm_close(self) -> bool:
-        if self.path is None or not self.is_modified():
+        if not self.is_modified():
             return True
+        name = Path(self.path).name if self.path else "Bez tytułu"
         r = QMessageBox.question(
-            self, "Niezapisane zmiany", f"Zapisać zmiany w „{Path(self.path).name}”?",
+            self, "Niezapisane zmiany", f"Zapisać zmiany w „{name}”?",
             QMessageBox.StandardButton.Save | QMessageBox.StandardButton.Discard | QMessageBox.StandardButton.Cancel)
         if r == QMessageBox.StandardButton.Save:
             return self.save()
         return r == QMessageBox.StandardButton.Discard
 
-    def close_file(self):
-        if not self.confirm_close():
-            return
-        self.pdf.close_doc()
-        self.kind = "text"
-        self.path, self.mtime, self.missing, self.conflict = None, None, False, False
+    def clear_content(self):
+        """Opróżnij panel bez pytania (po wcześniejszym confirm_close)."""
+        self._release()
+        self.path, self.mtime = None, None
         self.editor.setPlainText("")
         self.editor.document().setModified(False)
         self.btn_wrap.setEnabled(True)
-        self._reset_hint()
-        self.stack.setCurrentIndex(0)
+        self.stack.setCurrentIndex(self.PH)
         self.refresh_header()
+
+    def close_file(self):
+        if self.confirm_close():
+            self.clear_content()
 
     def check_external(self):
         if not self.path or self.missing or self.mtime is None:
@@ -862,6 +1384,12 @@ class TextPane(QFrame):
         }
         if self.kind == "pdf":
             d["page"], d["pdf_zoom"] = self.pdf.current_page(), self.pdf.zoom
+        elif self.kind == "image":
+            d["img_zoom"], d["clip"] = self.imgv.zoom, self.clip
+        if self.untitled:
+            d["untitled"] = True
+            d["draft"] = self.editor.toPlainText()[:MAX_BYTES]
+            d["draft_mod"] = self.editor.document().isModified()
         return d
 
 
@@ -918,6 +1446,7 @@ class Canvas(QWidget):
         self.order.remove(p)
         self.rel.pop(p, None)
         p.pdf.close_doc()
+        p.imgv.clear()
         p.hide()
         p.setParent(None)
         p.deleteLater()
@@ -1083,27 +1612,459 @@ class Canvas(QWidget):
         return False
 
 
+# ---------- okno Ustawienia z podglądem na żywo ----------
+
+UI_LABELS = [("hdr_bg", "Pasek panelu"), ("hdr_bg_a", "Pasek aktywnego panelu"), ("hdr_fg", "Tekst paska"),
+             ("mute", "Tekst pomocniczy"), ("canvas", "Tło za panelami"), ("sel", "Zaznaczenie tekstu"),
+             ("ok", "Status: zapisany"), ("warn", "Status: niezapisany"), ("err", "Status: błąd"),
+             ("info", "Status: informacja")]
+SYNTAX_LABELS = {"text": "Tekst", "bg": "Tło edytora", "str": "Teksty w 'x' i \"x\"", "num": "Cyfry",
+                 "com": "Komentarze", "kw": "Słowa kluczowe", "other": "Funkcje, atrybuty"}
+SAMPLES = {
+    "python": ("przyklad.py", '''# Przykład: wszystkie kolory składni
+import os, re
+
+@cache
+def policz(x, y=2.5):
+    """Opis funkcji"""
+    dane = {"klucz": [1, 2, 3], 'b': 0x1F}
+    if x >= 10 and y != 0:  # warunek
+        maska = (x & 7) | (y ^ ~3)
+        print("suma:", x + y - 1, x * y / 2 % 3)
+    return dane or None
+''', "policz"),
+    "sql": ("raport.sql", '''-- Raport klientów
+SELECT k.id, COUNT(*) AS liczba, 'ok' AS status
+FROM klienci k
+JOIN zamowienia z ON z.klient_id = k.id
+WHERE z.kwota >= 100.50 AND k.miasto <> "Łódź"
+GROUP BY k.id
+ORDER BY liczba DESC
+LIMIT 10;
+''', "klienci"),
+    "html": ("strona.html", '''<!-- Karta produktu -->
+<div class="karta" id="a1">
+  <h1 style="color:#1e88e5">Tytuł &amp; opis</h1>
+  <a href="https://example.pl?id=7">Zobacz</a>
+</div>
+''', "karta"),
+    "text": ("notatki.txt", '''Zakupy na jutro: chleb, mleko, jaja (6 szt.)
+Uwaga! Czy to wszystko? Cena: 12,50 zł + 23% VAT
+Plik: raport_2026.txt | a & b ^ c ~ d | x < y > z
+Mapa {a: 1}, lista [1, 2], C:\\temp, mail@poczta.pl, $zmienna
+'wartość w apostrofach' i "wartość w cudzysłowie"; 5*3/2-1=0
+''', "Uwaga"),
+}
+
+
+class ColorButton(QPushButton):
+    """Przycisk z próbką koloru; klik otwiera wybór koloru."""
+
+    def __init__(self, label: str):
+        super().__init__(label.replace("&", "&&"))  # && = dosłowny znak & (nie skrót klawiszowy)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+
+    def set_color(self, col: str):
+        pm = QPixmap(26, 14)
+        pm.fill(QColor(col))
+        p = QPainter(pm)
+        p.setPen(QColor("#808080"))
+        p.drawRect(0, 0, 25, 13)
+        p.end()
+        self.setIcon(QIcon(pm))
+        self.setIconSize(QSize(26, 14))
+        self.setToolTip(col.upper())
+
+
+class SettingsDialog(ThemedDialog):
+    """Ustawienia wyglądu: zmiany widać od razu (w oknie i w podglądzie obok); Anuluj cofa wszystko."""
+    PAGES = ["Motyw", "Składnia", "Ramki", "Czcionka", "Ogólne"]
+
+    def __init__(self, win: "MainWindow"):
+        super().__init__(win)
+        self.win = win
+        self.setWindowTitle("Ustawienia")
+        self.resize(1100, 680)
+        self.snap = win.snapshot_look()
+        self._pending: tuple[str, bool, str] | None = None
+        self._syncing = False
+        self._timer = QTimer(self, singleShot=True, interval=45)
+        self._timer.timeout.connect(self._flush)
+        self.col_btns: dict[str, ColorButton] = {}
+        self.ui_btns: dict[str, ColorButton] = {}
+
+        root = QVBoxLayout(self)
+        root.setContentsMargins(12, 12, 12, 10)
+        root.setSpacing(10)
+        body = QHBoxLayout()
+        body.setSpacing(12)
+        self.nav = QListWidget()
+        self.nav.setFixedWidth(116)
+        for name in self.PAGES:
+            it = QListWidgetItem(name)
+            it.setSizeHint(QSize(0, 30))
+            self.nav.addItem(it)
+        self.pages = QStackedWidget()
+        self.pages.setFixedWidth(420)
+        for build in (self._page_theme, self._page_syntax, self._page_borders, self._page_font, self._page_general):
+            self.pages.addWidget(build())
+        body.addWidget(self.nav)
+        body.addWidget(self.pages)
+        body.addWidget(self._build_preview(), 1)
+        root.addLayout(body, 1)
+        foot = QHBoxLayout()
+        b_def, b_cancel, b_ok = QPushButton("Przywróć domyślne"), QPushButton("Anuluj"), QPushButton("OK")
+        b_def.setToolTip("Motyw, kolory, ramki, czcionka i ikona wracają do ustawień fabrycznych (można jeszcze Anulować)")
+        b_ok.setDefault(True)
+        foot.addWidget(b_def)
+        foot.addStretch(1)
+        foot.addWidget(b_cancel)
+        foot.addWidget(b_ok)
+        root.addLayout(foot)
+        self.nav.currentRowChanged.connect(self.pages.setCurrentIndex)
+        b_def.clicked.connect(self._defaults)
+        b_ok.clicked.connect(self.accept)
+        b_cancel.clicked.connect(self.reject)
+        win.lookChanged.connect(self._sync_colors)
+        self.nav.setCurrentRow(0)
+        self._sync_all()
+
+    # --- budowa stron ---
+    @staticmethod
+    def _group(title: str) -> tuple[QGroupBox, QGridLayout]:
+        g = QGroupBox(title)
+        gl = QGridLayout(g)
+        gl.setSpacing(6)
+        return g, gl
+
+    @staticmethod
+    def _page(scroll: bool = False) -> tuple[QWidget, QVBoxLayout]:
+        w = QWidget()
+        v = QVBoxLayout(w)
+        v.setContentsMargins(0, 0, 6 if scroll else 0, 0)
+        v.setSpacing(10)
+        return w, v
+
+    @staticmethod
+    def _scrolled(w: QWidget) -> QScrollArea:
+        sa = QScrollArea()
+        sa.setFrameShape(QFrame.Shape.NoFrame)
+        sa.setWidgetResizable(True)
+        sa.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        sa.setWidget(w)
+        return sa
+
+    def _cbtn(self, key: str, label: str, ui: bool = False) -> ColorButton:
+        b = ColorButton(label)
+        b.clicked.connect(lambda _c=False: self.pick(key, ui, label))
+        (self.ui_btns if ui else self.col_btns)[key] = b
+        return b
+
+    def _page_theme(self) -> QWidget:
+        w, v = self._page()
+        v.addWidget(QLabel("Gotowy schemat kolorów:"))
+        self.scheme_list = QListWidget()
+        self.scheme_list.setIconSize(QSize(22, 16))
+        for k in SCHEME_ORDER:
+            self.scheme_list.addItem(QListWidgetItem(self.win._scheme_icon(k), SCHEMES[k]["name"]))
+        self.scheme_list.setFixedHeight(len(SCHEME_ORDER) * 26 + 8)
+        self.scheme_list.currentRowChanged.connect(self._on_scheme)
+        v.addWidget(self.scheme_list)
+        g, gl = self._group("Kolory interfejsu (opcjonalnie)")
+        for i, (k, lab) in enumerate(UI_LABELS):
+            gl.addWidget(self._cbtn(k, lab, True), i // 2, i % 2)
+        v.addWidget(g)
+        b = QPushButton("Przywróć kolory schematu")
+        b.clicked.connect(self.win.reset_colors)
+        v.addWidget(b)
+        v.addStretch(1)
+        return w
+
+    def _page_syntax(self) -> QWidget:
+        w, v = self._page(scroll=True)
+        g, gl = self._group("Edytor")
+        gl.addWidget(self._cbtn("text", SYNTAX_LABELS["text"]), 0, 0)
+        gl.addWidget(self._cbtn("bg", SYNTAX_LABELS["bg"]), 0, 1)
+        v.addWidget(g)
+        g, gl = self._group("Kod i wartości")
+        for i, k in enumerate(("str", "num", "com", "kw", "other")):
+            gl.addWidget(self._cbtn(k, SYNTAX_LABELS[k]), i // 2, i % 2)
+        v.addWidget(g)
+        g, gl = self._group("Znaki interpunkcyjne")
+        for i, (k, lab) in enumerate(PUNCT_GROUPS):
+            gl.addWidget(self._cbtn(k, lab), i // 3, i % 3)
+        v.addWidget(g)
+        b = QPushButton("Przywróć kolory schematu")
+        b.clicked.connect(self.win.reset_colors)
+        v.addWidget(b)
+        v.addStretch(1)
+        return self._scrolled(w)
+
+    def _page_borders(self) -> QWidget:
+        w, v = self._page()
+        v.addWidget(QLabel("Grubość ramki paneli (px):"))
+        row = QHBoxLayout()
+        row.setSpacing(4)
+        self.border_grp = QButtonGroup(self)
+        self.border_btns: list[QPushButton] = []
+        for n in sorted(BORDERS):
+            b = QPushButton("brak" if n == 0 else str(n))
+            b.setCheckable(True)
+            b.setFixedWidth(46)
+            b.setToolTip("bez ramki" if n == 0 else f"{n} px")
+            self.border_grp.addButton(b, n)
+            self.border_btns.append(b)
+            row.addWidget(b)
+        row.addStretch(1)
+        v.addLayout(row)
+        self.border_grp.idClicked.connect(self._on_border)
+        g, gl = self._group("Kolory ramek")
+        gl.addWidget(self._cbtn("border_a", "Aktywny panel", True), 0, 0)
+        gl.addWidget(self._cbtn("border", "Pozostałe panele", True), 0, 1)
+        v.addWidget(g)
+        b = QPushButton("Przywróć kolory ramek ze schematu")
+        b.clicked.connect(self.win.reset_border_colors)
+        v.addWidget(b)
+        v.addStretch(1)
+        return w
+
+    def _page_font(self) -> QWidget:
+        w, v = self._page()
+        g, gl = self._group("Edytor (wszystkie panele)")
+        self.cmb_font = QComboBox()
+        self.cmb_font.addItems(FONTS)
+        self.spin_size = QSpinBox()
+        self.spin_size.setRange(6, 40)
+        self.spin_size.setSuffix(" pt")
+        self.chk_wrap = QCheckBox("Zawijanie wierszy")
+        gl.addWidget(QLabel("Czcionka:"), 0, 0)
+        gl.addWidget(self.cmb_font, 0, 1)
+        gl.addWidget(QLabel("Rozmiar:"), 1, 0)
+        gl.addWidget(self.spin_size, 1, 1)
+        gl.addWidget(self.chk_wrap, 2, 0, 1, 2)
+        v.addWidget(g)
+        note = QLabel("Dotyczy wszystkich paneli i nowych dokumentów. Pojedynczy panel możesz zmienić w menu "
+                      "Widok → Czcionka lub Ctrl+kółko myszy.")
+        note.setWordWrap(True)
+        v.addWidget(note)
+        v.addStretch(1)
+        self.cmb_font.currentTextChanged.connect(self._on_font)
+        self.spin_size.valueChanged.connect(self._on_font)
+        self.chk_wrap.toggled.connect(self._on_wrap)
+        return w
+
+    def _page_general(self) -> QWidget:
+        w, v = self._page()
+        v.addWidget(QLabel("Kolor ikony programu (gwiazda):"))
+        row = QHBoxLayout()
+        row.setSpacing(4)
+        self.icon_grp = QButtonGroup(self)
+        for i, (k, name, c) in enumerate(ICON_COLORS):
+            b = QToolButton()
+            b.setCheckable(True)
+            b.setIcon(QIcon(star_pixmap(c, 24)))
+            b.setIconSize(QSize(24, 24))
+            b.setAutoRaise(True)
+            b.setToolTip(name)
+            self.icon_grp.addButton(b, i)
+            row.addWidget(b)
+        row.addStretch(1)
+        v.addLayout(row)
+        self.icon_grp.idClicked.connect(self._on_icon)
+        self.chk_menu = QCheckBox("Pokaż pasek menu (Ctrl+M)")
+        self.chk_snap = QCheckBox("Przyciąganie magnetyczne paneli (Alt = chwilowo wyłącz)")
+        v.addWidget(self.chk_menu)
+        v.addWidget(self.chk_snap)
+        b = QPushButton("Otwórz folder z ustawieniami")
+        b.clicked.connect(lambda: QDesktopServices.openUrl(QUrl.fromLocalFile(str(self.win.state_dir))))
+        v.addWidget(b, 0, Qt.AlignmentFlag.AlignLeft)
+        v.addStretch(1)
+        self.chk_menu.toggled.connect(self._on_menu)
+        self.chk_snap.toggled.connect(self._on_snap)
+        return w
+
+    def _build_preview(self) -> QWidget:
+        box = QWidget()
+        v = QVBoxLayout(box)
+        v.setContentsMargins(0, 0, 0, 0)
+        v.setSpacing(8)
+        top = QHBoxLayout()
+        top.addWidget(QLabel("<b>Podgląd na żywo</b>"))
+        top.addStretch(1)
+        top.addWidget(QLabel("Przykład:"))
+        self.cmb_sample = QComboBox()
+        self.cmb_sample.addItems(["Python", "SQL", "HTML"])
+        top.addWidget(self.cmb_sample)
+        v.addLayout(top)
+        self.pv_canvas = QFrame()
+        self.pv_canvas.setObjectName("pvc")
+        lay = QVBoxLayout(self.pv_canvas)
+        lay.setContentsMargins(12, 12, 12, 12)
+        lay.setSpacing(12)
+        self.pv_a, self.pv_b = TextPane(100), TextPane(101)
+        for p in (self.pv_a, self.pv_b):
+            p.setMinimumHeight(110)
+            p.set_border(self.win.border)
+            p.set_font(self.win.font_family, self.win.font_size)
+        self.pv_a.set_active(True)
+        lay.addWidget(self.pv_a, 3)
+        lay.addWidget(self.pv_b, 2)
+        self.win.preview_panes += [self.pv_a, self.pv_b]
+        n, t, sel = SAMPLES["text"]
+        self.pv_b.set_demo(n, "● niezapisany · 0.4 KB", "warn", t, "text", sel)
+        self._set_sample(0)
+        self.cmb_sample.currentIndexChanged.connect(self._set_sample)
+        v.addWidget(self.pv_canvas, 1)
+        chips = QHBoxLayout()
+        self.chips: list[tuple[QLabel, str]] = []
+        for txt, k in (("● zapisany", "ok"), ("● niezapisany", "warn"), ("● błąd", "err"), ("● informacja", "info")):
+            lb = QLabel(txt)
+            chips.addWidget(lb)
+            self.chips.append((lb, k))
+        chips.addStretch(1)
+        v.addLayout(chips)
+        return box
+
+    def _set_sample(self, idx: int):
+        key = ("python", "sql", "html")[idx]
+        name, text, sel = SAMPLES[key]
+        self.pv_a.set_demo(name, "zapisany · 1.2 KB", "ok", text, key, sel)
+
+    # --- synchronizacja kontrolek ---
+    def _sync_colors(self):
+        for k, b in self.col_btns.items():
+            b.set_color(COLORS[k])
+        for k, b in self.ui_btns.items():
+            b.set_color(UI[k])
+        self.pv_canvas.setStyleSheet(f"#pvc{{background:{UI['canvas']};}}")
+        sel = f"QPushButton:checked{{background:{UI['sel']};border:1px solid {UI['border_a']};font-weight:bold;}}"
+        for b in self.border_btns:
+            b.setStyleSheet(sel)
+        for lb, k in self.chips:
+            lb.setStyleSheet(f"color:{UI[k]};")
+
+    def _sync_all(self):
+        w = self.win
+        self._syncing = True
+        try:
+            self.scheme_list.setCurrentRow(SCHEME_ORDER.index(w.scheme_key))
+            self._sync_colors()
+            btn = self.border_grp.button(w.border)
+            if btn:
+                btn.setChecked(True)
+            self.cmb_font.setCurrentText(w.font_family)
+            self.spin_size.setValue(int(round(w.font_size)))
+            self.chk_wrap.setChecked(w.current.btn_wrap.isChecked())
+            keys = [k for k, _n, _c in ICON_COLORS]
+            if w.icon_key in keys:
+                self.icon_grp.button(keys.index(w.icon_key)).setChecked(True)
+            self.chk_menu.setChecked(w.menuBar().isVisible())
+            self.chk_snap.setChecked(w.canvas.snap_on)
+        finally:
+            self._syncing = False
+
+    # --- reakcje (zmiany stosowane od razu) ---
+    def _on_scheme(self, row: int):
+        if not self._syncing and row >= 0:
+            self.win.apply_scheme(SCHEME_ORDER[row])
+
+    def _on_border(self, n: int):
+        if not self._syncing:
+            self.win.set_border(n)
+
+    def _on_font(self, *_):
+        if not self._syncing:
+            self.win.set_default_font(self.cmb_font.currentText(), float(self.spin_size.value()))
+
+    def _on_wrap(self, on: bool):
+        if not self._syncing:
+            self.win.set_wrap_all(on)
+
+    def _on_icon(self, i: int):
+        if not self._syncing:
+            self.win.set_icon_color(ICON_COLORS[i][0])
+
+    def _on_menu(self, on: bool):
+        if not self._syncing:
+            self.win.set_menu_visible(on)
+
+    def _on_snap(self, on: bool):
+        if not self._syncing:
+            self.win.set_snap(on)
+
+    def _defaults(self):
+        self.win.reset_look_defaults()
+        self._sync_all()
+
+    def pick(self, key: str, ui: bool, label: str):
+        """Wybór koloru z podglądem na żywo; Anuluj w oknie koloru przywraca poprzedni."""
+        store = UI if ui else COLORS
+        old = store[key]
+        dlg = QColorDialog(QColor(old), self)
+        dlg.setWindowTitle(f"Kolor: {label}")
+        dlg.setOption(QColorDialog.ColorDialogOption.DontUseNativeDialog, True)
+        dlg.currentColorChanged.connect(lambda c: self._live(key, ui, c.name()))
+        ok = dlg.exec() == QDialog.DialogCode.Accepted
+        final = dlg.currentColor().name() if ok else old
+        dlg.deleteLater()
+        self._timer.stop()
+        self._pending = None
+        if store[key] != final:
+            self.win.set_color(key, final, ui)
+
+    def _live(self, key: str, ui: bool, name: str):
+        self._pending = (key, ui, name)
+        self._timer.start()
+
+    def _flush(self):
+        if self._pending:
+            (k, u, n), self._pending = self._pending, None
+            self.win.set_color(k, n, u)
+
+    def done(self, r: int):
+        self._timer.stop()
+        try:
+            self.win.lookChanged.disconnect(self._sync_colors)
+        except (RuntimeError, TypeError):
+            pass
+        for p in (self.pv_a, self.pv_b):
+            if p in self.win.preview_panes:
+                self.win.preview_panes.remove(p)
+        if r == QDialog.DialogCode.Accepted:
+            self.win.schedule_save()
+        else:
+            self.win.restore_look(self.snap)
+        super().done(r)
 
 
 # ---------- okno główne ----------
 
 class MainWindow(QMainWindow):
+    lookChanged = Signal()  # po zmianie kolorów / motywu (odświeża podgląd w Ustawieniach)
+
     def __init__(self, state_path: Path | None = None):
         super().__init__()
         self.setWindowTitle(APP_NAME)
         self.state_path = state_path or self._default_state_path()
+        self.state_dir = self.state_path.parent
+        TextPane.img_dir = self.state_dir / "obrazy"
         self._ready = False
+        self._last_json = ""
+        self._pending: list[tuple[TextPane, dict]] = []
+        self._args: list[str] = []
         self.border = DEFAULT_BORDER
         self.scheme_key = DEFAULT_SCHEME
         self.ui_over: dict[str, str] = {}
         self.icon_key = "yellow"
+        self.font_family, self.font_size = "Consolas", 10.0
+        self.recent: list[str] = []
+        self.preview_panes: list[TextPane] = []  # panele podglądu w oknie Ustawienia
         self.canvas = Canvas([TextPane(i) for i in range(DEFAULT_PANES)])
         self.panes = self.canvas.panes
         self.current: TextPane = self.panes[0]
         self.setCentralWidget(self.canvas)
         for p in self.panes:
-            p.activated.connect(self.set_current)
-            p.menuRequested.connect(self.show_popup)
+            self._wire(p)
         self._save_timer = QTimer(self, singleShot=True, interval=500)
         self._save_timer.timeout.connect(self.save_state)
         self.canvas.layoutChanged.connect(self.schedule_save)
@@ -1122,7 +2083,6 @@ class MainWindow(QMainWindow):
         QApplication.instance().aboutToQuit.connect(self.save_state)
         self._alt_clean = False
         QApplication.instance().installEventFilter(self)
-        self._ready = True
 
     @staticmethod
     def _default_state_path() -> Path:
@@ -1138,6 +2098,11 @@ class MainWindow(QMainWindow):
                 f.write(time.strftime("%Y-%m-%d %H:%M:%S ") + msg + "\n")
         except OSError:
             pass
+
+    def _wire(self, p: TextPane):
+        p.activated.connect(self.set_current)
+        p.menuRequested.connect(self.show_popup)
+        p.pathChanged.connect(self.note_recent)
 
     # --- menu ---
     def _act(self, text, slot, shortcut=None, checkable=False) -> QAction:
@@ -1165,13 +2130,34 @@ class MainWindow(QMainWindow):
     def _build_menu(self):
         mb = self.menuBar()
         m = mb.addMenu("&Plik")
+        m.addAction(self._act("Nowy plik tekstowy", self.new_document, "Ctrl+N"))
         m.addAction(self._act("Otwórz w aktywnym panelu…", lambda: self.current.ask_open(), "Ctrl+O"))
-        m.addAction(self._act("Zapisz", lambda: self.current.save(), "Ctrl+S"))
+        self.m_recent = m.addMenu("Ostatnie pliki")
+        self.m_recent.aboutToShow.connect(self._fill_recent)
+        m.addSeparator()
+        self.act_save = self._act("Zapisz", lambda: self.current.save(), "Ctrl+S")
+        self.act_saveas = self._act("Zapisz jako…", lambda: self.current.save_as(), "Ctrl+Shift+S")
+        m.addAction(self.act_save)
+        m.addAction(self.act_saveas)
+        m.addSeparator()
+        m.addAction(self._act("Wklej obraz ze schowka", self.paste_image, "Ctrl+Shift+V"))
+        m.addAction(self._act("Otwórz obraz z pliku…", self.open_image_file))
+        self.act_saveimg = self._act("Zapisz obraz jako…", lambda: self.current.save_image_as())
+        m.addAction(self.act_saveimg)
+        m.addSeparator()
         m.addAction(self._act("Zamknij plik w panelu", lambda: self.current.close_file(), "Ctrl+W"))
         m.addSeparator()
         m.addAction(self._act("Zakończ", self.close, "Ctrl+Q"))
 
+        ed = mb.addMenu("&Edycja")
+        self.act_find = self._act("Znajdź…", lambda: self.current.show_find(), "Ctrl+F")
+        ed.addAction(self.act_find)
+        ed.addAction(self._act("Znajdź następny", lambda: self.find_again(False), "F3"))
+        ed.addAction(self._act("Znajdź poprzedni", lambda: self.find_again(True), "Shift+F3"))
+
         v = mb.addMenu("&Widok")
+        v.addAction(self._act("Ustawienia…", self.show_settings, "Ctrl+,"))
+        v.addSeparator()
         self.scheme_acts = self._radio(
             v.addMenu("Schemat kolorów"), [(k, SCHEMES[k]["name"]) for k in SCHEME_ORDER], self.apply_scheme,
             icons={k: self._scheme_icon(k) for k in SCHEME_ORDER})
@@ -1182,34 +2168,10 @@ class MainWindow(QMainWindow):
         self.act_wrap = self._act("Zawijanie wierszy (aktywny panel)", lambda: self.current.btn_wrap.toggle(),
                                   "Ctrl+Shift+W", checkable=True)
         v.addAction(self.act_wrap)
-        mfr = v.addMenu("Ramki paneli")
-        self.border_acts = self._radio(
-            mfr.addMenu("Grubość"), [(b, "0 px (brak)" if b == 0 else f"{b} px") for b in BORDERS], self.set_border)
-        self.border_color_acts: dict[str, QAction] = {}
-        for key, label in (("border_a", "Kolor ramki aktywnego panelu…"), ("border", "Kolor ramki pozostałych paneli…")):
-            a = QAction(label, self)
-            a.setIcon(self._swatch(UI[key]))
-            a.triggered.connect(lambda _c=False, k=key, l=label: self.pick_border_color(k, l))
-            mfr.addAction(a)
-            self.border_color_acts[key] = a
-        mfr.addAction(self._act("Przywróć kolory ramek ze schematu", self.reset_border_colors))
-        self.icon_acts = self._radio(
-            v.addMenu("Kolor ikony (gwiazda)"), [(k, n) for k, n, _c in ICON_COLORS], self.set_icon_color,
-            icons={k: QIcon(star_pixmap(c, 16)) for k, _n, c in ICON_COLORS})
-        mc = v.addMenu("Własne kolory składni")
-        self.color_acts: dict[str, QAction] = {}
-        for key, label in COLOR_LABELS:
-            mc.addAction(self._color_action(key, label))
-        mz = mc.addMenu("Znaki interpunkcyjne")
-        for key, label in PUNCT_GROUPS:
-            mz.addAction(self._color_action(key, label))
-        mc.addSeparator()
-        mc.addAction(self._act("Przywróć kolory schematu", self.reset_colors))
         v.addSeparator()
         self.act_menu = self._act("Pokaż pasek menu", lambda: self.set_menu_visible(not self.menuBar().isVisible()),
                                   "Ctrl+M", checkable=True)
         v.addAction(self.act_menu)
-        v.aboutToShow.connect(self._sync_menu)
 
         self.m_layout = mb.addMenu("&Układ")
         self.act_add = self._act(f"Dodaj panel (maks. {MAX_PANES})", self.add_pane, "Ctrl+Shift+N")
@@ -1219,58 +2181,23 @@ class MainWindow(QMainWindow):
         self.m_layout.addSeparator()
         self.m_layout.addAction(self._act("Siatka (reset układu)", self.canvas.grid, "Ctrl+Shift+E"))
         self.act_snap = self._act("Przyciąganie magnetyczne (Alt = chwilowo wyłącz)",
-                                  lambda: setattr(self.canvas, "snap_on", self.act_snap.isChecked()), checkable=True)
+                                  lambda: self.set_snap(self.act_snap.isChecked()), checkable=True)
         self.act_snap.setChecked(True)
         self.m_layout.addAction(self.act_snap)
-        self.m_layout.aboutToShow.connect(self._sync_menu)
+
+        self.m_sets = mb.addMenu("&Zestawy")
+        self.m_sets.aboutToShow.connect(self._fill_sets)
 
         hp = mb.addMenu("Po&moc")
         hp.addAction(self._act("Folder z ustawieniami", lambda: QDesktopServices.openUrl(
-            QUrl.fromLocalFile(str(self.state_path.parent)))))
+            QUrl.fromLocalFile(str(self.state_dir)))))
         hp.addAction(self._act("Sugestie…", self.show_suggestions))
         hp.addAction(self._act("O autorze", self.show_about))
         # to samo menu jako wyskakujące (przycisk ☰ / prawy klik na pasku panelu), działa przy ukrytym pasku
         self.popup = QMenu(self)
-        for menu in (m, v, self.m_layout, hp):
+        for menu in (m, ed, v, self.m_layout, self.m_sets, hp):
+            menu.aboutToShow.connect(self._sync_menu)
             self.popup.addMenu(menu)
-
-    @staticmethod
-    def _swatch(col: str) -> QIcon:
-        pm = QPixmap(16, 16)
-        pm.fill(QColor(col))
-        p = QPainter(pm)
-        p.setPen(QColor("#808080"))
-        p.drawRect(0, 0, 15, 15)
-        p.end()
-        return QIcon(pm)
-
-    def _color_action(self, key: str, label: str) -> QAction:
-        a = QAction(label, self)
-        a.setIcon(self._swatch(COLORS[key]))
-        a.triggered.connect(lambda _c=False, k=key, l=label: self.pick_color(k, l))
-        self.color_acts[key] = a
-        return a
-
-    def pick_color(self, key: str, label: str):
-        c = QColorDialog.getColor(QColor(COLORS[key]), self, f"Kolor: {label}")
-        if c.isValid():
-            COLORS[key] = c.name()
-            self.apply_look()
-
-    def pick_border_color(self, key: str, label: str):
-        c = QColorDialog.getColor(QColor(UI[key]), self, label.rstrip("…"))
-        if c.isValid():
-            UI[key] = self.ui_over[key] = c.name()
-            self.apply_look()
-
-    def reset_border_colors(self):
-        for k in ("border", "border_a"):
-            UI[k] = SCHEMES[self.scheme_key]["ui"][k]
-        self.ui_over.clear()
-        self.apply_look()
-
-    def reset_colors(self):
-        self.apply_scheme(self.scheme_key)
 
     @staticmethod
     def _scheme_icon(key: str) -> QIcon:
@@ -1285,6 +2212,27 @@ class MainWindow(QMainWindow):
         p.end()
         return QIcon(pm)
 
+    # --- kolory, motyw, wygląd ---
+    def set_color(self, key: str, value: str, ui: bool = False):
+        if ui:
+            UI[key] = value
+            if value == SCHEMES[self.scheme_key]["ui"].get(key):
+                self.ui_over.pop(key, None)
+            else:
+                self.ui_over[key] = value
+        else:
+            COLORS[key] = value
+        self.apply_look()
+
+    def reset_border_colors(self):
+        for k in ("border", "border_a"):
+            UI[k] = SCHEMES[self.scheme_key]["ui"][k]
+            self.ui_over.pop(k, None)
+        self.apply_look()
+
+    def reset_colors(self):
+        self.apply_scheme(self.scheme_key)
+
     def apply_scheme(self, key: str, save: bool = True):
         if key not in SCHEMES:
             key = DEFAULT_SCHEME
@@ -1296,36 +2244,59 @@ class MainWindow(QMainWindow):
         self.apply_look(save)
 
     def apply_look(self, save: bool = True):
-        """Zastosuj COLORS/UI: paleta Qt, tło, panele, ramki, ikony w menu, pasek tytułu."""
+        """Zastosuj COLORS/UI: paleta Qt, tło, panele (także podglądu), ramki, pasek tytułu."""
         refresh_colors()
+        THEME["dark"] = SCHEMES[self.scheme_key]["dark"]
         app = QApplication.instance()
-        app.setStyle("Fusion")
-        app.setPalette(make_palette(SCHEMES[self.scheme_key]["dark"]))
+        if app.style().objectName().lower() != "fusion":
+            app.setStyle("Fusion")
+        app.setPalette(make_palette(THEME["dark"]))
         self.canvas.set_bg(UI["canvas"])
-        for p in self.panes:
+        for p in self.panes + self.preview_panes:
             p.apply_colors()
-        for key, a in self.color_acts.items():
-            a.setIcon(self._swatch(COLORS[key]))
-        for key, a in self.border_color_acts.items():
-            a.setIcon(self._swatch(UI[key]))
         self._dark_titlebar()
+        self.lookChanged.emit()
         if save:
             self.schedule_save()
 
-    def apply_colors(self):
+    def snapshot_look(self) -> dict:
+        """Migawka wyglądu (do cofnięcia przez Anuluj w Ustawieniach)."""
+        return {"scheme": self.scheme_key, "colors": dict(COLORS), "ui": dict(UI), "ui_over": dict(self.ui_over),
+                "border": self.border, "icon": self.icon_key, "menu": self.menuBar().isVisible(),
+                "snap": self.canvas.snap_on, "font": (self.font_family, self.font_size),
+                "panes": [(p.family, p.editor.font().pointSizeF(), p.btn_wrap.isChecked()) for p in self.panes]}
+
+    def restore_look(self, s: dict):
+        self.scheme_key = s["scheme"]
+        COLORS.clear()
+        COLORS.update(s["colors"])
+        UI.clear()
+        UI.update(s["ui"])
+        self.ui_over = dict(s["ui_over"])
+        self.set_border(s["border"])
+        self.set_icon_color(s["icon"])
+        self.set_menu_visible(s["menu"])
+        self.set_snap(s["snap"])
+        self.font_family, self.font_size = s["font"]
+        if len(s["panes"]) == len(self.panes):
+            for p, (fam, sz, wrap) in zip(self.panes, s["panes"]):
+                p.set_font(fam, sz)
+                p.btn_wrap.setChecked(wrap)
         self.apply_look()
+
+    def reset_look_defaults(self):
+        self.apply_scheme(DEFAULT_SCHEME, save=False)
+        self.set_border(DEFAULT_BORDER)
+        self.set_icon_color("yellow")
+        self.set_menu_visible(True)
+        self.set_snap(True)
+        self.set_default_font("Consolas", 10.0)
+        self.set_wrap_all(True)
+        self.schedule_save()
 
     def _dark_titlebar(self):
         """Windows 10/11: ciemny lub jasny pasek tytułu okna zgodnie ze schematem."""
-        if sys.platform != "win32" or not self.isVisible():
-            return
-        try:
-            import ctypes
-            v = ctypes.c_int(1 if SCHEMES[self.scheme_key]["dark"] else 0)
-            for attr in (20, 19):
-                ctypes.windll.dwmapi.DwmSetWindowAttribute(int(self.winId()), attr, ctypes.byref(v), ctypes.sizeof(v))
-        except Exception:
-            pass
+        set_titlebar_dark(self, THEME["dark"])
 
     def showEvent(self, e):
         super().showEvent(e)
@@ -1336,13 +2307,17 @@ class MainWindow(QMainWindow):
         if c.family in self.font_acts:
             self.font_acts[c.family].setChecked(True)
         self.lang_acts[c.lang].setChecked(True)
-        self.border_acts[self.border].setChecked(True)
         self.scheme_acts[self.scheme_key].setChecked(True)
-        self.icon_acts[self.icon_key].setChecked(True)
         self.act_wrap.setChecked(c.btn_wrap.isChecked())
         self.act_menu.setChecked(self.menuBar().isVisible())
+        self.act_snap.setChecked(self.canvas.snap_on)
         self.act_add.setEnabled(len(self.panes) < MAX_PANES)
         self.act_del.setEnabled(len(self.panes) > 1)
+        text_ok = c.can_find()
+        self.act_find.setEnabled(text_ok)
+        self.act_save.setEnabled(c.kind == "text" and c.stack.currentIndex() == c.ED)
+        self.act_saveas.setEnabled(text_ok)
+        self.act_saveimg.setEnabled(c.kind == "image")
 
     def show_popup(self, pos: QPoint):
         self._sync_menu()
@@ -1362,9 +2337,15 @@ class MainWindow(QMainWindow):
             self._alt_clean = False
         return False
 
+    # --- okna dialogowe ---
+    def show_settings(self):
+        d = SettingsDialog(self)
+        d.exec()
+        d.deleteLater()
+
     def show_about(self):
         col = dict((k, c) for k, _n, c in ICON_COLORS)[self.icon_key]
-        d = QDialog(self)
+        d = ThemedDialog(self)
         d.setWindowTitle("O autorze")
         d.setFixedWidth(320)
         lay = QVBoxLayout(d)
@@ -1403,7 +2384,7 @@ class MainWindow(QMainWindow):
             self.show_suggestions()
 
     def show_suggestions(self):
-        d = QDialog(self)
+        d = ThemedDialog(self)
         d.setWindowTitle("Sugestie")
         d.resize(480, 320)
         lay = QVBoxLayout(d)
@@ -1452,8 +2433,13 @@ class MainWindow(QMainWindow):
 
     def set_border(self, n: int):
         self.border = n
-        for p in self.panes:
+        for p in self.panes + self.preview_panes:
             p.set_border(n)
+        self.schedule_save()
+
+    def set_snap(self, on: bool):
+        self.canvas.snap_on = bool(on)
+        self.act_snap.setChecked(bool(on))
         self.schedule_save()
 
     def set_icon_color(self, key: str):
@@ -1466,6 +2452,17 @@ class MainWindow(QMainWindow):
         QApplication.instance().setWindowIcon(ic)
         self.schedule_save()
 
+    def set_default_font(self, family: str, size: float):
+        self.font_family, self.font_size = family, size
+        for p in self.panes + self.preview_panes:
+            p.set_font(family, size)
+        self.schedule_save()
+
+    def set_wrap_all(self, on: bool):
+        for p in self.panes + self.preview_panes:
+            p.btn_wrap.setChecked(on)
+        self.schedule_save()
+
     def set_current(self, pane: TextPane):
         self.current = pane
         for p in self.panes:
@@ -1474,9 +2471,9 @@ class MainWindow(QMainWindow):
     # --- dodawanie / usuwanie paneli ---
     def _new_pane(self) -> TextPane:
         p = TextPane(len(self.panes))
-        p.activated.connect(self.set_current)
-        p.menuRequested.connect(self.show_popup)
+        self._wire(p)
         p.set_border(self.border)
+        p.set_font(self.font_family, self.font_size)
         self.canvas.add_pane(p)
         return p
 
@@ -1498,6 +2495,160 @@ class MainWindow(QMainWindow):
         self.canvas.remove_pane(p)
         self.set_current(self.panes[min(idx, len(self.panes) - 1)])
 
+    def _set_pane_count(self, n: int):
+        while len(self.panes) < n:
+            self._new_pane()
+        while len(self.panes) > n:
+            self.canvas.remove_pane(self.panes[-1])
+
+    # --- nowy plik, obrazy, szukanie, ostatnie pliki ---
+    def target_pane(self) -> TextPane:
+        """Panel na nową zawartość: aktywny, jeśli pusty; inaczej pierwszy pusty; inaczej nowy; inaczej aktywny."""
+        if self.current.is_empty():
+            return self.current
+        for p in self.panes:
+            if p.is_empty():
+                return p
+        if len(self.panes) < MAX_PANES:
+            return self._new_pane()
+        return self.current
+
+    def _focus(self, p: TextPane):
+        self.set_current(p)
+        p.focus_editor()
+
+    def new_document(self):
+        p = self.target_pane()
+        if p.new_document():
+            self._focus(p)
+
+    def paste_image(self):
+        if clipboard_image_source() is None:
+            self.current.flash("Schowek nie zawiera obrazu")
+            return
+        p = self.target_pane()
+        if p.paste_image():
+            self._focus(p)
+
+    def open_image_file(self):
+        p = self.target_pane()
+        p.ask_open_image()
+        if not p.is_empty():
+            self._focus(p)
+
+    def find_again(self, backwards: bool):
+        c = self.current
+        if c.find_edit.text():
+            c.find_next(backwards)
+        else:
+            c.show_find()
+
+    def note_recent(self, path: str):
+        norm = os.path.normpath(path)
+        self.recent = [norm] + [r for r in self.recent if os.path.normcase(r) != os.path.normcase(norm)]
+        del self.recent[10:]
+        self.schedule_save()
+
+    def _fill_recent(self):
+        m = self.m_recent
+        m.clear()
+        if not self.recent:
+            m.addAction("(brak)").setEnabled(False)
+            return
+        for i, r in enumerate(self.recent):
+            a = m.addAction(f"{i + 1}.  {Path(r).name}".replace("&", "&&"))
+            a.setToolTip(r)
+            a.triggered.connect(lambda _c=False, path=r: self.open_recent(path))
+        m.addSeparator()
+        m.addAction("Wyczyść listę").triggered.connect(lambda _c=False: self._clear_recent())
+
+    def _clear_recent(self):
+        self.recent = []
+        self.schedule_save()
+
+    def open_recent(self, path: str):
+        p = self.target_pane()
+        if p.open_file(path):
+            self._focus(p)
+
+    # --- zestawy (nazwane układy z otwartymi plikami) ---
+    @property
+    def sets_dir(self) -> Path:
+        return self.state_dir / "zestawy"
+
+    def list_sets(self) -> list[tuple[str, Path]]:
+        out = []
+        for f in sorted(self.sets_dir.glob("*.json"), key=lambda x: x.stem.lower()) if self.sets_dir.is_dir() else []:
+            try:
+                out.append((str(json.loads(f.read_text(encoding="utf-8")).get("name") or f.stem), f))
+            except Exception:
+                out.append((f.stem, f))
+        return out
+
+    def _fill_sets(self):
+        m = self.m_sets
+        m.clear()
+        m.addAction("Zapisz bieżący układ jako zestaw…").triggered.connect(lambda _c=False: self.save_set())
+        m.addSeparator()
+        sets = self.list_sets()
+        if not sets:
+            m.addAction("(brak zapisanych zestawów)").setEnabled(False)
+        for name, path in sets:
+            m.addAction(name.replace("&", "&&")).triggered.connect(lambda _c=False, f=path: self.load_set(f))
+        m.addSeparator()
+        dm = m.addMenu("Usuń zestaw")
+        dm.setEnabled(bool(sets))
+        for name, path in sets:
+            dm.addAction(name.replace("&", "&&")).triggered.connect(lambda _c=False, f=path, n=name: self.delete_set(f, n))
+
+    def save_set(self):
+        name, ok = QInputDialog.getText(self, "Zapisz zestaw", "Nazwa zestawu (układ paneli + otwarte pliki):")
+        name = name.strip()
+        if not ok or not name:
+            return
+        fn = re.sub(r'[\\/:*?"<>|]', "_", name)[:60].strip(" .") or "zestaw"
+        path = self.sets_dir / f"{fn}.json"
+        if path.exists() and QMessageBox.question(
+                self, APP_NAME, f"Zestaw „{name}” już istnieje. Nadpisać?") != QMessageBox.StandardButton.Yes:
+            return
+        try:
+            self.sets_dir.mkdir(parents=True, exist_ok=True)
+            data = self.snapshot()
+            data.update({"name": name, "version": STATE_VERSION})
+            atomic_write(path, json.dumps(data, ensure_ascii=False, indent=1).encode())
+        except Exception as ex:
+            self._log(f"save_set: {ex!r}")
+            QMessageBox.warning(self, APP_NAME, f"Nie można zapisać zestawu:\n{ex}")
+
+    def load_set(self, path: Path):
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+            sts = [s for s in data["panes"] if isinstance(s, dict)]
+            if not sts:
+                raise ValueError("pusty zestaw")
+        except Exception as ex:
+            QMessageBox.warning(self, APP_NAME, f"Nie można wczytać zestawu:\n{ex}")
+            return
+        for p in self.panes:
+            if not p.confirm_close():
+                return
+        for p in self.panes:
+            p.clear_content()
+        self._set_pane_count(max(1, min(len(sts), MAX_PANES)))
+        self._apply_layout(data)
+        for p, st in zip(self.panes, sts):
+            self._open_state(p, st)
+        idx = data.get("current", 0)
+        self.set_current(self.panes[idx] if isinstance(idx, int) and 0 <= idx < len(self.panes) else self.panes[0])
+        self.schedule_save()
+
+    def delete_set(self, path: Path, name: str):
+        if QMessageBox.question(self, APP_NAME, f"Usunąć zestaw „{name}”?") == QMessageBox.StandardButton.Yes:
+            try:
+                path.unlink()
+            except OSError as ex:
+                QMessageBox.warning(self, APP_NAME, f"Nie można usunąć:\n{ex}")
+
     # --- stan ---
     def schedule_save(self):
         if self._ready:
@@ -1511,6 +2662,15 @@ class MainWindow(QMainWindow):
         super().resizeEvent(e)
         self.schedule_save()
 
+    def snapshot(self) -> dict:
+        """Układ + zawartość paneli (do stanu programu i do zestawów)."""
+        return {
+            "rects": [[r.x(), r.y(), r.width(), r.height()] for r in (self.canvas.rel[p] for p in self.panes)],
+            "z": [p.index for p in self.canvas.order],
+            "current": self.current.index,
+            "panes": [p.state() for p in self.panes],
+        }
+
     def save_state(self):
         if not self._ready:
             return
@@ -1518,22 +2678,39 @@ class MainWindow(QMainWindow):
             data = {
                 "version": STATE_VERSION,
                 "geometry": base64.b64encode(bytes(self.saveGeometry())).decode(),
-                "rects": [[r.x(), r.y(), r.width(), r.height()] for r in (self.canvas.rel[p] for p in self.panes)],
-                "z": [p.index for p in self.canvas.order],
                 "border": self.border, "snap": self.canvas.snap_on, "icon": self.icon_key,
                 "scheme": self.scheme_key,
                 "colors": {k: v for k, v in COLORS.items() if v != SCHEMES[self.scheme_key]["colors"].get(k)},
                 "ui_over": dict(self.ui_over),
                 "menu": self.menuBar().isVisible(),
-                "current": self.current.index,
-                "panes": [p.state() for p in self.panes],
+                "font_default": [self.font_family, self.font_size],
+                "recent": self.recent, "last_dir": LAST["dir"],
             }
+            data.update(self.snapshot())
+            js = json.dumps(data, ensure_ascii=False, indent=1)
+            if js == self._last_json:  # nic się nie zmieniło - nie ruszaj dysku
+                return
             self.state_path.parent.mkdir(parents=True, exist_ok=True)
-            atomic_write(self.state_path, json.dumps(data, ensure_ascii=False, indent=1).encode())
+            atomic_write(self.state_path, js.encode())
+            self._last_json = js
         except Exception as ex:  # zapis stanu nigdy nie może zawiesić programu
             self._log(f"save_state: {ex!r} ({self.state_path})")
 
+    def _apply_layout(self, data: dict):
+        n = len(self.panes)
+        rects = data.get("rects", [])
+        if len(rects) == n and all(isinstance(r, list) and len(r) == 4 for r in rects):
+            for p, r in zip(self.panes, rects):
+                self.canvas.rel[p] = QRectF(*r)
+            self.canvas.apply_all()
+        else:
+            self.canvas.grid()
+        for i in data.get("z", []):
+            if isinstance(i, int) and 0 <= i < n:
+                self.canvas.raise_pane(self.panes[i])
+
     def load_state(self):
+        """Wczytuje wygląd i układ od razu; pliki paneli dopiero po pokazaniu okna (start_loading)."""
         try:
             data = json.loads(self.state_path.read_text(encoding="utf-8"))
         except FileNotFoundError:
@@ -1547,48 +2724,104 @@ class MainWindow(QMainWindow):
                 if k in COLORS and QColor(v).isValid():
                     COLORS[k] = v
             for k, v in (data.get("ui_over") or {}).items():
-                if k in ("border", "border_a") and QColor(v).isValid():
+                if k in UI and QColor(v).isValid():
                     UI[k] = self.ui_over[k] = v
+            ff = data.get("font_default")
+            if isinstance(ff, list) and len(ff) == 2 and ff[0] in FONTS:
+                self.font_family, self.font_size = ff[0], max(6.0, min(float(ff[1]), 40.0))
+            self.recent = [r for r in data.get("recent", []) if isinstance(r, str)][:10]
+            LAST["dir"] = data.get("last_dir") if isinstance(data.get("last_dir"), str) else ""
             self.apply_look(save=False)
-            n = max(1, min(len(data.get("panes", [])) or DEFAULT_PANES, MAX_PANES))
-            while len(self.panes) < n:
-                self._new_pane()
-            while len(self.panes) > n:
-                self.canvas.remove_pane(self.panes[-1])
+            sts = [s if isinstance(s, dict) else {} for s in data.get("panes", [])]
+            self._set_pane_count(max(1, min(len(sts) or DEFAULT_PANES, MAX_PANES)))
             if data.get("geometry"):
                 self.restoreGeometry(QByteArray(base64.b64decode(data["geometry"])))
-            rects = data.get("rects", [])
-            if len(rects) == n:
-                for p, r in zip(self.panes, rects):
-                    self.canvas.rel[p] = QRectF(*r)
-                self.canvas.apply_all()
-            else:
-                self.canvas.grid()
-            for i in data.get("z", []):
-                if 0 <= i < n:
-                    self.canvas.raise_pane(self.panes[i])
+            self._apply_layout(data)
             if data.get("border") in BORDERS:
                 self.set_border(data["border"])
-            self.canvas.snap_on = bool(data.get("snap", True))
-            self.act_snap.setChecked(self.canvas.snap_on)
+            self.set_snap(bool(data.get("snap", True)))
             self.icon_key = data.get("icon", "yellow")
             self.set_menu_visible(bool(data.get("menu", True)))
-            for p, st in zip(self.panes, data.get("panes", [])):
-                if st.get("lang") in dict(LANGS):
-                    p.lang = st["lang"]
-                if st.get("family") in FONTS:
-                    p.set_font(st["family"], st.get("font") or None)
-                if st.get("path"):
-                    p.open_file(st["path"], st, ask=False)
+            for p in self.panes:
+                p.set_font(self.font_family, self.font_size)
+            self._pending = list(zip(self.panes, sts))
             idx = data.get("current", 0)
-            if 0 <= idx < n:
+            if isinstance(idx, int) and 0 <= idx < len(self.panes):
                 self.current = self.panes[idx]
         except Exception as ex:
             self._log(f"load_state: {ex!r}")
+            self._pending = []
+        # ready ustawia dopiero koniec wczytywania plików: do tego czasu nic nie nadpisuje stanu na dysku
+
+    def _open_state(self, p: TextPane, st: dict):
+        if st.get("lang") in dict(LANGS):
+            p.lang = st["lang"]
+        if st.get("family") in FONTS:
+            p.set_font(st["family"], st.get("font") or None)
+        try:
+            if st.get("path"):
+                p.open_file(st["path"], st, ask=False)
+            elif st.get("untitled"):
+                p.new_document(str(st.get("draft", "")), bool(st.get("draft_mod")), st, ask=False)
+        except Exception as ex:
+            self._log(f"open_state: {ex!r} ({st.get('path')})")
+            if st.get("path"):
+                p._set_missing(str(st["path"]), repr(ex))  # ścieżka zostaje w stanie, nic nie ginie
+
+    def start_loading(self, args: list[str] | None = None, sync: bool = False):
+        """Otwiera pliki z zapisanego stanu po pokazaniu okna (szybszy start), po jednym panelu na obrót pętli."""
+        self._args = list(args or [])
+        if sync:
+            while self._load_step():
+                pass
+        else:
+            QTimer.singleShot(0, self._load_next)
+
+    def _load_step(self) -> bool:
+        if not self._pending:
+            self._finish_loading()
+            return False
+        p, st = self._pending.pop(0)
+        if p in self.panes:
+            self._open_state(p, st)
+        return True
+
+    def _load_next(self):
+        if self._load_step():
+            QTimer.singleShot(0, self._load_next)
+
+    def _finish_loading(self):
+        if self._ready:
+            return
+        for a in self._args:
+            self.open_in_free_pane(a)
+        self._args = []
+        self.set_current(self.current)
+        self.prune_images()
+        self._ready = True
+        self.schedule_save()
+
+    def prune_images(self):
+        """Usuń obrazy ze schowka, których nie używa żaden panel ani zestaw (zwalnia miejsce na dysku)."""
+        d = TextPane.img_dir
+        if not d.is_dir():
+            return
+        norm = lambda s: os.path.normcase(os.path.abspath(s))
+        keep = {norm(p.path) for p in self.panes if p.path}
+        try:
+            for f in self.sets_dir.glob("*.json") if self.sets_dir.is_dir() else []:
+                for st in json.loads(f.read_text(encoding="utf-8")).get("panes", []):
+                    if isinstance(st, dict) and st.get("path"):
+                        keep.add(norm(st["path"]))
+            for f in d.iterdir():
+                if f.is_file() and f.suffix.lower() == ".png" and norm(str(f)) not in keep:
+                    f.unlink()
+        except Exception as ex:
+            self._log(f"prune_images: {ex!r}")
 
     def open_in_free_pane(self, path: str):
         for p in self.panes:
-            if p.path is None:
+            if p.is_empty():
                 p.open_file(path, ask=False)
                 return
         if len(self.panes) < MAX_PANES:
@@ -1603,6 +2836,25 @@ class MainWindow(QMainWindow):
         e.accept()
 
 
+def install_excepthook(log_path: Path):
+    """Nieprzechwycone wyjątki trafiają do startupboard.log (program okienkowy nie ma konsoli)."""
+    import traceback
+    old = sys.excepthook
+
+    def hook(t, v, tb):
+        try:
+            with open(log_path, "a", encoding="utf-8") as f:
+                f.write(time.strftime("%Y-%m-%d %H:%M:%S ") + "".join(traceback.format_exception(t, v, tb)) + "\n")
+        except OSError:
+            pass
+        try:
+            old(t, v, tb)
+        except Exception:
+            pass
+
+    sys.excepthook = hook
+
+
 def main():
     if sys.platform == "win32":  # własna ikona/grupa na pasku zadań
         try:
@@ -1615,14 +2867,14 @@ def main():
     app.setOrganizationName("smialo")
     sp = MainWindow._default_state_path()
     sp.parent.mkdir(parents=True, exist_ok=True)
+    install_excepthook(sp.with_name("startupboard.log"))
     lock = QLockFile(str(sp.parent / "app.lock"))  # jedna kopia naraz, by nie nadpisywały sobie stanu
     if not lock.tryLock(300):
         QMessageBox.information(None, APP_NAME, "Program już działa (sprawdź pasek zadań).")
         sys.exit(0)
     win = MainWindow()
-    for arg in sys.argv[1:]:
-        win.open_in_free_pane(arg)
     win.show()
+    win.start_loading(sys.argv[1:])  # pliki z poprzedniej sesji wczytują się już po pokazaniu okna
     code = app.exec()
     lock.unlock()
     sys.exit(code)
