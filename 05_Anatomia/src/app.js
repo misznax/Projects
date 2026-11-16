@@ -413,6 +413,8 @@ const sdot = (j) => `<i class="sdot" style="background:${SHP[j.shape].c}"></i>`;
 function renderList() {
   const regs = S.region === 'all' ? REG_ORDER : [S.region];
   let h = '';
+  let tipOff = false; try { tipOff = localStorage.getItem('anatomia.tipMulti') === '1'; } catch (e) {}
+  if (S.tab === 'mus' && !tipOff) h += '<div class="tip"><span>💡 <b>Kilka mięśni naraz:</b> przycisk <b>☑ Wiele mięśni</b> nad modelem (na komputerze także <b>Ctrl / Shift + klik</b>). Każdy dostaje inny kolor; w karcie mięśnia znajdziesz antagonistów.</span><button data-tipx aria-label="Ukryj podpowiedź">×</button></div>';
   if (S.tab === 'mus') {
     for (const r of regs) {
       const gs = Object.values(G).filter((g) => g.region === r).sort((a, b) => a.pl.localeCompare(b.pl, 'pl'));
@@ -470,6 +472,7 @@ function markList() {
   if (el) { el.classList.add('on'); const p = el.closest('.parts'); if (p) p.classList.add('open'); if (!searchActive) el.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
 }
 listEl.addEventListener('click', (e) => {
+  if (e.target.closest('[data-tipx]')) { try { localStorage.setItem('anatomia.tipMulti', '1'); } catch (x) {} renderList(); return; }
   const eye = e.target.closest('[data-eye]');
   if (eye) { const k = eye.dataset.eye; S.hidden.has(k) ? S.hidden.delete(k) : S.hidden.add(k); eye.classList.toggle('off'); apply(); e.stopPropagation(); return; }
   const car = e.target.closest('[data-car],[data-lcar]');
@@ -614,14 +617,14 @@ const syncTabs = () => $$('#tabs button').forEach((b) => b.classList.toggle('on'
 $('#tabs').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; S.tab = b.dataset.tab; syncTabs(); renderList(); });
 $('#regions').innerHTML = DATA.regions.map(([k, n]) => `<button data-r="${k}" class="${k === 'all' ? 'on' : ''}">${esc(n)}</button>`).join('');
 const selRegionOk = (s) => s.t === 'grp' ? regionOk(G[s.id].region) : s.t === 'part' ? regionOk(G[MUS.get(s.id).grp].region) : s.t === 'bone' ? (BON.get(s.id).kind === 'ctx' || regionOk(BON.get(s.id).region)) : s.t === 'joint' ? regionOk(JMAP.get(s.id).reg) : regionOk(BON.get(LMS.get(s.id).bone).region);
-$('#regions').addEventListener('click', (e) => {
-  const b = e.target.closest('button'); if (!b) return; S.region = b.dataset.r;
-  $$('#regions button').forEach((x) => x.classList.toggle('on', x === b));
+function setRegion(r, after) {
+  S.region = r; $$('#regions button').forEach((x) => x.classList.toggle('on', x.dataset.r === r));
   S.hidden.clear(); if (S.sel && !selRegionOk(S.sel)) { S.sel = null; renderInfo(); }
-  if (S.region === 'glowa') { S.layers.skull = true; $('#lSkull').checked = true; if (S.tab === 'mus') { S.tab = 'jnt'; syncTabs(); } }
+  if (r === 'glowa') { S.layers.skull = true; $('#lSkull').checked = true; if (S.tab === 'mus') { S.tab = 'jnt'; syncTabs(); } }
   renderList(); apply();
-  (S.region === 'glowa' ? ensureAxial() : Promise.resolve()).then(() => { apply(); viewRegion('front'); });
-});
+  (r === 'glowa' ? ensureAxial() : Promise.resolve()).then(() => { apply(); viewRegion('front'); if (after) after(); });
+}
+$('#regions').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) setRegion(b.dataset.r); });
 const bindChk = (id, fn) => { const el = $('#' + id); el.addEventListener('change', () => { fn(el.checked); apply(); }); };
 bindChk('lBones', (v) => (S.layers.bones = v)); bindChk('lMus', (v) => (S.layers.muscles = v)); bindChk('lCtx', (v) => (S.layers.ctx = v));
 bindChk('lOther', (v) => (S.layers.other = v)); bindChk('lAtt', (v) => (S.layers.att = v)); bindChk('ghostBg', (v) => (S.ghostBg = v));
@@ -678,6 +681,40 @@ modal.addEventListener('click', (e) => {
   if (e.target.id === 'sugSend') { const b = encodeURIComponent(t() || '(wpisz sugestię)'); location.href = `mailto:michus@gmail.com?subject=${encodeURIComponent('Anatomia v' + VERSION + ' — sugestia')}&body=${b}`; }
   if (e.target.id === 'sugCopy') { navigator.clipboard?.writeText(t()); e.target.textContent = 'Skopiowano'; }
 });
+
+
+/* ---------- mapa ciała: wybór obszaru ---------- */
+const BM_ZONES = [ // [region, kształt SVG (dla prawej kończyny osoby = lewa strona rysunku)]
+  ['bark', '<ellipse cx="88" cy="94" rx="24" ry="17" transform="rotate(-14 88 94)"/>'],
+  ['ramie', '<rect x="49" y="104" width="23" height="84" rx="11" transform="rotate(11 60 146)"/>'],
+  ['przedramie', '<rect x="30" y="190" width="21" height="78" rx="10" transform="rotate(6 40 229)"/>'],
+  ['dlon', '<path d="M24 272h22l-2 22q-1 12-9 24-3 5-5 0-6-12-6-24z"/>'],
+];
+function bodyMapHTML() {
+  const side = (sd, flip) => `<g ${flip ? 'transform="translate(240 0) scale(-1 1)"' : ''} data-side="${sd}">${BM_ZONES.map(([r, shape]) => `<g class="bz" data-r="${r}" data-sd="${sd}" tabindex="0" role="button" aria-label="${esc(REGION_NAME[r])} ${sd === 'r' ? 'prawy' : 'lewy'}">${shape}</g>`).join('')}</g>`;
+  return `<h3>Wybierz obszar ciała</h3><p class="small">Kliknij część sylwetki. Lewa strona rysunku to <b>prawa</b> strona ciała (jak patrzysz na człowieka z przodu).</p>
+  <svg id="bmsvg" viewBox="0 0 240 440" role="img" aria-label="Sylwetka człowieka">
+    <g class="bz" data-r="glowa" data-sd="x" tabindex="0" role="button" aria-label="Głowa i szyja"><ellipse cx="120" cy="38" rx="23" ry="29"/><rect x="107" y="62" width="26" height="24" rx="6"/></g>
+    <g class="bz off" title="Tułów — wkrótce"><path d="M96 92h48q8 6 6 30l-4 112q-2 12-26 12t-26-12l-4-112q-2-24 6-30z"/></g>
+    <g class="bz off" title="Miednica i nogi — wkrótce"><path d="M95 244h50l-3 60-6 126h-14l-4-90-4 90h-14l-6-126z"/></g>
+    ${side('r', false)}${side('l', true)}
+    <text x="120" y="270" class="bmt" text-anchor="middle">tułów</text><text x="120" y="360" class="bmt" text-anchor="middle">nogi</text>
+  </svg>
+  <div class="bmleg"><span><i class="bz-d on"></i>obszar dostępny</span><span><i class="bz-d"></i>wkrótce (tułów, nogi)</span></div>
+  <div class="btns"><button data-bm="all">Cała kończyna górna</button><button data-bm="both">Obie strony</button></div>`;
+}
+function markBodyMap() {
+  $$('#bmsvg .bz[data-r]').forEach((z) => { const r = z.dataset.r, sd = z.dataset.sd; z.classList.toggle('on', (S.region === r) && (sd === 'x' || S.side === 'b' || S.side === sd)); });
+}
+$('#bodyBtn').addEventListener('click', () => { showModal(bodyMapHTML()); markBodyMap(); });
+mbody.addEventListener('click', (e) => {
+  const bt = e.target.closest('[data-bm]');
+  if (bt) { if (bt.dataset.bm === 'both') { setSide('b'); } else { setRegion('all'); } modal.classList.remove('show'); return; }
+  const z = e.target.closest('#bmsvg .bz[data-r]'); if (!z) return;
+  const sd = z.dataset.sd; if (sd === 'r' || sd === 'l') setSide(sd);
+  modal.classList.remove('show'); setRegion(z.dataset.r);
+});
+mbody.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('#bmsvg .bz')) { e.preventDefault(); e.target.dispatchEvent(new MouseEvent('click', { bubbles: true })); } });
 
 /* ---------- pętla ---------- */
 let shiftX = 0, shiftY = 0;
