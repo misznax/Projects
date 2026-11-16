@@ -2,7 +2,7 @@
 """Startup Board - do 8 swobodnych paneli roboczych z pamięcią stanu.
 
 Skróty: Ctrl+N nowy plik | Ctrl+O otwórz | Ctrl+S zapisz | Ctrl+Shift+S zapisz jako | Ctrl+W zamknij plik
-        Ctrl+F znajdź (F3 / Shift+F3 dalej / wstecz) | Ctrl+Shift+V wklej obraz ze schowka
+        Ctrl+F znajdź (F3 / Shift+F3 dalej / wstecz) | Ctrl+V wklej tekst/obraz/plik do pustego panelu | Ctrl+Shift+V obraz
         Ctrl+, ustawienia | Ctrl+M pokaż/ukryj pasek menu | Ctrl+Shift+E układ siatki | Alt+1..8 panel
 Panele: przeciągaj za pasek tytułowy, zmieniaj rozmiar łapiąc krawędź/róg.
         Przyciąganie magnetyczne do krawędzi innych paneli (Alt = wyłącz).
@@ -24,8 +24,8 @@ from pathlib import Path
 from PySide6.QtCore import (QByteArray, QEvent, QLockFile, QPoint, QPointF, QRect, QRectF, QSize, QStandardPaths,
                             Qt, QTimer, QUrl, Signal)
 from PySide6.QtGui import (QAction, QActionGroup, QColor, QDesktopServices, QFont, QIcon, QImage, QImageReader,
-                           QKeySequence, QPainter, QPalette, QPen, QPixmap, QPolygonF, QShortcut, QSyntaxHighlighter,
-                           QTextCharFormat, QTextCursor, QTextDocument)
+                           QKeySequence, QLinearGradient, QPainter, QPalette, QPen, QPixmap, QPolygonF, QShortcut, QSyntaxHighlighter,
+                           QTextCharFormat, QTextCursor, QTextDocument, QBrush)
 from PySide6.QtWidgets import (
     QAbstractButton, QApplication, QBoxLayout, QButtonGroup, QCheckBox, QColorDialog, QComboBox, QDialog, QFileDialog,
     QFrame, QGridLayout, QGroupBox, QHBoxLayout, QInputDialog, QLabel, QLineEdit, QListWidget, QListWidgetItem,
@@ -51,26 +51,67 @@ LANGS = [("auto", "Automatycznie (wg rozszerzenia)"), ("text", "Zwykły tekst"),
          ("python", "Python"), ("html", "HTML"), ("sql", "SQL")]
 BORDERS = [1, 2, 3, 4, 6, 8, 0]  # grubość ramki w px (0 = brak)
 DEFAULT_BORDER = 2
-DEFAULT_SCHEME = "night"
+DEFAULT_SCHEME = "morze"
+LOOK_VERSION = 2  # wygląd v2 (Morze i limonka); starszy stan jest raz przestawiany na nowy domyślny motyw
 DEFAULT_PANES, MAX_PANES = 6, 8
-SCHEME_ORDER = ["night", "graphite", "contrast", "light", "paper"]
-ICON_COLORS = [("red", "Czerwony", "#e53935"), ("orange", "Pomarańczowy", "#fb8c00"),
+SCHEME_ORDER = ["morze", "morze_j", "night", "graphite", "contrast", "light", "paper"]
+ICON_COLORS = [("sealime", "Morze i limonka", "grad"), ("lime", "Limonkowy", "#b8e642"), ("sea", "Morski", "#12a6b0"),
+               ("red", "Czerwony", "#e53935"), ("orange", "Pomarańczowy", "#fb8c00"),
                ("yellow", "Żółty", "#fdd835"), ("green", "Zielony", "#43a047"),
                ("cyan", "Turkusowy", "#00acc1"), ("blue", "Niebieski", "#1e88e5"),
                ("purple", "Fioletowy", "#8e24aa"), ("pink", "Różowy", "#ec407a")]
 EXT_LANG = {".py": "python", ".pyw": "python", ".html": "html", ".htm": "html",
             ".xhtml": "html", ".sql": "sql"}
 LAST = {"dir": ""}        # ostatnio używany folder w oknach wyboru pliku (zapisywany w stanie)
-THEME = {"dark": True}    # czy aktualny schemat jest ciemny (pasek tytułu okien)
+THEME = {"dark": True, "grad": True}  # ciemny schemat (pasek tytułu okien); gradient włączony
+
+
+def grad(c1: str, c2: str, diag: bool = False) -> str:
+    """Subtelny gradient w stylesheet (lewo -> prawo albo po przekątnej); wyłączony lub równe kolory = jeden kolor."""
+    if c1 == c2 or not THEME.get("grad", True):
+        return c1
+    return f"qlineargradient(x1:0,y1:0,x2:1,y2:{1 if diag else 0},stop:0 {c1},stop:1 {c2})"
 
 
 def hdr_css(active: bool) -> str:
     u = UI
-    return (f"#hdr{{background:{u['hdr_bg_a'] if active else u['hdr_bg']};border-bottom:1px solid {u['border']};}}"
+    bg = grad(u["hdr_bg_a"], u["hdr_bg_a2"]) if active else grad(u["hdr_bg"], u["hdr_bg2"])
+    line = u["border_a"] if active else u["border"]
+    return (f"#hdr{{background:{bg};border-bottom:1px solid {line};}}"
             f"#hdr QLabel{{color:{u['hdr_fg']};font-size:8pt;}}"
             f"#hdr QToolButton{{border:none;color:{u['mute']};padding:0 5px;font-size:9pt;}}"
-            f"#hdr QToolButton:hover{{background:{u['border']};color:{u['hdr_fg']};}}"
+            f"#hdr QToolButton:hover{{background:{u['border']};color:{u['border_a']};}}"
             f"#hdr QToolButton:checked{{color:{u['hdr_fg']};}}")
+
+
+def scroll_css(sel: str) -> str:
+    """Cienkie, spokojne paski przewijania w kolorach motywu (hover = kolor akcentu)."""
+    u = UI
+    return (f"{sel} QScrollBar:vertical{{background:transparent;width:11px;margin:0;}}"
+            f"{sel} QScrollBar:horizontal{{background:transparent;height:11px;margin:0;}}"
+            f"{sel} QScrollBar::handle:vertical{{background:{u['border']};min-height:28px;border-radius:4px;margin:2px;}}"
+            f"{sel} QScrollBar::handle:horizontal{{background:{u['border']};min-width:28px;border-radius:4px;margin:2px;}}"
+            f"{sel} QScrollBar::handle:hover{{background:{u['border_a']};}}"
+            f"{sel} QScrollBar::add-line,{sel} QScrollBar::sub-line{{width:0;height:0;}}"
+            f"{sel} QScrollBar::add-page,{sel} QScrollBar::sub-page{{background:none;}}")
+
+
+def app_css() -> str:
+    """Globalny arkusz: cienkie paski przewijania, menu i podpowiedzi w kolorach motywu."""
+    u = UI
+    return (scroll_css("")
+            + f"QMenuBar{{background:{grad(u['hdr_bg'], u['hdr_bg2'])};color:{u['hdr_fg']};"
+              f"border-bottom:1px solid {u['border']};}}"
+              f"QMenuBar::item{{background:transparent;padding:4px 10px;}}"
+              f"QMenuBar::item:selected{{background:{u['border']};color:{u['border_a']};}}"
+              f"QMenu{{background:{u['hdr_bg']};color:{u['hdr_fg']};border:1px solid {u['border_a']};padding:4px 0;}}"
+              f"QMenu::item{{padding:5px 28px 5px 26px;}}"
+              f"QMenu::item:selected{{background:{u['sel']};color:{COLORS['text']};}}"
+              f"QMenu::item:disabled{{color:{u['mute']};}}"
+              f"QMenu::separator{{height:1px;background:{u['border']};margin:4px 8px;}}"
+              f"QMenu::icon{{padding-left:6px;}}"
+              f"QMenu::indicator{{width:14px;height:14px;left:6px;}}"
+              f"QToolTip{{background:{u['hdr_bg']};color:{u['hdr_fg']};border:1px solid {u['border_a']};padding:3px 5px;}}")
 
 
 # ---------- pomocnicze ----------
@@ -128,8 +169,15 @@ def star_pixmap(color: str, size: int) -> QPixmap:
     cx, cy, R = size / 2, size / 2 + size * 0.03, size * 0.47
     pts = [QPointF(cx + (R if i % 2 == 0 else R * 0.42) * math.sin(i * math.pi / 5),
                    cy - (R if i % 2 == 0 else R * 0.42) * math.cos(i * math.pi / 5)) for i in range(10)]
-    col = QColor(color)
-    p.setBrush(col)
+    if color == "grad":  # limonka -> morski
+        g = QLinearGradient(0, 0, size, size)
+        g.setColorAt(0, QColor("#c6ef4a"))
+        g.setColorAt(1, QColor("#0fa3ad"))
+        p.setBrush(QBrush(g))
+        col = QColor("#0fa3ad")
+    else:
+        col = QColor(color)
+        p.setBrush(col)
     pen = QPen(col.darker(160), max(1.0, size / 14))
     pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
     p.setPen(pen)
@@ -180,20 +228,40 @@ class ThemedDialog(QDialog):
 
 # ---------- kolorowanie składni (Python / HTML / SQL + cyfry) ----------
 
-def _fmt(color: str, bold=False, italic=False) -> QTextCharFormat:
+def _fmt(color: str, bold=False, italic=False, underline=False) -> QTextCharFormat:
     f = QTextCharFormat()
     f.setForeground(QColor(color))
     if bold:
         f.setFontWeight(QFont.Weight.Bold)
     if italic:
         f.setFontItalic(True)
+    if underline:
+        f.setFontUnderline(True)
     return f
 
 
 # Gotowe schematy: każdy kolor ma policzony kontrast względem tła (jasne >= 4.8:1, ciemne >= 6:1).
 SCHEMES = {
-    "night": {"name": "Ciemny – Nocna sowa (jak na miniaturce)", "dark": True,
-        "colors": {"bg": "#0b1529", "text": "#e3ebf7", "com": "#8da0bd", "kw": "#c29cf7", "str": "#12e23f", "num": "#ec9c13", "other": "#92c8f6",
+    "morze": {"name": 'Ciemny – Morze i limonka (domyślny)', "dark": True,
+        "colors": {"bg": "#071e25", "text": "#e4f3ef", "com": "#7fa9a5", "kw": "#b8e642", "kw2": "#f8a0ef", "const": "#f9aab7", "num": "#f6ad86", "str": "#11dd47", "func": "#eeb519", "builtin": "#6cc9f4", "cls": "#10d8ad", "deco": "#aebdf9", "tag": "#f8a7bc", "attr": "#dfbd11", "link": "#7fc6f5", "date": "#10d8b0", "mark": "#f9aab0",
+                   "p;": "#f8ab9b", "p*/%": "#f7ca90", "p!": "#cac30f",
+                   "p()": "#9ae811", "p{}": "#3fda10", "p+": "#33f052",
+                   "p[]": "#10da83", "p-": "#12ebe4", "p,.:": "#78c7f5",
+                   "p=": "#c4d1fb", "p<>": "#c1b5f9", "p_": "#e4c6fb",
+                   "p\\@$": "#f5a0f8", "p?": "#fac1e5", "p&|^~": "#f9aabc",
+        },
+        "ui": {"hdr_bg": "#0c353f", "hdr_bg2": "#1d463f", "hdr_bg_a": "#0f4753", "hdr_bg_a2": "#33694e", "hdr_fg": "#e6f5f1", "mute": "#86adaa", "border": "#17525c", "border2": "#1d5d4c", "border_a": "#b5e43a", "border_a2": "#22b8bd", "canvas": "#04161c", "canvas2": "#0a2b2a", "sel": "#2c6b3a", "ok": "#9bdc4a", "warn": "#f2b84b", "err": "#ff8a80", "info": "#4fd1d6"}},
+    "morze_j": {"name": 'Jasny – Morze i limonka', "dark": False,
+        "colors": {"bg": "#f7fbf8", "text": "#10303a", "com": "#527174", "kw": "#4d7a00", "kw2": "#c316b2", "const": "#d51837", "num": "#b54d14", "str": "#0e7e2c", "func": "#87670f", "builtin": "#1275a3", "cls": "#0e7c64", "deco": "#1942e6", "tag": "#d51847", "attr": "#7e6c0e", "link": "#1472b1", "date": "#0e7c66", "mark": "#d81828",
+                   "p;": "#cc3517", "p*/%": "#87530f", "p!": "#736f0d",
+                   "p()": "#46670b", "p{}": "#287e0e", "p+": "#0c6e1d",
+                   "p[]": "#0e7c4c", "p-": "#0c6a66", "p,.:": "#1372aa",
+                   "p=": "#1949e6", "p<>": "#3b19e6", "p_": "#8919df",
+                   "p\\@$": "#bd16c3", "p?": "#b31479", "p&|^~": "#d51844",
+        },
+        "ui": {"hdr_bg": "#d5ebe9", "hdr_bg2": "#e1efcf", "hdr_bg_a": "#bfe2e3", "hdr_bg_a2": "#d4eba3", "hdr_fg": "#0d3039", "mute": "#3f6266", "border": "#a6cfd0", "border2": "#bfd9a6", "border_a": "#0f8a94", "border_a2": "#7fb516", "canvas": "#dcefec", "canvas2": "#e9f3d6", "sel": "#c4e88f", "ok": "#27701a", "warn": "#a85d00", "err": "#b3261e", "info": "#0b7482"}},
+    "night": {"name": 'Ciemny – Nocna sowa (jak na miniaturce)', "dark": True,
+        "colors": {"bg": "#0b1529", "text": "#e3ebf7", "com": "#8da0bd", "kw": "#c29cf7", "kw2": "#f589c6", "const": "#f6918b", "num": "#ec9c13", "str": "#12e23f", "func": "#b3b30f", "builtin": "#92c8f6", "cls": "#10c67a", "deco": "#92aaf6", "tag": "#f68ea4", "attr": "#cdab11", "link": "#8eaaf6", "date": "#10bfc8", "mark": "#f68ea3",
                    "p;": "#f69090", "p*/%": "#f6b495", "p!": "#d0c611",
                    "p()": "#8ebd0f", "p{}": "#67de12", "p+": "#23c810",
                    "p[]": "#10c671", "p-": "#12dbbd", "p,.:": "#12bddb",
@@ -201,8 +269,8 @@ SCHEMES = {
                    "p\\@$": "#f582ef", "p?": "#f8aadc", "p&|^~": "#f68eaf",
         },
         "ui": {"hdr_bg": "#15233f", "hdr_bg_a": "#1d3358", "hdr_fg": "#d7e2f5", "mute": "#8da0bd", "border": "#2a3d62", "border_a": "#7aa7d9", "canvas": "#060d1c", "sel": "#2a4a80", "ok": "#4cc38a", "warn": "#f0994c", "err": "#ff7b7b", "info": "#7aa7d9"}},
-    "graphite": {"name": "Ciemny – grafit", "dark": True,
-        "colors": {"bg": "#1e1e1e", "text": "#e6e6e6", "com": "#9aa0a6", "kw": "#c7a5f5", "str": "#35e95c", "num": "#e9a837", "other": "#a5d0f5",
+    "graphite": {"name": 'Ciemny – grafit', "dark": True,
+        "colors": {"bg": "#1e1e1e", "text": "#e6e6e6", "com": "#9aa0a6", "kw": "#c7a5f5", "kw2": "#f498cc", "const": "#f49f9a", "num": "#e9a837", "str": "#35e95c", "func": "#baba15", "builtin": "#a5d0f5", "cls": "#17cf82", "deco": "#9fb3f4", "tag": "#f49caf", "attr": "#d5b318", "link": "#9cb4f4", "date": "#17c8d1", "mark": "#f49cae",
                    "p;": "#f49c9c", "p*/%": "#f5bfa5", "p!": "#dad018",
                    "p()": "#95c316", "p{}": "#6ee619", "p+": "#2ad117",
                    "p[]": "#17cf79", "p-": "#19e6c7", "p,.:": "#19c5e3",
@@ -210,8 +278,8 @@ SCHEMES = {
                    "p\\@$": "#f391ee", "p?": "#f7b8e0", "p&|^~": "#f49ab6",
         },
         "ui": {"hdr_bg": "#2a2a2a", "hdr_bg_a": "#353a42", "hdr_fg": "#e0e0e0", "mute": "#9aa0a6", "border": "#454545", "border_a": "#6aa5ff", "canvas": "#141414", "sel": "#3a4a66", "ok": "#6fcf97", "warn": "#f2994a", "err": "#ff7b7b", "info": "#6aa5ff"}},
-    "contrast": {"name": "Ciemny – wysoki kontrast (czarny)", "dark": True,
-        "colors": {"bg": "#000000", "text": "#ffffff", "com": "#b0b8c4", "kw": "#ceadfd", "str": "#06ef39", "num": "#faad29", "other": "#a3d3fd",
+    "contrast": {"name": 'Ciemny – wysoki kontrast (czarny)', "dark": True,
+        "colors": {"bg": "#000000", "text": "#ffffff", "com": "#b0b8c4", "kw": "#ceadfd", "kw2": "#fd9ed4", "const": "#fda5a1", "num": "#faad29", "str": "#06ef39", "func": "#c2c205", "builtin": "#a3d3fd", "cls": "#06d880", "deco": "#a5bafd", "tag": "#fda3b6", "attr": "#e0b806", "link": "#a3bbfd", "date": "#06d0db", "mark": "#fda3b5",
                    "p;": "#fda5a5", "p*/%": "#fdc1a5", "p!": "#ddd206",
                    "p()": "#99ce05", "p{}": "#65ea06", "p+": "#1bdb06",
                    "p[]": "#06d876", "p-": "#06e7c5", "p,.:": "#06cef1",
@@ -219,8 +287,8 @@ SCHEMES = {
                    "p\\@$": "#fc99f7", "p?": "#fdb9e4", "p&|^~": "#fda1be",
         },
         "ui": {"hdr_bg": "#101010", "hdr_bg_a": "#1c1c1c", "hdr_fg": "#ffffff", "mute": "#c0c0c0", "border": "#707070", "border_a": "#ffd400", "canvas": "#000000", "sel": "#1f4aa0", "ok": "#3dff7a", "warn": "#ffb000", "err": "#ff6b6b", "info": "#66b3ff"}},
-    "light": {"name": "Jasny – wyraźny", "dark": False,
-        "colors": {"bg": "#ffffff", "text": "#1b1f2a", "com": "#6b7280", "kw": "#6f1ce3", "str": "#0e7124", "num": "#986713", "other": "#1563a8",
+    "light": {"name": 'Jasny – wyraźny', "dark": False,
+        "colors": {"bg": "#ffffff", "text": "#1b1f2a", "com": "#6b7280", "kw": "#6f1ce3", "kw2": "#d51a84", "const": "#dc251b", "num": "#986713", "str": "#0e7124", "func": "#76760f", "builtin": "#1563a8", "cls": "#108152", "deco": "#1c4ae3", "tag": "#de1b46", "attr": "#867011", "link": "#1c51e3", "date": "#107e84", "mark": "#de1b42",
                    "p;": "#de1b1b", "p*/%": "#a64214", "p!": "#68640d",
                    "p()": "#5e7b0f", "p{}": "#366f0e", "p+": "#1c8410",
                    "p[]": "#10814c", "p-": "#0d6d5f", "p,.:": "#127c8f",
@@ -228,8 +296,8 @@ SCHEMES = {
                    "p\\@$": "#c819bf", "p?": "#b6167b", "p&|^~": "#dc1b58",
         },
         "ui": {"hdr_bg": "#eef1f6", "hdr_bg_a": "#dce8f8", "hdr_fg": "#2b3340", "mute": "#5f6673", "border": "#c3cad6", "border_a": "#2f6fd6", "canvas": "#d5dbe5", "sel": "#bcd7ff", "ok": "#1f7a3a", "warn": "#b4531a", "err": "#b3261e", "info": "#2f55b5"}},
-    "paper": {"name": "Jasny – papier", "dark": False,
-        "colors": {"bg": "#fbf4e4", "text": "#2a2418", "com": "#6f695a", "kw": "#7024db", "str": "#116723", "num": "#8a6016", "other": "#195c97",
+    "paper": {"name": 'Jasny – papier', "dark": False,
+        "colors": {"bg": "#fbf4e4", "text": "#2a2418", "com": "#6f695a", "kw": "#7024db", "kw2": "#c3207c", "const": "#c82920", "num": "#8a6016", "str": "#116723", "func": "#6b6b11", "builtin": "#195c97", "cls": "#13764d", "deco": "#244fdb", "tag": "#ca2145", "attr": "#7b6814", "link": "#2455db", "date": "#147479", "mark": "#ca2143",
                    "p;": "#cc2121", "p*/%": "#954018", "p!": "#605c10",
                    "p()": "#577012", "p{}": "#346510", "p+": "#1e7914",
                    "p[]": "#137648", "p-": "#106558", "p,.:": "#157384",
@@ -238,11 +306,16 @@ SCHEMES = {
         },
         "ui": {"hdr_bg": "#efe6cf", "hdr_bg_a": "#e4d8b8", "hdr_fg": "#3a3222", "mute": "#6f695a", "border": "#cdbf9c", "border_a": "#b4691f", "canvas": "#dccfae", "sel": "#e8cf9a", "ok": "#2e6b2e", "warn": "#a84a12", "err": "#a8201a", "info": "#40569c"}},
 }
+for _sc in SCHEMES.values():  # końce gradientów: domyślnie równe początkom (schematy płaskie)
+    for _k in ("hdr_bg", "hdr_bg_a", "border", "border_a", "canvas"):
+        _sc["ui"].setdefault(_k + "2", _sc["ui"][_k])
 COLORS = dict(SCHEMES[DEFAULT_SCHEME]["colors"])  # aktualna paleta składni (globalna)
 UI = dict(SCHEMES[DEFAULT_SCHEME]["ui"])          # aktualne kolory interfejsu (paski, ramki, tło)
 COLOR_LABELS = [("text", "Tekst"), ("bg", "Tło edytora"), ("str", "Wartości w 'x' i \"x\""),
-                ("num", "Cyfry"), ("com", "Komentarze"), ("kw", "Słowa kluczowe i znaczniki"),
-                ("other", "Funkcje, atrybuty, wbudowane")]
+                ("num", "Cyfry"), ("com", "Komentarze"), ("kw", "Słowa kluczowe"), ("kw2", "Definicje"),
+                ("const", "Stałe"), ("func", "Funkcje"), ("builtin", "Wbudowane"), ("cls", "Klasy i typy"),
+                ("deco", "Dekoratory"), ("tag", "Znaczniki HTML"), ("attr", "Atrybuty HTML"),
+                ("link", "Adresy www i e-mail"), ("date", "Daty i godziny"), ("mark", "Znaczniki TODO / UWAGA")]
 PUNCT_GROUPS = [("p;", ";"), ("p?", "?"), ("p!", "!"), ("p-", "-"), ("p_", "_"), ("p=", "="), ("p+", "+"),
                 ("p*/%", "* / %"), ("p<>", "< >"), ("p&|^~", "& | ^ ~"), ("p,.:", ", . :"),
                 ("p()", "( )"), ("p[]", "[ ]"), ("p{}", "{ }"), ("p\\@$", "\\ @ $")]
@@ -252,9 +325,11 @@ PUNCT_GROUPS = [("p;", ";"), ("p?", "?"), ("p!", "!"), ("p-", "-"), ("p_", "_"),
 def _formats() -> dict:
     c = COLORS
     return {
-        "num": _fmt(c["num"]), "kw": _fmt(c["kw"], bold=True), "builtin": _fmt(c["other"]),
-        "str": _fmt(c["str"]), "com": _fmt(c["com"], italic=True), "tag": _fmt(c["kw"]),
-        "attr": _fmt(c["other"]), "deco": _fmt(c["other"]), "func": _fmt(c["other"]),
+        "num": _fmt(c["num"]), "str": _fmt(c["str"]), "com": _fmt(c["com"], italic=True),
+        "kw": _fmt(c["kw"], bold=True), "kw2": _fmt(c["kw2"], bold=True), "const": _fmt(c["const"], bold=True),
+        "func": _fmt(c["func"]), "builtin": _fmt(c["builtin"]), "cls": _fmt(c["cls"]), "deco": _fmt(c["deco"]),
+        "tag": _fmt(c["tag"]), "attr": _fmt(c["attr"]), "link": _fmt(c["link"], underline=True),
+        "date": _fmt(c["date"]), "mark": _fmt(c["mark"], bold=True),
     }
 
 
@@ -272,17 +347,24 @@ def refresh_colors():
 
 NUM_RE = re.compile(r"0[xX][0-9a-fA-F]+|\d+(?:\.\d+)?")  # każda cyfra, także w abc123 i 3px
 PUNCT_RE = re.compile(r"[;?!\-_=+*/%<>&|^~\\@$,.:()\[\]{}]")
-PY_KW = ("False None True and as assert async await break class continue def del elif else except finally "
-         "for from global if import in is lambda nonlocal not or pass raise return try while with yield "
-         "match case").split()
+PY_CTRL = ("and assert async await break continue del elif else except finally for if in is not or pass raise "
+           "return try while with yield match case").split()
+PY_DEF = "as class def from global import lambda nonlocal".split()
+PY_CONST = "False None True".split()
 PY_BI = ("print len range int str float list dict set tuple bool open type isinstance super self cls "
          "enumerate zip map filter sorted sum min max abs any all repr input id hash iter next").split()
-SQL_KW = ("select from where insert into values update set delete create alter drop table index view database "
-          "join inner left right outer full cross on as and or not null is in like between exists union all "
-          "distinct group by order having limit offset case when then else end primary key foreign references "
-          "default unique check constraint add column asc desc top with begin commit rollback transaction "
-          "truncate if replace procedure function trigger grant revoke").split()
+SQL_CTRL = ("select from where join inner left right outer full cross on and or not in is like between exists "
+            "union all distinct group by order having limit offset case when then else end asc desc as with top").split()
+SQL_DDL = ("insert into values update set delete create alter drop table index view database primary key foreign "
+           "references default unique check constraint add column begin commit rollback transaction truncate replace "
+           "procedure function trigger grant revoke if").split()
+SQL_CONST = "null true false".split()
+SQL_TYPES = ("int integer bigint smallint tinyint decimal numeric float double real varchar char text date datetime "
+             "timestamp boolean bool blob json uuid").split()
 SQL_FN = "count sum avg min max coalesce ifnull upper lower length substr substring trim now cast convert round"
+URL_RE = re.compile(r"https?://[^\s<>\"']+|www\.[^\s<>\"']+|[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
+DATE_RE = re.compile(r"\b\d{4}-\d{2}-\d{2}\b|\b\d{1,2}[./-]\d{1,2}[./-]\d{2,4}\b|\b\d{1,2}:\d{2}(?::\d{2})?\b")
+MARK_RE = re.compile(r"\b(?:TODO|FIXME|NOTE|UWAGA|WAŻNE|PILNE|BŁĄD|ZADANIE)\b")
 
 
 def _words(ws, flags=0):
@@ -291,31 +373,36 @@ def _words(ws, flags=0):
 
 @lru_cache(maxsize=None)
 def _lang_def(lang: str):
-    """-> (reguły [(re, fmt)], strcom (re, {grupa: fmt}) | None, ml [(start, end, fmt)])"""
+    """-> (reguły przed cyframi, reguły po cyfrach, strcom (re, {grupa: fmt}) | None, ml [(start, end, fmt)]).
+    Reguły stosowane po kolei: późniejsze nadpisują wcześniejsze."""
     F = _formats()
-    rules = []
+    rules, post = [], []
     strcom, ml = None, []
     if lang == "python":
-        rules += [(_words(PY_KW), F["kw"]), (_words(PY_BI), F["builtin"]),
-                  (re.compile(r"@\w[\w.]*"), F["deco"]),
-                  (re.compile(r"(?<=\bdef )\w+|(?<=\bclass )\w+"), F["func"])]
+        rules += [(re.compile(r"\b[A-Za-z_]\w*(?=\()"), F["func"]),                     # wywołania funkcji
+                  (re.compile(r"\b[A-Z][A-Za-z0-9]*[a-z][A-Za-z0-9]*\b"), F["cls"]),     # Klasy / Wielkie
+                  (_words(PY_BI), F["builtin"]), (_words(PY_CTRL), F["kw"]), (_words(PY_DEF), F["kw2"]),
+                  (_words(PY_CONST), F["const"]), (re.compile(r"@\w[\w.]*"), F["deco"]),
+                  (re.compile(r"(?<=\bdef )\w+"), F["func"]), (re.compile(r"(?<=\bclass )\w+"), F["cls"])]
         strcom = (re.compile(r"(?P<c>#[^\n]*)|(?P<s>[rRbBfFuU]{0,2}(?:\"(?:\\.|[^\"\\])*\"|'(?:\\.|[^'\\])*'))"),
                   {"c": F["com"], "s": F["str"]})
         ml = [(re.compile(r'"""'), re.compile(r'"""'), F["str"]), (re.compile(r"'''"), re.compile(r"'''"), F["str"])]
     elif lang == "html":
         rules += [(re.compile(r"</?[A-Za-z][\w:-]*|/?>"), F["tag"]), (re.compile(r"\b[\w:-]+(?==)"), F["attr"]),
-                  (re.compile(r"&#?\w+;"), F["builtin"])]
+                  (re.compile(r"&#?\w+;"), F["builtin"]), (re.compile(r"<!DOCTYPE[^>]*>", re.I), F["kw2"])]
         strcom = (re.compile(r"=\s*(?P<s>\"[^\"]*\"|'[^']*')"), {"s": F["str"]})
         ml = [(re.compile(r"<!--"), re.compile(r"-->"), F["com"])]
     elif lang == "sql":
-        rules += [(_words(SQL_KW, re.I), F["kw"]),
+        rules += [(_words(SQL_CTRL, re.I), F["kw"]), (_words(SQL_DDL, re.I), F["kw2"]),
+                  (_words(SQL_CONST, re.I), F["const"]), (_words(SQL_TYPES, re.I), F["cls"]),
                   (re.compile(r"\b(?:" + SQL_FN.replace(" ", "|") + r")\b(?=\s*\()", re.I), F["func"])]
         strcom = (re.compile(r"(?P<c>--[^\n]*)|(?P<s>'(?:''|[^'])*')|(?P<i>\"[^\"]*\")"),
-                  {"c": F["com"], "s": F["str"], "i": F["attr"]})
+                  {"c": F["com"], "s": F["str"], "i": F["cls"]})
         ml = [(re.compile(r"/\*"), re.compile(r"\*/"), F["com"])]
-    else:  # zwykły tekst: także wartości w 'x' i "x" (apostrof w słowie, np. it's, jest pomijany)
+    else:  # zwykły tekst: wartości w 'x' i "x" (apostrof w słowie, np. it's, pomijany), adresy, daty, znaczniki
+        post += [(URL_RE, F["link"]), (DATE_RE, F["date"]), (MARK_RE, F["mark"])]
         strcom = (re.compile(r"(?P<s>\"[^\"\n]*\"|(?<!\w)'[^'\n]*'(?!\w))"), {"s": F["str"]})
-    return rules, strcom, ml
+    return rules, post, strcom, ml
 
 
 def make_palette(dark: bool) -> QPalette:
@@ -346,7 +433,7 @@ class Highlighter(QSyntaxHighlighter):
             self.rehighlight()
 
     def highlightBlock(self, text: str):
-        rules, strcom, ml = _lang_def(self.lang)
+        rules, post, strcom, ml = _lang_def(self.lang)
         self.setCurrentBlockState(0)
         pf = _punct_formats()
         for m in PUNCT_RE.finditer(text):
@@ -357,6 +444,9 @@ class Highlighter(QSyntaxHighlighter):
         num = _formats()["num"]
         for m in NUM_RE.finditer(text):
             self.setFormat(m.start(), m.end() - m.start(), num)
+        for rx, fmt in post:
+            for m in rx.finditer(text):
+                self.setFormat(m.start(), m.end() - m.start(), fmt)
         comments = []
         if strcom:
             rx, gf = strcom
@@ -366,6 +456,11 @@ class Highlighter(QSyntaxHighlighter):
                         self.setFormat(m.start(g), m.end(g) - m.start(g), fmt)
                         if g == "c":
                             comments.append((m.start(g), m.end(g)))
+        if comments:  # znaczniki TODO / UWAGA także w komentarzach kodu
+            mk = _formats()["mark"]
+            for a, b in comments:
+                for m in MARK_RE.finditer(text, a, b):
+                    self.setFormat(m.start(), m.end() - m.start(), mk)
         if not ml:
             return
         start, state = 0, self.previousBlockState()
@@ -417,8 +512,14 @@ class PdfViewer(QScrollArea):
         self.zoom = 0.0  # 0 = dopasuj do szerokości
         self.setWidgetResizable(False)
         self.setFrameShape(QFrame.Shape.NoFrame)
-        self.setStyleSheet("QScrollArea{background:#8a8a8a;}")
+        self.restyle()
         self.verticalScrollBar().valueChanged.connect(self.render_visible)
+
+    def restyle(self):
+        self.setStyleSheet(f"QScrollArea{{background:{UI['canvas']};}}")
+        c = self.widget()
+        if c is not None:
+            c.setStyleSheet(f"background:{UI['canvas']};")
 
     def load(self, raw: bytes):
         import pypdfium2 as pdfium  # ładowane dopiero przy pierwszym PDF
@@ -426,7 +527,7 @@ class PdfViewer(QScrollArea):
         self.doc = pdfium.PdfDocument(raw)
         self.sizes = [self.doc[i].get_size() for i in range(len(self.doc))]
         self.container = QWidget()
-        self.container.setStyleSheet("background:#8a8a8a;")
+        self.container.setStyleSheet(f"background:{UI['canvas']};")
         self.labels = []
         for _ in self.sizes:
             lb = QLabel(self.container)
@@ -627,7 +728,7 @@ class ImageViewer(QScrollArea):
 class Placeholder(QWidget):
     """Pusty panel: duży plus (nowy plik tekstowy) + skróty do obrazu i otwierania plików.
     Dopasowuje się do wielkości panelu (w małym zostaje sam plus)."""
-    DEFAULT_HINT = "albo przeciągnij tu plik · wklej obraz (Ctrl+Shift+V)"
+    DEFAULT_HINT = "albo przeciągnij tu plik · Ctrl+V wkleja tekst, obraz lub plik"
 
     def __init__(self):
         super().__init__()
@@ -651,7 +752,7 @@ class Placeholder(QWidget):
         self.row_l.setContentsMargins(0, 0, 0, 0)
         self.row_l.setSpacing(6)
         self.btn_open = QPushButton("Otwórz plik…", toolTip="Otwórz plik tekstowy, PDF lub obraz (Ctrl+O)")
-        self.btn_clip = QPushButton("Obraz ze schowka", toolTip="Wklej obraz ze schowka (Ctrl+Shift+V)")
+        self.btn_clip = QPushButton("Obraz ze schowka", toolTip="Wklej obraz ze schowka (Ctrl+Shift+V; Ctrl+V wkleja też tekst i pliki)")
         self.btn_img = QPushButton("Obraz z pliku…", toolTip="Otwórz plik graficzny (PNG, JPG, BMP, GIF, WEBP…)")
         for b in (self.btn_open, self.btn_clip, self.btn_img):
             b.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -698,7 +799,7 @@ class Placeholder(QWidget):
             f"QLabel{{color:{mute};}}"
             f"QToolButton{{border:2px dashed {mute};border-radius:{sz // 2}px;color:{mute};"
             f"background:transparent;font-size:{int(sz * 0.62)}px;}}"
-            f"QToolButton:hover{{border:2px solid {acc};color:{acc};background:{UI['hdr_bg']};}}"
+            f"QToolButton:hover{{border:2px solid {acc};color:{acc};background:{grad(UI['hdr_bg'], UI['hdr_bg2'], True)};}}"
             f"QPushButton{{background:{UI['hdr_bg']};color:{UI['hdr_fg']};border:1px solid {UI['border']};"
             f"border-radius:4px;padding:3px 10px;}}"
             f"QPushButton:hover{{border-color:{acc};}}")
@@ -846,7 +947,7 @@ class TextPane(QFrame):
 
     # --- wygląd ---
     def _restyle(self):
-        col = UI["border_a"] if self._active else UI["border"]
+        col = grad(UI["border_a"], UI["border_a2"], True) if self._active else grad(UI["border"], UI["border2"], True)
         css = f"TextPane{{border:{self.border}px solid {col};}}" if self.border > 0 else "TextPane{border:none;}"
         self.setStyleSheet(css)
         self.header.setStyleSheet(hdr_css(self._active))
@@ -860,7 +961,9 @@ class TextPane(QFrame):
             f"QPlainTextEdit{{background:{COLORS['bg']};color:{COLORS['text']};"
             f"selection-background-color:{UI['sel']};selection-color:{COLORS['text']};}}")
         self.ph.apply_colors()
-        self.imgv.setStyleSheet(f"QScrollArea{{background:{UI['canvas']};}}")
+        cv = UI["canvas"]
+        self.imgv.setStyleSheet(f"QScrollArea{{background:{cv};}}QScrollArea>QWidget>QWidget{{background:{cv};}}")
+        self.pdf.restyle()
         u = UI
         self.find_bar.setStyleSheet(
             f"#fnd{{background:{u['hdr_bg']};border-top:1px solid {u['border']};}}"
@@ -1454,8 +1557,8 @@ class Canvas(QWidget):
             q.index = i
         self.layoutChanged.emit()
 
-    def set_bg(self, color: str):
-        self.setStyleSheet(f"#cv{{background:{color};}}")
+    def set_bg(self, c1: str, c2: str | None = None):
+        self.setStyleSheet(f"#cv{{background:{grad(c1, c2 or c1, True)};}}")
 
     def apply_all(self):
         for p in self.panes:
@@ -1618,20 +1721,28 @@ UI_LABELS = [("hdr_bg", "Pasek panelu"), ("hdr_bg_a", "Pasek aktywnego panelu"),
              ("mute", "Tekst pomocniczy"), ("canvas", "Tło za panelami"), ("sel", "Zaznaczenie tekstu"),
              ("ok", "Status: zapisany"), ("warn", "Status: niezapisany"), ("err", "Status: błąd"),
              ("info", "Status: informacja")]
-SYNTAX_LABELS = {"text": "Tekst", "bg": "Tło edytora", "str": "Teksty w 'x' i \"x\"", "num": "Cyfry",
-                 "com": "Komentarze", "kw": "Słowa kluczowe", "other": "Funkcje, atrybuty"}
+GRAD_LABELS = [("hdr_bg2", "Pasek: koniec"), ("hdr_bg_a2", "Pasek aktywny: koniec"),
+               ("border2", "Ramka: koniec"), ("border_a2", "Ramka aktywna: koniec"), ("canvas2", "Tło za panelami: koniec")]
+SYNTAX_TIPS = {"kw": "if, for, return, SELECT, FROM…", "kw2": "def, class, import, INSERT, CREATE…",
+               "const": "True, None, NULL", "func": "nazwy wywoływanych funkcji", "builtin": "print, len, open, self…",
+               "cls": "nazwy klas i typów (INT, VARCHAR)", "deco": "@dekorator", "tag": "znaczniki HTML: div, p, a…",
+               "attr": "class=, href=", "link": "https://…, mail@poczta.pl", "date": "2026-11-16, 17:30",
+               "mark": "TODO, UWAGA, PILNE"}
 SAMPLES = {
     "python": ("przyklad.py", '''# Przykład: wszystkie kolory składni
 import os, re
 
 @cache
-def policz(x, y=2.5):
-    """Opis funkcji"""
-    dane = {"klucz": [1, 2, 3], 'b': 0x1F}
-    if x >= 10 and y != 0:  # warunek
-        maska = (x & 7) | (y ^ ~3)
-        print("suma:", x + y - 1, x * y / 2 % 3)
-    return dane or None
+class Raport(Base):
+    """Opis klasy"""
+    def policz(self, x, y=2.5):
+        dane = {"klucz": [1, 2, 3], 'b': 0x1F}
+        if x >= 10 and y != 0:  # TODO: warunek
+            maska = (x & 7) | (y ^ ~3)
+            print("suma:", x + y - 1, x * y / 2 % 3)
+        for k in dane:
+            pass
+        return dane or None
 ''', "policz"),
     "sql": ("raport.sql", '''-- Raport klientów
 SELECT k.id, COUNT(*) AS liczba, 'ok' AS status
@@ -1641,19 +1752,22 @@ WHERE z.kwota >= 100.50 AND k.miasto <> "Łódź"
 GROUP BY k.id
 ORDER BY liczba DESC
 LIMIT 10;
+CREATE TABLE log (id INT PRIMARY KEY, opis VARCHAR(50) DEFAULT NULL);
 ''', "klienci"),
-    "html": ("strona.html", '''<!-- Karta produktu -->
+    "html": ("strona.html", '''<!DOCTYPE html>
+<!-- Karta produktu -->
 <div class="karta" id="a1">
   <h1 style="color:#1e88e5">Tytuł &amp; opis</h1>
   <a href="https://example.pl?id=7">Zobacz</a>
 </div>
 ''', "karta"),
     "text": ("notatki.txt", '''Zakupy na jutro: chleb, mleko, jaja (6 szt.)
-Uwaga! Czy to wszystko? Cena: 12,50 zł + 23% VAT
+UWAGA! Czy to wszystko? Cena: 12,50 zł + 23% VAT
+Termin: 2026-11-16 o 17:30, strona https://smialo.org
 Plik: raport_2026.txt | a & b ^ c ~ d | x < y > z
 Mapa {a: 1}, lista [1, 2], C:\\temp, mail@poczta.pl, $zmienna
 'wartość w apostrofach' i "wartość w cudzysłowie"; 5*3/2-1=0
-''', "Uwaga"),
+''', "UWAGA"),
 }
 
 
@@ -1662,6 +1776,7 @@ class ColorButton(QPushButton):
 
     def __init__(self, label: str):
         super().__init__(label.replace("&", "&&"))  # && = dosłowny znak & (nie skrót klawiszowy)
+        self.tip = ""
         self.setCursor(Qt.CursorShape.PointingHandCursor)
 
     def set_color(self, col: str):
@@ -1673,7 +1788,7 @@ class ColorButton(QPushButton):
         p.end()
         self.setIcon(QIcon(pm))
         self.setIconSize(QSize(26, 14))
-        self.setToolTip(col.upper())
+        self.setToolTip(col.upper() + (f"  ·  {self.tip}" if self.tip else ""))
 
 
 class SettingsDialog(ThemedDialog):
@@ -1774,6 +1889,13 @@ class SettingsDialog(ThemedDialog):
         for i, (k, lab) in enumerate(UI_LABELS):
             gl.addWidget(self._cbtn(k, lab, True), i // 2, i % 2)
         v.addWidget(g)
+        g, gl = self._group("Gradient (pasek, ramka, tło)")
+        self.chk_grad = QCheckBox("Subtelny gradient między kolorami")
+        gl.addWidget(self.chk_grad, 0, 0, 1, 2)
+        for i, (k, lab) in enumerate(GRAD_LABELS):
+            gl.addWidget(self._cbtn(k, lab, True), 1 + i // 2, i % 2)
+        v.addWidget(g)
+        self.chk_grad.toggled.connect(self._on_grad)
         b = QPushButton("Przywróć kolory schematu")
         b.clicked.connect(self.win.reset_colors)
         v.addWidget(b)
@@ -1783,13 +1905,19 @@ class SettingsDialog(ThemedDialog):
     def _page_syntax(self) -> QWidget:
         w, v = self._page(scroll=True)
         g, gl = self._group("Edytor")
-        gl.addWidget(self._cbtn("text", SYNTAX_LABELS["text"]), 0, 0)
-        gl.addWidget(self._cbtn("bg", SYNTAX_LABELS["bg"]), 0, 1)
+        gl.addWidget(self._cbtn("text", "Tekst"), 0, 0)
+        gl.addWidget(self._cbtn("bg", "Tło edytora"), 0, 1)
         v.addWidget(g)
-        g, gl = self._group("Kod i wartości")
-        for i, k in enumerate(("str", "num", "com", "kw", "other")):
-            gl.addWidget(self._cbtn(k, SYNTAX_LABELS[k]), i // 2, i % 2)
-        v.addWidget(g)
+        lab = dict(COLOR_LABELS)
+        for title, keys in (("Kod i wartości", ("str", "num", "com", "kw", "kw2", "const", "func", "builtin", "cls", "deco")),
+                            ("HTML i zwykły tekst", ("tag", "attr", "link", "date", "mark"))):
+            g, gl = self._group(title)
+            for i, k in enumerate(keys):
+                b = self._cbtn(k, lab[k])
+                if k in SYNTAX_TIPS:
+                    b.tip = SYNTAX_TIPS[k]
+                gl.addWidget(b, i // 2, i % 2)
+            v.addWidget(g)
         g, gl = self._group("Znaki interpunkcyjne")
         for i, (k, lab) in enumerate(PUNCT_GROUPS):
             gl.addWidget(self._cbtn(k, lab), i // 3, i % 3)
@@ -1936,7 +2064,7 @@ class SettingsDialog(ThemedDialog):
             b.set_color(COLORS[k])
         for k, b in self.ui_btns.items():
             b.set_color(UI[k])
-        self.pv_canvas.setStyleSheet(f"#pvc{{background:{UI['canvas']};}}")
+        self.pv_canvas.setStyleSheet(f"#pvc{{background:{grad(UI['canvas'], UI['canvas2'], True)};}}")
         sel = f"QPushButton:checked{{background:{UI['sel']};border:1px solid {UI['border_a']};font-weight:bold;}}"
         for b in self.border_btns:
             b.setStyleSheet(sel)
@@ -1960,6 +2088,7 @@ class SettingsDialog(ThemedDialog):
                 self.icon_grp.button(keys.index(w.icon_key)).setChecked(True)
             self.chk_menu.setChecked(w.menuBar().isVisible())
             self.chk_snap.setChecked(w.canvas.snap_on)
+            self.chk_grad.setChecked(THEME["grad"])
         finally:
             self._syncing = False
 
@@ -1991,6 +2120,10 @@ class SettingsDialog(ThemedDialog):
     def _on_snap(self, on: bool):
         if not self._syncing:
             self.win.set_snap(on)
+
+    def _on_grad(self, on: bool):
+        if not self._syncing:
+            self.win.set_gradient(on)
 
     def _defaults(self):
         self.win.reset_look_defaults()
@@ -2049,13 +2182,14 @@ class MainWindow(QMainWindow):
         self.state_dir = self.state_path.parent
         TextPane.img_dir = self.state_dir / "obrazy"
         self._ready = False
+        self._app_css = ""
         self._last_json = ""
         self._pending: list[tuple[TextPane, dict]] = []
         self._args: list[str] = []
         self.border = DEFAULT_BORDER
         self.scheme_key = DEFAULT_SCHEME
         self.ui_over: dict[str, str] = {}
-        self.icon_key = "yellow"
+        self.icon_key = "sealime"
         self.font_family, self.font_size = "Consolas", 10.0
         self.recent: list[str] = []
         self.preview_panes: list[TextPane] = []  # panele podglądu w oknie Ustawienia
@@ -2140,6 +2274,7 @@ class MainWindow(QMainWindow):
         m.addAction(self.act_save)
         m.addAction(self.act_saveas)
         m.addSeparator()
+        m.addAction(self._act("Wklej do pustego panelu (tekst, obraz lub plik)", self.paste_smart, "Ctrl+V"))
         m.addAction(self._act("Wklej obraz ze schowka", self.paste_image, "Ctrl+Shift+V"))
         m.addAction(self._act("Otwórz obraz z pliku…", self.open_image_file))
         self.act_saveimg = self._act("Zapisz obraz jako…", lambda: self.current.save_image_as())
@@ -2205,9 +2340,12 @@ class MainWindow(QMainWindow):
         pm = QPixmap(22, 16)
         pm.fill(QColor(c["bg"]))
         p = QPainter(pm)
-        for i, k in enumerate(("kw", "str", "num", "other")):
+        for i, k in enumerate(("kw", "str", "num", "func")):
             p.fillRect(2 + i * 5, 4, 4, 8, QColor(c[k]))
-        p.setPen(QColor(u["border_a"]))
+        g = QLinearGradient(0, 0, 22, 0)
+        g.setColorAt(0, QColor(u["border_a"]))
+        g.setColorAt(1, QColor(u["border_a2"]))
+        p.setPen(QPen(QBrush(g), 1))
         p.drawRect(0, 0, 21, 15)
         p.end()
         return QIcon(pm)
@@ -2225,7 +2363,7 @@ class MainWindow(QMainWindow):
         self.apply_look()
 
     def reset_border_colors(self):
-        for k in ("border", "border_a"):
+        for k in ("border", "border_a", "border2", "border_a2"):
             UI[k] = SCHEMES[self.scheme_key]["ui"][k]
             self.ui_over.pop(k, None)
         self.apply_look()
@@ -2251,7 +2389,11 @@ class MainWindow(QMainWindow):
         if app.style().objectName().lower() != "fusion":
             app.setStyle("Fusion")
         app.setPalette(make_palette(THEME["dark"]))
-        self.canvas.set_bg(UI["canvas"])
+        self.canvas.set_bg(UI["canvas"], UI["canvas2"])
+        css = app_css()
+        if css != self._app_css:  # globalny arkusz zmieniamy tylko gdy naprawdę się zmienił
+            self._app_css = css
+            app.setStyleSheet(css)
         for p in self.panes + self.preview_panes:
             p.apply_colors()
         self._dark_titlebar()
@@ -2263,7 +2405,7 @@ class MainWindow(QMainWindow):
         """Migawka wyglądu (do cofnięcia przez Anuluj w Ustawieniach)."""
         return {"scheme": self.scheme_key, "colors": dict(COLORS), "ui": dict(UI), "ui_over": dict(self.ui_over),
                 "border": self.border, "icon": self.icon_key, "menu": self.menuBar().isVisible(),
-                "snap": self.canvas.snap_on, "font": (self.font_family, self.font_size),
+                "grad": THEME["grad"], "snap": self.canvas.snap_on, "font": (self.font_family, self.font_size),
                 "panes": [(p.family, p.editor.font().pointSizeF(), p.btn_wrap.isChecked()) for p in self.panes]}
 
     def restore_look(self, s: dict):
@@ -2273,6 +2415,7 @@ class MainWindow(QMainWindow):
         UI.clear()
         UI.update(s["ui"])
         self.ui_over = dict(s["ui_over"])
+        THEME["grad"] = s["grad"]
         self.set_border(s["border"])
         self.set_icon_color(s["icon"])
         self.set_menu_visible(s["menu"])
@@ -2287,7 +2430,8 @@ class MainWindow(QMainWindow):
     def reset_look_defaults(self):
         self.apply_scheme(DEFAULT_SCHEME, save=False)
         self.set_border(DEFAULT_BORDER)
-        self.set_icon_color("yellow")
+        self.set_icon_color("sealime")
+        self.set_gradient(True)
         self.set_menu_visible(True)
         self.set_snap(True)
         self.set_default_font("Consolas", 10.0)
@@ -2437,6 +2581,10 @@ class MainWindow(QMainWindow):
             p.set_border(n)
         self.schedule_save()
 
+    def set_gradient(self, on: bool):
+        THEME["grad"] = bool(on)
+        self.apply_look()
+
     def set_snap(self, on: bool):
         self.canvas.snap_on = bool(on)
         self.act_snap.setChecked(bool(on))
@@ -2445,7 +2593,7 @@ class MainWindow(QMainWindow):
     def set_icon_color(self, key: str):
         cols = {k: c for k, _n, c in ICON_COLORS}
         if key not in cols:
-            key = "yellow"
+            key = "sealime"
         self.icon_key = key
         ic = star_icon(cols[key])
         self.setWindowIcon(ic)
@@ -2521,6 +2669,37 @@ class MainWindow(QMainWindow):
         p = self.target_pane()
         if p.new_document():
             self._focus(p)
+
+    def paste_smart(self):
+        """Ctrl+V poza edytorem: do pustego panelu wkleja skopiowany plik, tekst albo obraz (w tej kolejności)."""
+        fw = QApplication.focusWidget()
+        if isinstance(fw, QPlainTextEdit) and not fw.isReadOnly():  # wywołane z menu przy aktywnym edytorze
+            fw.paste()
+            return
+        md = QApplication.clipboard().mimeData()
+        if md is None:
+            self.current.flash("Schowek jest pusty")
+            return
+        files = [f for f in (u.toLocalFile() for u in md.urls() if u.isLocalFile())] if md.hasUrls() else []
+        files = [f for f in files if Path(f).is_file()][:MAX_PANES]
+        if files:
+            last = None
+            for f in files:
+                p = self.target_pane()
+                if p.open_file(f, ask=not p.is_empty()):
+                    last = p
+            if last is not None:
+                self._focus(last)
+            return
+        if md.hasText() and md.text().strip():
+            p = self.target_pane()
+            if p.new_document(md.text(), modified=True, ask=not p.is_empty()):
+                self._focus(p)
+            return
+        if clipboard_image_source() is not None:
+            self.paste_image()
+            return
+        self.current.flash("Schowek jest pusty")
 
     def paste_image(self):
         if clipboard_image_source() is None:
@@ -2679,7 +2858,7 @@ class MainWindow(QMainWindow):
                 "version": STATE_VERSION,
                 "geometry": base64.b64encode(bytes(self.saveGeometry())).decode(),
                 "border": self.border, "snap": self.canvas.snap_on, "icon": self.icon_key,
-                "scheme": self.scheme_key,
+                "scheme": self.scheme_key, "look_v": LOOK_VERSION, "grad": THEME["grad"],
                 "colors": {k: v for k, v in COLORS.items() if v != SCHEMES[self.scheme_key]["colors"].get(k)},
                 "ui_over": dict(self.ui_over),
                 "menu": self.menuBar().isVisible(),
@@ -2719,13 +2898,19 @@ class MainWindow(QMainWindow):
             self._log(f"load_state (odczyt): {ex!r}")
             return
         try:
-            self.apply_scheme(data.get("scheme") or "light", save=False)  # stary stan bez schematu = jasny
-            for k, v in (data.get("colors") or {}).items():
-                if k in COLORS and QColor(v).isValid():
-                    COLORS[k] = v
-            for k, v in (data.get("ui_over") or {}).items():
-                if k in UI and QColor(v).isValid():
-                    UI[k] = self.ui_over[k] = v
+            old_look = int(data.get("look_v", 1) or 1) < LOOK_VERSION
+            sch = data.get("scheme") or "light"  # stary stan bez schematu = jasny
+            if old_look:  # jednorazowo: nowy wygląd (Morze i limonka); jasny schemat -> jasny wariant
+                sch = "morze_j" if sch in ("light", "paper") else DEFAULT_SCHEME
+            THEME["grad"] = bool(data.get("grad", True))
+            self.apply_scheme(sch, save=False)
+            if not old_look:  # własne korekty kolorów (przy starym wyglądzie klucze są inne - pomijamy)
+                for k, v in (data.get("colors") or {}).items():
+                    if k in COLORS and QColor(v).isValid():
+                        COLORS[k] = v
+                for k, v in (data.get("ui_over") or {}).items():
+                    if k in UI and QColor(v).isValid():
+                        UI[k] = self.ui_over[k] = v
             ff = data.get("font_default")
             if isinstance(ff, list) and len(ff) == 2 and ff[0] in FONTS:
                 self.font_family, self.font_size = ff[0], max(6.0, min(float(ff[1]), 40.0))
@@ -2740,7 +2925,7 @@ class MainWindow(QMainWindow):
             if data.get("border") in BORDERS:
                 self.set_border(data["border"])
             self.set_snap(bool(data.get("snap", True)))
-            self.icon_key = data.get("icon", "yellow")
+            self.icon_key = "sealime" if old_look and data.get("icon", "yellow") == "yellow" else data.get("icon", "sealime")
             self.set_menu_visible(bool(data.get("menu", True)))
             for p in self.panes:
                 p.set_font(self.font_family, self.font_size)
