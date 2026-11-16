@@ -5,9 +5,9 @@ Nowa aplikacja = nowy folder `NN_Nazwa` z `index.html` (albo `build.py`, który 
 ## Jak to działa
 
 - Build: `python3 00_Worker/build.py` → `dist/NN/index.html` + `dist/_p/` (czcionki i ikony portalu). Strony portalu (logowanie, panel, administracja) renderuje sam Worker.
-- Adres aplikacji: podadres z `apps.json` (np. `nawyk.smialo.org` → 02) albo `projects.smialo.org/NN/`.
+- Adres aplikacji: `projects.smialo.org/NN/` (portal linkuje tylko ścieżki). Podadresy z `apps.json` działają jako zgodność wsteczna i można je odpiąć.
 - Deploy: `.github/workflows/deploy.yml` (push do `main`): testy → build → `wrangler deploy`. Sekrety GitHub: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`.
-- **Konto = adres e-mail.** Logowanie linkiem z poczty (bez hasła), jedno ciasteczko `ps` na całą domenę `.smialo.org` (wejście do wszystkich aplikacji naraz).
+- **Konto = adres e-mail.** Logowanie linkiem z poczty (bez hasła), ciasteczko `ps` tylko dla `projects.smialo.org` (jedno logowanie do wszystkich aplikacji).
 - **Próba i abonament na każdą aplikację osobno.** Pierwsze wejście = „Zacznij próbę” (`TRIAL_DAYS`, domyślnie 3 dni, raz na aplikację i konto). Abonament 1/6/12 miesięcy albo „wszystkie aplikacje” nadaje właściciel w `/admin`.
 - Aliasy adresu (`jan.k+x@gmail.com`, `googlemail.com`) to to samo konto, więc próby nie da się namnażać.
 - Limity dzienne kosztownych wywołań na konto (`access.js` → `QUOTA`, nadpisywalne zmienną `QUOTAS` jako JSON): streszczenia, napisy YouTube, mowa na tekst, Claude w Notatniku, zapisy stanu. Wartości: `[próba, abonament]`.
@@ -46,7 +46,7 @@ Zmienne jawne (w `wrangler.jsonc` → `vars`, `keep_vars: true` zostawia też te
 | `QUOTAS` | – | JSON z własnymi limitami dziennymi |
 | `GATE` | – | `off` = wyłącznik awaryjny: każdy zalogowany ma dostęp |
 | `ACCESS_TEAM`, `ACCESS_AUD` | – | plan B: akceptuj tożsamość z Cloudflare Access (podpis JWT weryfikowany kluczami zespołu) |
-| `COOKIE_DOMAIN` | wyliczane (`.smialo.org`) | wymusza domenę ciasteczka |
+| `COOKIE_DOMAIN` | brak (ciasteczko tylko dla hosta) | np. `.smialo.org`, gdyby aplikacje wróciły na podadresy |
 
 Poczta: Email Service → Email Sending wymaga planu **Workers Paid** (od 5 USD/mies., 3000 maili miesięcznie w cenie). Domena nadawcy: Compute → Email Service → Email Sending → Onboard Domain (polecany podadres `mail.smialo.org`, nie dotyka poczty na domenie głównej).
 

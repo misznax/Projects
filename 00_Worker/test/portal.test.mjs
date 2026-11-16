@@ -57,7 +57,7 @@ test('logowanie: link z poczty → potwierdzenie → sesja; link działa tylko r
   const v = await call('/auth/verify', { method: 'POST', form: { t } });
   assert.equal(v.status, 303);
   const ck = v.headers.get('set-cookie');
-  assert.match(ck, /^ps=[\w-]+\.[\w-]+; Path=\/; Domain=\.smialo\.org; Max-Age=\d+; HttpOnly; Secure; SameSite=Lax$/);
+  assert.match(ck, /^ps=[\w-]+\.[\w-]+; Path=\/; Max-Age=\d+; HttpOnly; Secure; SameSite=Lax$/);
   const home = await call('/', { cookie: cookieOf(v) });
   assert.equal(home.status, 200); assert.match(await text(home), /Twoje aplikacje/);
   const again = await call('/auth/verify', { method: 'POST', form: { t } });
@@ -141,7 +141,7 @@ test('bramka: nowy → ekran blokady, start próby → wejście z plakietką; po
   assert.equal(lock.status, 403); const lt = await text(lock); assert.match(lt, /Zacznij próbę: Anatomia 3D/); assert.match(lt, /3 dni próby/);
   assert.equal((await call('/05/app.js', { cookie: ck, accept: '*/*' })).status, 403);   // zasoby też są za bramką
   const st = await call('/trial', { method: 'POST', cookie: ck, form: { app: '05' } });
-  assert.equal(st.status, 303); assert.equal(st.headers.get('location'), 'https://anatomia.smialo.org/');
+  assert.equal(st.status, 303); assert.equal(st.headers.get('location'), '/05/');
   const ok = await call('/05/', { cookie: ck }); assert.equal(ok.status, 200);
   const body = await text(ok); assert.match(body, /APP \/05\//); assert.match(body, /id="pw-chip"/); assert.match(body, /Próba: zostało 3 dni/);
   assert.equal((await call('/05/app.js', { cookie: ck, accept: '*/*' })).status, 200);
@@ -178,14 +178,14 @@ test('bramka: aliasy adresu dzielą jedną próbę', async () => {
   assert.equal(row(env, 'SELECT COUNT(*) n FROM ent').n, 1);
 });
 
-test('adresy aplikacji: podadres + ciasteczko wspólne dla całej domeny', async () => {
+test('adresy aplikacji: portal linkuje /NN/, stare podadresy nadal działają', async () => {
   const { env, call } = setup();
   const ck = await login(call, env, 'a@b.pl');
   await call('/trial', { method: 'POST', cookie: ck, form: { app: '02' } });
   const r = await call('/', { host: 'nawyk.smialo.org', cookie: ck }); assert.equal(r.status, 200); assert.match(await text(r), /APP \/02\//);
   assert.equal((await call('/', { host: 'esencja.smialo.org', cookie: ck })).status, 403);
   const un = await call('/', { host: 'nawyk.smialo.org' }); assert.equal(un.status, 303); assert.equal(un.headers.get('location'), '/auth/login?next=%2F');
-  const home = await text(await call('/', { cookie: ck })); assert.match(home, /href="https:\/\/nawyk\.smialo\.org\/"/);
+  const home = await text(await call('/', { cookie: ck })); assert.match(home, /href="\/02\/"/);
   const wd = await call('/', { host: 'projects.konto.workers.dev', cookie: ck });
   assert.equal(wd.status, 200); assert.match(await text(wd), /href="\/02\/"/);               // poza własną domeną: ścieżki /NN/
 });

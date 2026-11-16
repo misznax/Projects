@@ -39,11 +39,8 @@ async function accessEmail(request, env) {
 // ── Sesja własna ──
 export const COOKIE = 'ps';
 const SESSION_DAYS = 30;
-export function cookieDomain(url, env) {
-  if (env.COOKIE_DOMAIN) return env.COOKIE_DOMAIN;
-  const parts = url.hostname.split('.');
-  return parts.length >= 3 && !url.hostname.endsWith('.workers.dev') ? '.' + parts.slice(-2).join('.') : '';
-}
+// Ciasteczko domyślnie tylko dla tego hosta (projects.smialo.org); COOKIE_DOMAIN rozszerza je na całą domenę, gdyby aplikacje wróciły na podadresy.
+export const cookieDomain = (url, env) => env.COOKIE_DOMAIN || '';
 const cookieStr = (url, env, value, maxAge) => `${COOKIE}=${value}; Path=/; ${cookieDomain(url, env) ? `Domain=${cookieDomain(url, env)}; ` : ''}Max-Age=${maxAge}; HttpOnly; ${isLocal(url) ? '' : 'Secure; '}SameSite=Lax`;
 export const readCookie = (request, name) => (request.headers.get('cookie') || '').split(/;\s*/).map((c) => c.split('=')).find((c) => c[0] === name)?.slice(1).join('=') || '';
 

@@ -135,9 +135,8 @@ async function ask(request, env) {
 const hostApp = (host) => { const k = host.split('.')[0]; return Object.hasOwn(APPS, k) ? APPS[k] : undefined; };
 const byNn = (nn) => CATALOG.find((a) => a.nn === nn);
 
-// Adres aplikacji: na własnej domenie podadres (nawyk.smialo.org), poza nią (workers.dev, localhost) ścieżka /NN/.
-const baseDomain = (host) => { const p = host.split('.'); return p.length >= 3 && !host.endsWith('.workers.dev') ? p.slice(-2).join('.') : ''; };
-const appUrl = (url, a) => { const b = baseDomain(url.hostname); return b ? `https://${a.sub}.${b}/` : `/${a.nn}/`; };
+// Adres aplikacji: zawsze ścieżka /NN/ na tym samym hoście (jedna domena, jedno ciasteczko, jeden certyfikat). Podadresy z apps.json nadal działają, ale portal na nie nie linkuje.
+const appUrl = (url, a) => `/${a.nn}/`;
 const orderUrl = (a) => `${PG.ORDER}?app=${encodeURIComponent(a.id)}`;
 const wantsHtml = (r) => r.method === 'GET' && /text\/html/.test(r.headers.get('accept') || '');
 const sameOrigin = (r, url) => { const o = r.headers.get('origin'); return o ? o === url.origin : r.headers.get('sec-fetch-site') === 'same-origin'; };
