@@ -16,6 +16,13 @@ for i,en in sorted(mid.items()):
     st=strip(en); g,ppl,pla=C.MESH[st]   # KeyError = brak tłumaczenia
     groups[g]['ids'].append(i)
     muscles.append(dict(id=i,en=st,grp=g,pl=ppl,la=pla))
+import head_content as HC
+hid=json.load(open('/home/claude/work/out3/head_ids.json'))
+for k,v in HC.M2.items(): groups[k]=dict(v, ids=[])
+for i,en in sorted(hid.items()):
+    st=strip(en); g,ppl,pla=HC.MESH2[st]
+    groups[g]['ids'].append(i)
+    muscles.append(dict(id=i,en=st,grp=g,pl=ppl,la=pla))
 for g in list(groups):
     if not groups[g]['ids']: del groups[g]
 
@@ -129,10 +136,10 @@ for j in joints:
     for pr in j['pairs']:
         for lst in (pr[1],pr[3]):
             for m in lst:
-                if m in C.M or m.startswith('m. ') : continue
+                if m in C.M or m in HC.M2 or m.startswith('m. ') : continue
                 if m not in C.M: print('? klucz mięśnia',m,j['id'])
 REG=[('all','Cała kończyna'),('bark','Bark'),('ramie','Ramię'),('przedramie','Przedramię'),('dlon','Dłoń'),('glowa','Głowa i szyja')]
-out=dict(version='0.03',regions=REG,groups=groups,muscles=muscles,bones=bones,patches=patches,lms=lms,joints=joints,shapes={k:dict(pl=v[0],c=v[1],d=v[2]) for k,v in JD.SHAPES.items()},mid=jp['mid'])
+out=dict(version='0.04',regions=REG,groups=groups,muscles=muscles,bones=bones,patches=patches,lms=lms,joints=joints,shapes={k:dict(pl=v[0],c=v[1],d=v[2]) for k,v in JD.SHAPES.items()},mid=jp['mid'])
 json.dump(out,open(O+'data.json','w'),ensure_ascii=False,separators=(',',':'))
 print('muscles',len(muscles),'groups',len(groups),'bones',len(bones),'patches',len(patches),'lms',len(lms))
 missing=[b for b in bid if b[0]=='P' and re.sub(r'\.(o|e)\d?r$','',bid[b]) not in C.PATCH]

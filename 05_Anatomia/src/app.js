@@ -163,8 +163,12 @@ const ready = Promise.all([loadGLB('muscles.glb', 'a'), loadGLB('bones.glb', 'b'
 let axialP = null; // czaszka i kręgi szyjne — wczytywane dopiero na żądanie (1,8 MB)
 function ensureAxial() {
   if (S.axial) return Promise.resolve(); if (axialP) return axialP;
-  toast('Wczytywanie czaszki i kręgów szyjnych…');
-  axialP = ready.then(() => loadGLB('axial.glb', 'x')).then((g) => {
+  toast('Wczytywanie głowy i szyi (czaszka, kręgi, mięśnie)…');
+  axialP = ready.then(() => Promise.all([loadGLB('axial.glb', 'x'), loadGLB('headmus.glb', 'x')])).then(([g, hm]) => {
+    hm.updateMatrixWorld(true);
+    const hl = []; hm.traverse((o) => { if (o.isMesh && MUS.has(o.name)) hl.push(o); });
+    const cl2 = (o) => { const c = new THREE.Mesh(o.geometry, o.material); c.position.copy(o.position); c.quaternion.copy(o.quaternion); c.scale.copy(o.scale); c.userData = { ...o.userData, side: 'l' }; c.visible = false; rootL.add(c); return c; };
+    for (const o of hl) { const m = MUS.get(o.name); o.userData = { kind: 'mus', id: m.id, grp: m.grp, side: 'r' }; o.material = grpMat[m.grp]; o.geometry.computeBoundsTree(); o.visible = false; root.attach(o); objs.mus.set(m.id, o); SIDE.r.mus.set(m.id, o); const c = cl2(o); SIDE.l.mus.set(m.id, c); pickables.push(o, c); }
     g.updateMatrixWorld(true); const list = [];
     g.traverse((o) => { if (o.isMesh && BON.has(o.name)) list.push(o); });
     for (const o of list) { const b = BON.get(o.name); o.userData = { kind: 'bone', id: b.id, side: 'r' }; o.material = MAT.bone; o.geometry.computeBoundsTree(); root.attach(o); objs.bone.set(b.id, o); SIDE.l.bone.set(b.id, o); pickables.push(o); }
@@ -172,7 +176,7 @@ function ensureAxial() {
   }).catch((e) => { toast('Nie udało się wczytać czaszki: ' + e.message); axialP = null; });
   return axialP;
 }
-const needAxial = (sel) => { if (!sel) return false; if (sel.t === 'bone') return BON.get(sel.id)?.kind === 'axial'; if (sel.t === 'joint') { const j = JMAP.get(sel.id); return j.reg === 'glowa' || j.bones.some((b) => BON.get(b)?.kind === 'axial'); } return false; };
+const needAxial = (sel) => { if (!sel) return false; if (sel.t === 'bone') return BON.get(sel.id)?.kind === 'axial'; if (sel.t === 'joint') { const j = JMAP.get(sel.id); return j.reg === 'glowa' || j.bones.some((b) => BON.get(b)?.kind === 'axial'); } if (sel.t === 'grp' || sel.t === 'part') return G[grpOf(sel)].region === 'glowa'; return false; };
 
 /* ---------- widoczność / materiały ---------- */
 const grpRegion = (k) => G[k].region;
@@ -207,7 +211,8 @@ function apply() {
       const m = MUS.get(id), g = G[m.grp];
       let vis = on && S.layers.muscles && !S.hidden.has(m.grp) && (OTHER.has(m.grp) ? S.layers.other : true);
       let ghost = false;
-      if (!regionOk(g.region)) { if (S.ghostBg && S.layers.muscles && !OTHER.has(m.grp) && on) { vis = true; ghost = true; } else vis = false; }
+      if (g.region === 'glowa') vis = vis && (S.region === 'glowa' || gs.has(m.grp));
+      else if (!regionOk(g.region)) { if (S.ghostBg && S.layers.muscles && !OTHER.has(m.grp) && on) { vis = true; ghost = true; } else vis = false; }
       if (on && gs.has(m.grp)) { vis = true; ghost = false; }
       o.visible = vis;
       let mat = grpMat[m.grp];
@@ -620,7 +625,7 @@ const selRegionOk = (s) => s.t === 'grp' ? regionOk(G[s.id].region) : s.t === 'p
 function setRegion(r, after) {
   S.region = r; $$('#regions button').forEach((x) => x.classList.toggle('on', x.dataset.r === r));
   S.hidden.clear(); if (S.sel && !selRegionOk(S.sel)) { S.sel = null; renderInfo(); }
-  if (r === 'glowa') { S.layers.skull = true; $('#lSkull').checked = true; if (S.tab === 'mus') { S.tab = 'jnt'; syncTabs(); } }
+  if (r === 'glowa') { S.layers.skull = true; $('#lSkull').checked = true; }
   renderList(); apply();
   (r === 'glowa' ? ensureAxial() : Promise.resolve()).then(() => { apply(); viewRegion('front'); if (after) after(); });
 }
