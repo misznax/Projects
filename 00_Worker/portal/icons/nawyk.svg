@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Nawyk">
+<defs>
+<linearGradient id="i-nawyk-g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFB93A"/><stop offset="1" stop-color="#EE4E2C"/></linearGradient>
+<linearGradient id="i-nawyk-s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".3"/><stop offset=".55" stop-color="#fff" stop-opacity="0"/></linearGradient>
+<clipPath id="i-nawyk-c"><rect x="4" y="4" width="120" height="120" rx="30"/></clipPath>
+</defs>
+<rect x="4" y="4" width="120" height="120" rx="30" fill="url(#i-nawyk-g)"/>
+<g clip-path="url(#i-nawyk-c)"><circle cx="112" cy="118" r="54" fill="#fff" fill-opacity=".09"/><rect x="4" y="4" width="120" height="120" fill="url(#i-nawyk-s)"/></g>
+<rect x="4.8" y="4.8" width="118.4" height="118.4" rx="29.2" fill="none" stroke="#fff" stroke-opacity=".24" stroke-width="1.6"/>
+<g transform="translate(0 3.5)" opacity=".2"><circle cx="64" cy="64" r="33" fill="none" stroke="#000" stroke-opacity=".32" stroke-width="10"/>
+      <circle cx="64" cy="64" r="33" fill="none" stroke="#000" stroke-width="10" stroke-linecap="round" stroke-dasharray="136 208" transform="rotate(-90 64 64)"/>
+      <path d="M50.5 65l10 10L79 53" fill="none" stroke="#000" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/></g>
+<circle cx="64" cy="64" r="33" fill="none" stroke="#fff" stroke-opacity=".32" stroke-width="10"/>
+      <circle cx="64" cy="64" r="33" fill="none" stroke="#fff" stroke-width="10" stroke-linecap="round" stroke-dasharray="136 208" transform="rotate(-90 64 64)"/>
+      <path d="M50.5 65l10 10L79 53" fill="none" stroke="#fff" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

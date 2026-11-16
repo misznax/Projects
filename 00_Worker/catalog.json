@@ -1,0 +1,6 @@
+[
+  { "nn": "02", "sub": "nawyk", "id": "nawyk", "name": "Nawyk", "tagline": "Twój dzień w jednym miejscu: pięć zadań, jeden dotyk.", "c1": "#FFB93A", "c2": "#EE4E2C", "state": true },
+  { "nn": "03", "sub": "esencja", "id": "esencja", "name": "Esencja", "tagline": "Dwugodzinny wykład w kilka minut.", "c1": "#5BB0FF", "c2": "#3B37D6" },
+  { "nn": "04", "sub": "notatnik", "id": "notatnik", "name": "Notatnik Słuchacza", "tagline": "Wykład nagrywa się sam, a notatki piszą się same.", "c1": "#B97BFF", "c2": "#D12E8C" },
+  { "nn": "05", "sub": "anatomia", "id": "anatomia", "name": "Anatomia 3D", "tagline": "Anatomia, którą możesz obrócić w rękach.", "c1": "#FF7A6B", "c2": "#B01236" }
+]

@@ -1,4 +1,4 @@
-"""Składa dist/ ze wszystkich folderów NN_*: dist/NN/index.html + strona główna z listą. Folder z build.py buduje się sam."""
+"""Składa dist/ ze wszystkich folderów NN_*: dist/NN/index.html + dist/_p/ (zasoby portalu). Folder z build.py buduje się sam."""
 import pathlib, subprocess, sys, shutil, re, html
 root = pathlib.Path(__file__).resolve().parent.parent
 dist = pathlib.Path(__file__).resolve().parent / 'dist'
@@ -13,6 +13,7 @@ for d in sorted(root.glob('[0-9][0-9]_*')):
         for f in (d/'public').iterdir():
             if f.is_file(): shutil.copy(f, dist/nn/f.name)
     items.append((nn, d.name[3:].replace('_', ' ')))
-li = ''.join(f'<li><a href="/{n}/">{n} · {html.escape(t)}</a></li>' for n, t in items)
-(dist/'index.html').write_text(f'<!doctype html><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><title>Projects</title><body style="font:18px system-ui;max-width:520px;margin:12vh auto;padding:0 16px"><h1>Projects</h1><ul>{li}</ul>', encoding='utf-8')
+# Zasoby portalu (czcionki, ikony): /_p/*. Strony portalu (logowanie, panel, admin) renderuje Worker, więc dist/index.html nie istnieje.
+portal = pathlib.Path(__file__).resolve().parent / 'portal'
+if portal.is_dir(): shutil.copytree(portal, dist / '_p')
 print('OK', [n for n, _ in items])

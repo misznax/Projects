@@ -9,6 +9,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Testy Workera (logowanie, dostęp, limity)
+        run: node --import ./00_Worker/test/register.mjs --test "00_Worker/test/*.test.mjs"
       - run: python3 00_Worker/build.py
       - uses: cloudflare/wrangler-action@v3
         with:

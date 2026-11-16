@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Startup Board">
+<defs>
+<linearGradient id="i-startup-board-g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#62DB8E"/><stop offset="1" stop-color="#0A7A74"/></linearGradient>
+<linearGradient id="i-startup-board-s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".3"/><stop offset=".55" stop-color="#fff" stop-opacity="0"/></linearGradient>
+<clipPath id="i-startup-board-c"><rect x="4" y="4" width="120" height="120" rx="30"/></clipPath>
+</defs>
+<rect x="4" y="4" width="120" height="120" rx="30" fill="url(#i-startup-board-g)"/>
+<g clip-path="url(#i-startup-board-c)"><circle cx="112" cy="118" r="54" fill="#fff" fill-opacity=".09"/><rect x="4" y="4" width="120" height="120" fill="url(#i-startup-board-s)"/></g>
+<rect x="4.8" y="4.8" width="118.4" height="118.4" rx="29.2" fill="none" stroke="#fff" stroke-opacity=".24" stroke-width="1.6"/>
+<g transform="translate(0 3.5)" opacity=".2"><polygon points="64.0,30.0 73.4,55.1 100.1,56.3 79.2,72.9 86.3,98.7 64.0,84.0 41.7,98.7 48.8,72.9 27.9,56.3 54.6,55.1" fill="#000" stroke="#000" stroke-width="7" stroke-linejoin="round"/></g>
+<polygon points="64.0,30.0 73.4,55.1 100.1,56.3 79.2,72.9 86.3,98.7 64.0,84.0 41.7,98.7 48.8,72.9 27.9,56.3 54.6,55.1" fill="#fff" stroke="#fff" stroke-width="7" stroke-linejoin="round"/>
+</svg>
