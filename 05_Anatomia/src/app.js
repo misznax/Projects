@@ -92,7 +92,7 @@ for (const k of Object.keys(G)) {
 }
 
 /* ---------- stan ---------- */
-const LAYERS0 = () => ({ bones: true, muscles: true, ctx: false, other: false, att: false, joints: false, cap: false, skull: false });
+const LAYERS0 = () => ({ bones: true, muscles: true, ctx: false, other: false, att: false, joints: false, cap: false, skull: false, lig: false, nerv: false, vess: false });
 const S = {
   region: 'all', tab: 'mus', layers: LAYERS0(), side: 'r',
   hidden: new Set(), sel: null, // {t:'grp'|'part'|'bone'|'lm'|'joint', id, side?}
@@ -100,12 +100,22 @@ const S = {
   ghostBg: true, showPins: false, muscleOpacity: 1, axial: false,
 };
 try { const sv = localStorage.getItem('anatomia.side'); if (sv === 'r' || sv === 'l' || sv === 'b') S.side = sv; } catch (e) {}
-const mkSide = (k) => ({ k, mus: new Map(), bone: new Map(), patch: new Map(), cap: new Map(), mk: new Map() });
+const mkSide = (k) => ({ k, mus: new Map(), bone: new Map(), patch: new Map(), cap: new Map(), mk: new Map(), str: new Map() });
 const SIDE = { r: mkSide('r'), l: mkSide('l') };
-const objs = { mus: SIDE.r.mus, bone: SIDE.r.bone, patch: SIDE.r.patch, lm: new Map() };
+const objs = { mus: SIDE.r.mus, bone: SIDE.r.bone, patch: SIDE.r.patch, str: SIDE.r.str, lm: new Map() };
 const root = new THREE.Group(), rootL = new THREE.Group(); scene.add(root, rootL);
 rootL.scale.x = -1; rootL.position.x = 2 * MIDX; // lewa strona = lustro prawej względem płaszczyzny środkowej
 const pickables = []; const markerMeshes = [];
+const STR = new Map((DATA.structs || []).map((x) => [x.id, x]));
+const STRK = { lig: 'lig', nerv: 'nerv', art: 'vess', ven: 'vess' }; // typ -> plik / warstwa
+const STRC = { lig: 0xbfe6ff, nerv: 0xffd23f, art: 0xff3b3b, ven: 0x3b82f6 };
+const STRCSS = { lig: '#bfe6ff', nerv: '#ffd23f', art: '#ff3b3b', ven: '#3b82f6' };
+const STRTYP = { lig: 'Więzadło', nerv: 'Nerw', art: 'Tętnica', ven: 'Żyła' };
+const STRMAT = {}, STRHI = {};
+for (const k of Object.keys(STRC)) {
+  STRMAT[k] = new THREE.MeshStandardMaterial({ color: STRC[k], roughness: 0.55, metalness: 0.0, side: THREE.DoubleSide });
+  STRHI[k] = new THREE.MeshStandardMaterial({ color: STRC[k], emissive: STRC[k], emissiveIntensity: 0.55, roughness: 0.4, metalness: 0.0, side: THREE.DoubleSide });
+}
 const defSide = () => (S.side === 'l' ? 'l' : 'r');
 const O = (kind, id, side) => (SIDE[side] || SIDE[defSide()])[kind].get(id);
 const activeSides = () => (S.side === 'b' ? [SIDE.r, SIDE.l] : [SIDE[defSide()]]);
@@ -178,6 +188,25 @@ function ensureAxial() {
 }
 const needAxial = (sel) => { if (!sel) return false; if (sel.t === 'bone') return BON.get(sel.id)?.kind === 'axial'; if (sel.t === 'joint') { const j = JMAP.get(sel.id); return j.reg === 'glowa' || j.bones.some((b) => BON.get(b)?.kind === 'axial'); } if (sel.t === 'grp' || sel.t === 'part') return G[grpOf(sel)].region === 'glowa'; return false; };
 
+const structP = {};
+function ensureStruct(f) { // f: 'lig' | 'nerv' | 'vess'
+  if (structP[f]) return structP[f];
+  toast('Wczytywanie: ' + ({ lig: 'więzadła', nerv: 'nerwy', vess: 'naczynia' })[f] + '…');
+  structP[f] = ready.then(() => loadGLB(f + '.glb', 'x')).then((g) => {
+    g.updateMatrixWorld(true); const list = [];
+    g.traverse((o) => { if (o.isMesh && STR.has(o.name)) list.push(o); });
+    for (const o of list) {
+      const m = STR.get(o.name); o.userData = { kind: 'str', id: m.id, side: 'r' }; o.material = STRMAT[m.t]; o.geometry.computeBoundsTree(); o.visible = false; root.attach(o);
+      SIDE.r.str.set(m.id, o); objs.str.set(m.id, o);
+      const c = new THREE.Mesh(o.geometry, o.material); c.position.copy(o.position); c.quaternion.copy(o.quaternion); c.scale.copy(o.scale); c.userData = { ...o.userData, side: 'l' }; c.visible = false; rootL.add(c); SIDE.l.str.set(m.id, c);
+      pickables.push(o, c);
+    }
+    toast(''); apply();
+  }).catch((e) => { toast('Nie udało się wczytać: ' + e.message); structP[f] = null; });
+  return structP[f];
+}
+function useStructLayer(f, on) { S.layers[f] = on; const el = $('#l' + ({ lig: 'Lig', nerv: 'Nerv', vess: 'Vess' })[f]); if (el) el.checked = on; if (on) ensureStruct(f); }
+
 /* ---------- widoczność / materiały ---------- */
 const grpRegion = (k) => G[k].region;
 const regionOk = (r) => S.region === 'all' || S.region === r;
@@ -195,6 +224,7 @@ function neededBones(gs) { // kości, na których leżą przyczepy zaznaczonych 
 function apply() {
   if (!S.box) return;
   const sel = S.sel, gm = curGroups(), gs = new Set(gm.keys()), need = neededBones(gs);
+  if (!S.axial) for (const k of gs) if (G[k].region === 'glowa') { ensureAxial(); break; }
   const sj = sel && sel.t === 'joint' ? JMAP.get(sel.id) : null;
   const jb = new Set(sj ? sj.bones : []);
   const bonesOn = S.layers.bones || (sel && (sel.t === 'bone' || sel.t === 'lm')) || !!sj;
@@ -205,6 +235,14 @@ function apply() {
   for (const g of gs) for (const p of patchesByGrp.get(g) || []) patchOn.set(p.id, p.role);
   if (selBone) for (const p of patchesByBone.get(selBone) || []) patchOn.set(p.id, p.role);
   if (S.layers.att) for (const p of DATA.patches) if (!patchOn.has(p.id) && regionOk(G[p.grp].region)) patchOn.set(p.id, p.role);
+  for (const SD of [SIDE.r, SIDE.l]) {
+    const on = S.side === 'b' || S.side === SD.k;
+    for (const [id, o] of SD.str) {
+      const x = STR.get(id), isSel = !!(sel && sel.t === 'str' && sel.id === id);
+      const lay = S.layers[STRK[x.t]], rok = x.reg === 'glowa' ? S.region === 'glowa' : regionOk(x.reg);
+      o.visible = on && (isSel || (lay && rok)); o.material = isSel ? STRHI[x.t] : STRMAT[x.t];
+    }
+  }
   for (const SD of [SIDE.r, SIDE.l]) {
     const on = S.side === 'b' || S.side === SD.k;
     for (const [id, o] of SD.mus) {
@@ -335,6 +373,7 @@ function select(sel, opts = {}) {
   if (S.multiMode && sel && (sel.t === 'grp' || sel.t === 'part')) { toggleMulti(grpOf(sel), undefined, opts); return; }
   if (S.multiMode && sel) exitMulti(true);
   if (sel && needAxial(sel) && !S.axial) { ensureAxial().then(() => select(sel, opts)); return; }
+  if (sel && sel.t === 'str') { const f = STRK[STR.get(sel.id).t]; if (!SIDE.r.str.has(sel.id)) { S.layers[f] = true; const el = $('#l' + ({ lig: 'Lig', nerv: 'Nerv', vess: 'Vess' })[f]); if (el) el.checked = true; ensureStruct(f).then(() => select(sel, opts)); return; } if (STR.get(sel.id).reg === 'glowa' && !S.axial) { ensureAxial(); } }
   S.sel = sel;
   apply(); renderInfo(); markList();
   if (!sel) return;
@@ -343,6 +382,7 @@ function select(sel, opts = {}) {
   if (sel.t === 'grp') { const g = G[sel.id]; focusObjects([...g.ids.map((i) => O('mus', i, sd)), ...(patchesByGrp.get(sel.id) || []).map((p) => O('patch', p.id, sd))]); }
   else if (sel.t === 'part') focusObjects([O('mus', sel.id, sd)]);
   else if (sel.t === 'bone') focusObjects([O('bone', sel.id, sd)]);
+  else if (sel.t === 'str') focusObjects([O('str', sel.id, sd)], null, 0.1);
   else if (sel.t === 'lm') { const p = lmPos(sel.id, sd); if (p) flyTo(p, 0.11); }
   else if (sel.t === 'joint') { const j = JMAP.get(sel.id); const ms = (SIDE[j.mid ? 'r' : sd].mk.get(j.id) || []); { const bb = boxOf(ms); if (!bb.isEmpty()) { const r = bb.getSize(new THREE.Vector3()).length() / 2; flyTo(bb.getCenter(new THREE.Vector3()), Math.max(fitDist(r) * 1.9, 0.19)); } } }
   if (window.innerWidth < 820) closeDrawer();
@@ -393,6 +433,7 @@ canvas.addEventListener('pointerup', (e) => {
     else select({ t: 'grp', id: u.grp, side: u.side }, { noFly: false });
   } else if (u.kind === 'bone') { if (!S.multiMode) select({ t: 'bone', id: u.id, side: u.side }); }
   else if (u.kind === 'joint') select({ t: 'joint', id: u.id, side: u.side });
+  else if (u.kind === 'str') { if (!S.multiMode) select({ t: 'str', id: u.id, side: u.side }); }
 });
 const tip = $('#tip'); let lastMove = 0;
 canvas.addEventListener('pointermove', (e) => {
@@ -402,7 +443,7 @@ canvas.addEventListener('pointermove', (e) => {
   canvas.style.cursor = 'pointer';
   let pl, la;
   if (h.pin) { const l = LMS.get(h.pin.id); pl = l.pl; la = l.la; }
-  else { const u = h.obj.userData; if (u.kind === 'mus') { const g = G[u.grp], m = MUS.get(u.id); pl = g.pl + (m.pl && g.parts.length > 1 ? ' — ' + m.pl.toLowerCase() : ''); la = g.la; } else if (u.kind === 'joint') { const j = JMAP.get(u.id); pl = j.pl; la = j.la; } else { const b = BON.get(u.id); pl = b.pl; la = b.la; } }
+  else { const u = h.obj.userData; if (u.kind === 'mus') { const g = G[u.grp], m = MUS.get(u.id); pl = g.pl + (m.pl && g.parts.length > 1 ? ' — ' + m.pl.toLowerCase() : ''); la = g.la; } else if (u.kind === 'str') { const x = STR.get(u.id); pl = x.pl; la = x.la; } else if (u.kind === 'joint') { const j = JMAP.get(u.id); pl = j.pl; la = j.la; } else { const b = BON.get(u.id); pl = b.pl; la = b.la; } }
   tip.innerHTML = `<b>${esc(pl)}</b><small>(${esc(la)})</small>`; tip.style.transform = `translate(${e.clientX + 14}px, ${e.clientY + 14}px)`; tip.classList.add('show');
 });
 canvas.addEventListener('pointerleave', () => tip.classList.remove('show'));
@@ -433,6 +474,15 @@ function renderList() {
         if (multi) { h += `<div class="parts" data-parts="${g.key}">`; for (const p of g.parts) h += `<div class="row sub" data-t="part" data-id="${p.id}">${rowHTML(p.pl, p.la)}</div>`; h += '</div>'; }
         h += '</div>';
       }
+    }
+  } else if (S.tab === 'lig' || S.tab === 'nerv' || S.tab === 'vess') {
+    const types = S.tab === 'vess' ? ['art', 'ven'] : [S.tab];
+    if (S.tab === 'vess') h += `<div class="jleg"><span><i class="sdot" style="background:${STRCSS.art}"></i>Tętnice</span><span><i class="sdot" style="background:${STRCSS.ven}"></i>Żyły</span></div>`;
+    for (const r of regs) {
+      const xs = DATA.structs.filter((x) => types.includes(x.t) && x.reg === r).sort((a, b) => a.pl.localeCompare(b.pl, 'pl'));
+      if (!xs.length) continue;
+      h += `<div class="sec">${esc(REGION_NAME[r])} <i>${xs.length}</i></div>`;
+      for (const x of xs) h += `<div class="grp"><div class="row" data-t="str" data-id="${x.id}"><i class="sdot" style="background:${STRCSS[x.t]}"></i>${rowHTML(x.pl, x.la)}</div></div>`;
     }
   } else if (S.tab === 'jnt') {
     h += `<div class="jleg">${Object.values(SHP).map((s) => `<span><i class="sdot" style="background:${s.c}"></i>${esc(s.pl.split(' (')[0])}</span>`).join('')}</div>`;
@@ -494,6 +544,7 @@ for (const g of Object.values(G)) IDX.push({ t: 'grp', id: g.key, pl: g.pl, la: 
 for (const m of DATA.muscles) { const g = G[m.grp]; if (g.parts.length > 1) IDX.push({ t: 'part', id: m.id, pl: `${g.pl} — ${m.pl.toLowerCase()}`, la: `${g.la}, ${m.la.toLowerCase()}`, typ: 'Część mięśnia', hay: norm([m.pl, m.la, g.pl, g.la, m.en].join(' ')), w: 1 }); }
 for (const b of DATA.bones) IDX.push({ t: 'bone', id: b.id, pl: b.pl, la: b.la, typ: b.kind === 'ctx' ? 'Kość (kontekst)' : 'Kość', hay: norm([b.pl, b.la, b.en].join(' ')), w: 0 });
 for (const j of JN) IDX.push({ t: 'joint', id: j.id, pl: j.pl, la: j.la, typ: 'Staw · ' + SHP[j.shape].pl.split(' (')[0], hay: norm([j.pl, j.la, j.alt, SHP[j.shape].pl, j.ksztalt, j.rodzaj, 'staw', j.piet ? 'pietrowy dwujamowy dwukomorowy' : ''].join(' ')), w: 0 });
+for (const x of DATA.structs || []) IDX.push({ t: 'str', id: x.id, pl: x.pl, la: x.la, typ: STRTYP[x.t] + ' · ' + REGION_NAME[x.reg].toLowerCase(), hay: norm([x.pl, x.la, x.en, STRTYP[x.t], x.t === 'nerv' ? 'nerwy unerwienie' : x.t === 'lig' ? 'wiezadla wiezadlo' : 'naczynia krew'].join(' ')), w: 1 });
 for (const l of DATA.lms) { const b = BON.get(l.bone); IDX.push({ t: 'lm', id: l.id, pl: l.pl, la: l.la, typ: 'Punkt kostny · ' + b.pl.toLowerCase(), hay: norm([l.pl, l.la, l.en, b.pl, b.la].join(' ')), w: 2 }); }
 function doSearch(q) {
   const toks = norm(q).split(/\s+/).filter(Boolean);
@@ -518,7 +569,7 @@ searchEl.addEventListener('keydown', (e) => {
 resEl.addEventListener('click', (e) => {
   const row = e.target.closest('.row.res'); if (!row) return;
   const t = row.dataset.t, id = row.dataset.id;
-  if (t === 'lm' || t === 'bone') { S.tab = 'bone'; syncTabs(); renderList(); } else if (t === 'joint') { S.tab = 'jnt'; syncTabs(); renderList(); }
+  if (t === 'lm' || t === 'bone') { S.tab = 'bone'; syncTabs(); renderList(); } else if (t === 'joint') { S.tab = 'jnt'; syncTabs(); renderList(); } else if (t === 'str') { S.tab = STRK[STR.get(id).t]; syncTabs(); renderList(); }
   searchEl.value = ''; doSearch('');
   select({ t, id });
 });
@@ -580,6 +631,13 @@ function renderInfo() {
     h += head(l.pl, l.la, 'Punkt kostny');
     if (l.d) h += `<p class="desc">${esc(l.d)}</p>`;
     h += `<div class="subt">Kość</div><div class="chips">${chip(b.pl, b.la, 'bone', b.id)}</div>`;
+  } else if (s.t === 'str') {
+    const x = STR.get(s.id);
+    h += head(x.pl, x.la, `${STRTYP[x.t]} · ${REGION_NAME[x.reg].toLowerCase()}`);
+    h += `<p class="desc">${esc(x.d)}</p>`;
+    if (x.j && x.j.length) h += `<div class="subt">Staw</div><div class="chips">${x.j.map((id) => chip(JMAP.get(id).pl, JMAP.get(id).la, 'joint', id, '', sdot(JMAP.get(id)))).join('')}</div>`;
+    const sib = DATA.structs.filter((y) => y.t === x.t && y.reg === x.reg && y.id !== x.id && y.pl.split(' ')[0] === x.pl.split(' ')[0]).slice(0, 8);
+    if (sib.length) h += `<div class="subt">Podobne struktury</div><div class="chips">${sib.map((y) => chip(y.pl, y.la, 'str', y.id)).join('')}</div>`;
   } else if (s.t === 'joint') {
     const j = JMAP.get(s.id), sh = SHP[j.shape];
     h += head(j.pl, j.la, 'Staw · ' + REGION_NAME[j.reg].toLowerCase());
@@ -594,6 +652,7 @@ function renderInfo() {
       h += '<div class="subt">Ruchy i mięśnie (antagoniści ⇄)</div>';
       j.pairs.forEach((pr, i) => { h += `<div class="mv"><button class="mvb" data-mv="${j.id}|${i}" title="Zaznacz oba zespoły mięśni">${esc(pr[0])} <b>⇄</b> ${esc(pr[2])}</button><div class="mvr"><span class="mvl">${esc(pr[0])}</span>${mchips(pr[1])}</div><div class="mvr"><span class="mvl">${esc(pr[2])}</span>${mchips(pr[3])}</div></div>`; });
     } else h += '<p class="small">Ruchomość znikoma — brak wyodrębnionych ruchów czynnych.</p>';
+    const lg = (DATA.structs || []).filter((x) => x.j && x.j.includes(j.id)); if (lg.length) h += `<div class="subt">Więzadła i struktury stawu (${lg.length})</div><div class="chips">${lg.map((x) => chip(x.pl, x.la, 'str', x.id, '', `<i class="sdot" style="background:${STRCSS[x.t]}"></i>`)).join('')}</div>`;
     h += '<div class="legend"><em>znacznik stawu jest półprzezroczysty, widoczny przez kości; torebka i krążek — w kolorze typu stawu</em></div>';
   }
   const jm = s.t === 'joint' && JMAP.get(s.id).pairs.some((p) => p[1].some(isG) || p[3].some(isG));
@@ -619,9 +678,9 @@ infoEl.addEventListener('change', (e) => { if (e.target.id === 'pinsToggle') { S
 
 /* ---------- sterowanie ---------- */
 const syncTabs = () => $$('#tabs button').forEach((b) => b.classList.toggle('on', b.dataset.tab === S.tab));
-$('#tabs').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; S.tab = b.dataset.tab; syncTabs(); renderList(); });
+$('#tabs').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; S.tab = b.dataset.tab; syncTabs(); renderList(); if (S.tab === 'lig' || S.tab === 'nerv' || S.tab === 'vess') { useStructLayer(S.tab, true); apply(); } });
 $('#regions').innerHTML = DATA.regions.map(([k, n]) => `<button data-r="${k}" class="${k === 'all' ? 'on' : ''}">${esc(n)}</button>`).join('');
-const selRegionOk = (s) => s.t === 'grp' ? regionOk(G[s.id].region) : s.t === 'part' ? regionOk(G[MUS.get(s.id).grp].region) : s.t === 'bone' ? (BON.get(s.id).kind === 'ctx' || regionOk(BON.get(s.id).region)) : s.t === 'joint' ? regionOk(JMAP.get(s.id).reg) : regionOk(BON.get(LMS.get(s.id).bone).region);
+const selRegionOk = (s) => s.t === 'grp' ? regionOk(G[s.id].region) : s.t === 'part' ? regionOk(G[MUS.get(s.id).grp].region) : s.t === 'bone' ? (BON.get(s.id).kind === 'ctx' || regionOk(BON.get(s.id).region)) : s.t === 'joint' ? regionOk(JMAP.get(s.id).reg) : s.t === 'str' ? regionOk(STR.get(s.id).reg) : regionOk(BON.get(LMS.get(s.id).bone).region);
 function setRegion(r, after) {
   S.region = r; $$('#regions button').forEach((x) => x.classList.toggle('on', x.dataset.r === r));
   S.hidden.clear(); if (S.sel && !selRegionOk(S.sel)) { S.sel = null; renderInfo(); }
@@ -633,6 +692,7 @@ $('#regions').addEventListener('click', (e) => { const b = e.target.closest('but
 const bindChk = (id, fn) => { const el = $('#' + id); el.addEventListener('change', () => { fn(el.checked); apply(); }); };
 bindChk('lBones', (v) => (S.layers.bones = v)); bindChk('lMus', (v) => (S.layers.muscles = v)); bindChk('lCtx', (v) => (S.layers.ctx = v));
 bindChk('lOther', (v) => (S.layers.other = v)); bindChk('lAtt', (v) => (S.layers.att = v)); bindChk('ghostBg', (v) => (S.ghostBg = v));
+bindChk('lLig', (v) => { S.layers.lig = v; if (v) ensureStruct('lig'); }); bindChk('lNerv', (v) => { S.layers.nerv = v; if (v) ensureStruct('nerv'); }); bindChk('lVess', (v) => { S.layers.vess = v; if (v) ensureStruct('vess'); });
 bindChk('lJoints', (v) => (S.layers.joints = v)); bindChk('lCap', (v) => (S.layers.cap = v));
 $('#lSkull').addEventListener('change', (e) => { S.layers.skull = e.target.checked; if (S.layers.skull) ensureAxial(); apply(); });
 $('#opa').addEventListener('input', (e) => { S.muscleOpacity = +e.target.value; apply(); });
@@ -650,7 +710,7 @@ $('#views').addEventListener('click', (e) => {
   if (b.dataset.v === 'reset') {
     exitMulti(true); S.hidden.clear(); S.sel = null; S.layers = LAYERS0(); S.muscleOpacity = 1; S.ghostBg = true; S.region = 'all';
     $$('#regions button').forEach((x) => x.classList.toggle('on', x.dataset.r === 'all'));
-    for (const [i, v] of [['lBones', 1], ['lMus', 1], ['lCtx', 0], ['lOther', 0], ['lAtt', 0], ['lJoints', 0], ['lCap', 0], ['lSkull', 0]]) $('#' + i).checked = !!v;
+    for (const [i, v] of [['lBones', 1], ['lMus', 1], ['lCtx', 0], ['lOther', 0], ['lAtt', 0], ['lJoints', 0], ['lCap', 0], ['lSkull', 0], ['lLig', 0], ['lNerv', 0], ['lVess', 0]]) $('#' + i).checked = !!v;
     $('#ghostBg').checked = true; $('#opa').value = 1; renderList(); apply(); renderInfo(); markList(); viewRegion('front'); return;
   }
   viewRegion(b.dataset.v);
@@ -748,6 +808,6 @@ ready.then(() => {
   apply();
   const b = boxOf(regionBox('all')); const c = b.getCenter(new THREE.Vector3()); const r = b.getSize(new THREE.Vector3()).length() / 2;
   controls.target.copy(c); camera.position.copy(c).add(new THREE.Vector3(0.12, 0.05, 1).normalize().multiplyScalar(fitDist(r) * 1.0)); controls.update(); dirty();
-  window.__anat = { S, select, G, DATA, objs, SIDE, camera, controls, apply, viewRegion, setSide, toggleMulti, setMulti, ensureAxial, JMAP };
+  window.__anat = { STR, ensureStruct, S, select, G, DATA, objs, SIDE, camera, controls, apply, viewRegion, setSide, toggleMulti, setMulti, ensureAxial, JMAP };
 });
 requestAnimationFrame(frame);

@@ -138,8 +138,34 @@ for j in joints:
             for m in lst:
                 if m in C.M or m in HC.M2 or m.startswith('m. ') : continue
                 if m not in C.M: print('? klucz mięśnia',m,j['id'])
+
+# ---- struktury: więzadła, nerwy, naczynia (lig.glb / nerv.glb / vess.glb)
+import struct_lig, struct_nerv, struct_vess
+sid=json.load(open('/home/claude/work/out3/struct_ids.json'))
+SENT={e[1]:e for e in struct_lig.LIG+struct_nerv.NERV+struct_vess.VESS}
+def lig_joints(en):
+    n=en
+    R=[('sternoclavicular',['scj']),('Interclavicular',['scj']),('Costoclavicular',['scj']),('acromioclavicular',['acj']),('Conoid',['acj']),('Trapezoid ligament',['acj']),
+       ('Coraco-acromial',['acj','ghj']),('glenohumeral',['ghj']),('Glenoid labrum',['ghj']),('Coracohumeral',['ghj']),('Transverse humeral',['ghj']),
+       ('Annular ligament',['lok','pru']),('Quadrate',['lok','pru']),('elbow',['lok']),('Radial collateral ligament',['lok']),('Ulnar collateral ligament',['lok']),
+       ('Interosseous membrane',['dru']),('radio-ulnar',['dru']),
+       ('metacarpophalangeal',['mcp2','mcp1']),('transverse metacarpal',['mcp2','mcp1']),('interphalangeal',['pip','dip','ip1']),
+       ('carpometacarpal',['cmc2','cmc1']),('metacarpal ligament',['cmc2']),('radiocarpal',['rcj']),('Radioscaph',['rcj']),('Radiocapitate',['rcj']),('Ulnolunate',['rcj']),('Ulnocapitate',['rcj']),('Ulnotriquetral',['rcj']),
+       ('of wrist joint',['rcj']),('Radiate carpal',['mcj']),('Dorsal ulnocarpal',['rcj']),
+       ('scapholunate',['icj','mcj']),('triquet',['icj','mcj']),('Pis',['icj']),('capit',['icj','mcj']),('scapho',['icj','mcj']),('trapez',['icj','mcj']),('intercarpal',['icj','mcj']),('Palmar lunotriquetral',['icj']),
+       ('temporomandibular',['tmj']),('Stylomandibular',['tmj']),('Sphenomandibular',['tmj'])]
+    for k,v in R:
+        if k.lower() in n.lower(): return v
+    return []
+structs=[]
+for i,en in sorted(sid.items()):
+    e=SENT[en]; d=dict(id=i,t=e[0],en=en,pl=e[2],la=e[3],reg=e[4],d=e[5])
+    if e[0]=='lig':
+        j=lig_joints(en)
+        if j: d['j']=['J_'+x for x in j]
+    structs.append(d)
 REG=[('all','Cała kończyna'),('bark','Bark'),('ramie','Ramię'),('przedramie','Przedramię'),('dlon','Dłoń'),('glowa','Głowa i szyja')]
-out=dict(version='0.04',regions=REG,groups=groups,muscles=muscles,bones=bones,patches=patches,lms=lms,joints=joints,shapes={k:dict(pl=v[0],c=v[1],d=v[2]) for k,v in JD.SHAPES.items()},mid=jp['mid'])
+out=dict(version='0.05',regions=REG,groups=groups,muscles=muscles,bones=bones,patches=patches,lms=lms,joints=joints,structs=structs,shapes={k:dict(pl=v[0],c=v[1],d=v[2]) for k,v in JD.SHAPES.items()},mid=jp['mid'])
 json.dump(out,open(O+'data.json','w'),ensure_ascii=False,separators=(',',':'))
 print('muscles',len(muscles),'groups',len(groups),'bones',len(bones),'patches',len(patches),'lms',len(lms))
 missing=[b for b in bid if b[0]=='P' and re.sub(r'\.(o|e)\d?r$','',bid[b]) not in C.PATCH]

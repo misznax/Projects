@@ -18,8 +18,8 @@ header{grid-area:h;display:flex;align-items:center;gap:12px;padding:0 14px;backg
 #regions{display:flex;flex-wrap:wrap;gap:6px;padding:4px 10px 8px}
 #regions button{padding:6px 11px;border-radius:99px;background:var(--panel2);border:1px solid var(--line);font-size:13px}
 #regions button.on{background:var(--acc);border-color:var(--acc);color:#04121f;font-weight:600}
-#tabs{display:flex;border-bottom:1px solid var(--line);padding:0 10px}
-#tabs button{flex:1;padding:9px;border-bottom:2px solid transparent;color:var(--mut);font-weight:600}
+#tabs{display:grid;grid-template-columns:repeat(3,1fr);border-bottom:1px solid var(--line);padding:0 10px}
+#tabs button{padding:8px 4px;border-bottom:2px solid transparent;color:var(--mut);font-weight:600}
 #tabs button.on{color:var(--tx);border-color:var(--acc)}
 #list,#results{flex:1;overflow:auto;padding:4px 6px 20px;min-height:0}
 #list.hide{display:none}#results{display:none}#results.show{display:block}

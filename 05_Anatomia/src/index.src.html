@@ -22,7 +22,7 @@
   <aside id="side">
     <div class="sidehead"><input id="q" type="search" autocomplete="off" placeholder="Szukaj: np. dwugłowy, biceps, humerus…" aria-label="Szukaj"><button id="closeSide" aria-label="Zamknij">×</button></div>
     <div id="regions"></div>
-    <div id="tabs"><button data-tab="mus" class="on">Mięśnie</button><button data-tab="bone">Kości</button><button data-tab="jnt">Stawy</button></div>
+    <div id="tabs"><button data-tab="mus" class="on">Mięśnie</button><button data-tab="bone">Kości</button><button data-tab="jnt">Stawy</button><button data-tab="lig">Więzadła</button><button data-tab="nerv">Nerwy</button><button data-tab="vess">Naczynia</button></div>
     <div id="results"></div>
     <div id="list"></div>
   </aside>
@@ -43,6 +43,9 @@
       <label><input type="checkbox" id="lJoints"> Stawy (znaczniki w kolorze typu)</label>
       <label><input type="checkbox" id="lCap"> Torebki i krążki stawowe</label>
       <label><input type="checkbox" id="lSkull"> Czaszka i kręgi szyjne</label>
+      <label><input type="checkbox" id="lLig"> Więzadła</label>
+      <label><input type="checkbox" id="lNerv"> Nerwy</label>
+      <label><input type="checkbox" id="lVess"> Naczynia (tętnice, żyły)</label>
       <label><input type="checkbox" id="ghostBg" checked> Reszta kończyny jako tło</label>
       <label class="rng">Przezroczystość mięśni<input type="range" id="opa" min="0.15" max="1" step="0.05" value="1"></label>
       <div class="lg" id="legendJ"></div>

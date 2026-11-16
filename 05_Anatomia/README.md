@@ -1,10 +1,14 @@
-# 05 Anatomia — v0.04
+# 05 Anatomia — v0.05
 
 Interaktywny model 3D **kończyny górnej** (prawa / lewa = lustro / obie): 32 kości, 67 siatek mięśniowych (51 mięśni), 109 punktów kostnych, **22 stawy** (typ, osie, powierzchnie, antagoniści, torebki) oraz czaszka i kręgi szyjne (wczytywane na żądanie). Nazwy polskie (duże) i łacińskie (pod spodem, w nawiasie), wyszukiwarka po wszystkich nazwach (PL/łac./ang.), regiony (bark · ramię · przedramię · dłoń), obrót modelu, początki (niebieski) i przyczepy końcowe (pomarańczowy) mięśni na kościach.
 
 - Adres: https://anatomia.smialo.org/ (domena Workera podpięta 2026-11-16, tymczasowo do 2026-12-31) oraz https://projects.michus.workers.dev/05/ (stały). Żaden z nich nie jest za Cloudflare Access.
 - Technologia: three.js (WebGL) + three-mesh-bvh; jeden `index.html` + dwa pliki GLB (`public/`).
 - Dane: `data/data.json` (nazwy, opisy, przyczepy, pozycje punktów).
+
+## v0.05
+- Nowe zakładki: Więzadła (77), Nerwy (52), Naczynia (63: tętnice i żyły) kończyny górnej — modele 3D z opisami PL/LA, doczytywane na żądanie; warstwy w menu „Warstwy”.
+- Karta stawu wypisuje jego więzadła i torebki; wyszukiwarka indeksuje nowe struktury.
 
 ## v0.04
 - Głowa i szyja: 55 mięśni 3D (żucia, mimiczne, nad-/podgnykowe, szyi, podpotyliczne, karku), doczytywane przy wejściu w region.
