@@ -9,7 +9,9 @@ jobs:
     steps:
       - run: |
           api(){ curl -sS -H "Authorization: Bearer $T" "https://api.cloudflare.com/client/v4/$1"; echo; }
-          echo "== verify"; api user/tokens/verify | python3 -c "import sys,json;d=json.load(sys.stdin);print(d.get('success'),d.get('result',{}).get('status'),d.get('errors'))"
-          echo "== zones"; api "zones?per_page=50" | python3 -c "import sys,json;d=json.load(sys.stdin);print(d.get('success'),d.get('errors'));[print(z['id'],z['name'],z['status']) for z in d.get('result',[])]"
-          echo "== workers domains"; api "accounts/$A/workers/domains" | python3 -c "import sys,json;d=json.load(sys.stdin);print(d.get('success'),d.get('errors'));[print(x.get('hostname'),x.get('service'),x.get('zone_name')) for x in d.get('result',[])]"
-          echo "== access apps"; api "accounts/$A/access/apps?per_page=100" | python3 -c "import sys,json;d=json.load(sys.stdin);print(d.get('success'),d.get('errors'));[print(x.get('id'),x.get('name'),x.get('domain'),x.get('type'),x.get('session_duration')) for x in d.get('result',[])]"
+          echo "== account subdomain"; api "accounts/$A/workers/subdomain"
+          echo "== projects script subdomain"; api "accounts/$A/workers/scripts/projects/subdomain"
+          echo "== routes"; api "zones/a7d10025047c00e66f2ee32ca08beb02/workers/routes"
+          echo "== dns"; api "zones/a7d10025047c00e66f2ee32ca08beb02/dns_records?per_page=100" | python3 -c "import sys,json;d=json.load(sys.stdin);print(d.get('success'),d.get('errors'));[print(r['type'],r['name'],r['content'][:50],r['proxied']) for r in d.get('result',[])]"
+          echo "== access apps raw"; api "accounts/$A/access/apps?per_page=5" | head -c 600
+          echo "== probe"; for h in projects.smialo.org anatomia.smialo.org; do echo $h; curl -sS -m 15 -o /dev/null -w "%{http_code} %{redirect_url}\n" https://$h/05/ ; done
