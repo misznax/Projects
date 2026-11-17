@@ -1,5 +1,5 @@
-/* ───────── Nawyk v0.03 — logika aplikacji ───────── */
-const VER='v0.03', MAIL='michus@gmail.com', LS='nawyk.v1', APPKEY='nawyk';
+/* ───────── Nawyk v0.04 — logika aplikacji ───────── */
+const VER='v0.04', MAIL='michus@gmail.com', LS='nawyk.v1', APPKEY='nawyk';
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const pad=n=>String(n).padStart(2,'0');
@@ -8,9 +8,11 @@ const dnum=d=>Math.floor(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())/864e
 const uid=()=>'x'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 const clone=o=>JSON.parse(JSON.stringify(o));
 let TODAY=keyOf(new Date()), DN=dnum(new Date());
+const NOTES_CARD=id=>({id:'n_'+id,title:'Notatki i postępy',ic:'📝',blocks:[{id:'n_'+id+'_b',type:'notes',h:'',cfg:{}}]});
+TEMPLATES.forEach(t=>t.layout.push(NOTES_CARD(t.id)));
 
 /* ───────── STAN ───────── */
-const DEF=()=>({v:3,t:0,days:{},todos:[],journal:{},chk:{},layout:null,tpl:'charyzma',prev:null,set:{quiet:1,snd:1,hue:168,mode:'auto'}});
+const DEF=()=>({v:3,t:0,days:{},todos:[],journal:{},chk:{},layout:null,tpl:'charyzma',prev:null,ci:{},rt:{},notes:{},mig4:0,set:{quiet:1,snd:1,hue:168,mode:'auto'}});
 let S=DEF(), ref=null, cloudTimer=0, writing=Promise.resolve(), syncState='local', EDIT=false, EMBED_BLOCKED=false;
 const OFF={}, CUR={}, TIM={};
 const LAY=()=>S.layout||(S.layout=clone(TEMPLATES[0].layout));
@@ -37,6 +39,7 @@ const thaw=d=>{
   let c;try{c=migrate(clone(d))}catch(e){c={}}
   const n=Object.assign(DEF(),c);n.set=Object.assign(DEF().set,c.set||{});
   if(!okLayout(n.layout)){n.layout=clone(TEMPLATES[0].layout);n.tpl='charyzma'}
+  if(!n.mig4){if(!n.layout.some(c=>c.blocks.some(b=>b.type==='notes')))n.layout.push(NOTES_CARD('m'));n.mig4=1}
   return n;
 };
 function prune(){
@@ -44,6 +47,8 @@ function prune(){
   S.todos=S.todos.filter(t=>!(t.done&&t.done<lk));
   const jk=Object.keys(S.journal).sort();while(jk.length>120)delete S.journal[jk.shift()];
   const ck=Object.keys(S.chk).sort();while(ck.length>40)delete S.chk[ck.shift()];
+  ['ci','rt'].forEach(f=>{const k=Object.keys(S[f]).sort();while(k.length>400)delete S[f][k.shift()]});
+  const nk=Object.keys(S.notes).sort();while(nk.length>1&&JSON.stringify(S.notes).length>150000)delete S.notes[nk.shift()];
 }
 function persistLocal(){try{localStorage.setItem(LS,JSON.stringify(S))}catch(e){}}
 function save(){prune();S.t=Date.now();persistLocal();queueCloud()}
@@ -187,11 +192,19 @@ function seg(box,opts,cur,fn){
 const pk=(arr,n,seed)=>Array.from({length:n},(_,i)=>arr[(seed*n+i)%arr.length]);
 const doneKeys=()=>S.days[TODAY]||{};
 const isDone=k=>!!doneKeys()[k];
+const isInfo=c=>c.blocks.length>0&&c.blocks.every(b=>b.type==='notes');
+const TASKS=()=>LAY().filter(c=>!isInfo(c));
+const allDone=()=>{const t=TASKS();return t.length>0&&t.every(c=>isDone(c.id))};
+let SUM_OPEN=false, CI_EDIT=false;
 function setDone(k,v){
-  const d=S.days[TODAY]||(S.days[TODAY]={});
+  const was=allDone(),d=S.days[TODAY]||(S.days[TODAY]={});
   if(v)d[k]=1;else delete d[k];
   if(!Object.keys(d).length)delete S.days[TODAY];
   save();paintDone();
+  if(v&&!was&&allDone()){
+    SUM_OPEN=true;renderSummary();
+    const e=$('#sumCard');if(e&&e.scrollIntoView)try{e.scrollIntoView({behavior:'smooth',block:'nearest'})}catch(x){}
+  }else renderSummary();
 }
 const yid=u=>{const s=String(u).trim();const m=s.match(/(?:v=|youtu\.be\/|embed\/|shorts\/|live\/)([\w-]{11})/);if(m)return m[1];return /^[\w-]{11}$/.test(s)?s:null};
 const exMin=e=>e.m||Math.max(1,Math.round((e.sec||60)/60));
@@ -239,6 +252,7 @@ const PARSE={
   steps:v=>v.split('\n').map(l=>l.split('|').map(s=>s.trim())).filter(p=>p[0]).slice(0,30).map(p=>({t:p[0].slice(0,50),sec:Math.min(1800,Math.max(5,parseInt(p[1],10)||30)),sub:(p[2]||'').slice(0,200)})),
   items:(v,b)=>{const old=b.cfg.items||[];return v.split('\n').map(s=>s.trim().slice(0,100)).filter(Boolean).slice(0,30).map(x=>{const o=old.find(i=>i.x===x);return{id:o?o.id:uid(),x}})},
 };
+const dlabel=k=>new Date(k+'T12:00:00').toLocaleDateString('pl-PL',{weekday:'short',day:'numeric',month:'short'});
 const selOpts=(arr,cur)=>arr.map(([k,n])=>`<option value="${esc(k)}" ${String(cur)===String(k)?'selected':''}>${esc(n)}</option>`).join('');
 
 /* ───────── BLOKI ───────── */
@@ -389,6 +403,25 @@ const BT={
       };
     }},
 
+  notes:{ic:'📝',n:'Notatki i postępy',sp:8,
+    def:()=>({h:'Notatki',cfg:{}}),
+    sum:b=>(S.notes[TODAY]||{})[b.id]?'Notatka na dziś zapisana':'Zapisz spostrzeżenia',
+    mount(el,b){
+      const cur=(S.notes[TODAY]||{})[b.id]||'';
+      const hist=Object.keys(S.notes).filter(k=>k!==TODAY&&S.notes[k][b.id]).sort().reverse().slice(0,14);
+      el.innerHTML=`<label class="jl" for="nt-${b.id}" style="margin-top:0">Spostrzeżenia z ćwiczeń i postępy — dziś</label><textarea id="nt-${b.id}" rows="4" maxlength="1500" placeholder="Co zauważyłeś/aś? Co szło lepiej, co było trudne, jaki widzisz postęp (np. dłuższa pauza, niższy ton, mniej napięcia)?">${esc(cur)}</textarea>${hist.length?`<details class="nh"><summary>Wcześniejsze notatki (${hist.length})</summary><ul class="nhl">${hist.map(k=>`<li><b>${esc(dlabel(k))}</b> ${esc(S.notes[k][b.id])}</li>`).join('')}</ul></details>`:''}<p class="tiny">Notatki trafiają do podsumowania efektów.</p>`;
+      let jt=0;
+      const flush=()=>{
+        clearTimeout(jt);
+        const v=$('textarea',el).value.trim(),day=S.notes[TODAY]||(S.notes[TODAY]={});
+        if(v)day[b.id]=v;else delete day[b.id];
+        if(!Object.keys(day).length)delete S.notes[TODAY];
+        save();paintSums();renderSummary();
+      };
+      el.oninput=()=>{clearTimeout(jt);jt=setTimeout(flush,700)};
+      el.onchange=flush;
+    }},
+
   routine:{ic:'☑️',n:'Checklista dnia',sp:5,
     def:()=>({h:'Checklista',cfg:{items:[]}}),
     sum:b=>{const it=b.cfg.items||[],ck=S.chk[TODAY]||{};return it.length?it.filter(i=>ck[i.id]).length+'/'+it.length+' zrobione':''},
@@ -413,10 +446,13 @@ function blockHTML(c,b){
   const ed=EDIT?`<div class="edblk"><span class="chip">${T.ic} ${esc(T.n)}</span><input class="eh" type="text" data-f="bh" data-b="${b.id}" value="${esc(b.h||'')}" placeholder="Nagłówek (opcjonalny)" maxlength="60" aria-label="Nagłówek bloku"><button class="btn sm" type="button" data-act="bup" data-b="${b.id}" aria-label="Wyżej">↑</button><button class="btn sm" type="button" data-act="bdn" data-b="${b.id}" aria-label="Niżej">↓</button><button class="btn sm danger" type="button" data-act="bdel" data-b="${b.id}">Usuń blok</button></div>${T.cfgUI?`<div class="bcfg">${T.cfgUI(b)}</div>`:''}`:'';
   return `<section class="blk" data-b="${b.id}">${ed}${b.h?`<h3 class="bh">${esc(b.h)}</h3>`:''}<div class="bb"></div></section>`;
 }
+const SCL=(k,cid)=>`<div class="scale" role="group" aria-label="${k==='q'?'Ocena wykonania':'Samopoczucie po ćwiczeniu'}, skala 1 do 5">${[1,2,3,4,5].map(v=>`<button type="button" data-sc="${k}" data-card="${cid}" data-v="${v}" aria-pressed="false">${v}</button>`).join('')}</div>`;
+const rateHTML=cid=>`<div class="rate" data-rate="${cid}" hidden><h3>Jak poszło?</h3><p class="q">Czy czujesz, że wykonałeś/aś to dobrze?</p>${SCL('q',cid)}<div class="scl"><span>1 — słabo</span><span>5 — świetnie</span></div><p class="q">Czy czujesz się lepiej po ćwiczeniu?</p>${SCL('b',cid)}<div class="scl"><span>1 — nie</span><span>5 — zdecydowanie</span></div><p class="tiny">Informacja na potrzeby podsumowania efektów całego tygodnia.</p></div>`;
 function cardHTML(c,i,n){
   const ed=EDIT?`<div class="edcard"><input class="et" type="text" data-f="ctitle" data-c="${c.id}" value="${esc(c.title)}" maxlength="40" aria-label="Nazwa sekcji"><input class="et" type="text" style="flex:0 0 64px;width:64px;text-align:center" data-f="cicon" data-c="${c.id}" value="${esc(c.ic||'')}" maxlength="4" aria-label="Ikona sekcji"><button class="btn sm" type="button" data-act="cup" data-c="${c.id}" ${i?'':'disabled'} aria-label="Sekcja wyżej">↑</button><button class="btn sm" type="button" data-act="cdn" data-c="${c.id}" ${i<n-1?'':'disabled'} aria-label="Sekcja niżej">↓</button><button class="btn sm danger" type="button" data-act="cdel" data-c="${c.id}">Usuń sekcję</button></div>`:'';
   const add=EDIT?`<div class="adder"><select class="addType" aria-label="Typ nowego bloku">${Object.entries(BT).map(([k,t])=>`<option value="${k}">${t.ic} ${esc(t.n)}</option>`).join('')}</select><button class="btn sm" type="button" data-act="badd" data-c="${c.id}">+ Dodaj blok</button></div>`:'';
-  return `<details class="card" id="card-${c.id}" data-card="${c.id}"><summary><button class="tick" type="button" data-tick="${c.id}" aria-pressed="false" aria-label="Oznacz: ${esc(c.title)}"></button><span class="ic">${esc(c.ic||'•')}</span><span class="ttl"><b>${esc(c.title)}</b><small id="sum-${c.id}"></small></span><span class="chev"></span></summary><div class="body">${ed}${c.blocks.map(b=>blockHTML(c,b)).join('')}${add}<div class="fin"><button class="btn pri" data-done="${c.id}" type="button"></button></div></div></details>`;
+  const info=isInfo(c);
+  return `<details class="card" id="card-${c.id}" data-card="${c.id}"><summary>${info?'':`<button class="tick" type="button" data-tick="${c.id}" aria-pressed="false" aria-label="Oznacz: ${esc(c.title)}"></button>`}<span class="ic">${esc(c.ic||'•')}</span><span class="ttl"><b>${esc(c.title)}</b><small id="sum-${c.id}"></small></span><span class="chev"></span></summary><div class="body">${ed}${c.blocks.map(b=>blockHTML(c,b)).join('')}${add}${info?'':`<div class="fin"><button class="btn pri" data-done="${c.id}" type="button"></button></div>${rateHTML(c.id)}`}</div></details>`;
 }
 function renderCards(){
   const open=new Set($$('#cards details[open]').map(d=>d.dataset.card));
@@ -443,12 +479,14 @@ function streak(){
 }
 const RC=2*Math.PI*22;
 function paintDone(){
-  const L=LAY(),dk=doneKeys(),total=L.length,cnt=L.filter(c=>dk[c.id]).length;
+  const L=TASKS(),dk=doneKeys(),total=L.length,cnt=L.filter(c=>dk[c.id]).length,rtd=S.rt[TODAY]||{};
   L.forEach(c=>{
     const on=!!dk[c.id],e=$('#card-'+c.id);if(!e)return;
     e.classList.toggle('done',on);
     $('[data-tick]',e).setAttribute('aria-pressed',on);
     const b=$('[data-done]',e);b.textContent=on?'✓ Zrobione — cofnij':'Zrobione';b.classList.toggle('pri',!on);b.classList.toggle('ghost',on);
+    const rw=$('.rate',e),rv=rtd[c.id]||{};
+    if(rw){rw.hidden=!on;$$('[data-sc]',rw).forEach(x=>x.setAttribute('aria-pressed',String(rv[x.dataset.sc]===+x.dataset.v)))}
   });
   const r=$('#ring');
   if(!$('svg',r))r.innerHTML=`<svg viewBox="0 0 52 52" aria-hidden="true"><circle class="rt" cx="26" cy="26" r="22"/><circle class="rp" cx="26" cy="26" r="22" stroke-dasharray="${RC.toFixed(1)}" stroke-dashoffset="${RC.toFixed(1)}"/></svg><b></b>`;
@@ -477,6 +515,8 @@ function applyTones(){
     e.style.setProperty('--tone',dark?`hsl(${ch} 22% 15%)`:`hsl(${ch} 38% 92%)`);
     e.style.setProperty('--edge',dark?`hsl(${ch} 42% 50%)`:`hsl(${ch} 40% 42%)`);
   });
+  const sc=$('#sumCard');
+  if(sc){const ch=(h+OFFS[LAY().length%OFFS.length]+360)%360;sc.style.setProperty('--tone',dark?`hsl(${ch} 22% 15%)`:`hsl(${ch} 38% 92%)`);sc.style.setProperty('--edge',dark?`hsl(${ch} 42% 50%)`:`hsl(${ch} 40% 42%)`)}
 }
 function applyLook(){
   const m=S.set.mode,mq=window.matchMedia?matchMedia('(prefers-color-scheme: dark)').matches:true;
@@ -491,11 +531,131 @@ function renderLook(){
   $('#setQuiet').checked=!!S.set.quiet;$('#setSnd').checked=!!S.set.snd;
 }
 function greet(){const h=new Date().getHours();return h<12?'Dzień dobry':h<18?'Miłego dnia':'Dobry wieczór'}
+
+/* ───────── PYTANIA PORANNE ───────── */
+const CIQ=[['s','Czy wyspałeś/aś się dzisiaj?','1 — wcale','5 — w pełni'],['w','Jak duża jest Twoja chęć do ćwiczeń?','1 — żadna','5 — ogromna']];
+function renderCheckin(){
+  const el=$('#checkin');if(!el)return;
+  const c=S.ci[TODAY]||{};
+  if(!CI_EDIT&&c.skip){el.innerHTML='<div class="cirow"><span>Pytania poranne pominięte.</span><button class="lnk" type="button" data-cie="edit">odpowiedz</button></div>';return}
+  if(!CI_EDIT&&c.s&&c.w){el.innerHTML=`<div class="cirow"><span>Sen <b>${c.s}/5</b> · Chęć <b>${c.w}/5</b></span><button class="lnk" type="button" data-cie="edit">zmień</button></div>`;return}
+  el.innerHTML=`<div class="cibox"><h3>Na start dnia</h3>${CIQ.map(([k,q,a,b])=>`<p class="q">${q}</p><div class="scale" role="group" aria-label="${esc(q)} Skala 1 do 5">${[1,2,3,4,5].map(v=>`<button type="button" data-ck="${k}" data-v="${v}" aria-pressed="${c[k]===v}">${v}</button>`).join('')}</div><div class="scl"><span>${a}</span><span>${b}</span></div>`).join('')}<div class="cifoot">${CI_EDIT?'<button class="btn sm pri" type="button" data-cie="done">Gotowe</button>':'<button class="lnk" type="button" data-cie="skip">Pomiń dziś</button>'}</div></div>`;
+}
+
+/* ───────── PODSUMOWANIE ───────── */
+const avgOf=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:null;
+const f1=v=>v==null?'–':(Math.round(v*10)/10).toString().replace('.',',');
+const dayKey=n=>{const d=new Date();d.setDate(d.getDate()-n);return keyOf(d)};
+const dayRt=(k,f)=>{const r=S.rt[k]||{};return Object.keys(r).map(c=>r[c][f]).filter(v=>v>0)};
+const dayCnt=k=>Object.keys(S.days[k]||{}).length;
+const dayP=k=>{const t=TASKS().length;return t?Math.min(1,dayCnt(k)/t):0};
+const ciV=(k,f)=>{const c=S.ci[k];return c&&c[f]>0?c[f]:null};
+const HAB_A=0.06;
+function habit(){
+  const ks=Object.keys(S.days).filter(k=>dayCnt(k)).sort();
+  if(!ks.length)return null;
+  const t=new Date(TODAY+'T12:00:00');
+  let f=new Date(ks[0]+'T12:00:00');
+  const lim=new Date(t);lim.setDate(lim.getDate()-400);if(f<lim)f=lim;
+  const span=Math.round((t-f)/864e5)+1,out=[];let e=0;
+  for(let i=0;i<span;i++){
+    const d=new Date(f);d.setDate(d.getDate()+i);const k=keyOf(d),p=dayP(k);
+    if(!(k===TODAY&&p===0))e+=HAB_A*(p-e);
+    out.push(e);
+  }
+  return {span,v:out};
+}
+function chartA(){
+  const W=340,H=178,L=32,R=28,T=10,B=24,N=14,pw=W-L-R,ph=H-T-B;
+  const X=i=>L+pw*(i+.5)/N,Y=v=>T+ph*(1-v),sc=v=>(v-1)/4;
+  let g='';
+  [0,.25,.5,.75,1].forEach(t=>{
+    g+=`<line class="gl" x1="${L}" x2="${W-R}" y1="${Y(t).toFixed(1)}" y2="${Y(t).toFixed(1)}"/>`;
+    if(t===0||t===.5||t===1)g+=`<text class="ax" x="${L-5}" y="${(Y(t)+3).toFixed(1)}" text-anchor="end">${t*100}%</text>`;
+    g+=`<text class="ax" x="${W-R+5}" y="${(Y(t)+3).toFixed(1)}">${t*4+1}</text>`;
+  });
+  const ds=[],S1=[],W1=[],B1=[];
+  for(let i=0;i<N;i++){
+    const ago=N-1-i,k=dayKey(ago),p=dayP(k);
+    ds.push(k);
+    const bw=pw/N*.56,h=ph*p;
+    if(p>0)g+=`<rect class="cbar" x="${(X(i)-bw/2).toFixed(1)}" y="${(Y(p)).toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="2"/>`;
+    S1.push(ciV(k,'s'));W1.push(ciV(k,'w'));const bb=avgOf(dayRt(k,'b'));B1.push(bb);
+    if(ago%3===0)g+=`<text class="ax" x="${X(i).toFixed(1)}" y="${H-8}" text-anchor="middle">${ago===0?'dziś':new Date(k+'T12:00:00').getDate()}</text>`;
+  }
+  const line=(vals,cls)=>{
+    let d='',pen=false,dots='';
+    vals.forEach((v,i)=>{if(v==null){pen=false;return}const x=X(i).toFixed(1),y=Y(sc(v)).toFixed(1);d+=(pen?'L':'M')+x+' '+y;pen=true;dots+=`<circle class="${cls}d" cx="${x}" cy="${y}" r="2.6"/>`});
+    return d?`<path class="ln ${cls}" d="${d}"/>${dots}`:'';
+  };
+  g+=line(S1,'ls')+line(W1,'lw')+line(B1,'lb');
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Wykres 14 dni: wykonanie zadań oraz sen, chęć i samopoczucie po ćwiczeniach w skali 1 do 5"><title>Ostatnie 14 dni</title>${g}</svg>`;
+}
+function chartB(h){
+  const W=340,H=150,L=32,R=14,T=12,B=22,pw=W-L-R,ph=H-T-B;
+  const n=Math.max(14,Math.min(66,h.span)),vals=h.v.slice(-n),off=n-vals.length;
+  const X=i=>L+pw*(i+off)/(n-1),Y=v=>T+ph*(1-v);
+  let g='';
+  [0,.5,1].forEach(t=>{g+=`<line class="gl" x1="${L}" x2="${W-R}" y1="${Y(t).toFixed(1)}" y2="${Y(t).toFixed(1)}"/><text class="ax" x="${L-5}" y="${(Y(t)+3).toFixed(1)}" text-anchor="end">${t*100}%</text>`});
+  g+=`<line class="thr" x1="${L}" x2="${W-R}" y1="${Y(.8).toFixed(1)}" y2="${Y(.8).toFixed(1)}"/><text class="ax" x="${W-R}" y="${(Y(.8)-4).toFixed(1)}" text-anchor="end">umowny próg 80%</text>`;
+  const pts=vals.map((v,i)=>[X(i),Y(v)]);
+  const ln=pts.map((q,i)=>(i?'L':'M')+q[0].toFixed(1)+' '+q[1].toFixed(1)).join('');
+  g+=`<path class="area" d="${ln}L${pts[pts.length-1][0].toFixed(1)} ${Y(0).toFixed(1)}L${pts[0][0].toFixed(1)} ${Y(0).toFixed(1)}Z"/><path class="ln lb" d="${ln}"/>`;
+  const last=pts[pts.length-1];
+  g+=`<circle class="lbd" cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="4"/>`;
+  g+=`<text class="ax" x="${L}" y="${H-7}">${n-1} dni temu</text><text class="ax" x="${W-R}" y="${H-7}" text-anchor="end">dziś</text>`;
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Wykres siły nawyku w czasie, obecnie ${Math.round(vals[vals.length-1]*100)} procent"><title>Siła nawyku</title>${g}</svg>`;
+}
+const stRow=(t,a)=>`<h4>${t}</h4><div class="stats">${a.map(([l,v,u])=>`<div class="st"><b>${v}${v!=='–'&&u?`<small>${u}</small>`:''}</b><span>${l}</span></div>`).join('')}</div>`;
+function insights(){
+  const out=[],ks=[];
+  for(let i=0;i<60;i++)ks.push(dayKey(i));
+  const lowW=ks.filter(k=>{const w=ciV(k,'w');return w&&w<=2&&dayCnt(k)>0});
+  if(lowW.length)out.push(`W dni z niską chęcią (1–2) i tak ćwiczyłeś/aś: ${lowW.length} ${lowW.length===1?'raz':'razy'}. Tak buduje się nawyk.`);
+  const hi=ks.filter(k=>ciV(k,'s')>=4),lo=ks.filter(k=>{const v=ciV(k,'s');return v&&v<=2});
+  if(hi.length>=2&&lo.length>=2){
+    const a=Math.round(100*avgOf(hi.map(dayP))),b=Math.round(100*avgOf(lo.map(dayP)));
+    out.push(`Po dobrze przespanej nocy (4–5) wykonujesz średnio ${a}% zadań dnia, po słabej (1–2): ${b}%.`);
+  }
+  const bs=ks.flatMap(k=>dayRt(k,'b'));
+  if(bs.length>=3){
+    const m=avgOf(bs);
+    out.push(m>=4?`Po ćwiczeniach zwykle czujesz się lepiej (śr. ${f1(m)}/5) — przypomnij to sobie w dni bez chęci.`:m<3?`Po ćwiczeniach czujesz się średnio (śr. ${f1(m)}/5) — spróbuj lżejszych wersji lub innej pory dnia.`:`Po ćwiczeniach czujesz się umiarkowanie lepiej (śr. ${f1(m)}/5).`);
+  }
+  return out.slice(0,3);
+}
+function renderSummary(){
+  const sc=$('#sumCard'),bd=$('#sumBody');if(!sc||!bd)return;
+  if(sc.open!==SUM_OPEN)sc.open=SUM_OPEN;
+  const tk=TASKS(),tot=tk.length,cnt=tk.filter(c=>isDone(c.id)).length,h=habit();
+  $('#sumSub').textContent=(tot?`dziś ${cnt}/${tot}`:'')+(h?` · siła nawyku ${Math.round(h.v[h.v.length-1]*100)}%`:'');
+  const dq=dayRt(TODAY,'q'),db=dayRt(TODAY,'b');
+  const wk=[];for(let i=0;i<7;i++)wk.push(dayKey(i));
+  const wd=wk.filter(k=>dayCnt(k)>0).length;
+  const wq=wk.flatMap(k=>dayRt(k,'q')),wb=wk.flatMap(k=>dayRt(k,'b'));
+  const ws=wk.map(k=>ciV(k,'s')).filter(Boolean),ww=wk.map(k=>ciV(k,'w')).filter(Boolean);
+  const any=Object.keys(S.days).length||Object.keys(S.ci).length||Object.keys(S.rt).length;
+  let o='';
+  if(!any)o+='<p class="note">Tu pojawi się podsumowanie, gdy odpowiesz na pytania poranne i zrobisz pierwsze zadanie.</p>';
+  else{
+    o+=stRow('Dziś',[['Sen',f1(ciV(TODAY,'s')),'/5'],['Chęć',f1(ciV(TODAY,'w')),'/5'],['Zrobione',tot?cnt+'/'+tot:'–',''],['Wykonanie',f1(avgOf(dq)),'/5'],['Lepiej po ćw.',f1(avgOf(db)),'/5']]);
+    o+=stRow('Ostatnie 7 dni',[['Dni ćwiczeń',wd+'/7',''],['Sen',f1(avgOf(ws)),'/5'],['Chęć',f1(avgOf(ww)),'/5'],['Wykonanie',f1(avgOf(wq)),'/5'],['Lepiej po ćw.',f1(avgOf(wb)),'/5']]);
+    o+=`<h4>Samopoczucie a wynik — 14 dni</h4>${chartA()}<div class="leg"><span><i class="k kb"></i>Wykonanie zadań (słupki, %)</span><span><i class="k klb"></i>Lepiej po ćwiczeniu</span><span><i class="k klw"></i>Chęć</span><span><i class="k kls"></i>Sen</span></div><p class="tiny">Linie: skala 1–5 (prawa oś), słupki: odsetek zadań dnia (lewa oś).</p>`;
+    if(h)o+=`<h4>Kształtowanie nawyku</h4>${chartB(h)}<p class="note">Siła nawyku: <b>${Math.round(h.v[h.v.length-1]*100)}%</b> — wskaźnik orientacyjny (nowsze dni liczą się bardziej). Utrwalenie nawyku zajmuje średnio ok. 66 dni (Lally i in., 2009), więc pojedyncza przerwa niczego nie psuje.</p>`;
+    const ins=insights();
+    if(ins.length)o+=`<h4>Co widać w danych</h4><ul class="ins">${ins.map(t=>`<li>${esc(t)}</li>`).join('')}</ul>`;
+    const nk=Object.keys(S.notes).sort().reverse().slice(0,3);
+    if(nk.length)o+=`<h4>Twoje spostrzeżenia</h4><ul class="nhl">${nk.map(k=>{const t=Object.keys(S.notes[k]).map(b=>S.notes[k][b]).join(' · ');return `<li><b>${esc(dlabel(k))}</b> ${esc(t.length>180?t.slice(0,177)+'…':t)}</li>`}).join('')}</ul>`;
+  }
+  o+=`<p class="moti">${tot&&cnt===tot?'Wszystko na dziś zrobione — brawo!<br>':''}<b>Ćwicz dalej, a efekty już masz ;)</b></p><p class="tiny">Oceny po ćwiczeniach i pytania poranne służą podsumowaniu efektów całego tygodnia.</p>`;
+  bd.innerHTML=o;
+  applyTones();
+}
 function renderAll(){
   TODAY=keyOf(new Date());DN=dnum(new Date());
   $('#greet').textContent=greet();
   $('#date').textContent=new Date().toLocaleDateString('pl-PL',{weekday:'long',day:'numeric',month:'long'});
-  applyLook();renderCards();setSync(syncState);
+  applyLook();renderCards();renderCheckin();renderSummary();setSync(syncState);
 }
 
 /* ───────── EDYCJA UKŁADU ───────── */
@@ -547,12 +707,37 @@ function loadTpl(id){
 function wire(){
   const cards=$('#cards');
   cards.addEventListener('click',e=>{
+    const sc=e.target.closest('[data-sc]');
+    if(sc){
+      const c=sc.dataset.card,k=sc.dataset.sc,v=+sc.dataset.v,d=S.rt[TODAY]||(S.rt[TODAY]={}),x=d[c]||(d[c]={});
+      if(x[k]===v)delete x[k];else x[k]=v;
+      if(!Object.keys(x).length)delete d[c];if(!Object.keys(d).length)delete S.rt[TODAY];
+      save();paintDone();renderSummary();return;
+    }
     const t=e.target.closest('[data-tick]');
     if(t){e.preventDefault();e.stopPropagation();setDone(t.dataset.tick,!isDone(t.dataset.tick));return}
     const a=e.target.closest('[data-act]');if(a){act(a);return}
     const b=e.target.closest('[data-done]');
     if(b)setDone(b.dataset.done,!isDone(b.dataset.done));
   });
+  $('#checkin').addEventListener('click',e=>{
+    const b=e.target.closest('[data-ck]'),x=e.target.closest('[data-cie]');
+    if(b){
+      const c=S.ci[TODAY]||(S.ci[TODAY]={}),k=b.dataset.ck,v=+b.dataset.v;delete c.skip;
+      if(c[k]===v)delete c[k];else c[k]=v;
+      if(!Object.keys(c).length)delete S.ci[TODAY];
+      save();renderCheckin();renderSummary();return;
+    }
+    if(x){
+      const a=x.dataset.cie;
+      if(a==='edit')CI_EDIT=true;
+      else if(a==='done')CI_EDIT=false;
+      else{S.ci[TODAY]={skip:1};CI_EDIT=false;save()}
+      renderCheckin();renderSummary();
+    }
+  });
+  $('#sumCard').addEventListener('toggle',e=>{SUM_OPEN=e.target.open});
+  $('#miSum').onclick=()=>{closeMenu();SUM_OPEN=true;renderSummary();const e=$('#sumCard');if(e&&e.scrollIntoView)try{e.scrollIntoView({behavior:'smooth',block:'start'})}catch(x){}};
   $('#addCard').addEventListener('click',e=>{const a=e.target.closest('[data-act]');if(a)act(a)});
   cards.addEventListener('change',e=>{
     const t=e.target,f=t.dataset.f,cf=t.dataset.cf;

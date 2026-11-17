@@ -158,6 +158,60 @@ textarea{resize:vertical;min-height:56px}
 .jl{display:block;font-size:14px;color:var(--mute);margin:12px 0 4px}
 .prev{font-size:13px;color:var(--warm);margin-top:10px}
 
+/* v0.04: pytania poranne, oceny, notatki, podsumowanie */
+#checkin{margin:0 0 14px}
+.cibox{padding:14px 16px;border:1px solid var(--line);border-radius:16px;background:color-mix(in srgb,var(--acc) 8%,transparent)}
+.cibox h3,.rate h3{font:600 12px/1.3 system-ui,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);margin:0 0 6px}
+.q{margin:10px 0 6px;font-size:15px}
+.scale{display:flex;gap:6px}
+.scale button{flex:1;max-width:64px;font:inherit;font-size:16px;font-variant-numeric:tabular-nums;padding:8px 0;border-radius:12px;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer}
+.scale button:hover{border-color:var(--acc)}
+.scale button[aria-pressed=true]{background:var(--acc);color:var(--acc-ink);border-color:var(--acc);font-weight:600}
+.scale button:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.scl{display:flex;justify-content:space-between;max-width:calc(5*64px + 4*6px);font-size:11px;color:var(--mute);margin-top:3px}
+.cifoot{margin-top:12px;display:flex;gap:10px;align-items:center}
+.cirow{display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:13px;color:var(--mute);padding:2px 2px 0}
+.cirow b{color:var(--ink);font-weight:600}
+.lnk{font:inherit;font-size:13px;background:none;border:0;padding:2px 4px;color:var(--acc);text-decoration:underline;cursor:pointer}
+.lnk:focus-visible{outline:2px solid var(--acc);outline-offset:2px;border-radius:4px}
+.rate{margin-top:16px;padding-top:12px;border-top:1px dashed color-mix(in srgb,var(--ink) 20%,transparent)}
+.rate[hidden]{display:none}
+.rate .q:first-of-type{margin-top:4px}
+.tiny{font-size:11px;line-height:1.4;color:var(--mute);margin:10px 0 0}
+.nh{margin-top:10px;font-size:13px;color:var(--mute)}
+.nh summary{display:block;padding:4px 0;cursor:pointer;border-radius:6px}
+.nhl{list-style:none;margin:6px 0 0;padding:0;font-size:13px;color:var(--mute)}
+.nhl li{padding:6px 0;border-bottom:1px solid color-mix(in srgb,var(--ink) 10%,transparent);white-space:pre-wrap;overflow-wrap:anywhere}
+.nhl b{color:var(--ink);font-weight:500;margin-right:6px}
+.sumcard h4{font:600 12px/1.3 system-ui,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);margin:16px 0 8px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(84px,1fr));gap:8px}
+.st{padding:8px 10px;border:1px solid var(--line);border-radius:12px;background:color-mix(in srgb,var(--bg) 30%,transparent)}
+.st b{display:block;font:600 20px/1.2 Fraunces,Georgia,serif;font-variant-numeric:tabular-nums}
+.st b small{font:400 12px system-ui,sans-serif;color:var(--mute);margin-left:2px}
+.st span{font-size:12px;color:var(--mute)}
+.chart{width:100%;max-width:540px;height:auto;display:block}
+.chart .gl{stroke:var(--ink);stroke-opacity:.12;stroke-width:1}
+.chart .ax{fill:var(--mute);font:9px system-ui,sans-serif}
+.chart .cbar{fill:var(--acc);fill-opacity:.32}
+.chart .ln{fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.chart .lb{stroke:var(--acc)}
+.chart .lw{stroke:var(--warm);stroke-dasharray:5 3}
+.chart .ls{stroke:var(--mute);stroke-dasharray:1.5 3}
+.chart .lbd{fill:var(--acc)}
+.chart .lwd{fill:var(--warm)}
+.chart .lsd{fill:var(--mute)}
+.chart .area{fill:var(--acc);fill-opacity:.2;stroke:none}
+.chart .thr{stroke:var(--warm);stroke-width:1;stroke-dasharray:4 3;stroke-opacity:.8}
+.leg{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--mute);margin-top:6px}
+.leg .k{display:inline-block;width:16px;height:0;border-top:2px solid var(--acc);vertical-align:middle;margin-right:5px}
+.leg .kb{height:8px;border:0;background:color-mix(in srgb,var(--acc) 40%,transparent);border-radius:2px;vertical-align:-1px}
+.leg .klw{border-top:2px dashed var(--warm)}
+.leg .kls{border-top:2px dotted var(--mute)}
+.ins{margin:0;padding-left:20px;font-size:14px}
+.ins li{margin:0 0 5px}
+.moti{margin:18px 0 0;font:600 18px/1.35 Fraunces,Georgia,serif;text-align:center}
+.moti b{color:var(--acc)}
+
 /* tryb edycji */
 .edcard,.edblk{display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding:10px;margin:12px 0 0;border:1px dashed var(--edge,var(--line));border-radius:12px;background:color-mix(in srgb,var(--bg) 35%,transparent)}
 .edcard input.et{flex:1 1 150px;width:auto;font-weight:600}
@@ -212,6 +266,7 @@ textarea.mono{font:12px/1.4 ui-monospace,Consolas,monospace;min-height:110px}
       <div class="menu" id="menu" hidden>
         <button class="mi" id="miLook"><i>🎨</i>Wygląd i kolory</button>
         <button class="mi" id="miEdit"><i>✏️</i><span id="miEditT">Edytuj układ</span></button>
+        <button class="mi" id="miSum"><i>📈</i>Podsumowanie</button>
         <button class="mi" id="miPacks"><i>🧩</i>Zestawy nawyków</button>
         <button class="mi" id="miBackup"><i>💾</i>Kopia danych</button>
         <hr>
@@ -224,11 +279,19 @@ textarea.mono{font:12px/1.4 ui-monospace,Consolas,monospace;min-height:110px}
 
   <section class="prog" aria-label="Postęp dnia">
     <div class="prow"><span id="ptxt"></span><span class="sp"></span><span id="week"></span><span id="streak"></span></div>
-    <div class="hint" id="hint">Dotknij kółka przy zadaniu, gdy zrobione. Jedno wystarczy.</div>
+    <div class="hint" id="hint">Zacznij od dwóch pytań na start dnia, potem dotknij kółka przy zadaniu, gdy zrobione. Jedno wystarczy.</div>
     <div class="strip" id="strip" aria-label="Ostatnie 14 dni"></div>
   </section>
 
+  <section id="checkin" aria-label="Pytania na start dnia"></section>
+
   <main id="cards"></main>
+
+  <details class="card sumcard" id="sumCard">
+    <summary><span class="ic">📈</span><span class="ttl"><b>Podsumowanie</b><small id="sumSub"></small></span><span class="chev"></span></summary>
+    <div class="body" id="sumBody"></div>
+  </details>
+
   <div id="addCard"></div>
 
   <footer><b>Done is better than perfect.</b> W kształtowaniu nawyku najbardziej liczy się wykonane zadanie, nie jak duże ono było. Miłego dnia :)</footer>
@@ -241,6 +304,7 @@ textarea.mono{font:12px/1.4 ui-monospace,Consolas,monospace;min-height:110px}
   <p><b>Nawyk — menedżer dnia</b></p>
   <p>Wersja: <span id="verA"></span></p>
   <p>Autor: Michał Rzekiecki</p>
+  <p class="src" style="margin-top:2px"><b>Co nowego w v0.04:</b> pytania na start dnia (sen i chęć 1–5), ocena po każdym ćwiczeniu, notatki z ćwiczeń dostępne codziennie oraz podsumowanie z wykresami samopoczucia i kształtowania nawyku.</p>
   <p>Kontakt: <a href="mailto:michus@gmail.com">michus@gmail.com</a></p>
   <p class="src">Model charyzmy: Obecność · Moc · Ciepło (O. Fox Cabane, „The Charisma Myth”). Rozgrzewka głosu oparta na ćwiczeniach J. Treasure (TED). Ćwiczenia mają charakter ogólny — przy bólu, zawrotach głowy lub chrypce przerwij i skonsultuj się ze specjalistą.</p>
   <div class="drow"><button class="btn" data-close>Zamknij</button></div>

@@ -1,7 +1,8 @@
-# 02 · Nawyk — menedżer dnia (v0.03)
+# 02 · Nawyk — menedżer dnia (v0.04)
 
 Codzienny zestaw małych zadań z sekcjami, które można dowolnie zmieniać. Autor: Michał Rzekiecki · michus@gmail.com
 
+- **Nowe w v0.04**: pytania na start dnia (sen 1–5, chęć do ćwiczeń 1–5; można pominąć), ocena pod każdym wykonanym zadaniem (czy wykonane dobrze 1–5, czy lepiej po ćwiczeniu 1–5; mały druk o podsumowaniu tygodnia), karta **Notatki i postępy** dostępna codziennie (nie liczy się do postępu; dokładana też do zestawów i istniejących układów), **Podsumowanie** (menu ⋯ lub samo po zrobieniu wszystkich zadań): wykres samopoczucie ↔ wynik z 14 dni, wykres siły nawyku, wnioski z danych i tekst „Ćwicz dalej, a efekty już masz ;)”.
 - **Zestawy nawyków** (menu ⋯): Charyzma, Rozciąganie i ruch, Skupienie i porządek, Pusty (własny). Wczytanie zestawu można cofnąć.
 - **Edytuj układ**: nazwa i ikona sekcji, kolejność, dodawanie/usuwanie bloków: nagrania YouTube (własne linki), sesja z timerem (także własna), ćwiczenie dnia (zestaw + własne ćwiczenia, filtr rodzaju), trening, dziennik (własne pytania), lista zadań, checklista.
 - **Wygląd**: 8 kolorów, tryb auto/ciemny/jasny, delikatne odcienie sekcji.
