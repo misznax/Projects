@@ -23,7 +23,7 @@ input,textarea,select{width:100%;margin:4px 0}
 <script>
 const GID='567326129811-v1fvoqoao7r34ju0u3quni9c4pkdkemp.apps.googleusercontent.com',gcid=()=>GID; // Client ID jest publiczny z założenia; stary zapis z Ustawień usuwany (powodował 401)
 try{localStorage.removeItem('gcid')}catch(e){}
-const $=s=>document.querySelector(s),cfg=k=>localStorage.getItem(k)||'',VER='v0.10';
+const $=s=>document.querySelector(s),cfg=k=>localStorage.getItem(k)||'',VER='v0.11';
 const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 const tm=s=>{s=Math.floor(s);const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60,p=n=>String(n).padStart(2,'0');return(h?h+':':'')+p(m)+':'+p(x)};
 const SYS='Jesteś asystentem studenta na wykładzie. Odpowiadaj po polsku, zwięźle, rzeczowo.';
@@ -159,12 +159,15 @@ function dl(blob,name){const a=document.createElement('a');a.href=URL.createObje
 const _js={};const loadJS=src=>_js[src]||(_js[src]=new Promise((res,rej)=>{const e=document.createElement('script');e.src=src;e.onload=res;e.onerror=()=>rej(new Error('Brak internetu'));document.head.appendChild(e)}));
 function cname(c,blob){const d=wallOf(c.start).d,p=n=>String(n).padStart(2,'0');
  return `${String(c.i+1).padStart(4,'0')}_${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}_${p(d.getHours())}-${p(d.getMinutes())}-${p(d.getSeconds())}.${blob&&blob.type.includes('mp4')?'m4a':'webm'}`}
-function bk(){dlg(`<h3>Kopia zapasowa</h3><p class=mut>Audio jest zapisane w kawałkach po 30 s (nazwy zawierają godzinę nagrania).</p><button class=p onclick="dlJson()">⬇ Tekst + notatki (JSON)</button><br><br><button onclick="dlg();zipAudio()">⬇ Audio + transkrypcja (ZIP)</button><br><br><button onclick="dlg();toDrive()">☁ Wyślij na Google Drive</button>${L.gdir?` <a href="https://drive.google.com/drive/folders/${L.gdir}" target=_blank rel=noopener style="color:#60a5fa">Otwórz folder ↗</a>`:''} <button onclick="dlg()">Zamknij</button>`)}
+function bk(){dlg(`<h3>Kopia zapasowa</h3><p class=mut>Audio jest zapisane w kawałkach po 30 s (nazwy zawierają godzinę nagrania).</p><button class=p onclick="dlg();zipAudio(1)">☁ Wyślij na Dysk Google (wybierz konto)</button><p class=mut>Otwiera menu telefonu – wybierasz „Dysk” i swoje konto. Bez kodów i kluczy.</p><button onclick="dlJson()">⬇ Tekst + notatki (JSON)</button><br><br><button onclick="dlg();zipAudio()">⬇ Audio + transkrypcja (ZIP)</button><br><br><button onclick="dlg();toDrive()">☁ Dysk – logowanie Google w aplikacji (beta)</button>${L.gdir?` <a href="https://drive.google.com/drive/folders/${L.gdir}" target=_blank rel=noopener style="color:#60a5fa">Otwórz folder ↗</a>`:''} <button onclick="dlg()">Zamknij</button>`)}
 function dlJson(){dl(new Blob([JSON.stringify(L,null,1)],{type:'application/json'}),safe(L.title)+'_'+stamp()+'.json');dlg()}
 async function bkAll(){const all=await tx('lec','readonly',s=>s.getAll());dl(new Blob([JSON.stringify(all,null,1)],{type:'application/json'}),'notatnik_wszystkie_'+stamp()+'.json')}
-async function zipAudio(){try{S.msg='ZIP: przygotowuję…';render();await loadJS('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');const z=new JSZip();let n=0;
+async function zipAudio(share){try{S.msg='ZIP: przygotowuję…';render();await loadJS('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');const z=new JSZip();let n=0;
  for(const c of L.chunks){const b=await tx('chunk','readonly',s=>s.get(L.id+':'+c.i));if(b)z.file(cname(c,b),b,{compression:'STORE'});S.msg=`ZIP: ${++n}/${L.chunks.length}`;if(n%10==0)render()}
- z.file('transkrypcja.md',md());S.msg='ZIP: pakuję…';render();dl(await z.generateAsync({type:'blob',streamFiles:true}),safe(L.title)+'.zip');S.msg='✅ ZIP gotowy (sprawdź Pobrane)'}catch(e){S.msg='ZIP: '+e.message}render()}
+ z.file('transkrypcja.md',md());S.msg='ZIP: pakuję…';render();const zb=await z.generateAsync({type:'blob',streamFiles:true}),zn=safe(L.title)+'.zip';
+ if(share){window.ZF=new File([zb],zn,{type:'application/zip'});S.msg='';dlg(`<h3>ZIP gotowy</h3><p class=mut>Kliknij i wybierz „Dysk” (Google Drive) oraz swoje konto z listy telefonu.</p><button class=p onclick="shareZip()">☁ Wybierz Dysk i konto</button> <button onclick="dlg()">Zamknij</button>`)}
+ else{dl(zb,zn);S.msg='✅ ZIP gotowy (sprawdź Pobrane)'}}catch(e){S.msg='ZIP: '+e.message}render()}
+function shareZip(){try{if(navigator.canShare&&navigator.canShare({files:[ZF]}))navigator.share({files:[ZF],title:ZF.name}).then(()=>dlg()).catch(e=>{if(e.name!=='AbortError'){dl(ZF,ZF.name);dlg()}});else{dl(ZF,ZF.name);dlg()}}catch(e){dl(ZF,ZF.name);dlg()}}
 async function mkNotes(){if(!canAI()){S.msg='Notatki wymagają internetu i klucza Anthropic (☰ → Ustawienia: „notatki/AI” musi być ✅)';render();return}
  const n0=L.notes.length;S.msg='✨ Tworzę notatki…';render();S.busy=false;await pump(true);S.msg=L.notes.length>n0?'':'Brak nowego tekstu do notatek (lub błąd – sprawdź komunikat)';render()}
 const gtoken=()=>new Promise(async(res,rej)=>{try{if(!gcid())throw new Error('Wpisz Google Client ID w Ustawieniach');await loadJS('https://accounts.google.com/gsi/client');
