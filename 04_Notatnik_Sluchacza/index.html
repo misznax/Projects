@@ -31,7 +31,7 @@ input,textarea,select{width:100%;margin:4px 0}
 <script>
 const GID='461701670960-b0ivbr1cktr8ocfbdaffpplmr09thc6j.apps.googleusercontent.com',gcid=()=>GID; // Client ID jest publiczny z założenia; stary zapis z Ustawień usuwany (powodował 401)
 try{localStorage.removeItem('gcid')}catch(e){}
-const $=s=>document.querySelector(s),cfg=k=>localStorage.getItem(k)||'',VER='v0.24';
+const $=s=>document.querySelector(s),cfg=k=>localStorage.getItem(k)||'',VER='v0.25';
 const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 const tm=s=>{s=Math.floor(s);const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60,p=n=>String(n).padStart(2,'0');return(h?h+':':'')+p(m)+':'+p(x)};
 const SYS='Jesteś asystentem studenta na wykładzie. Odpowiadaj po polsku, zwięźle, rzeczowo.';
@@ -51,7 +51,8 @@ function render(){
  _pp=-1;
  if(!L){plSync();if(S.sel){selView();return}$('#app').innerHTML=`<div style="display:flex;gap:8px"><button class=p onclick="newL()">＋ Nowy wykład</button>${LS.length?'<button onclick="selOn()">☑ Wybierz kilka</button>':''}</div>`+LS.map(l=>`<div class=card onclick="openL('${l.id}')" style="display:flex;gap:8px;align-items:center"><div style="flex:1"><div>${esc(l.title)}</div><div class=mut>${new Date(l.date).toLocaleString('pl')} · ${tm(dur(l))}</div></div><button class=s onclick="event.stopPropagation();delLec(['${l.id}'])">🗑</button></div>`).join('')+(LS.length?'':'<p class=mut>Brak wykładów.</p>');return}
  const pend=L.chunks.filter(c=>!c.done).length,on=navigator.onLine;
- let h=`<div style="display:flex;gap:8px"><button onclick="go()" ${S.rec?'disabled':''}>← Wykłady</button><button class=p onclick="newL()" ${S.rec?'disabled':''}>＋ Nowy</button></div><div style="display:flex;align-items:center;gap:8px;margin:8px 0"><span style="font-weight:600">${esc(L.title)}</span><button class=s onclick="ren()">✎</button></div><div class=card style="display:flex;gap:12px;align-items:center"><button class="${S.rec?'r':'p'}" onclick="toggle()" style="font-size:22px">${S.rec?'⏹ Stop':(L.pend?'⏺ Część '+(P().length+1):'⏺ Nagraj')}</button>${S.rec?'<button onclick="pause()">⏸ Przerwa</button>':''}<div><div id=el style="font-size:20px">${tm(S.rec?elapsed():dur(L))}</div><div class=mut>${on?'🌐 ☁️ chmura':'✈️ 📴 offline'}${pend?' · ⏳'+pend:''}</div></div></div>`;
+ let h=`<div style="display:flex;gap:8px"><button onclick="go()" ${S.rec?'disabled':''}>← Wykłady</button><button class=p onclick="newL()" ${S.rec?'disabled':''}>＋ Nowy</button></div><div style="display:flex;align-items:center;gap:8px;margin:8px 0"><span style="font-weight:600">${esc(L.title)}</span><button class=s onclick="ren()">✎</button></div><div class=card style="display:flex;gap:12px;align-items:center"><button class="${S.rec?'r':'p'}" onclick="toggle()" style="font-size:22px">${S.rec?'⏹ Stop':(L.pend?'⏺ Część '+(P().length+1):'⏺ Nagraj')}</button>${S.rec?'<button onclick="pause()">⏸ Przerwa</button>':''}<div><div id=el style="font-size:20px">${tm(S.rec?elapsed():dur(L))}</div><div class=mut>${on?'🌐 ☁️ chmura':'✈️ 📴 offline'}${pend?' · ⏳ '+mm(L.chunks.filter(c=>!c.done).reduce((x,c)=>x+(c.dur||30),0)):''}</div></div></div>`;
+ h+=`<div id=qb>${qBar()}</div>`;
  if(S.msg)h+=`<div class=mut style="color:#fbbf24">${esc(S.msg)}</div>`;
  if(S.link)h+=`<a href="${S.link}" target=_blank rel=noopener style="color:#60a5fa">Otwórz folder na Dysku ↗</a>`;
  if(pend&&!canSTT())h+=`<div class=mut style="color:#f87171">⏳ Audio czeka na transkrypcję: ${!on?'brak internetu':cfg('mode')==='offline'?'tryb „Tylko offline”':'brak klucza OpenAI (☰ → Ustawienia lub sekret OPENAI_API_KEY w Workerze)'}. Pierwszy tekst pojawia się ok. 30 s po starcie.</div>`;
@@ -106,26 +107,54 @@ function startSR(){const R=window.SpeechRecognition||window.webkitSpeechRecognit
  r.onend=()=>{if(S.rec)try{r.start()}catch(e){}};try{r.start()}catch(e){}}
 // ---------- transkrypcja: kolejka, automatycznie chmura ↔ offline
 addEventListener('online',()=>{render();pump()});addEventListener('offline',render);
-async function pump(final){if(S.busy||!L)return;S.busy=true;
- try{for(let c;c=L.chunks.find(x=>!x.done);){
-  if(!canSTT())break;
-  const blob=await tx('chunk','readonly',s=>s.get(L.id+':'+c.i));
-  try{await cloud(c,blob)}catch(e){S.fail=(S.fail||0)+1;S.msg='Chmura: '+e.message+(S.fail<=6?' – ponowię automatycznie':'');render();if(S.fail<=6)setTimeout(()=>pump(),Math.min(60000,4000*2**(S.fail-1)));break}
-  c.done=true;S.fail=0;S.msg='';await saveL();render()}}
- finally{S.busy=false}await notes(final)}
+const qs=(l,c)=>{S.cs=S.cs||{};const k=l.id+':'+c.i;return S.cs[k]||(S.cs[k]={})};
+async function pump(final){if(!L)return;const l=L;
+ if(S.busy){if(Date.now()-(S.pt||0)>240000)S.busy=false;else return}
+ S.busy=true;S.pt=Date.now();const gen=S.pg=(S.pg||0)+1;if(final)S.wf=l.id;
+ if(!S.rec&&(!S.wl2||S.wl2.released)&&l.chunks.some(c=>!c.done))try{navigator.wakeLock.request('screen').then(x=>{S.wl2=x}).catch(()=>{})}catch(e){}
+ try{
+  const free=()=>l.chunks.find(x=>{const q=qs(l,x);return!x.done&&!q.skip&&!(q.run&&Date.now()-q.run<200000)});
+  const worker=async()=>{for(let c;S.pg===gen&&L===l&&(c=free());){
+    if(!canSTT())return;const q=qs(l,c);q.run=Date.now();
+    try{const blob=await tx('chunk','readonly',s=>s.get(l.id+':'+c.i));if(blob)await cloud(l,c,blob);
+     c.done=true;q.err=0;S.fail=0;S.last='';S.nok=(S.nok||0)+1;S.pt=Date.now();(S.th=S.th||[]).push({t:Date.now(),d:c.dur||30});if(S.th.length>12)S.th.shift();await put(l);render()}
+    catch(e){q.err=(q.err||0)+1;if(q.fn===undefined)q.fn=S.nok||0;S.fail=(S.fail||0)+1;S.last=e.message;
+     if(q.err>=3&&(S.nok||0)>q.fn)q.skip=1;
+     if(!S.rt){const d=Math.min(60000,4000*2**Math.min(S.fail-1,4));S.rtAt=Date.now()+d;S.rt=setTimeout(()=>{S.rt=0;S.rtAt=0;pump()},d)}
+     render();return}
+    finally{q.run=0}}};
+  await Promise.all([1,2,3].map(worker))}
+ finally{if(S.pg===gen)S.busy=false}
+ const open=l.chunks.some(c=>!c.done&&!qs(l,c).skip);
+ if(!open&&S.wl2){try{S.wl2.release()}catch(e){}S.wl2=null}
+ const fin=final||S.wf===l.id;await notes(fin);if(!open&&!l.chunks.some(c=>!c.done&&!qs(l,c).skip))S.wf=null}
+const mm=s=>{const m=s/60;return s<1?'0 min':m<1?Math.round(s)+' s':m<10?(Math.round(m*10)/10).toString().replace('.',',')+' min':Math.round(m)+' min'};
+function qBar(){if(!L)return'';const box=(c,h)=>`<div style="border:2px solid ${c};background:${c}22;border-radius:12px;padding:10px 12px;margin:8px 0">${h}</div>`,bar=(p,c)=>`<div style="height:10px;background:#333;border-radius:5px;margin:6px 0"><div style="height:10px;width:${Math.max(2,Math.min(100,p))}%;background:${c};border-radius:5px"></div></div>`,r1=x=>x.toFixed(1).replace('.',',');
+ let h='';const J=S.job;
+ if(J){const el=(Date.now()-J.t0)/1000,eta=J.k>1?el/(J.k-1)*(J.N-J.k+1):0;h+=box('#a855f7',`<b style="font-size:15px">${J.n}</b> – część ${J.k} z ${J.N}${bar((J.k-1)/J.N*100+3,'#a855f7')}<div>${J.k>1?`Zostało ok. <b>${mm(eta)}</b>`:'Pierwsza część trwa zwykle 15–40 s'} · minęło ${mm(el)}</div><div class=mut>AI pracuje – nic nie klikaj, nie zamykaj strony.</div>`)}
+ const all=L.chunks,pend=all.filter(c=>!c.done),sk=pend.filter(c=>qs(L,c).skip),wait=pend.filter(c=>!qs(L,c).skip),du=a=>a.reduce((x,c)=>x+(c.dur||30),0);
+ if(wait.length&&canSTT()){const tot=du(all),dn=tot-du(pend),p=dn/Math.max(tot,1)*100,w=du(wait);let rate=0;const th=S.th||[];if(th.length>=3){const sp=(th[th.length-1].t-th[0].t)/1000;if(sp>0)rate=th.slice(1).reduce((x,y)=>x+y.d,0)/sp}
+  if(S.fail&&S.rtAt)h+=box('#f97316',`<b style="font-size:15px">⚠ Transkrypcja: przerwa w połączeniu</b>${bar(p,'#f97316')}<div>Czeka <b>${mm(w)}</b> nagrania · ponawiam za ${Math.max(0,Math.ceil((S.rtAt-Date.now())/1000))} s (próba ${S.fail})</div><div class=mut>${esc(S.last||'')}</div><button class=s onclick="resume()">▶ Ponów teraz</button>`);
+  else{const net=S.rec?rate-1:rate;let eta='Liczę czas do końca…';if(rate&&net>0.05)eta=`Zostało ok. <b>${mm(w/net)}</b>`;else if(rate)eta=`<b>Nie nadąża za nagrywaniem</b> – dokończy po zatrzymaniu`;
+   h+=box('#3b82f6',`<b style="font-size:15px">⏳ Transkrypcja w toku${S.rec?' (równolegle z nagrywaniem)':''}</b>${bar(p,'#3b82f6')}<div>Przepisane <b>${mm(dn)}</b> z ${mm(tot)} nagrania (${Math.round(p)}%) · czeka <b>${mm(w)}</b></div><div>${eta}${rate?` · tempo ×${r1(rate)} (min nagrania na minutę)`:''}</div><div class=mut>To normalne przy długim nagraniu: nic nie klikaj, nie zamykaj strony ani nie blokuj ekranu. Postęp zapisuje się sam.</div>`)}}
+ if(sk.length)h+=box('#ef4444',`<b>❌ Pominięto ${sk.length} ${sk.length===1?'kawałek':'kawałki'} (${mm(du(sk))}) po 3 nieudanych próbach</b><div class=mut>${esc(S.last||'')}</div><button class=s onclick="resume(1)">↻ Spróbuj jeszcze raz</button>`);
+ return h}
+function resume(all){clearTimeout(S.rt);S.rt=0;S.rtAt=0;S.fail=0;if(all)Object.values(S.cs||{}).forEach(q=>{q.skip=0;q.err=0});S.busy=false;pump()}
+setInterval(()=>{if(!L)return;if(L.chunks.some(c=>!c.done&&!qs(L,c).skip)&&!S.busy&&!S.rt&&canSTT()&&document.visibilityState==='visible')pump();const e=$('#qb');if(e)e.innerHTML=qBar()},1000);
 async function rj(r){const t=await r.text();try{return JSON.parse(t)}catch(e){throw new Error(t.trim()?'odpowiedź serwera nie jest JSON: '+t.trim().slice(0,60):'pusta odpowiedź serwera (przerwane połączenie)')}}
-async function cloud(c,blob){
- const f=new FormData();f.append('file',blob,'c.'+(blob.type.includes('mp4')?'m4a':'webm'));f.append('model','gpt-4o-transcribe-diarize');
- f.append('response_format','diarized_json');f.append('chunking_strategy','auto');f.append('language','pl');
- const r=cap.stt?await fetch('/api/n/stt',{method:'POST',body:f}):await fetch('https://api.openai.com/v1/audio/transcriptions',{method:'POST',headers:{Authorization:'Bearer '+cfg('oai')},body:f});
- if(!r.ok)throw new Error(r.status+' '+(await r.text()).slice(0,80));
- const segs=((await rj(r)).segments)||[],tt={};
- segs.forEach(s=>tt[s.speaker]=(tt[s.speaker]||0)+(s.end-s.start));
- const dom=Object.keys(tt).sort((a,b)=>tt[b]-tt[a])[0]; // najdłużej mówiący w fragmencie = wykładowca
- L.utt=L.utt.filter(u=>!(u.tmp&&u.s>=c.start-1&&u.s<c.start+c.dur+1));
- const out=[];for(const s of segs){const u={s:c.start+s.start,e:c.start+s.end,sp:s.speaker===dom?'L':'O',t:(s.text||'').trim()};if(!u.t)continue;
-  const p=out[out.length-1];if(p&&p.sp===u.sp&&u.s-p.e<1.5){p.e=u.e;p.t+=' '+u.t}else out.push(u)}
- L.utt.push(...out);L.utt.sort((a,b)=>a.s-b.s)}
+async function cloud(l,c,blob){const ac=new AbortController(),to=setTimeout(()=>ac.abort(),120000);
+ try{const f=new FormData();f.append('file',blob,'c.'+(blob.type.includes('mp4')?'m4a':'webm'));f.append('model','gpt-4o-transcribe-diarize');
+  f.append('response_format','diarized_json');f.append('chunking_strategy','auto');f.append('language','pl');
+  const r=cap.stt?await fetch('/api/n/stt',{method:'POST',body:f,signal:ac.signal}):await fetch('https://api.openai.com/v1/audio/transcriptions',{method:'POST',headers:{Authorization:'Bearer '+cfg('oai')},body:f,signal:ac.signal});
+  if(!r.ok)throw new Error(r.status+' '+(await r.text()).slice(0,80));
+  const segs=((await rj(r)).segments)||[],tt={};
+  segs.forEach(s=>tt[s.speaker]=(tt[s.speaker]||0)+(s.end-s.start));
+  const dom=Object.keys(tt).sort((a,b)=>tt[b]-tt[a])[0]; // najdłużej mówiący w fragmencie = wykładowca
+  l.utt=l.utt.filter(u=>!(u.tmp&&u.s>=c.start-1&&u.s<c.start+c.dur+1));
+  const out=[];for(const s of segs){const u={s:c.start+s.start,e:c.start+s.end,sp:s.speaker===dom?'L':'O',t:(s.text||'').trim()};if(!u.t)continue;
+   const p=out[out.length-1];if(p&&p.sp===u.sp&&u.s-p.e<1.5){p.e=u.e;p.t+=' '+u.t}else out.push(u)}
+  l.utt.push(...out);l.utt.sort((a,b)=>a.s-b.s)}
+ catch(e){if(e.name==='AbortError')throw new Error('serwer nie odpowiedział w ciągu 2 min');throw e}finally{clearTimeout(to)}}
 // ---------- Claude: notatki, autorzy, weryfikacja
 async function claude(p,{model='claude-haiku-5-5',web=0,max=1800}={}){
  const body={model,max_tokens:max,system:SYS,messages:[{role:'user',content:p}]};if(web)body.tools=[{type:'web_search_20250305',name:'web_search',max_uses:3}];
@@ -158,18 +187,18 @@ function mergeNotes(a){const o=[];let n=0;for(const x of a){const p=o[o.length-1
 const NP='Zrób ZWIĘZŁE notatki z wykładu. Łącz w DUŻE bloki tematyczne (zwykle 8–15 min; nie dziel jednego tematu na części i nie rób bloków krótszych niż 5 min). Linie: [sekundy] ROLA: tekst (WYKŁADOWCA, PYTANIE z sali, ODPOWIEDŹ wykładowcy). Dla każdego bloku: title (krótki, max 6 słów), start_s, end_s, summary = 3–5 krótkich punktów (każdy max 15 słów, sama esencja), oddzielonych \\n. Każdy punkt zaczyna się symbolem: 🔑 definicja/kluczowe pojęcie, ⚠️ bardzo ważne/uwaga/częsty błąd, 📅 termin/egzamin/zadanie/wymóg, 💡 przykład, ❓ pytanie z sali → odpowiedź (w jednym punkcie), • zwykły punkt. Symbole ⚠️ i 📅 dawaj oszczędnie: najwyżej 2 na blok i tylko przy naprawdę ważnych rzeczach; resztę oznacz • (zwykły punkt), 🔑 lub 💡. Zwróć WYŁĄCZNIE tablicę JSON, bez komentarzy i bez ```: [{"title":"","start_s":0,"end_s":0,"summary":""}]\n\n';
 const npc=()=>{const p=L.notes.length?L.notes[L.notes.length-1].title:'';return NP.trimEnd()+(p?' Poprzedni blok miał tytuł „'+p.replace(/[„”"]/g,'')+'” – jeśli ten sam temat trwa dalej, użyj DOKŁADNIE tego tytułu.':'')+'\n\n'};
 async function notes(force){if(!canAI()||!L)return;
- const R=roles(),fresh=L.utt.map((u,i)=>[u,R[i]]).filter(([u])=>!u.tmp&&u.s>=L.notedUntil);if(!fresh.length)return;
+ const lim=Math.min(Infinity,...L.chunks.filter(c=>!c.done&&!qs(L,c).skip).map(c=>c.start)),R=roles(),fresh=L.utt.map((u,i)=>[u,R[i]]).filter(([u])=>!u.tmp&&u.s>=L.notedUntil&&u.s<lim);if(!fresh.length)return;
  const last=fresh[fresh.length-1][0],span=last.e-L.notedUntil;if(span<600&&!(force&&span>20))return;
  const B=[];let cur=[],ch=0;for(const x of fresh){const n=line(x[0],x[1]).length;if(cur.length&&(x[0].e-cur[0][0].s>720||ch+n>10000)){B.push(cur);cur=[];ch=0}cur.push(x);ch+=n}if(cur.length)B.push(cur);
  let wl=null;if(!S.rec)try{wl=await navigator.wakeLock.request('screen')}catch(e){}
  try{let k=0;for(const b of B){k++;const b0=b[0][0].s,b1=b[b.length-1][0].e;if(!force&&k===B.length&&b1-b0<600)break;
-   if(B.length>1){S.msg=`✨ Notatki ${k}/${B.length}…`;render()}
+   S.job={n:'✨ Notatki',k,N:B.length,t0:(S.job&&S.job.t0)||Date.now()};render();
    let a=null;for(let t=0;t<2&&!a;t++)a=parseNotes(await claude(npc()+b.map(([u,r])=>line(u,r)).join('\n'),{max:2500}));
    if(!a)throw new Error('AI zwróciło odpowiedź, której nie umiem odczytać – kliknij „Sporządź notatki” jeszcze raz');
    a.forEach(n=>{const cl=v=>Math.min(Math.max(v,b0),b1),x=+n.start_s,y=+n.end_s,st=Number.isFinite(x)?cl(x):b0,en=Number.isFinite(y)?cl(y):b1;
     L.notes.push({title:String(n.title),start:st,end:Math.max(en,st+1),summary:Array.isArray(n.summary)?n.summary.join('\n'):String(n.summary||'')})});
    L.notes=mergeNotes(L.notes).a;L.notedUntil=b1;await saveL();render()}
-  if(/^✨/.test(S.msg||'')){S.msg='';render()}}catch(e){S.msg='Notatki: '+e.message;render()}finally{try{wl&&wl.release()}catch(e){}}}
+  if(/^✨/.test(S.msg||'')){S.msg='';render()}}catch(e){S.msg='Notatki: '+e.message;render()}finally{S.job=null;try{wl&&wl.release()}catch(e){}}}
 // ---------- weryfikacja całości (zakładka „Weryfikacja”)
 const VD={'błędne':['❌','#f87171','Błędne'],'sporne':['⚠️','#fb923c','Sporne'],'nieaktualne':['🕒','#60a5fa','Nieaktualne'],'niepewne':['❓','#facc15','Niepewne – warto sprawdzić']},VC={'błędne':'#dc2626','sporne':'#ea580c','nieaktualne':'#2563eb','niepewne':'#ca8a04'};
 const vnorm=v=>{v=String(v||'').toLowerCase();return/fałsz|błęd|niepraw/.test(v)?'błędne':/spor/.test(v)?'sporne':/nieakt|przestarz/.test(v)?'nieaktualne':'niepewne'};
@@ -181,8 +210,8 @@ async function verifyAll(){if(S.vp)return;if(!canAI()){S.msg='Weryfikacja wymaga
  const R=roles(),all=L.utt.map((u,i)=>[u,R[i]]).filter(([u])=>!u.tmp);if(!all.length){S.msg='Brak tekstu do weryfikacji';render();return}
  const B=[];let cur=[],ch=0;for(const x of all){const n=line(x[0],x[1]).length;if(cur.length&&ch+n>8000){B.push(cur);cur=[];ch=0}cur.push(x);ch+=n}if(cur.length)B.push(cur);
  const web=!!(cap.ckey||cfg('ant')),items=[];let checked=0,fail=0,bad=0,okc=0,wl=null;if(!S.rec)try{wl=await navigator.wakeLock.request('screen')}catch(e){}
- S.vp={k:0,n:B.length};S.msg='';tab=2;render();
- try{for(const b of B){S.vp.k++;render();let a=null;
+ S.vp={k:0,n:B.length,t0:Date.now()};S.msg='';tab=2;render();
+ try{for(const b of B){S.vp.k++;S.job={n:'✅ Weryfikacja',k:S.vp.k,N:B.length,t0:S.vp.t0};render();let a=null;
    for(let t=0;t<2&&!a;t++){try{a=parseArr(await claude(VP+b.map(([u,r])=>line(u,r)).join('\n'),{model:'claude-sonnet-5-5',web:1,max:2500}))}catch(e){}}
    if(!a){if(++bad>=3)break;continue}bad=0;okc++;
    for(const x of a){if(!x.claim){if(x.checked!==undefined)checked+=+x.checked||0;continue}
@@ -191,7 +220,7 @@ async function verifyAll(){if(S.vp)return;if(!canAI()){S.msg='Weryfikacja wymaga
   items.sort((a,b)=>a.t-b.t);fail=B.length-okc;
   if(!okc)S.msg='Weryfikacja: nie udało się połączyć z AI – sprawdź zasięg i spróbuj ponownie';
   else{L.verify={at:Date.now(),web,items,checked:Math.max(checked,items.length),fail,total:B.length};await saveL();S.msg=fail?`Weryfikacja: nie sprawdzono ${fail} z ${B.length} fragmentów – kliknij „Zweryfikuj ponownie”`:''}}
- catch(e){S.msg='Weryfikacja: '+e.message}finally{S.vp=null;try{wl&&wl.release()}catch(e){}}render()}
+ catch(e){S.msg='Weryfikacja: '+e.message}finally{S.vp=null;S.job=null;try{wl&&wl.release()}catch(e){}}render()}
 function verHtml(){const v=L.verify,web=!!(cap.ckey||cfg('ant')),btn=`<button class=p onclick="verifyAll()" ${S.vp?'disabled':''}>${S.vp?`⏳ Sprawdzam ${S.vp.k}/${S.vp.n}…`:v?'🔄 Zweryfikuj ponownie':'✅ Zweryfikuj całość'}</button>`;
  if(!v)return `<div class=card><div style="font-weight:600">Weryfikacja faktów</div><p class=mut>Sprawdzę całą transkrypcję (${L.utt.filter(u=>!u.tmp).length} wypowiedzi) i pokażę tylko to, co może się nie zgadzać: tezy błędne, sporne, nieaktualne i niepewne – z uzasadnieniem, poprawką i źródłem.${web?' Używam wyszukiwania w sieci.':' Tryb podstawowy: odpowiadam z pamięci modelu, bez wyszukiwania w sieci – to wskazówki, nie wyrok.'} Duży wykład to kilka minut, nie blokuj ekranu.</p>${btn}</div>`;
  const g={};v.items.forEach(x=>(g[x.v]=g[x.v]||[]).push(x));const ks=Object.keys(VD).filter(k=>g[k]);
@@ -417,7 +446,7 @@ async function diag(){const l=L,idx=new Set(l.chunks.map(c=>c.i)),mx=Math.max(-1
 function delPrev(){dlg(`<h3>Usunąć linie podglądu bez nagrania?</h3><p class=mut>To tekst z mikrofonu na żywo, dla którego nie ma pliku audio. Tej operacji nie można cofnąć.</p><button class=r onclick="doDelPrev()">Tak, usuń</button> <button onclick="dlg()">Anuluj</button>`)}
 async function doDelPrev(){L.utt=L.utt.filter(u=>!u.tmp||L.chunks.some(c=>u.s>=c.start-1&&u.s<c.start+c.dur+1));await saveL();dlg();render()}
 async function mkNotes(){if(!canAI()){S.msg='Notatki wymagają internetu i klucza Anthropic (☰ → Ustawienia: „notatki/AI” musi być ✅)';render();return}
- const n0=L.notes.length;S.msg='✨ Tworzę notatki…';render();S.busy=false;await pump(true);S.msg=L.notes.length>n0?'':(/^(Notatki|Chmura)/.test(S.msg||'')?S.msg:'Brak nowego tekstu do notatek');render()}
+ const n0=L.notes.length;S.msg='✨ Tworzę notatki…';render();S.busy=false;await pump(true);const pw=L.chunks.filter(c=>!c.done&&!qs(L,c).skip);S.msg=L.notes.length>n0?'':(/^Notatki/.test(S.msg||'')?S.msg:pw.length?`Transkrypcja jeszcze trwa (zostało ${mm(pw.reduce((x,c)=>x+(c.dur||30),0))}) – notatki dopiszę automatycznie po jej zakończeniu`:'Brak nowego tekstu do notatek');render()}
 const gtoken=()=>new Promise(async(res,rej)=>{try{if(!gcid())throw new Error('Wpisz Google Client ID w Ustawieniach');await loadJS('https://accounts.google.com/gsi/client');
  google.accounts.oauth2.initTokenClient({client_id:gcid(),scope:'https://www.googleapis.com/auth/drive.file',prompt:'select_account',error_callback:e=>rej(new Error(e&&e.type==='popup_failed_to_open'?'Przeglądarka zablokowała okno logowania – zezwól na wyskakujące okna dla tej strony':e&&e.type==='popup_closed'?'Okno logowania zamknięte':'Logowanie Google: '+((e&&(e.message||e.type))||'błąd'))),callback:r=>r.access_token?res(r.access_token):rej(new Error('[ID '+gcid().slice(0,6)+'…'+gcid().slice(-30,-24)+'] '+(r.error==='access_denied'?'Brak zgody. Aplikacja Google jest w trybie testowym – opublikuj ją (Google Cloud → Auth platform → Audience → Publish app) albo dodaj konto w Test users':r.error==='invalid_client'?'Google nie zna tego Client ID (sprawdź projekt w Google Cloud)':'Google: '+(r.error_description||r.error||'brak zgody'))))}).requestAccessToken()}catch(e){rej(e)}});
 async function gerr(r){let t='';try{t=await r.text()}catch(e){}
