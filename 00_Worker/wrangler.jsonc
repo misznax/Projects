@@ -5,6 +5,7 @@
   "assets": { "directory": "./dist", "binding": "ASSETS", "run_worker_first": true },
   "ai": { "binding": "AI" },
   "d1_databases": [{ "binding": "DB", "database_name": "projects-stats", "database_id": "b7a0cc3c-4750-4b2c-aa0b-6c4cdafd1099" }],
+  "workers_dev": true,
   "routes": [
     { "pattern": "aplikacje.smialo.org", "custom_domain": true },
     { "pattern": "anatomia.smialo.org", "custom_domain": true }
