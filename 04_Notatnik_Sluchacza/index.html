@@ -31,7 +31,7 @@ input,textarea,select{width:100%;margin:4px 0}
 <script>
 const GID='461701670960-b0ivbr1cktr8ocfbdaffpplmr09thc6j.apps.googleusercontent.com',gcid=()=>GID; // Client ID jest publiczny z założenia; stary zapis z Ustawień usuwany (powodował 401)
 try{localStorage.removeItem('gcid')}catch(e){}
-const $=s=>document.querySelector(s),cfg=k=>localStorage.getItem(k)||'',VER='v0.25';
+const $=s=>document.querySelector(s),cfg=k=>localStorage.getItem(k)||'',VER='v0.26';
 const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 const tm=s=>{s=Math.floor(s);const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60,p=n=>String(n).padStart(2,'0');return(h?h+':':'')+p(m)+':'+p(x)};
 const SYS='Jesteś asystentem studenta na wykładzie. Odpowiadaj po polsku, zwięźle, rzeczowo.';
@@ -146,7 +146,7 @@ async function cloud(l,c,blob){const ac=new AbortController(),to=setTimeout(()=>
  try{const f=new FormData();f.append('file',blob,'c.'+(blob.type.includes('mp4')?'m4a':'webm'));f.append('model','gpt-4o-transcribe-diarize');
   f.append('response_format','diarized_json');f.append('chunking_strategy','auto');f.append('language','pl');
   const r=cap.stt?await fetch('/api/n/stt',{method:'POST',body:f,signal:ac.signal}):await fetch('https://api.openai.com/v1/audio/transcriptions',{method:'POST',headers:{Authorization:'Bearer '+cfg('oai')},body:f,signal:ac.signal});
-  if(!r.ok)throw new Error(r.status+' '+(await r.text()).slice(0,80));
+  if(!r.ok){const t=await r.text();throw new Error(/neuron|4006|quota|allocation|limit/i.test(t)?'Dzienny limit AI na serwerze wyczerpany (odnawia się o 01:00 czasu polskiego) – nagrania są bezpieczne, ruszę sam':r.status+' '+t.slice(0,120))}
   const segs=((await rj(r)).segments)||[],tt={};
   segs.forEach(s=>tt[s.speaker]=(tt[s.speaker]||0)+(s.end-s.start));
   const dom=Object.keys(tt).sort((a,b)=>tt[b]-tt[a])[0]; // najdłużej mówiący w fragmencie = wykładowca
