@@ -26,7 +26,7 @@ input,textarea,select{width:100%;margin:4px 0}
 <script>
 const GID='461701670960-b0ivbr1cktr8ocfbdaffpplmr09thc6j.apps.googleusercontent.com',gcid=()=>GID; // Client ID jest publiczny z założenia; stary zapis z Ustawień usuwany (powodował 401)
 try{localStorage.removeItem('gcid')}catch(e){}
-const $=s=>document.querySelector(s),cfg=k=>localStorage.getItem(k)||'',VER='v0.17';
+const $=s=>document.querySelector(s),cfg=k=>localStorage.getItem(k)||'',VER='v0.18';
 const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 const tm=s=>{s=Math.floor(s);const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60,p=n=>String(n).padStart(2,'0');return(h?h+':':'')+p(m)+':'+p(x)};
 const SYS='Jesteś asystentem studenta na wykładzie. Odpowiadaj po polsku, zwięźle, rzeczowo.';
@@ -44,13 +44,13 @@ const dur=l=>l.chunks.reduce((a,c)=>a+c.dur,0);
 async function go(){if(S.rec)return;L=null;S.sel=null;LS=(await tx('lec','readonly',s=>s.getAll())||[]).sort((a,b)=>b.date-a.date);render()}
 function render(){
  _pp=-1;
- if(!L){plSync();if(S.sel){selView();return}$('#app').innerHTML=`<div style="display:flex;gap:8px"><button class=p onclick="newL()">＋ Nowy wykład</button>${LS.length?'<button onclick="selOn()">☑ Wybierz kilka</button>':''}</div>`+LS.map(l=>`<div class=card onclick="openL('${l.id}')"><div>${esc(l.title)}</div><div class=mut>${new Date(l.date).toLocaleString('pl')} · ${tm(dur(l))}</div></div>`).join('')+(LS.length?'':'<p class=mut>Brak wykładów.</p>');return}
+ if(!L){plSync();if(S.sel){selView();return}$('#app').innerHTML=`<div style="display:flex;gap:8px"><button class=p onclick="newL()">＋ Nowy wykład</button>${LS.length?'<button onclick="selOn()">☑ Wybierz kilka</button>':''}</div>`+LS.map(l=>`<div class=card onclick="openL('${l.id}')" style="display:flex;gap:8px;align-items:center"><div style="flex:1"><div>${esc(l.title)}</div><div class=mut>${new Date(l.date).toLocaleString('pl')} · ${tm(dur(l))}</div></div><button class=s onclick="event.stopPropagation();delLec(['${l.id}'])">🗑</button></div>`).join('')+(LS.length?'':'<p class=mut>Brak wykładów.</p>');return}
  const pend=L.chunks.filter(c=>!c.done).length,on=navigator.onLine;
  let h=`<div style="display:flex;gap:8px"><button onclick="go()" ${S.rec?'disabled':''}>← Wykłady</button><button class=p onclick="newL()" ${S.rec?'disabled':''}>＋ Nowy</button></div><div style="display:flex;align-items:center;gap:8px;margin:8px 0"><span style="font-weight:600">${esc(L.title)}</span><button class=s onclick="ren()">✎</button></div><div class=card style="display:flex;gap:12px;align-items:center"><button class="${S.rec?'r':'p'}" onclick="toggle()" style="font-size:22px">${S.rec?'⏹ Stop':(L.pend?'⏺ Część '+(P().length+1):'⏺ Nagraj')}</button>${S.rec?'<button onclick="pause()">⏸ Przerwa</button>':''}<div><div id=el style="font-size:20px">${tm(S.rec?elapsed():dur(L))}</div><div class=mut>${on?'🌐 ☁️ chmura':'✈️ 📴 offline'}${pend?' · ⏳'+pend:''}</div></div></div>`;
  if(S.msg)h+=`<div class=mut style="color:#fbbf24">${esc(S.msg)}</div>`;
  if(S.link)h+=`<a href="${S.link}" target=_blank rel=noopener style="color:#60a5fa">Otwórz folder na Dysku ↗</a>`;
  if(pend&&!canSTT())h+=`<div class=mut style="color:#f87171">⏳ Audio czeka na transkrypcję: ${!on?'brak internetu':cfg('mode')==='offline'?'tryb „Tylko offline”':'brak klucza OpenAI (☰ → Ustawienia lub sekret OPENAI_API_KEY w Workerze)'}. Pierwszy tekst pojawia się ok. 30 s po starcie.</div>`;
- h+=`<div class=tabs><button class="${tab?'':'on'}" onclick="tab=0;render()">Notatki</button><button class="${tab?'on':''}" onclick="tab=1;render()">Transkrypcja</button><button onclick="exp()">⇪</button><button onclick="bk()">⛁</button></div><button class=p onclick="mkNotes()" style="width:100%">✨ Sporządź notatki</button>`;
+ h+=`<div class=tabs><button class="${tab?'':'on'}" onclick="tab=0;render()">Notatki</button><button class="${tab?'on':''}" onclick="tab=1;render()">Transkrypcja</button><button onclick="exp()">⇪</button><button onclick="bk()">⛁</button><button onclick="delMenu()">🗑</button></div><button class=p onclick="mkNotes()" style="width:100%">✨ Sporządź notatki</button>`;
  if(!tab){h+=L.notes.length?'':'<p class=mut>Notatki po ok. 5 min nagrania (internet + klucz Anthropic).</p>';
   h+=L.notes.map((n,i)=>hdr(n.start)+`<div class=card><b onclick="plAt(${n.start})" style="cursor:pointer">▶ ${ts(n.start)} (${tm(n.end-n.start)})</b><div style="font-weight:600">${esc(n.title)}</div><pre>${esc(n.summary)}</pre>${n.authors?`<div class=card><b>AUTORZY</b><pre>${esc(n.authors)}</pre></div>`:''}${n.ver?`<div class=card><b>WERYFIKACJA</b><pre>${esc(n.ver)}</pre></div>`:''}<button class=s onclick="enrich(${i},0)">Autorzy</button> <button class=s onclick="enrich(${i},1)">Zweryfikuj</button> <button class=s onclick="delNote(${i})">🗑 Usuń</button> ${n.busy?'⏳':''}</div>`).join('')+(L.notes.length?`<button class=s onclick="delNote(-1)">🗑 Usuń wszystkie notatki</button>`:'')}
  else{const R=roles();h+=L.utt.map((u,i)=>hdr(u.s)+`<div class=card><b class=${R[i]==='Pytanie'?'P':R[i]==='Odpowiedź'?'O':'W'} onclick="plAt(${u.s})" style="cursor:pointer">▶ ${ts(u.s)} · ${R[i]}${u.tmp?' (podgląd)':''}</b><div>${esc(u.t)}</div></div>`).join('')||'<p class=mut>Pusto.</p>'}
@@ -104,15 +104,16 @@ async function pump(final){if(S.busy||!L)return;S.busy=true;
  try{for(let c;c=L.chunks.find(x=>!x.done);){
   if(!canSTT())break;
   const blob=await tx('chunk','readonly',s=>s.get(L.id+':'+c.i));
-  try{await cloud(c,blob)}catch(e){S.msg='Chmura: '+e.message;render();break}
-  c.done=true;S.msg='';await saveL();render()}}
+  try{await cloud(c,blob)}catch(e){S.fail=(S.fail||0)+1;S.msg='Chmura: '+e.message+(S.fail<=6?' – ponowię automatycznie':'');render();if(S.fail<=6)setTimeout(()=>pump(),Math.min(60000,4000*2**(S.fail-1)));break}
+  c.done=true;S.fail=0;S.msg='';await saveL();render()}}
  finally{S.busy=false}await notes(final)}
+async function rj(r){const t=await r.text();try{return JSON.parse(t)}catch(e){throw new Error(t.trim()?'odpowiedź serwera nie jest JSON: '+t.trim().slice(0,60):'pusta odpowiedź serwera (przerwane połączenie)')}}
 async function cloud(c,blob){
  const f=new FormData();f.append('file',blob,'c.'+(blob.type.includes('mp4')?'m4a':'webm'));f.append('model','gpt-4o-transcribe-diarize');
  f.append('response_format','diarized_json');f.append('chunking_strategy','auto');f.append('language','pl');
  const r=cap.stt?await fetch('/api/n/stt',{method:'POST',body:f}):await fetch('https://api.openai.com/v1/audio/transcriptions',{method:'POST',headers:{Authorization:'Bearer '+cfg('oai')},body:f});
  if(!r.ok)throw new Error(r.status+' '+(await r.text()).slice(0,80));
- const segs=(await r.json()).segments||[],tt={};
+ const segs=((await rj(r)).segments)||[],tt={};
  segs.forEach(s=>tt[s.speaker]=(tt[s.speaker]||0)+(s.end-s.start));
  const dom=Object.keys(tt).sort((a,b)=>tt[b]-tt[a])[0]; // najdłużej mówiący w fragmencie = wykładowca
  L.utt=L.utt.filter(u=>!(u.tmp&&u.s>=c.start-1&&u.s<c.start+c.dur+1));
@@ -124,16 +125,35 @@ async function claude(p,{model='claude-haiku-5-5',web=0,max=1800}={}){
  const body={model,max_tokens:max,system:SYS,messages:[{role:'user',content:p}]};if(web)body.tools=[{type:'web_search_20250305',name:'web_search',max_uses:3}];
  const r=cap.claude?await fetch('/api/n/claude',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)})
   :await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'x-api-key':cfg('ant'),'anthropic-version':'2023-06-01','content-type':'application/json','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify(body)});
- if(!r.ok)throw new Error(r.status);return(await r.json()).content.filter(b=>b.type==='text').map(b=>b.text).join('')}
+ if(!r.ok)throw new Error(r.status);return((await rj(r)).content||[]).filter(b=>b.type==='text').map(b=>b.text).join('')}
 const line=(u,r)=>`[${Math.floor(u.s)}] ${r==='Pytanie'?'PYTANIE':r==='Odpowiedź'?'ODPOWIEDŹ':'WYKŁADOWCA'}: ${u.t}`;
+const fixJson=s=>{let o='',q=0,e=0;for(const ch of s){if(q){if(e){e=0;o+=ch}else if(ch==='\\'){e=1;o+=ch}else if(ch==='"'){q=0;o+=ch}else if(ch==='\n')o+='\\n';else if(ch==='\r'||ch==='\t')o+=' ';else o+=ch}else{if(ch==='"')q=1;o+=ch}}return o};
+function parseNotes(raw){const s=String(raw||'').replace(/```(?:json)?/gi,''),i=s.indexOf('[');if(i<0)return null;
+ try{const j=s.lastIndexOf(']');if(j>i){const a=JSON.parse(fixJson(s.slice(i,j+1)));if(Array.isArray(a)&&a.some(n=>n&&n.title))return a.filter(n=>n&&n.title)}}catch(e){}
+ const out=[],t=fixJson(s.slice(i)),re=/\{[^{}]*\}/g;let m;while(m=re.exec(t)){try{const n=JSON.parse(m[0]);if(n&&n.title)out.push(n)}catch(e){}}return out.length?out:null}
+const NP='Podziel transkrypt wykładu na tematyczne notatki (każda ok. 2–6 min). Linie: [sekundy] ROLA: tekst (WYKŁADOWCA, PYTANIE z sali, ODPOWIEDŹ wykładowcy). Dla każdej: title, start_s, end_s, summary (3–6 punktów „• ” oddzielonych \\n; pytania z sali jako „❓ pytanie → odpowiedź”). Zwróć WYŁĄCZNIE tablicę JSON, bez komentarzy i bez ```: [{"title":"","start_s":0,"end_s":0,"summary":""}]\n\n';
 async function notes(force){if(!canAI()||!L)return;
  const R=roles(),fresh=L.utt.map((u,i)=>[u,R[i]]).filter(([u])=>!u.tmp&&u.s>=L.notedUntil);if(!fresh.length)return;
  const last=fresh[fresh.length-1][0],span=last.e-L.notedUntil;if(span<300&&!(force&&span>20))return;
- try{const raw=await claude(`Podziel transkrypt wykładu na tematyczne notatki (każda ok. 2–6 min). Linie: [sekundy] ROLA: tekst (WYKŁADOWCA, PYTANIE z sali, ODPOWIEDŹ wykładowcy). Dla każdej: title, start_s, end_s, summary (3–6 punktów „• ” oddzielonych \\n; pytania z sali jako „❓ pytanie → odpowiedź”). Zwróć WYŁĄCZNIE tablicę JSON: [{"title":"","start_s":0,"end_s":0,"summary":""}]\n\n`+fresh.map(([u,r])=>line(u,r)).join('\n'));
-  const a=JSON.parse(raw.slice(raw.indexOf('['),raw.lastIndexOf(']')+1));
-  a.forEach(n=>L.notes.push({title:n.title,start:n.start_s,end:n.end_s,summary:n.summary}));L.notedUntil=last.e;await saveL();render()}catch(e){S.msg='Notatki: '+e.message;render()}}
+ const B=[];let cur=[],ch=0;for(const x of fresh){const n=line(x[0],x[1]).length;if(cur.length&&(x[0].e-cur[0][0].s>480||ch+n>9000)){B.push(cur);cur=[];ch=0}cur.push(x);ch+=n}if(cur.length)B.push(cur);
+ try{let k=0;for(const b of B){k++;const b0=b[0][0].s,b1=b[b.length-1][0].e;if(!force&&k===B.length&&b1-b0<300)break;
+   if(B.length>1){S.msg=`✨ Notatki ${k}/${B.length}…`;render()}
+   let a=null;for(let t=0;t<2&&!a;t++)a=parseNotes(await claude(NP+b.map(([u,r])=>line(u,r)).join('\n'),{max:2500}));
+   if(!a)throw new Error('AI zwróciło odpowiedź, której nie umiem odczytać – kliknij „Sporządź notatki” jeszcze raz');
+   a.forEach(n=>{const cl=v=>Math.min(Math.max(v,b0),b1),x=+n.start_s,y=+n.end_s,st=Number.isFinite(x)?cl(x):b0,en=Number.isFinite(y)?cl(y):b1;
+    L.notes.push({title:String(n.title),start:st,end:Math.max(en,st+1),summary:Array.isArray(n.summary)?n.summary.join('\n'):String(n.summary||'')})});
+   L.notedUntil=b1;await saveL();render()}
+  if(/^✨/.test(S.msg||'')){S.msg='';render()}}catch(e){S.msg='Notatki: '+e.message;render()}}
 function delNote(i){const t=i<0?`wszystkie notatki (${L.notes.length})`:`notatkę „${esc(L.notes[i].title)}”`;dlg(`<h3>Usunąć ${t}?</h3><p class=mut>Tej operacji nie można cofnąć. Transkrypcja i nagrania zostają.</p><button class=r onclick="doDelNote(${i})">Tak, usuń</button> <button onclick="dlg()">Anuluj</button>`)}
 async function doDelNote(i){if(i<0){L.notes=[];L.notedUntil=0}else L.notes.splice(i,1);await saveL();dlg();render()}
+function delMenu(){dlg(`<h3>Usuń</h3>${L.notes.length?`<button class=r onclick="delNote(-1)">🗑 Wszystkie notatki (${L.notes.length})</button><br><br>`:''}<button class=r onclick="delLec(['${L.id}'])">🗑 Cały wykład (nagrania + tekst + notatki)</button><p class=mut>Pojedynczą notatkę usuniesz przyciskiem 🗑 pod nią.</p><button onclick="dlg()">Zamknij</button>`)}
+function delLec(ids){if(S.rec&&L&&ids.includes(L.id)){S.msg='Najpierw zatrzymaj nagrywanie';render();return}
+ const all=[...LS];if(L&&!all.includes(L))all.push(L);const ls=all.filter(l=>ids.includes(l.id));if(!ls.length)return;
+ const nb=ls.filter(l=>!l.gdir).length,tot=ls.reduce((a,l)=>a+dur(l),0);
+ dlg(`<h3>Usunąć ${ls.length>1?ls.length+' wykłady':`wykład „${esc(ls[0].title)}”`}?</h3><p class=mut>Z telefonu zniknie: nagranie (${tm(tot)}), transkrypcja i notatki. Tej operacji nie można cofnąć.</p>${nb?`<p style="color:#fbbf24">⚠ ${ls.length===1?'Ten wykład nie był wysłany na Dysk Google.':nb+' z nich nie było wysłanych na Dysk Google.'}</p>`:'<p class=mut>Kopia na Dysku Google zostaje.</p>'}<button class=r onclick="doDelLec(${JSON.stringify(ids).replace(/"/g,"'")})">Tak, usuń</button> <button onclick="dlg()">Anuluj</button>`)}
+async function doDelLec(ids){try{for(const id of ids){await tx('chunk','readwrite',s=>s.delete(IDBKeyRange.bound(id+':',id+':￿')));await tx('lec','readwrite',s=>s.delete(id))}
+ if(ids.includes(A.lid)){try{A.a.pause()}catch(e){}if(A.url)try{URL.revokeObjectURL(A.url)}catch(e){}A.url='';A.k=-1;A.lid=''}
+ dlg();L=null;S.sel=null;S.msg='';await go()}catch(e){dlg();S.msg='Błąd usuwania: '+e.message;render()}}
 async function enrich(i,v){const n=L.notes[i];if(!canAI()){S.msg='Wymaga internetu i klucza Anthropic';render();return}
  const R=roles(),src=L.utt.map((u,k)=>[u,R[k]]).filter(([u])=>u.s>=n.start-1&&u.e<=n.end+1).map(([u,r])=>line(u,r)).join('\n');n.busy=1;render();
  try{n[v?'ver':'authors']=await claude(v?`Zweryfikuj prawdziwość tez z fragmentu wykładu. Dla każdej tezy: werdykt (potwierdzona / sporna / nieaktualna / fałszywa / brak danych), 1 zdanie uzasadnienia, źródło (URL). Nie zgaduj.\n\n${src}`:`Dla fragmentu wykładu wskaż autorów/twórców wspomnianych teorii, pojęć i tez (imię, nazwisko, rok, główne dzieło). Dopisz brakujących autorów. Jeśli nie jesteś pewien – zaznacz. Krótka lista.\n\n${src}`,{model:'claude-sonnet-5-5',web:1,max:2500})}catch(e){S.msg='Błąd AI: '+e.message}
@@ -200,7 +220,7 @@ function selTog(id,v){v?S.sel.add(id):S.sel.delete(id);render()}
 function selView(){const n=S.sel.size,d=n?'':'disabled';$('#app').innerHTML=`<div style="display:flex;gap:8px;flex-wrap:wrap"><button onclick="selOff()">← Wróć</button><button onclick="selAll()">${n===LS.length?'Odznacz wszystkie':'Zaznacz wszystkie'}</button></div>`
  +(S.msg?`<div class=mut style="color:#fbbf24;margin-top:8px">${esc(S.msg)}</div>`:'')+(S.link?`<a href="${S.link}" target=_blank rel=noopener style="color:#60a5fa">Otwórz folder na Dysku ↗</a>`:'')
  +LS.map(l=>`<label class=card style="display:flex;gap:10px;align-items:center"><input type=checkbox style="width:auto" ${S.sel.has(l.id)?'checked':''} onchange="selTog('${l.id}',this.checked)"><div><div>${esc(l.title)}</div><div class=mut>${new Date(l.date).toLocaleString('pl')} · ${tm(dur(l))}</div></div></label>`).join('')
- +`<div class=card><b>Zaznaczono: ${n}</b><br><br><button class=p ${d} onclick="toDrive(picked())">☁ Wyślij na Dysk Google (wybierz konto)</button><br><br><button ${d} onclick="shareChat()">📤 Udostępnij jak czat (WhatsApp, SMS…)</button><br><br><button ${d} onclick="dlChat()">⬇ Tekst jak czat (.txt)</button><br><br><label style="display:flex;gap:8px;align-items:center"><input type=checkbox style="width:auto" ${S.aud===false?'':'checked'} onchange="S.aud=this.checked"> Dołącz nagrania audio do ZIP</label><br><button ${d} onclick="mp3Dlg()">🎧 Audio jako MP3 (cisza, głośność…)</button><br><br><button ${d} onclick="zipSel()">⬇ ZIP: surowe nagrania (webm) + tekst</button> <button ${d} onclick="zipSel(1)">📱 ZIP przez menu telefonu</button><br><br><button class=s ${d} onclick="dlJsonSel()">Kopia techniczna (JSON)</button></div>`}
+ +`<div class=card><b>Zaznaczono: ${n}</b><br><br><button class=p ${d} onclick="toDrive(picked())">☁ Wyślij na Dysk Google (wybierz konto)</button><br><br><button ${d} onclick="shareChat()">📤 Udostępnij jak czat (WhatsApp, SMS…)</button><br><br><button ${d} onclick="dlChat()">⬇ Tekst jak czat (.txt)</button><br><br><label style="display:flex;gap:8px;align-items:center"><input type=checkbox style="width:auto" ${S.aud===false?'':'checked'} onchange="S.aud=this.checked"> Dołącz nagrania audio do ZIP</label><br><button ${d} onclick="mp3Dlg()">🎧 Audio jako MP3 (cisza, głośność…)</button><br><br><button ${d} onclick="zipSel()">⬇ ZIP: surowe nagrania (webm) + tekst</button> <button ${d} onclick="zipSel(1)">📱 ZIP przez menu telefonu</button><br><br><button class=s ${d} onclick="dlJsonSel()">Kopia techniczna (JSON)</button><br><br><button class=r ${d} onclick="delLec(picked().map(x=>x.id))">🗑 Usuń zaznaczone</button></div>`}
 function zipDone(zb,zn,share){if(share){window.ZF=new File([zb],zn,{type:'application/zip'});S.msg='';dlg(`<h3>ZIP gotowy</h3><p class=mut>Kliknij i wybierz „Dysk” (Google Drive) oraz swoje konto z listy telefonu.</p><button class=p onclick="shareZip()">☁ Wybierz Dysk i konto</button> <button onclick="dlg()">Zamknij</button>`)}else{dl(zb,zn);S.msg='✅ ZIP gotowy (sprawdź Pobrane)'}}
 const LAME='https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js';
 async function toMp3(l,prog,o={}){await loadJS(LAME);const ctx=new(window.AudioContext||window.webkitAudioContext)(),sr=ctx.sampleRate,out=[],enc=new lamejs.Mp3Encoder(1,sr,64),z=new Int16Array(1152),W=Math.round(sr*0.05),proc=o.cut||o.boost,yl=()=>new Promise(r=>setTimeout(r,0));
@@ -253,7 +273,7 @@ async function zipAudio(share){try{S.msg='ZIP: przygotowuję…';render();await 
  zipDone(zb,zn,share)}catch(e){S.msg='ZIP: '+e.message}render()}
 function shareZip(){try{if(navigator.canShare&&navigator.canShare({files:[ZF]}))navigator.share({files:[ZF],title:ZF.name}).then(()=>dlg()).catch(e=>{if(e.name!=='AbortError'){dl(ZF,ZF.name);dlg()}});else{dl(ZF,ZF.name);dlg()}}catch(e){dl(ZF,ZF.name);dlg()}}
 async function mkNotes(){if(!canAI()){S.msg='Notatki wymagają internetu i klucza Anthropic (☰ → Ustawienia: „notatki/AI” musi być ✅)';render();return}
- const n0=L.notes.length;S.msg='✨ Tworzę notatki…';render();S.busy=false;await pump(true);S.msg=L.notes.length>n0?'':'Brak nowego tekstu do notatek (lub błąd – sprawdź komunikat)';render()}
+ const n0=L.notes.length;S.msg='✨ Tworzę notatki…';render();S.busy=false;await pump(true);S.msg=L.notes.length>n0?'':(/^(Notatki|Chmura)/.test(S.msg||'')?S.msg:'Brak nowego tekstu do notatek');render()}
 const gtoken=()=>new Promise(async(res,rej)=>{try{if(!gcid())throw new Error('Wpisz Google Client ID w Ustawieniach');await loadJS('https://accounts.google.com/gsi/client');
  google.accounts.oauth2.initTokenClient({client_id:gcid(),scope:'https://www.googleapis.com/auth/drive.file',prompt:'select_account',error_callback:e=>rej(new Error(e&&e.type==='popup_failed_to_open'?'Przeglądarka zablokowała okno logowania – zezwól na wyskakujące okna dla tej strony':e&&e.type==='popup_closed'?'Okno logowania zamknięte':'Logowanie Google: '+((e&&(e.message||e.type))||'błąd'))),callback:r=>r.access_token?res(r.access_token):rej(new Error('[ID '+gcid().slice(0,6)+'…'+gcid().slice(-30,-24)+'] '+(r.error==='access_denied'?'Brak zgody. Aplikacja Google jest w trybie testowym – opublikuj ją (Google Cloud → Auth platform → Audience → Publish app) albo dodaj konto w Test users':r.error==='invalid_client'?'Google nie zna tego Client ID (sprawdź projekt w Google Cloud)':'Google: '+(r.error_description||r.error||'brak zgody'))))}).requestAccessToken()}catch(e){rej(e)}});
 async function gerr(r){let t='';try{t=await r.text()}catch(e){}
