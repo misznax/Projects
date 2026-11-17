@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Notatnik Słuchacza – polityka prywatności</title>
+<style>
+body{font:16px/1.55 system-ui,sans-serif;max-width:720px;margin:0 auto;padding:20px;color:#111;background:#fff}
+h1{font-size:1.5rem}h2{font-size:1.1rem;margin-top:1.6em}
+@media(prefers-color-scheme:dark){body{background:#111;color:#eee}a{color:#7ab7ff}}
+</style>
+</head>
+<body>
+<h1>Notatnik Słuchacza – polityka prywatności</h1>
+<p>Ostatnia aktualizacja: 17.11.2026. Administrator: Michał Rzekiecki, kontakt: <a href="mailto:michus@gmail.com">michus@gmail.com</a>. Aplikacja: <a href="https://projects.smialo.org/04/">projects.smialo.org/04/</a>.</p>
+
+<h2>1. Co robi aplikacja</h2>
+<p>Nagrywa wykład (w kawałkach po 30 s), tworzy transkrypcję i notatki. Nagrania, transkrypcje i notatki są zapisywane w pamięci przeglądarki na Twoim urządzeniu (IndexedDB). Nie trafiają na konto w naszym serwisie, bo takiego konta nie ma.</p>
+
+<h2>2. Przetwarzanie nagrań</h2>
+<p>Aby zrobić transkrypcję i notatki, fragmenty audio oraz tekst są przesyłane przez serwer aplikacji do dostawców przetwarzania (Cloudflare Workers AI, a opcjonalnie OpenAI lub Anthropic) wyłącznie w celu wykonania tej usługi. Serwer aplikacji nie zapisuje nagrań ani tekstów. Dostawcy przetwarzają dane według własnych zasad.</p>
+
+<h2>3. Google Drive (opcjonalnie)</h2>
+<p>Jeśli klikniesz wysyłkę kopii na Dysk Google, aplikacja prosi o logowanie na wybrane przez Ciebie konto Google i o uprawnienie <code>drive.file</code>. Daje ono dostęp tylko do folderów i plików utworzonych przez tę aplikację, nie do reszty Dysku. Aplikacja zapisuje tam nagrania, transkrypcję i kopię (JSON). Token dostępu jest używany tylko w Twojej przeglądarce i nie jest zapisywany ani wysyłany na nasz serwer.</p>
+<p>Korzystanie z danych otrzymanych z interfejsów API Google przez tę aplikację jest zgodne z <a href="https://developers.google.com/terms/api-services-user-data-policy">Polityką danych użytkownika w usługach API Google</a>, w tym z wymogami ograniczonego użycia. Dane z Dysku nie są sprzedawane, udostępniane innym podmiotom ani używane do reklam.</p>
+
+<h2>4. Twoje prawa i usuwanie danych</h2>
+<p>Dane lokalne usuniesz, czyszcząc dane strony w przeglądarce. Dostęp do Dysku cofniesz w <a href="https://myaccount.google.com/permissions">ustawieniach konta Google</a>. Pliki na Dysku usuniesz samodzielnie. W sprawach danych napisz na <a href="mailto:michus@gmail.com">michus@gmail.com</a>.</p>
+</body>
+</html>

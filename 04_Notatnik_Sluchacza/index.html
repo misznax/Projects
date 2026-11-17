@@ -23,7 +23,7 @@ input,textarea,select{width:100%;margin:4px 0}
 <script>
 const GID='461701670960-b0ivbr1cktr8ocfbdaffpplmr09thc6j.apps.googleusercontent.com',gcid=()=>GID; // Client ID jest publiczny z założenia; stary zapis z Ustawień usuwany (powodował 401)
 try{localStorage.removeItem('gcid')}catch(e){}
-const $=s=>document.querySelector(s),cfg=k=>localStorage.getItem(k)||'',VER='v0.12';
+const $=s=>document.querySelector(s),cfg=k=>localStorage.getItem(k)||'',VER='v0.13';
 const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 const tm=s=>{s=Math.floor(s);const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60,p=n=>String(n).padStart(2,'0');return(h?h+':':'')+p(m)+':'+p(x)};
 const SYS='Jesteś asystentem studenta na wykładzie. Odpowiadaj po polsku, zwięźle, rzeczowo.';
@@ -147,7 +147,7 @@ function sett(){dlg(`<h3>Ustawienia</h3><label class=mut>Tryb transkrypcji</labe
  <label class=mut>Klucz Anthropic (notatki, autorzy, weryfikacja)</label><input type=password value="${esc(cfg('ant'))}" oninput="localStorage.ant=this.value"></details>
  <label class=mut>Czas w transkrypcji</label><select onchange="localStorage.tmode=this.value"><option value=both ${cfg('tmode')==='both'||!cfg('tmode')?'selected':''}>Godzina · czas nagrania</option><option value=clock ${cfg('tmode')==='clock'?'selected':''}>Tylko godzina</option><option value=len ${cfg('tmode')==='len'?'selected':''}>Tylko czas nagrania</option></select>
  <label><input type=checkbox style="width:auto" ${cfg('dim')!=='0'?'checked':''} onchange="localStorage.dim=this.checked?1:0"> Zaciemnij ekran po 20 s nagrywania</label><br><br><button onclick="dlg()">Zamknij</button>`)}
-function about(){dlg(`<h3>Notatnik Słuchacza</h3><p>Wersja ${VER}<br>Autor: Michał Rzekiecki<br>Kontakt: michus@gmail.com</p><button onclick="dlg()">Zamknij</button>`)}
+function about(){dlg(`<h3>Notatnik Słuchacza</h3><p>Wersja ${VER}<br>Autor: Michał Rzekiecki<br>Kontakt: michus@gmail.com<br><a href="prywatnosc.html" target=_blank rel=noopener style="color:#60a5fa">Polityka prywatności</a></p><button onclick="dlg()">Zamknij</button>`)}
 function sug(){dlg(`<h3>Sugestie</h3><p class=mut>Co sprawiłoby, że aplikacja byłaby jeszcze lepsza?</p><textarea rows=6 id=sg></textarea><a href="#" onclick="this.href='mailto:michus@gmail.com?subject='+encodeURIComponent('Notatnik Słuchacza - sugestia')+'&body='+encodeURIComponent(sg.value)"><button class=p>Wyślij (michus@gmail.com)</button></a> <button onclick="dlg()">Zamknij</button>`)}
 // ---------- czas zegarowy, kopie zapasowe, Google Drive
 function wallOf(t){const c=L.chunks.find(c=>t>=c.start-0.01&&t<c.start+c.dur+0.01)||L.chunks[L.chunks.length-1];
