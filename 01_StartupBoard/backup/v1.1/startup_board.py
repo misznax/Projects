@@ -36,7 +36,7 @@ from PySide6.QtWidgets import (
 APP_NAME = "Startup Board"
 APP_VERSION = "v1.1"  # zmieniać tylko na polecenie autora
 APP_AUTHOR = "Michał Rzekiecki"
-APP_CONTACT = "michus@gmail.com"
+APP_CONTACT = "kontakt@smialo.org"
 
 MAX_BYTES = 10 * 1024 * 1024        # limit pliku tekstowego
 MAX_PDF_BYTES = 200 * 1024 * 1024   # limit PDF
@@ -167,21 +167,21 @@ def star_pixmap(color: str, size: int) -> QPixmap:
     p = QPainter(pm)
     p.setRenderHint(QPainter.RenderHint.Antialiasing)
     if color == "grad":  # logo "SB": zaokrąglony kafel limonka -> morski, ciemne litery
-        m = size * 0.04
+        m = size * 0.02
         g = QLinearGradient(0, 0, size, size)
         g.setColorAt(0, QColor("#c6ef4a"))
         g.setColorAt(1, QColor("#0fa3ad"))
         p.setBrush(QBrush(g))
         p.setPen(QPen(QColor("#04161c"), max(1.0, size / 40)))
-        p.drawRoundedRect(QRectF(m, m, size - 2 * m, size - 2 * m), size * 0.22, size * 0.22)
+        p.drawRoundedRect(QRectF(m, m, size - 2 * m, size - 2 * m), size * 0.2, size * 0.2)
         f = QFont()
         f.setFamilies(["Segoe UI", "Arial", "DejaVu Sans"])
         f.setBold(True)
-        f.setPixelSize(max(6, int(size * 0.5)))
-        f.setLetterSpacing(QFont.SpacingType.PercentageSpacing, 92)
+        f.setPixelSize(max(6, int(size * 0.66)))
+        f.setLetterSpacing(QFont.SpacingType.PercentageSpacing, 86)
         p.setFont(f)
         p.setPen(QColor("#04161c"))
-        p.drawText(QRectF(0, size * 0.02, size, size), Qt.AlignmentFlag.AlignCenter, "SB")
+        p.drawText(QRectF(0, size * 0.015, size, size), Qt.AlignmentFlag.AlignCenter, "SB")
         p.end()
         return pm
     cx, cy, R = size / 2, size / 2 + size * 0.03, size * 0.47
