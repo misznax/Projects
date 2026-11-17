@@ -16,6 +16,8 @@ import math
 import os
 import re
 import shutil
+import uuid
+from datetime import datetime, timedelta
 import sys
 import tempfile
 import time
@@ -34,7 +36,8 @@ from PySide6.QtWidgets import (
     QToolButton, QVBoxLayout, QWidget,
 )
 from PySide6.QtWidgets import QAbstractItemView, QFileIconProvider, QFileSystemModel, QHeaderView, QTreeView
-from PySide6.QtCore import QDir, QFile
+from PySide6.QtCore import QDate, QDateTime, QDir, QFile, QTime
+from PySide6.QtWidgets import QDateEdit, QTimeEdit
 
 APP_NAME = "Startup Board"
 APP_VERSION = "v1.1"  # zmieniać tylko na polecenie autora
@@ -776,7 +779,8 @@ class Placeholder(QWidget):
         self.btn_clip = QPushButton("Obraz ze schowka", toolTip="Wklej obraz ze schowka (Ctrl+Shift+V; Ctrl+V wkleja też tekst i pliki)")
         self.btn_img = QPushButton("Obraz z pliku…", toolTip="Otwórz plik graficzny (PNG, JPG, BMP, GIF, WEBP…)")
         self.btn_dir = QPushButton("Folder…", toolTip="Pokaż zawartość folderu w panelu (Ctrl+Shift+O)")
-        for b in (self.btn_open, self.btn_dir, self.btn_clip, self.btn_img):
+        self.btn_rem = QPushButton("Przypomnienia", toolTip="Lista przypomnień z datą i godziną (Ctrl+Shift+R)")
+        for b in (self.btn_open, self.btn_dir, self.btn_clip, self.btn_img, self.btn_rem):
             b.setCursor(Qt.CursorShape.PointingHandCursor)
             self.row_l.addWidget(b)
         v.addStretch(1)
@@ -1087,6 +1091,342 @@ class FolderView(QWidget):
 
 
 
+# ---------- panel przypomnień ----------
+
+REM_COLORS = ["#e5484d", "#f5a524", "#c6e03b", "#2dbf6c", "#12a6b0", "#3e8ef7", "#9b6bff", "#ec5fa5"]
+DAYS_PL = ["pn", "wt", "śr", "cz", "pt", "sb", "nd"]
+_WD = {"poniedziałek": 0, "poniedzialek": 0, "wtorek": 1, "środę": 2, "srode": 2, "środa": 2, "sroda": 2,
+       "czwartek": 3, "piątek": 4, "piatek": 4, "sobotę": 5, "sobote": 5, "sobota": 5, "niedzielę": 6,
+       "niedziele": 6, "niedziela": 6}
+
+
+def parse_when(text: str):
+    """Z tekstu typu „skaling jutro 10:00” wyciąga (data, godzina); brakujące elementy = None."""
+    low = text.lower()
+    today = datetime.now().date()
+    d, t = None, None
+    m = re.search(r"\b(\d{1,2})[:.](\d{2})\b", low) or re.search(r"\bo\s+(\d{1,2})\b()", low)
+    if m:
+        h, mi = int(m.group(1)), int(m.group(2) or 0)
+        if 0 <= h < 24 and 0 <= mi < 60:
+            t = (h, mi)
+    if re.search(r"\bpojutrze\b", low):
+        d = today + timedelta(days=2)
+    elif re.search(r"\bjutro\b", low):
+        d = today + timedelta(days=1)
+    elif re.search(r"\b(dziś|dzis|dzisiaj)\b", low):
+        d = today
+    else:
+        for name, wd in _WD.items():
+            if re.search(rf"\b{name}\b", low):
+                d = today + timedelta(days=(wd - today.weekday()) % 7 or 7)
+                break
+        else:
+            m = re.search(r"\b(\d{1,2})\.(\d{1,2})(?:\.(\d{4}))?\b(?![:.]\d)", low)
+            if m:
+                try:
+                    y = int(m.group(3) or today.year)
+                    d = datetime(y, int(m.group(2)), int(m.group(1))).date()
+                    if not m.group(3) and d < today:
+                        d = d.replace(year=y + 1)
+                except ValueError:
+                    d = None
+    return d, t
+
+
+def rem_when_text(dt: datetime) -> str:
+    today = datetime.now().date()
+    delta = (dt.date() - today).days
+    day = {0: "dziś", 1: "jutro", 2: "pojutrze"}.get(delta) or f"{DAYS_PL[dt.weekday()]} {dt:%d.%m}"
+    return f"{day} · {dt:%H:%M}"
+
+
+def _swatch(color: str, size: int = 14) -> QPixmap:
+    pm = QPixmap(size, size)
+    pm.fill(Qt.GlobalColor.transparent)
+    p = QPainter(pm)
+    p.setRenderHint(QPainter.RenderHint.Antialiasing)
+    p.setBrush(QColor(color))
+    p.setPen(Qt.PenStyle.NoPen)
+    p.drawRoundedRect(QRectF(0, 0, size, size), 4, 4)
+    p.end()
+    return pm
+
+
+class ReminderDialog(ThemedDialog):
+    """Wyskakujące okno: tekst, data, godzina i kolor przypomnienia."""
+
+    def __init__(self, parent, item: dict | None = None, color: str = REM_COLORS[0]):
+        super().__init__(parent)
+        self.setWindowTitle("Nowe przypomnienie" if item is None else "Edytuj przypomnienie")
+        self.setMinimumWidth(380)
+        self.color = (item or {}).get("color", color)
+        self._manual = item is not None
+        dt = datetime.fromisoformat(item["dt"]) if item else (datetime.now() + timedelta(hours=1)).replace(minute=0, second=0, microsecond=0)
+        self.ed_text = QLineEdit((item or {}).get("text", ""))
+        self.ed_text.setPlaceholderText("np. umówić się na skaling jutro 10:00")
+        self.ed_date = QDateEdit(QDate(dt.year, dt.month, dt.day))
+        self.ed_date.setCalendarPopup(True)
+        self.ed_date.setDisplayFormat("dd.MM.yyyy")
+        self.ed_time = QTimeEdit(QTime(dt.hour, dt.minute))
+        self.ed_time.setDisplayFormat("HH:mm")
+        self.lbl_guess = QLabel("")
+        self.lbl_guess.setStyleSheet(f"color:{UI['mute']};")
+        row = QHBoxLayout()
+        row.addWidget(QLabel("Data"))
+        row.addWidget(self.ed_date, 1)
+        row.addWidget(QLabel("Godzina"))
+        row.addWidget(self.ed_time)
+        self.sw: list[QToolButton] = []
+        crow = QHBoxLayout()
+        crow.addWidget(QLabel("Kolor"))
+        for c in REM_COLORS:
+            b = QToolButton()
+            b.setFixedSize(22, 22)
+            b.setCursor(Qt.CursorShape.PointingHandCursor)
+            b.clicked.connect(lambda _c=False, col=c: self._set_color(col))
+            b.setProperty("col", c)
+            self.sw.append(b)
+            crow.addWidget(b)
+        more = QToolButton(text="…", toolTip="Inny kolor")
+        more.clicked.connect(self._pick)
+        crow.addWidget(more)
+        crow.addStretch(1)
+        bb = QHBoxLayout()
+        ok, cancel = QPushButton("Zapisz"), QPushButton("Anuluj")
+        ok.setDefault(True)
+        ok.clicked.connect(self._accept)
+        cancel.clicked.connect(self.reject)
+        bb.addStretch(1)
+        bb.addWidget(cancel)
+        bb.addWidget(ok)
+        v = QVBoxLayout(self)
+        v.addWidget(QLabel("Treść"))
+        v.addWidget(self.ed_text)
+        v.addLayout(row)
+        v.addWidget(self.lbl_guess)
+        v.addLayout(crow)
+        v.addSpacing(6)
+        v.addLayout(bb)
+        self.ed_text.textChanged.connect(self._guess)
+        self.ed_date.dateChanged.connect(self._touched)
+        self.ed_time.timeChanged.connect(self._touched)
+        self._set_color(self.color)
+        self.ed_text.setFocus()
+        self._guess_on = True
+
+    def _touched(self, *_):
+        if not getattr(self, "_auto", False):
+            self._manual = True
+
+    def _guess(self, text: str):
+        if self._manual:
+            return
+        d, t = parse_when(text)
+        self._auto = True
+        if d:
+            self.ed_date.setDate(QDate(d.year, d.month, d.day))
+        if t:
+            self.ed_time.setTime(QTime(*t))
+        self._auto = False
+        self.lbl_guess.setText("Rozpoznano termin z treści – możesz go poprawić." if (d or t) else "")
+
+    def _set_color(self, col: str):
+        self.color = col
+        for b in self.sw:
+            c = b.property("col")
+            on = c.lower() == col.lower()
+            b.setStyleSheet(f"QToolButton{{background:{c};border:{'3px solid ' + COLORS['text'] if on else '1px solid ' + UI['border']};"
+                            f"border-radius:11px;}}")
+
+    def _pick(self):
+        c = QColorDialog.getColor(QColor(self.color), self, "Kolor przypomnienia")
+        if c.isValid():
+            self._set_color(c.name())
+
+    def _accept(self):
+        if self.ed_text.text().strip():
+            self.accept()
+        else:
+            self.ed_text.setFocus()
+
+    def result_item(self, old: dict | None) -> dict:
+        d, t = self.ed_date.date(), self.ed_time.time()
+        dt = datetime(d.year(), d.month(), d.day(), t.hour(), t.minute())
+        it = dict(old or {"id": uuid.uuid4().hex, "done": False})
+        changed = old is None or old.get("dt") != dt.isoformat(timespec="minutes")
+        it.update(text=self.ed_text.text().strip(), dt=dt.isoformat(timespec="minutes"), color=self.color)
+        if changed:
+            it["notified"] = dt <= datetime.now()  # termin już minął = bez wyskakującego okna
+        return it
+
+
+class RemindersView(QWidget):
+    """Lista przypomnień (wspólna dla całej aplikacji). Lekki widok: tylko lista pozycji."""
+    changed = Signal()
+
+    def __init__(self, items: list):
+        super().__init__()
+        self.setObjectName("rv")
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        self.items = items
+        self.btn_add = QPushButton("＋ Nowe przypomnienie")
+        self.btn_add.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.chk_done = QCheckBox("Pokaż wykonane")
+        top = QHBoxLayout()
+        top.setContentsMargins(6, 4, 6, 4)
+        top.addWidget(self.btn_add)
+        top.addStretch(1)
+        top.addWidget(self.chk_done)
+        self.list = QListWidget()
+        self.list.setFrameShape(QFrame.Shape.NoFrame)
+        self.list.setIconSize(QSize(14, 14))
+        self.list.setSpacing(1)
+        self.list.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.list.installEventFilter(self)
+        v = QVBoxLayout(self)
+        v.setContentsMargins(0, 0, 0, 0)
+        v.setSpacing(0)
+        v.addLayout(top)
+        v.addWidget(self.list, 1)
+        self.btn_add.clicked.connect(self.add)
+        self.chk_done.toggled.connect(lambda _b: self.refresh())
+        self.list.itemDoubleClicked.connect(lambda _i: self.edit())
+        self.list.itemChanged.connect(self._checked)
+        self.list.customContextMenuRequested.connect(self._menu)
+        self._busy = False
+        self.apply_colors()
+        self.refresh()
+
+    def next_color(self) -> str:
+        used = [i.get("color") for i in self.items if not i.get("done")]
+        for c in REM_COLORS:
+            if c not in used:
+                return c
+        return REM_COLORS[len(self.items) % len(REM_COLORS)]
+
+    def active_count(self) -> int:
+        return sum(1 for i in self.items if not i.get("done"))
+
+    def refresh(self):
+        self._busy = True
+        keep = self._cur_id()
+        self.list.clear()
+        now = datetime.now()
+        show_done = self.chk_done.isChecked()
+        for it in sorted(self.items, key=lambda x: (x.get("done", False), x["dt"])):
+            if it.get("done") and not show_done:
+                continue
+            dt = datetime.fromisoformat(it["dt"])
+            late = not it.get("done") and dt < now
+            li = QListWidgetItem(QIcon(_swatch(it["color"])), f"{it['text']}\n{rem_when_text(dt)}" + ("  ·  po terminie" if late else ""))
+            li.setData(Qt.ItemDataRole.UserRole, it["id"])
+            li.setFlags(li.flags() | Qt.ItemFlag.ItemIsUserCheckable)
+            li.setCheckState(Qt.CheckState.Checked if it.get("done") else Qt.CheckState.Unchecked)
+            if it.get("done"):
+                li.setForeground(QColor(UI["mute"]))
+                f = li.font()
+                f.setStrikeOut(True)
+                li.setFont(f)
+            elif late:
+                li.setForeground(QColor(UI["err"]))
+            li.setBackground(QColor(it["color"] + "22"))  # delikatne tło w kolorze przypomnienia
+            li.setSizeHint(QSize(10, 44))
+            self.list.addItem(li)
+            if it["id"] == keep:
+                self.list.setCurrentItem(li)
+        self._busy = False
+
+    def _cur_id(self):
+        li = self.list.currentItem()
+        return li.data(Qt.ItemDataRole.UserRole) if li else None
+
+    def _find(self, rid):
+        return next((i for i in self.items if i["id"] == rid), None)
+
+    def _commit(self):
+        self.refresh()
+        self.changed.emit()
+
+    def add(self):
+        d = ReminderDialog(self, None, self.next_color())
+        if d.exec() == QDialog.DialogCode.Accepted:
+            self.items.append(d.result_item(None))
+            self._commit()
+
+    def edit(self):
+        it = self._find(self._cur_id())
+        if it:
+            d = ReminderDialog(self, it)
+            if d.exec() == QDialog.DialogCode.Accepted:
+                it.update(d.result_item(it))
+                self._commit()
+
+    def delete(self):
+        it = self._find(self._cur_id())
+        if it:
+            self.items.remove(it)
+            self._commit()
+
+    def set_color(self, it: dict, col: str):
+        it["color"] = col
+        self._commit()
+
+    def _checked(self, li):
+        if self._busy:
+            return
+        it = self._find(li.data(Qt.ItemDataRole.UserRole))
+        if it:
+            it["done"] = li.checkState() == Qt.CheckState.Checked
+            self._commit()
+
+    def _menu(self, pos):
+        li = self.list.itemAt(pos)
+        m = QMenu(self)
+        m.addAction("Nowe przypomnienie…").triggered.connect(self.add)
+        if li:
+            self.list.setCurrentItem(li)
+            it = self._find(li.data(Qt.ItemDataRole.UserRole))
+            m.addAction("Edytuj…").triggered.connect(self.edit)
+            cm = m.addMenu("Kolor")
+            for c in REM_COLORS:
+                a = cm.addAction(QIcon(_swatch(c)), c.upper())
+                a.triggered.connect(lambda _c=False, col=c: self.set_color(it, col))
+            m.addAction("Oznacz jako wykonane" if not it.get("done") else "Przywróć").triggered.connect(
+                lambda: (it.update(done=not it.get("done")), self._commit()))
+            m.addAction("Usuń").triggered.connect(self.delete)
+        m.exec(self.list.viewport().mapToGlobal(pos))
+
+    def eventFilter(self, obj, ev):
+        if obj is self.list and ev.type() == QEvent.Type.KeyPress:
+            if ev.key() == Qt.Key.Key_Delete:
+                self.delete()
+                return True
+            if ev.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+                self.edit()
+                return True
+            if ev.key() == Qt.Key.Key_Insert:
+                self.add()
+                return True
+        return False
+
+    def apply_colors(self):
+        u, c = UI, COLORS
+        self.setStyleSheet(
+            f"#rv{{background:{c['bg']};}}"
+            f"QListWidget{{background:{c['bg']};color:{c['text']};border:none;outline:0;}}"
+            f"QListWidget::item{{padding:3px 6px;border-radius:5px;}}"
+            f"QListWidget::item:selected{{background:{u['sel']};color:{c['text']};}}"
+            f"QCheckBox{{color:{u['mute']};}}"
+            f"QListWidget::indicator,QCheckBox::indicator{{width:13px;height:13px;border:1px solid {u['mute']};"
+            f"border-radius:3px;background:transparent;}}"
+            f"QListWidget::indicator:checked,QCheckBox::indicator:checked{{background:{u['border_a']};border-color:{u['border_a']};}}"
+            f"QPushButton{{background:{u['hdr_bg']};color:{u['hdr_fg']};border:1px solid {u['border']};"
+            f"border-radius:4px;padding:3px 10px;}}QPushButton:hover{{border-color:{u['border_a']};}}")
+        self.refresh()
+
+
+
 # ---------- edytor ----------
 
 class Editor(QPlainTextEdit):
@@ -1119,11 +1459,13 @@ class TextPane(QFrame):
     activated = Signal(object)
     transferRequested = Signal(object, list, bool)  # (panel, ścieżki, przenieś?)
     openFromFolder = Signal(object, str)
+    remindersChanged = Signal()
+    remindersRequested = Signal(object)
     removeRequested = Signal(object)  # × / Ctrl+W na pustym panelu = usuń panel
     menuRequested = Signal(QPoint)  # globalna pozycja, gdzie pokazać menu
     pathChanged = Signal(str)       # plik otwarty / zapisany przez użytkownika (lista ostatnich)
     img_dir = Path(tempfile.gettempdir()) / "startupboard_obrazy"  # obrazy wklejone ze schowka (ustawia okno)
-    PH, ED, PDF, IMG, FOLD = 0, 1, 2, 3, 4   # strony QStackedWidget
+    PH, ED, PDF, IMG, FOLD, REM = 0, 1, 2, 3, 4, 5   # strony QStackedWidget
 
     def __init__(self, index: int):
         super().__init__()
@@ -1131,6 +1473,7 @@ class TextPane(QFrame):
         self.path: str | None = None
         self.kind = "text"  # text | pdf | image | folder
         self.fv: FolderView | None = None  # panel folderu tworzony na żądanie
+        self.rv: RemindersView | None = None  # panel przypomnień tworzony na żądanie
         self._fcount = "folder"
         self.untitled = False  # nowy dokument jeszcze bez pliku
         self.clip = False      # obraz wklejony ze schowka (plik w folderze aplikacji)
@@ -1178,7 +1521,7 @@ class TextPane(QFrame):
         self.hl = Highlighter(self.editor.document(), "text")
         self.pdf = PdfViewer()
         self.imgv = ImageViewer()
-        for w in (self.ph, self.editor, self.pdf, self.imgv):
+        for w in (self.ph, self.editor, self.pdf, self.imgv, QWidget(), QWidget()):  # 4, 5 = miejsca na folder i przypomnienia
             self.stack.addWidget(w)
 
         # pasek wyszukiwania (Ctrl+F)
@@ -1218,6 +1561,7 @@ class TextPane(QFrame):
         self.ph.btn_clip.clicked.connect(lambda: self.paste_image())
         self.ph.btn_img.clicked.connect(self.ask_open_image)
         self.ph.btn_dir.clicked.connect(self.ask_open_dir)
+        self.ph.btn_rem.clicked.connect(lambda: self.remindersRequested.emit(self))
         self.ph.customContextMenuRequested.connect(lambda pos: self.menuRequested.emit(self.ph.mapToGlobal(pos)))
         self.find_edit.textChanged.connect(self._find_live)
         self.find_edit.returnPressed.connect(lambda: self.find_next())
@@ -1250,6 +1594,8 @@ class TextPane(QFrame):
         self.ph.apply_colors()
         if self.fv:
             self.fv.apply_colors()
+        if self.rv:
+            self.rv.apply_colors()
         cv = UI["canvas"]
         self.imgv.setStyleSheet(f"QScrollArea{{background:{cv};}}QScrollArea>QWidget>QWidget{{background:{cv};}}")
         self.pdf.restyle()
@@ -1324,7 +1670,7 @@ class TextPane(QFrame):
 
     def focus_editor(self):
         w = {self.ED: self.editor, self.PDF: self.pdf, self.IMG: self.imgv,
-             self.FOLD: self.fv.view if self.fv else None}.get(
+             self.FOLD: self.fv.view if self.fv else None, self.REM: self.rv.list if self.rv else None}.get(
             self.stack.currentIndex(), None) or self.ph.btn_plus
         w.setFocus()
         self.activated.emit(self)
@@ -1333,7 +1679,7 @@ class TextPane(QFrame):
         return self.kind == "text" and self.editor.document().isModified()
 
     def is_empty(self) -> bool:
-        return self.path is None and not self.untitled and self.demo is None
+        return self.path is None and not self.untitled and self.demo is None and self.kind != "reminders"
 
     def flash(self, msg: str):
         """Krótki komunikat w pustym panelu (w zajętym: okienko)."""
@@ -1351,6 +1697,13 @@ class TextPane(QFrame):
             self.lbl_name.setToolTip("")
             self.lbl_state.setText(state)
             self.lbl_state.setStyleSheet(f"color:{UI[ukey]};")
+            return
+        if self.kind == "reminders":
+            self.lbl_name.setText("Przypomnienia")
+            self.lbl_name.setToolTip("Wspólna lista przypomnień (Ins = nowe, Enter = edycja, Del = usuń)")
+            n = self.rv.active_count() if self.rv else 0
+            self.lbl_state.setText(f"{n} aktywnych")
+            self.lbl_state.setStyleSheet(f"color:{UI['info']};")
             return
         if self.untitled:
             self.lbl_name.setText("Bez tytułu")
@@ -1496,9 +1849,11 @@ class TextPane(QFrame):
         self.pdf.close_doc()
         self.imgv.clear()
         self.find_bar.hide()
+        if self.rv is not None:
+            self._mount(self.REM, QWidget())
+            self.rv = None
         if self.fv is not None:  # zwolnij widok folderu (obserwator plików, model)
-            self.stack.removeWidget(self.fv)
-            self.fv.deleteLater()
+            self._mount(self.FOLD, QWidget())
             self.fv = None
         self.kind, self.untitled, self.clip = "text", False, False
         self.missing = self.conflict = False
@@ -1529,6 +1884,13 @@ class TextPane(QFrame):
             self._note_path()
         return ok
 
+    def _mount(self, idx: int, w: QWidget):
+        """Podmień widget na stałym miejscu stosu (indeksy stron się nie przesuwają)."""
+        old = self.stack.widget(idx)
+        self.stack.removeWidget(old)
+        old.deleteLater()
+        self.stack.insertWidget(idx, w)
+
     def open_folder(self, path: str, fresh: bool = True, ask: bool = True) -> bool:
         if ask and not self.confirm_close():
             return False
@@ -1542,7 +1904,7 @@ class TextPane(QFrame):
         self._fcount = "folder"
         self.btn_wrap.setEnabled(False)
         fv = self.fv = FolderView()
-        self.stack.addWidget(fv)
+        self._mount(self.FOLD, fv)
         fv.counted.connect(self._on_fcount)
         fv.navigated.connect(self._on_fnav)
         fv.openFile.connect(lambda f: self.openFromFolder.emit(self, f))
@@ -1553,6 +1915,21 @@ class TextPane(QFrame):
         self.refresh_header()
         if fresh:
             LAST["dir"] = path
+        return True
+
+    def open_reminders(self, items: list) -> bool:
+        if not self.confirm_close():
+            return False
+        self._release()
+        self.editor.setPlainText("")
+        self.editor.document().setModified(False)
+        self.kind, self.path, self.mtime, self.disk_size = "reminders", None, None, 0
+        self.btn_wrap.setEnabled(False)
+        rv = self.rv = RemindersView(items)
+        self._mount(self.REM, rv)
+        rv.changed.connect(lambda: (self.refresh_header(), self.remindersChanged.emit()))
+        self.stack.setCurrentIndex(self.REM)
+        self.refresh_header()
         return True
 
     def _on_fcount(self, txt: str):
@@ -1839,6 +2216,8 @@ class TextPane(QFrame):
             d["page"], d["pdf_zoom"] = self.pdf.current_page(), self.pdf.zoom
         elif self.kind == "image":
             d["img_zoom"], d["clip"] = self.imgv.zoom, self.clip
+        if self.kind == "reminders":
+            d["reminders"] = True
         if self.untitled:
             d["untitled"] = True
             d["draft"] = self.editor.toPlainText()[:MAX_BYTES]
@@ -2534,6 +2913,9 @@ class MainWindow(QMainWindow):
         self._ready = False
         self._app_css = ""
         self._xfers: list = []
+        self.reminders: list[dict] = []
+        self._rem_timer = QTimer(self, interval=20_000)
+        self._rem_timer.timeout.connect(self.check_reminders)
         self._last_json = ""
         self._pending: list[tuple[TextPane, dict]] = []
         self._args: list[str] = []
@@ -2588,6 +2970,8 @@ class MainWindow(QMainWindow):
         p.activated.connect(self.set_current)
         p.removeRequested.connect(self.remove_pane)
         p.openFromFolder.connect(self.open_from_folder)
+        p.remindersRequested.connect(self.show_reminders)
+        p.remindersChanged.connect(self.on_reminders_changed)
         p.transferRequested.connect(self.transfer_files)
         p.menuRequested.connect(self.show_popup)
         p.pathChanged.connect(self.note_recent)
@@ -2621,6 +3005,8 @@ class MainWindow(QMainWindow):
         m.addAction(self._act("Nowy plik tekstowy", self.new_document, "Ctrl+N"))
         m.addAction(self._act("Otwórz w aktywnym panelu…", lambda: self.current.ask_open(), "Ctrl+O"))
         m.addAction(self._act("Otwórz folder w panelu…", self.open_folder_dialog, "Ctrl+Shift+O"))
+        m.addAction(self._act("Panel przypomnień", lambda: self.show_reminders(), "Ctrl+Shift+R"))
+        m.addAction(self._act("Nowe przypomnienie…", self.quick_reminder, "Ctrl+Shift+N"))
         self.m_recent = m.addMenu("Ostatnie pliki")
         self.m_recent.aboutToShow.connect(self._fill_recent)
         m.addSeparator()
@@ -3066,6 +3452,69 @@ class MainWindow(QMainWindow):
         if p.paste_image():
             self._focus(p)
 
+    # --- przypomnienia ---
+    def show_reminders(self, pane: TextPane | None = None):
+        """Otwiera panel przypomnień (jeden na okno): w pustym panelu albo przechodzi do już otwartego."""
+        for q in self.panes:
+            if q.kind == "reminders":
+                self._focus(q)
+                return
+        p = pane if (pane is not None and pane.is_empty()) else self.target_pane()
+        if p.open_reminders(self.reminders):
+            self._focus(p)
+
+    def quick_reminder(self):
+        """Okno dodawania przypomnienia z dowolnego miejsca (bez otwierania panelu)."""
+        d = ReminderDialog(self, None, REM_COLORS[len(self.reminders) % len(REM_COLORS)])
+        if d.exec() == QDialog.DialogCode.Accepted:
+            self.reminders.append(d.result_item(None))
+            self.on_reminders_changed()
+            for q in self.panes:
+                if q.rv:
+                    q.rv.refresh()
+                    q.refresh_header()
+
+    def on_reminders_changed(self):
+        self.schedule_save()
+
+    def check_reminders(self):
+        now = datetime.now()
+        for it in list(self.reminders):
+            if it.get("done") or it.get("notified"):
+                continue
+            if datetime.fromisoformat(it["dt"]) <= now:
+                it["notified"] = True
+                self._remind_popup(it)
+        for q in self.panes:
+            if q.rv:
+                q.rv.refresh()
+        self.schedule_save()
+
+    def _remind_popup(self, it: dict):
+        box = QMessageBox(QMessageBox.Icon.Information, "⏰ Przypomnienie",
+                          f"{it['text']}\n{rem_when_text(datetime.fromisoformat(it['dt']))}", parent=self)
+        done = box.addButton("Gotowe", QMessageBox.ButtonRole.AcceptRole)
+        later = box.addButton("Za 10 minut", QMessageBox.ButtonRole.ActionRole)
+        box.addButton("Zamknij", QMessageBox.ButtonRole.RejectRole)
+        box.setWindowModality(Qt.WindowModality.NonModal)
+        box.setStyleSheet(f"QMessageBox{{border-left:6px solid {it['color']};}}")
+
+        def clicked(b):
+            if b is done:
+                it["done"] = True
+            elif b is later:
+                it["dt"] = (datetime.now() + timedelta(minutes=10)).isoformat(timespec="minutes")
+                it["notified"] = False
+            for q in self.panes:
+                if q.rv:
+                    q.rv.refresh()
+                    q.refresh_header()
+            self.schedule_save()
+        box.buttonClicked.connect(clicked)
+        self._popups = [x for x in getattr(self, "_popups", []) if x.isVisible()] + [box]
+        box.show()
+        QApplication.alert(self, 0)
+
     def open_folder_dialog(self):
         p = self.target_pane()
         p.ask_open_dir()
@@ -3265,7 +3714,7 @@ class MainWindow(QMainWindow):
                 "ui_over": dict(self.ui_over),
                 "menu": self.menuBar().isVisible(),
                 "font_default": [self.font_family, self.font_size],
-                "recent": self.recent, "last_dir": LAST["dir"],
+                "recent": self.recent, "last_dir": LAST["dir"], "reminders": self.reminders,
             }
             data.update(self.snapshot())
             js = json.dumps(data, ensure_ascii=False, indent=1)
@@ -3317,6 +3766,14 @@ class MainWindow(QMainWindow):
             if isinstance(ff, list) and len(ff) == 2 and ff[0] in FONTS:
                 self.font_family, self.font_size = ff[0], max(6.0, min(float(ff[1]), 40.0))
             self.recent = [r for r in data.get("recent", []) if isinstance(r, str)][:10]
+            for r in data.get("reminders", []):
+                try:
+                    if isinstance(r, dict) and r.get("text") and QColor(r.get("color", "")).isValid():
+                        datetime.fromisoformat(r["dt"])
+                        self.reminders.append({"id": str(r.get("id") or uuid.uuid4().hex), "text": str(r["text"]), "dt": r["dt"],
+                                               "color": r["color"], "done": bool(r.get("done")), "notified": bool(r.get("notified"))})
+                except (ValueError, TypeError):
+                    continue
             LAST["dir"] = data.get("last_dir") if isinstance(data.get("last_dir"), str) else ""
             self.apply_look(save=False)
             sts = [s if isinstance(s, dict) else {} for s in data.get("panes", [])]
@@ -3346,7 +3803,9 @@ class MainWindow(QMainWindow):
         if st.get("family") in FONTS:
             p.set_font(st["family"], st.get("font") or None)
         try:
-            if st.get("path"):
+            if st.get("reminders"):
+                p.open_reminders(self.reminders)
+            elif st.get("path"):
                 p.open_file(st["path"], st, ask=False)
             elif st.get("untitled"):
                 p.new_document(str(st.get("draft", "")), bool(st.get("draft_mod")), st, ask=False)
@@ -3386,6 +3845,8 @@ class MainWindow(QMainWindow):
         self.set_current(self.current)
         self.prune_images()
         self._ready = True
+        self._rem_timer.start()
+        QTimer.singleShot(1500, self.check_reminders)
         self.schedule_save()
 
     def prune_images(self):
