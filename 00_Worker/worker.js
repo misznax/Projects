@@ -169,14 +169,22 @@ async function stats(env) {
   return { apps: a.results, countries: c.results };
 }
 
-// ── Zapis stanu aplikacji w chmurze (np. Nawyk): D1, klucz = e-mail z Cloudflare Access + nazwa aplikacji ──
+// ── Zapis stanu aplikacji w chmurze (np. Nawyk): D1. Tożsamość: e-mail z Cloudflare Access, a bez Access — tajny klucz synchronizacji (nagłówek X-Sync-Key, w bazie tylko jego skrót) ──
 const STATE_APPS = ['nawyk'];
 let stateReady = false;
+async function sha256hex(t) {
+  const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t));
+  return [...new Uint8Array(d)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
 async function appState(request, env, app) {
   if (!env.DB) return J({ code: 'no_db' }, 501);
   if (!STATE_APPS.includes(app)) return J({ code: 'not_found' }, 404);
-  const u = (request.headers.get('Cf-Access-Authenticated-User-Email') || '').trim().toLowerCase().slice(0, 120);
-  if (!u) return J({ code: 'no_user' }, 401); // bez zalogowanego użytkownika Access nic nie zapisujemy ani nie oddajemy
+  let u = (request.headers.get('Cf-Access-Authenticated-User-Email') || '').trim().toLowerCase().slice(0, 120);
+  if (!u) {
+    const k = request.headers.get('X-Sync-Key') || '';
+    if (!/^[A-Za-z0-9_-]{24,64}$/.test(k)) return J({ code: 'no_user' }, 401); // bez e-maila i bez poprawnego klucza nic nie zapisujemy ani nie oddajemy
+    u = 'k:' + await sha256hex(k);
+  }
   if (!stateReady) {
     await env.DB.prepare('CREATE TABLE IF NOT EXISTS app_state (u TEXT NOT NULL, app TEXT NOT NULL, t INTEGER NOT NULL, data TEXT NOT NULL, PRIMARY KEY (u, app))').run();
     stateReady = true;
@@ -191,6 +199,11 @@ async function appState(request, env, app) {
     if (!b || typeof b !== 'object' || Array.isArray(b)) return J({ code: 'bad' }, 400);
     const data = JSON.stringify(b);
     if (data.length > 4e5) return J({ code: 'too_big' }, 413);
+    const ex = await env.DB.prepare('SELECT 1 AS x FROM app_state WHERE u = ?1 AND app = ?2').bind(u, app).first();
+    if (!ex) {
+      const c = await env.DB.prepare('SELECT COUNT(*) AS n FROM app_state').first();
+      if (c && c.n >= 3000) return J({ code: 'full' }, 507); // bezpiecznik przed zaśmieceniem bazy
+    }
     await env.DB.prepare('INSERT INTO app_state (u, app, t, data) VALUES (?1, ?2, ?3, ?4) ON CONFLICT(u, app) DO UPDATE SET t = ?3, data = ?4').bind(u, app, Math.floor(+b.t || Date.now()), data).run();
     return J({ ok: true });
   }

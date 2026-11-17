@@ -75,15 +75,25 @@ async function initCloud(){      // podgląd w Claude (artefakt)
     },()=>setSync('err'));
   }catch(e){setSync('err')}
 }
-async function initWorker(){     // własny hosting (smialo.org): D1 przez Workera, użytkownik z Cloudflare Access
+const KEYLS='nawyk.key';
+function syncKey(){
+  let k='';try{k=localStorage.getItem(KEYLS)||''}catch(e){}
+  if(!/^[A-Za-z0-9_-]{24,64}$/.test(k)){
+    const a=new Uint8Array(24);(window.crypto||{getRandomValues:x=>x.forEach((_,i)=>x[i]=Math.random()*256)}).getRandomValues(a);
+    k=btoa(String.fromCharCode(...a)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+    try{localStorage.setItem(KEYLS,k)}catch(e){}
+  }
+  return k;
+}
+async function initWorker(force){  // własny hosting (workers.dev / smialo.org): D1 przez Workera; tożsamość = e-mail z Access albo tajny klucz synchronizacji
   try{
-    const url='/api/state/'+APPKEY, opt={credentials:'same-origin',cache:'no-store'};
+    const url='/api/state/'+APPKEY,hd={'X-Sync-Key':syncKey()};
     setSync('wait');
-    const r=await fetch(url,opt);if(!r.ok)throw new Error('http '+r.status);
+    const r=await fetch(url,{credentials:'same-origin',cache:'no-store',headers:hd});if(!r.ok)throw new Error('http '+r.status);
     const j=await r.json();
-    ref={set:d=>fetch(url,{method:'PUT',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify(d)}).then(x=>{if(!x.ok)throw new Error('put')})};
+    ref={set:d=>fetch(url,{method:'PUT',credentials:'same-origin',headers:Object.assign({'content-type':'application/json'},hd),body:JSON.stringify(d)}).then(x=>{if(!x.ok)throw new Error('put')})};
     const d=j&&j.data;
-    if(d&&(d.t||0)>S.t)applyRemote(d,true);
+    if(d&&(force||(d.t||0)>S.t))applyRemote(d,true);
     else{if(S.t>0)queueCloud();setSync('ok')}
   }catch(e){ref=null;setSync('local')}
 }
@@ -581,7 +591,15 @@ function wire(){
   $('#miEdit').onclick=()=>{closeMenu();toggleEdit(!EDIT)};
   $('#editDone').onclick=()=>toggleEdit(false);
   $('#miPacks').onclick=()=>{renderTpl();openD($('#dPacks'))};
-  $('#miBackup').onclick=()=>{$('#bkOut').value=JSON.stringify(S);$('#bkMsg').textContent='';$('#bkIn').value='';openD($('#dBackup'))};
+  $('#miBackup').onclick=()=>{$('#bkOut').value=JSON.stringify(S);$('#bkMsg').textContent='';$('#bkIn').value='';const hosted=!(window.claude&&window.claude.use);$('#keyBox').hidden=!hosted;if(hosted){$('#keyOut').value=syncKey();$('#keyIn').value='';$('#keyMsg').textContent=''}openD($('#dBackup'))};
+  $('#keyCopy').onclick=async()=>{const m=$('#keyMsg');try{await navigator.clipboard.writeText($('#keyOut').value);m.textContent='Skopiowano klucz. Nie udostępniaj go nikomu.'}catch(e){$('#keyOut').select();m.textContent='Zaznaczone — skopiuj (Ctrl/Cmd+C).'}};
+  $('#keySet').onclick=async()=>{
+    const m=$('#keyMsg'),k=$('#keyIn').value.trim();
+    if(!/^[A-Za-z0-9_-]{24,64}$/.test(k)){m.textContent='To nie wygląda na klucz synchronizacji (24–64 znaki: litery, cyfry, - _).';m.className='msg err';return}
+    try{localStorage.setItem(KEYLS,k)}catch(e){}
+    m.className='msg';m.textContent='Łączenie…';await initWorker(true);
+    $('#keyOut').value=k;$('#keyIn').value='';m.textContent=syncState==='ok'?'Połączono — dane z chmury wczytane.':'Nie udało się połączyć z chmurą.';if(syncState!=='ok')m.className='msg err';
+  };
 
   $('#sws').onclick=e=>{const b=e.target.closest('[data-h]');if(!b)return;S.set.hue=+b.dataset.h;save();applyLook();renderLook()};
   $('#setQuiet').onchange=e=>{S.set.quiet=e.target.checked?1:0;save();applyLook()};

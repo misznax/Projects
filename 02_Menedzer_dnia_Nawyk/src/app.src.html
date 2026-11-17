@@ -281,6 +281,15 @@ textarea.mono{font:12px/1.4 ui-monospace,Consolas,monospace;min-height:110px}
   <textarea class="mono" id="bkIn" placeholder="Wklej tu skopiowaną kopię danych…" aria-label="Wklej kopię"></textarea>
   <div class="drow" style="margin-top:8px"><button class="btn" id="bkLoad">Wczytaj kopię</button></div>
   <div class="msg" id="bkMsg"></div>
+  <div id="keyBox" hidden>
+    <h4>Synchronizacja między urządzeniami</h4>
+    <p class="src" style="margin-top:0">Ten klucz łączy Twoje urządzenia. Na drugim urządzeniu wklej go poniżej. Kto ma klucz, ma dostęp do danych — nie udostępniaj.</p>
+    <input type="text" id="keyOut" readonly aria-label="Twój klucz synchronizacji">
+    <div class="drow" style="margin-top:8px"><button class="btn sm" id="keyCopy" type="button">Kopiuj klucz</button></div>
+    <input type="text" id="keyIn" placeholder="Wklej klucz z drugiego urządzenia" aria-label="Klucz z drugiego urządzenia" style="margin-top:10px">
+    <div class="drow" style="margin-top:8px"><button class="btn sm" id="keySet" type="button">Połącz z tym kluczem</button></div>
+    <div class="msg" id="keyMsg"></div>
+  </div>
   <div class="drow"><button class="btn ghost" data-close>Zamknij</button></div>
 </dialog>
 
