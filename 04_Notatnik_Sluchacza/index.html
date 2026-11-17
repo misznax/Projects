@@ -15,6 +15,8 @@ pre{white-space:pre-wrap;font:inherit;margin:4px 0}
 .k0{--c:#9ca3af}.k1{--c:#60a5fa}.k2{--c:#fb923c}.k3{--c:#c084fc}.k4{--c:#4ade80}.k5{--c:#facc15}
 .bl{display:flex;gap:8px;padding:6px 9px;margin:5px 0;border-left:4px solid var(--c);background:#ffffff0d;border-radius:0 9px 9px 0;line-height:1.35}.bl.k1,.bl.k2,.bl.k3,.bl.k4,.bl.k5{background:#ffffff14}.bl i{font-style:normal;flex:none}.bl.k2 span{font-weight:600}
 .chip{display:inline-block;font-size:12px;border:1px solid var(--c);color:var(--c);border-radius:10px;padding:0 7px;margin:2px 4px 2px 0}.nt{font-weight:700;font-size:16px;margin:3px 0 5px}
+.mi{display:block;width:100%;text-align:left;margin:4px 0;padding:11px 12px}.ck{display:flex;gap:10px;align-items:center;padding:8px 2px}.ck input{width:auto;margin:0}
+.seg{display:flex;gap:6px}.seg label{flex:1;text-align:center;padding:9px 2px;border:1px solid #444;border-radius:10px;font-size:14px}.seg label.on{background:#2563eb;border-color:#2563eb}.seg input{display:none}
 #dim{position:fixed;inset:0;background:#000;display:none;z-index:9;align-items:center;justify-content:center;color:#333}
 #dlg{position:fixed;inset:0;background:#000c;display:none;z-index:8;padding:20px;overflow:auto}#dlg>div{background:#1b1b1b;border-radius:14px;padding:16px;max-width:520px;margin:auto}
 input,textarea,select{width:100%;margin:4px 0}
@@ -29,7 +31,7 @@ input,textarea,select{width:100%;margin:4px 0}
 <script>
 const GID='461701670960-b0ivbr1cktr8ocfbdaffpplmr09thc6j.apps.googleusercontent.com',gcid=()=>GID; // Client ID jest publiczny z założenia; stary zapis z Ustawień usuwany (powodował 401)
 try{localStorage.removeItem('gcid')}catch(e){}
-const $=s=>document.querySelector(s),cfg=k=>localStorage.getItem(k)||'',VER='v0.23';
+const $=s=>document.querySelector(s),cfg=k=>localStorage.getItem(k)||'',VER='v0.24';
 const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 const tm=s=>{s=Math.floor(s);const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60,p=n=>String(n).padStart(2,'0');return(h?h+':':'')+p(m)+':'+p(x)};
 const SYS='Jesteś asystentem studenta na wykładzie. Odpowiadaj po polsku, zwięźle, rzeczowo.';
@@ -53,10 +55,11 @@ function render(){
  if(S.msg)h+=`<div class=mut style="color:#fbbf24">${esc(S.msg)}</div>`;
  if(S.link)h+=`<a href="${S.link}" target=_blank rel=noopener style="color:#60a5fa">Otwórz folder na Dysku ↗</a>`;
  if(pend&&!canSTT())h+=`<div class=mut style="color:#f87171">⏳ Audio czeka na transkrypcję: ${!on?'brak internetu':cfg('mode')==='offline'?'tryb „Tylko offline”':'brak klucza OpenAI (☰ → Ustawienia lub sekret OPENAI_API_KEY w Workerze)'}. Pierwszy tekst pojawia się ok. 30 s po starcie.</div>`;
- h+=`<div class=tabs><button class="${tab?'':'on'}" onclick="tab=0;render()">Notatki</button><button class="${tab?'on':''}" onclick="tab=1;render()">Transkrypcja</button></div><button class=p onclick="mkNotes()" style="width:100%">✨ Sporządź notatki</button>${L.chunks.length&&!S.rec?`<button class=p onclick="mp3Dlg(1)" style="width:100%;margin-top:6px">🧹 Oczyść dźwięk i eksportuj MP3</button>`:''}<div style="display:flex;gap:6px;margin:8px 0"><button style="flex:1" onclick="dlMenu()">⬇ Pobierz</button><button style="flex:1" onclick="driveMenu()">☁ Dysk</button><button style="flex:1" onclick="moreMenu()">⋯ Więcej</button><button onclick="delMenu()">🗑</button></div>`;
- if(!tab){h+=L.notes.length?'<div style="display:flex;gap:6px;margin:8px 0"><button class=p style="flex:1" onclick="dlNotes(1,2)">🎨 Pobierz notatki (.html)</button><button onclick="dlNotes(1)">📝 .txt</button><button onclick="shareNotes(1,1)">📤</button></div><div style="line-height:1.9">'+LEG+'</div><div style="display:flex;gap:6px;margin:6px 0"><button class=s onclick="mergeAll()">🔗 Scal podobne</button><button class=s onclick="redoNotes()">🔄 Notatki od nowa</button></div>':'<p class=mut>Notatki po ok. 5 min nagrania (internet + klucz Anthropic).</p>';
-  h+=L.notes.map((n,i)=>hdr(n.start)+`<div class=card><b onclick="plAt(${n.start})" style="cursor:pointer">▶ ${ts(n.start)} (${tm(n.end-n.start)})</b> ${badges(n.summary)}<div class=nt>${esc(n.title)}</div>${bhtml(n.summary)}${n.authors?`<div class=card><b>AUTORZY</b><pre>${esc(n.authors)}</pre></div>`:''}${n.ver?`<div class=card><b>WERYFIKACJA</b><pre>${esc(n.ver)}</pre></div>`:''}<button class=s onclick="enrich(${i},0)">Autorzy</button> <button class=s onclick="enrich(${i},1)">Zweryfikuj</button> <button class=s onclick="delNote(${i})">🗑 Usuń</button> ${n.busy?'⏳':''}</div>`).join('')+(L.notes.length?`<button class=s onclick="delNote(-1)">🗑 Usuń wszystkie notatki</button>`:'')}
- else{const R=roles();h+=L.utt.map((u,i)=>hdr(u.s)+`<div class=card><b class=${R[i]==='Pytanie'?'P':R[i]==='Odpowiedź'?'O':'W'} onclick="plAt(${u.s})" style="cursor:pointer">▶ ${ts(u.s)} · ${R[i]}${u.tmp?' (podgląd)':''}</b><div>${esc(u.t)}</div></div>`).join('')||'<p class=mut>Pusto.</p>'}
+ h+=`<div class=tabs><button class="${tab===0?'on':''}" onclick="tab=0;render()">Notatki</button><button class="${tab===1?'on':''}" onclick="tab=1;render()">Transkrypcja</button><button class="${tab===2?'on':''}" onclick="tab=2;render()">Weryfikacja${L.verify?' ('+L.verify.items.length+')':''}</button></div><div style="display:flex;gap:6px;margin:8px 0"><button class=p style="flex:1" onclick="mkNotes()">✨ Sporządź notatki</button><button onclick="exDlg(1)">⬆ Eksport</button><button onclick="moreMenu()">⋯</button></div>`;
+ if(tab===0){h+=L.notes.length?'<div style="line-height:1.9">'+LEG+'</div>':'<p class=mut>Notatki powstają automatycznie po ok. 10 min nagrania (internet). Możesz je też zrobić ręcznie: ✨ Sporządź notatki.</p>';
+  h+=L.notes.map((n,i)=>hdr(n.start)+`<div class=card><div style="display:flex;align-items:center;gap:6px"><b onclick="plAt(${n.start})" style="cursor:pointer">▶ ${ts(n.start)} (${tm(n.end-n.start)})</b><span style="flex:1">${badges(n.summary)}</span><button class=s onclick="delNote(${i})">🗑</button></div><div class=nt>${esc(n.title)}</div>${bhtml(n.summary)}${n.authors?`<div class=card><b>AUTORZY</b><pre>${esc(n.authors)}</pre></div>`:''}${n.ver?`<div class=card><b>WERYFIKACJA</b><pre>${esc(n.ver)}</pre></div>`:''}${n.busy?'<div class=mut>⏳</div>':''}</div>`).join('')}
+ else if(tab===1){const R=roles();h+=L.utt.map((u,i)=>hdr(u.s)+`<div class=card><b class=${R[i]==='Pytanie'?'P':R[i]==='Odpowiedź'?'O':'W'} onclick="plAt(${u.s})" style="cursor:pointer">▶ ${ts(u.s)} · ${R[i]}${u.tmp?' (podgląd)':''}</b><div>${esc(u.t)}</div></div>`).join('')||'<p class=mut>Pusto.</p>'}
+ else h+=verHtml();
  $('#app').innerHTML=h;plSync()}
 const P=()=>L.parts||(L.parts=[{start:0,name:'Część 1'}]);
 let _pp=-1;
@@ -99,7 +102,7 @@ document.addEventListener('visibilitychange',async()=>{if(document.visibilitySta
 function startSR(){const R=window.SpeechRecognition||window.webkitSpeechRecognition;if(!R)return;
  const r=new R();r.lang='pl-PL';r.continuous=true;r.interimResults=false;S.sr=r;
  r.onresult=e=>{if(canSTT())return;const x=e.results[e.results.length-1];if(!x.isFinal)return;
-  const t=elapsed();L.utt.push({s:Math.max(0,t-4),e:t,sp:'L',t:x[0].transcript.trim(),tmp:1});saveL();if(!tab)return;render()};
+  const t=elapsed();L.utt.push({s:Math.max(0,t-4),e:t,sp:'L',t:x[0].transcript.trim(),tmp:1});saveL();if(tab!==1)return;render()};
  r.onend=()=>{if(S.rec)try{r.start()}catch(e){}};try{r.start()}catch(e){}}
 // ---------- transkrypcja: kolejka, automatycznie chmura ↔ offline
 addEventListener('online',()=>{render();pump()});addEventListener('offline',render);
@@ -167,6 +170,99 @@ async function notes(force){if(!canAI()||!L)return;
     L.notes.push({title:String(n.title),start:st,end:Math.max(en,st+1),summary:Array.isArray(n.summary)?n.summary.join('\n'):String(n.summary||'')})});
    L.notes=mergeNotes(L.notes).a;L.notedUntil=b1;await saveL();render()}
   if(/^✨/.test(S.msg||'')){S.msg='';render()}}catch(e){S.msg='Notatki: '+e.message;render()}finally{try{wl&&wl.release()}catch(e){}}}
+// ---------- weryfikacja całości (zakładka „Weryfikacja”)
+const VD={'błędne':['❌','#f87171','Błędne'],'sporne':['⚠️','#fb923c','Sporne'],'nieaktualne':['🕒','#60a5fa','Nieaktualne'],'niepewne':['❓','#facc15','Niepewne – warto sprawdzić']},VC={'błędne':'#dc2626','sporne':'#ea580c','nieaktualne':'#2563eb','niepewne':'#ca8a04'};
+const vnorm=v=>{v=String(v||'').toLowerCase();return/fałsz|błęd|niepraw/.test(v)?'błędne':/spor/.test(v)?'sporne':/nieakt|przestarz/.test(v)?'nieaktualne':'niepewne'};
+function parseArr(raw){const s=String(raw||'').replace(/```(?:json)?/gi,''),i=s.indexOf('[');if(i<0)return null;
+ try{const j=s.lastIndexOf(']');if(j>i){const a=JSON.parse(fixJson(s.slice(i,j+1)));if(Array.isArray(a))return a.filter(x=>x&&typeof x==='object')}}catch(e){}
+ const out=[],t=fixJson(s.slice(i)),re=/\{[^{}]*\}/g;let m;while(m=re.exec(t)){try{out.push(JSON.parse(m[0]))}catch(e){}}return out.length?out:null}
+const VP='Jesteś redaktorem merytorycznym. Z fragmentu wykładu wypisz TYLKO stwierdzenia faktograficzne, które mogą się nie zgadzać z prawdą: błędne, sporne, nieaktualne albo niepewne (pomiń opinie i rzeczy poprawne). Linie: [sekundy] ROLA: tekst. Zwróć WYŁĄCZNIE tablicę JSON bez ```: [{"t":sekundy,"claim":"teza własnymi słowami, max 20 słów","verdict":"błędne|sporne|nieaktualne|niepewne","why":"1–2 zdania dlaczego","fix":"poprawna wersja, krótko, albo pusty napis","src":"URL albo pusty napis"}]. Jako OSTATNI element tablicy dodaj {"checked":N} – ile tez sprawdziłeś. Gdy nic nie budzi wątpliwości: [{"checked":N}]. Nie zgaduj i nie wymyślaj źródeł.\n\n';
+async function verifyAll(){if(S.vp)return;if(!canAI()){S.msg='Weryfikacja wymaga internetu i dostępu do AI';render();return}
+ const R=roles(),all=L.utt.map((u,i)=>[u,R[i]]).filter(([u])=>!u.tmp);if(!all.length){S.msg='Brak tekstu do weryfikacji';render();return}
+ const B=[];let cur=[],ch=0;for(const x of all){const n=line(x[0],x[1]).length;if(cur.length&&ch+n>8000){B.push(cur);cur=[];ch=0}cur.push(x);ch+=n}if(cur.length)B.push(cur);
+ const web=!!(cap.ckey||cfg('ant')),items=[];let checked=0,fail=0,bad=0,okc=0,wl=null;if(!S.rec)try{wl=await navigator.wakeLock.request('screen')}catch(e){}
+ S.vp={k:0,n:B.length};S.msg='';tab=2;render();
+ try{for(const b of B){S.vp.k++;render();let a=null;
+   for(let t=0;t<2&&!a;t++){try{a=parseArr(await claude(VP+b.map(([u,r])=>line(u,r)).join('\n'),{model:'claude-sonnet-5-5',web:1,max:2500}))}catch(e){}}
+   if(!a){if(++bad>=3)break;continue}bad=0;okc++;
+   for(const x of a){if(!x.claim){if(x.checked!==undefined)checked+=+x.checked||0;continue}
+    const t=+x.t,lo=b[0][0].s,hi=b[b.length-1][0].e,claim=String(x.claim);if(items.some(y=>y.claim===claim))continue;
+    items.push({t:Number.isFinite(t)?Math.min(Math.max(t,lo),hi):lo,claim,v:vnorm(x.verdict),why:String(x.why||''),fix:String(x.fix||''),src:/^https?:\/\//.test(String(x.src||''))?String(x.src):''})}}
+  items.sort((a,b)=>a.t-b.t);fail=B.length-okc;
+  if(!okc)S.msg='Weryfikacja: nie udało się połączyć z AI – sprawdź zasięg i spróbuj ponownie';
+  else{L.verify={at:Date.now(),web,items,checked:Math.max(checked,items.length),fail,total:B.length};await saveL();S.msg=fail?`Weryfikacja: nie sprawdzono ${fail} z ${B.length} fragmentów – kliknij „Zweryfikuj ponownie”`:''}}
+ catch(e){S.msg='Weryfikacja: '+e.message}finally{S.vp=null;try{wl&&wl.release()}catch(e){}}render()}
+function verHtml(){const v=L.verify,web=!!(cap.ckey||cfg('ant')),btn=`<button class=p onclick="verifyAll()" ${S.vp?'disabled':''}>${S.vp?`⏳ Sprawdzam ${S.vp.k}/${S.vp.n}…`:v?'🔄 Zweryfikuj ponownie':'✅ Zweryfikuj całość'}</button>`;
+ if(!v)return `<div class=card><div style="font-weight:600">Weryfikacja faktów</div><p class=mut>Sprawdzę całą transkrypcję (${L.utt.filter(u=>!u.tmp).length} wypowiedzi) i pokażę tylko to, co może się nie zgadzać: tezy błędne, sporne, nieaktualne i niepewne – z uzasadnieniem, poprawką i źródłem.${web?' Używam wyszukiwania w sieci.':' Tryb podstawowy: odpowiadam z pamięci modelu, bez wyszukiwania w sieci – to wskazówki, nie wyrok.'} Duży wykład to kilka minut, nie blokuj ekranu.</p>${btn}</div>`;
+ const g={};v.items.forEach(x=>(g[x.v]=g[x.v]||[]).push(x));const ks=Object.keys(VD).filter(k=>g[k]);
+ return `<div class=card><div>Sprawdzono ok. <b>${v.checked}</b> tez: ${ks.map(k=>`${VD[k][0]} ${g[k].length}`).join(' · ')||'✅ nic nie budzi wątpliwości'}</div><div class=mut>${new Date(v.at).toLocaleString('pl')} · ${v.web?'z wyszukiwaniem w sieci':'z pamięci modelu (bez sieci) – wskazówki, nie wyrok'}${v.fail?` · ⚠ nie sprawdzono ${v.fail}/${v.total} fragmentów`:''}</div><div style="margin-top:8px">${btn}</div></div>`
+  +ks.map(k=>{const[e,c,n]=VD[k];return `<div style="margin-top:14px;font-weight:700;color:${c}">${e} ${n} (${g[k].length})</div>`+g[k].map(x=>`<div class=card style="border-left:4px solid ${c}"><b onclick="plAt(${x.t})" style="cursor:pointer">▶ ${ts(x.t)}</b><div style="font-weight:600;margin:3px 0">${esc(x.claim)}</div><div>${esc(x.why)}</div>${x.fix?`<div style="color:#4ade80">✔ ${esc(x.fix)}</div>`:''}${x.src?`<a href="${esc(x.src).replace(/"/g,'%22')}" target=_blank rel=noopener style="color:#60a5fa;font-size:13px">źródło ↗</a>`:''}</div>`).join('')}).join('')}
+function verTxt(l,m){const v=l.verify;if(!v)return'';let o=m?`\n## Weryfikacja faktów\n_${new Date(v.at).toLocaleString('pl')} · ${v.web?'z wyszukiwaniem w sieci':'z pamięci modelu, bez sieci'}_\n\n`:`\n✅ WERYFIKACJA FAKTÓW (${v.web?'z wyszukiwaniem w sieci':'z pamięci modelu, bez sieci'})\n\n`;
+ for(const k of Object.keys(VD)){const a=v.items.filter(x=>x.v===k);if(!a.length)continue;o+=(m?'### ':'')+`${VD[k][0]} ${VD[k][2]} (${a.length})\n`;a.forEach(x=>o+=`${m?'- ':'• '}[${tm(x.t)}] ${x.claim} — ${x.why}${x.fix?' ✔ '+x.fix:''}${x.src?' '+x.src:''}\n`);o+='\n'}
+ if(!v.items.length)o+='Nic nie budzi wątpliwości.\n';return o}
+function vexp(l){const v=l.verify;if(!v)return'';const g={};v.items.forEach(x=>(g[x.v]=g[x.v]||[]).push(x));
+ return `<h2>✅ Weryfikacja faktów</h2><div class=m>${new Date(v.at).toLocaleString('pl')} · ${v.web?'z wyszukiwaniem w sieci':'z pamięci modelu (bez sieci) – wskazówki, nie wyrok'} · sprawdzono ok. ${v.checked} tez</div>`
+  +(v.items.length?Object.keys(VD).filter(k=>g[k]).map(k=>`<h3 style="color:${VC[k]};margin:16px 0 4px">${VD[k][0]} ${VD[k][2]} (${g[k].length})</h3>`+g[k].map(x=>`<div class=b style="display:block;border-color:${VC[k]};background:#f9fafb"><b>[${tm(x.t)}] ${esc(x.claim)}</b><div>${esc(x.why)}</div>${x.fix?`<div style="color:#16a34a">✔ ${esc(x.fix)}</div>`:''}${x.src?`<a href="${esc(x.src).replace(/"/g,'%22')}">źródło</a>`:''}</div>`).join('')).join(''):'<div class="b k4">Nic nie budzi wątpliwości.</div>')}
+async function authorsAll(){dlg();if(!canAI()){S.msg='Wymaga internetu i dostępu do AI';render();return}
+ const idx=L.notes.map((n,i)=>n.authors?-1:i).filter(i=>i>=0);if(!idx.length){S.msg=L.notes.length?'Autorzy są już dopisani do wszystkich notatek':'Brak notatek';render();return}
+ let k=0;for(const i of idx){S.msg=`👤 Autorzy ${++k}/${idx.length}…`;render();await enrich(i,0);if(/^(Błąd AI|Wymaga)/.test(S.msg))return}
+ S.msg='';render()}
+// ---------- menu „⋯” i eksport (co + dokąd)
+function moreMenu(){const R=(f,t)=>`<button class=mi onclick="${f}">${t}</button>`;
+ dlg(`<h3>⋯ Więcej</h3><div class=mut>Notatki</div>${R('redoNotes()','🔄 Sporządź notatki od nowa (większe bloki)')}${R('mergeAll()','🔗 Scal podobne notatki')}${R('authorsAll()','👤 Dopisz autorów teorii i pojęć')}${R('copyNotes(1)','📋 Kopiuj notatki')}<div class=mut style="margin-top:10px">Wykład</div>${R('dlg();exp()','👁 Podgląd Markdown (notatki + transkrypcja)')}${R('dlg();diag()','🔍 Diagnoza nagrania')}${R('dlg();dlJson()','💾 Kopia techniczna (JSON)')}${R('delMenu()','🗑 Usuń…')}${R('dlg()','Zamknij')}`)}
+const JSZ='https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js',EXI=[['h','🎨 Notatki kolorowe (.html)'],['t','📝 Notatki tekstowe (.txt)'],['c','💬 Rozmowa jak czat (.txt)'],['m','🎧 Audio MP3 – oczyść dźwięk'],['z','🗜 Surowe nagrania + pełna kopia']];
+function exLs(){const all=[...LS];if(L&&!all.includes(L))all.push(L);return(S.exi||[]).map(id=>all.find(l=>l.id===id)).filter(Boolean)}
+function mp3Opts(rng){let zr='';if(rng){const d=dur(L);if(S.zl!==L.id){S.zl=L.id;S.zf='0:00';S.zt=tm(d);S.zsv=''}const ps=P(),o=(v,t)=>`<option value="${v}" ${S.zsv===v?'selected':''}>${t}</option>`;
+  zr=`<div style="margin-top:8px"><b>Zakres</b><select id=zs onchange="S.zsv=this.value;zrPick(this.value)" style="width:100%;margin:6px 0">${o('',`Cały wykład (${tm(d)})`)}${o('c','Własny fragment (wpisz poniżej)')}${ps.length>1?ps.map((x,i)=>o(`${x.start},${i+1<ps.length?ps[i+1].start:d}`,`📌 ${esc(x.name)} (${tm(x.start)}–${tm(i+1<ps.length?ps[i+1].start:d)})`)).join(''):''}${L.notes.map(n=>o(`${n.start},${n.end}`,`📝 ${esc(n.title).slice(0,40)} (${tm(n.start)}–${tm(n.end)})`)).join('')}</select>
+  <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">Od <input id=zf value="${S.zf}" oninput="S.zf=this.value;S.zsv='c';zs.value='c'" style="width:84px"> <button class=s onclick="zrNow('zf')">⏱ z odtwarzacza</button></div>
+  <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:6px">Do <input id=zt value="${S.zt}" oninput="S.zt=this.value;S.zsv='c';zs.value='c'" style="width:84px"> <button class=s onclick="zrNow('zt')">⏱ z odtwarzacza</button></div><p class=mut>Format 1:30 albo 1:02:03. Przycisk „z odtwarzacza” bierze pozycję, na której zatrzymałeś odtwarzacz.</p></div>`}
+ const c=(k,d,t)=>`<label class=ck><input type=checkbox ${S[k]===false?'':'checked'} onchange="S.${k}=this.checked"> <span>${t}</span></label>`;
+ return `<details ${S.exo?'open':''} ontoggle="S.exo=this.open" style="margin:2px 0 6px 30px"><summary class=mut>⚙ Ustawienia MP3: szum, cisza${rng?', zakres':''}</summary>${zr}${c('dn',0,'🧹 Usuń szum tła (sala, buczenie)')}${c('cut',0,'✂ Usuń ciszę (pauzy &gt;0,7 s → 0,25 s)')}${c('boost',0,'🔊 Wzmocnij ciche fragmenty (do ×8)')}<p class=mut>Po usunięciu ciszy czas w pliku nie zgadza się z godzinami w transkrypcji. Kilka godzin nagrania = kilka minut obróbki; nie zamykaj strony i nie blokuj ekranu.</p></details>`}
+function exDlg(one){if(one!==undefined){S.exi=one?[L.id]:[...S.sel];S.exm=''}
+ const X=S.ex=S.ex||{h:1,t:0,c:0,m:0,z:0,dest:'drive'},ls=exLs();if(!ls.length)return;
+ const noN=!ls.some(l=>l.notes.length),noA=!ls.some(l=>l.chunks.length),dis={h:noN,t:noN,c:false,m:noA||S.rec,z:noA||S.rec},why={h:'brak notatek',t:'brak notatek',m:S.rec?'trwa nagrywanie':'brak nagrania',z:S.rec?'trwa nagrywanie':'brak nagrania'};
+ const rows=EXI.map(([k,t])=>`<label class=ck style="${dis[k]?'opacity:.45':''}"><input type=checkbox ${X[k]&&!dis[k]?'checked':''} ${dis[k]?'disabled':''} onchange="S.ex.${k}=this.checked;S.exm=''${k==='m'?';exDlg()':''}"><span>${t}${dis[k]?` <span class=mut>(${why[k]})</span>`:''}</span></label>${k==='m'&&X.m&&!dis.m?mp3Opts(ls.length===1&&ls[0]===L):''}`).join('');
+ const D=[['drive','☁ Dysk Google'],['phone','📱 Telefon'],['share','📤 Udostępnij']],seg=D.map(([k,t])=>`<label class="${X.dest===k?'on':''}"><input type=radio name=dst ${X.dest===k?'checked':''} onchange="S.ex.dest='${k}';exDlg()">${t}</label>`).join('');
+ const hint={drive:'Wybierzesz konto Google. Pliki trafią do Mój Dysk › Notatnik Słuchacza › nazwa wykładu. Na telefon nic się nie pobiera.',phone:'Pliki zapiszą się w folderze Pobrane na telefonie.',share:'Otworzy się menu telefonu (Dysk, Pliki, WhatsApp, e-mail…).'}[X.dest];
+ dlg(`<h3>⬆ Eksport</h3><div class=mut>${esc(ls.length>1?ls.length+' wykładów':ls[0].title)}</div><div class=mut style="margin-top:10px">Co wyeksportować</div>${rows}<div class=mut style="margin-top:12px">Dokąd</div><div class=seg>${seg}</div><p class=mut>${hint}</p>${S.exm?`<p style="color:#f87171">${esc(S.exm)}</p>`:''}<button class=p onclick="exGo()">⬆ Eksportuj</button> <button onclick="dlg()">Anuluj</button>`)}
+async function drvLogin(){const tok=await gtoken(),H={Authorization:'Bearer '+tok};let who='';try{who=(await(await fetch('https://www.googleapis.com/drive/v3/about?fields=user(emailAddress)',{headers:H})).json()).user.emailAddress}catch(e){}
+ const ok=async id=>id&&(await fetch('https://www.googleapis.com/drive/v3/files/'+id+'?fields=id,trashed',{headers:H})).ok,rk='groot_'+who;let root=cfg(rk);if(!(await ok(root))){root=await gfolder(tok,'Notatnik Słuchacza');localStorage[rk]=root}
+ return{tok,who,root,ok}}
+async function drvDir(T,l){if((l.gacc||'')!==T.who){l.gdir='';l.chunks.forEach(c=>{delete c.gid});l.gacc=T.who}
+ if(!(await T.ok(l.gdir))){l.gdir=await gfolder(T.tok,l.title+' '+new Date(l.date).toISOString().slice(0,10),T.root);await put(l)}return l.gdir}
+async function drvRaw(T,l,dir,pre){const todo=l.chunks.filter(c=>!c.gid);let n=0;
+ for(const c of todo){const b=await tx('chunk','readonly',s=>s.get(l.id+':'+c.i));if(!b){c.gid='-';continue}c.gid=await gput(T.tok,cname(c,b,l),b,dir);await put(l);S.msg=pre+`nagrania ${++n}/${todo.length}`;render()}
+ await gput(T.tok,'kopia_techniczna_'+stamp()+'.json',new Blob([JSON.stringify(l)],{type:'application/json'}),dir);await put(l)}
+async function gputBig(tok,name,blob,parent){if(blob.size<8e6)return gput(tok,name,blob,parent);
+ const r=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable',{method:'POST',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/json; charset=UTF-8','X-Upload-Content-Type':blob.type||'application/octet-stream','X-Upload-Content-Length':String(blob.size)},body:JSON.stringify({name,parents:[parent]})});
+ if(!r.ok)throw await gerr(r);const loc=r.headers.get('Location');if(!loc)return gput(tok,name,blob,parent);
+ const u=await fetch(loc,{method:'PUT',headers:{'Content-Type':blob.type||'application/octet-stream'},body:blob});if(!u.ok)throw await gerr(u);return(await u.json()).id}
+async function mkZip(l,files){await loadJS(JSZ);const z=new JSZip();let n=0;
+ if(l)for(const c of l.chunks){const b=await tx('chunk','readonly',s=>s.get(l.id+':'+c.i));if(b)z.file(cname(c,b,l),b,{compression:'STORE'});S.msg=`ZIP: ${++n}/${l.chunks.length}`;if(n%10==0)render()}
+ if(l)z.file('transkrypcja.md',md(l));(files||[]).forEach(f=>z.file(f.name,f.blob,{compression:'STORE'}));S.msg='ZIP: pakuję…';render();return z.generateAsync({type:'blob',streamFiles:true})}
+function shareFiles(fs){window.XF=fs.map(f=>new File([f.blob],f.name,{type:f.blob.type||'application/octet-stream'}));S.msg='';
+ dlg(`<h3>Gotowe: ${fs.length} ${fs.length===1?'plik':'pliki'}</h3><p class=mut>${fs.map(f=>esc(f.name)).join('<br>')}</p><button class=p onclick="doShare()">📤 Udostępnij</button> <button onclick="dlg()">Zamknij</button>`)}
+function doShare(){try{if(navigator.canShare&&navigator.canShare({files:XF})){navigator.share({files:XF}).then(()=>dlg()).catch(e=>{if(e.name!=='AbortError'){XF.forEach((f,i)=>setTimeout(()=>dl(f,f.name),i*600));dlg()}});return}}catch(e){}XF.forEach((f,i)=>setTimeout(()=>dl(f,f.name),i*600));dlg()}
+async function exGo(){const X=S.ex,ls=exLs();if(!ls.length)return;if(!EXI.some(([k])=>X[k]))return(S.exm='Zaznacz, co wyeksportować',exDlg());
+ const dest=X.dest,st=stamp(),o={cut:S.cut!==false,boost:S.boost!==false,denoise:S.dn!==false};let sfx='',span=0;
+ if(X.m&&ls.length===1&&ls[0]===L)try{const d=dur(L),a=pt(S.zf??'0:00'),b=pt(S.zt??tm(d));if(!(a>=0&&b>a))throw new Error('Zły zakres – wpisz Od i Do w formacie 1:30');const a2=Math.min(a,d),b2=Math.min(b,d);if(b2-a2<1)throw new Error('Zakres poza nagraniem (wykład trwa '+tm(d)+')');
+  if(a2>0.5||b2<d-0.5){o.rng=[a2,b2];span=b2-a2;sfx='_'+tm(a2).replace(/:/g,'-')+'_'+tm(b2).replace(/:/g,'-')}}catch(e){S.exm=e.message;S.exo=true;return exDlg()}
+ dlg();S.link='';const out=[],done=[],miss=[];let T=null,sk=0,secs=0,orig=0;
+ try{if(dest==='drive'){S.msg='Dysk: wybierz konto Google…';render();T=await drvLogin()}
+  for(const[k,l]of ls.entries()){const pre=(dest==='drive'?'Dysk':'Eksport')+(ls.length>1?` · wykład ${k+1}/${ls.length}`:'')+': ',sn=safe(l.title)+'_',dir=dest==='drive'?await drvDir(T,l):null,files=[];
+   const nm=(a,b)=>dest==='drive'?a:sn+b;
+   if(X.h||X.t){if(!l.notes.length)miss.push(l.title);else{if(X.h)files.push([nm(`notatki_kolorowe_${st}.html`,`notatki_${st}.html`),new Blob([notesHtml([l])],{type:'text/html'})]);if(X.t)files.push([nm(`notatki_${st}.txt`,`notatki_${st}.txt`),new Blob([notesTxt(l,0)],{type:'text/plain'})])}}
+   if(X.c)files.push([nm(`rozmowa_${st}.txt`,`czat_${st}.txt`),new Blob([chat(l)],{type:'text/plain'})]);
+   for(const[n,b]of files){S.msg=pre+n;render();if(dest==='drive')await gputBig(T.tok,n,b,dir);else out.push({name:n,blob:b});done.push(n)}
+   if(X.m&&l.chunks.length){const{blob,skip,secs:sc}=await toMp3(l,(a,b,ph)=>{S.msg=`${ph||'MP3'}${ls.length>1?` (wykład ${k+1}/${ls.length})`:''}: ${a}/${b}`;render()},o);sk+=skip;secs+=sc;orig+=o.rng?span:dur(l);
+    const n=sn+new Date(l.date).toISOString().slice(0,10)+sfx+'.mp3';if(dest==='drive'){S.msg=pre+n+' (wysyłam)';render();await gputBig(T.tok,n,blob,dir)}else out.push({name:n,blob});done.push(n)}
+   if(X.z&&l.chunks.length){if(dest==='drive'){await drvRaw(T,l,dir,pre);done.push('nagrania + kopia')}else{const n=sn+`nagrania_${st}.zip`;out.push({name:n,blob:await mkZip(l)});done.push(n)}}}
+  let tail=(miss.length?` · bez notatek: ${miss.map(esc).join(', ')}`:'')+(X.m&&done.length?(o.rng?` · fragment ${tm(o.rng[0])}–${tm(o.rng[1])}`:'')+(o.cut?` · ${tm(orig)} → ${tm(secs)} po usunięciu ciszy`:''):'')+(sk?` · uwaga: ${sk} kawałków 30 s było nieczytelnych`:'');
+  if(!done.length){S.msg='Nic nie wyeksportowano'+tail}
+  else if(dest==='drive'){S.link='https://drive.google.com/drive/folders/'+(ls.length>1?T.root:ls[0].gdir);S.msg=`✅ Na Dysku${T.who?' ('+T.who+')':''}: ${done.join(', ')}${tail}`}
+  else{let fs=out;if(fs.length>5){fs=[{name:'notatnik_eksport_'+st+'.zip',blob:await mkZip(null,out)}]}
+   if(dest==='share')shareFiles(fs);else{fs.forEach((f,i)=>setTimeout(()=>dl(f.blob,f.name),i*600));S.msg=`✅ Zapisano na telefonie (Pobrane): ${fs.map(f=>f.name).join(', ')}${tail}`}}}
+ catch(e){S.msg='Eksport: '+e.message}render()}
 function delNote(i){const t=i<0?`wszystkie notatki (${L.notes.length})`:`notatkę „${esc(L.notes[i].title)}”`;dlg(`<h3>Usunąć ${t}?</h3><p class=mut>Tej operacji nie można cofnąć. Transkrypcja i nagrania zostają.</p><button class=r onclick="doDelNote(${i})">Tak, usuń</button> <button onclick="dlg()">Anuluj</button>`)}
 async function mergeAll(){dlg();const b=L.notes.length,r=mergeNotes(L.notes);
  if(!r.n){S.msg='Nic do scalenia (tytuły różne lub brak notatek). Dla dużych bloków użyj 🔄 Notatki od nowa';render();return}
@@ -226,23 +322,16 @@ function notesTxt(l=L,m=0){const d=new Date(l.date).toLocaleDateString('pl'),u=t
   o+=m?`## ${n.title}\n_${w}_\n\n${bt(n.summary)}\n\n`:`${i+1}. ${n.title} (${w})\n${bt(n.summary)}\n\n`;
   if(n.authors)o+=m?`**Autorzy:**\n${u(n.authors)}\n\n`:`Autorzy:\n${n.authors}\n\n`;
   if(n.ver)o+=m?`**Weryfikacja:**\n${u(n.ver)}\n\n`:`Weryfikacja:\n${n.ver}\n\n`});
- return o.trimEnd()+'\n'}
+ return (o+verTxt(l,m)).trimEnd()+'\n'}
 function notesHtml(ls){const e=esc,C=['#6b7280','#2563eb','#ea580c','#9333ea','#16a34a','#ca8a04'],G=['#f3f4f6','#dbeafe','#ffedd5','#f3e8ff','#dcfce7','#fef9c3'];
  const css='body{font:16px/1.45 -apple-system,system-ui,Segoe UI,sans-serif;max-width:760px;margin:0 auto;padding:16px;color:#111;background:#fff}h1{font-size:22px;margin:0}h2{font-size:18px;margin:22px 0 4px}.m{color:#6b7280;font-size:13px;margin:2px 0 8px}.b{display:flex;gap:8px;margin:5px 0;padding:6px 10px;border-left:4px solid;border-radius:0 8px 8px 0}.b i{font-style:normal}.b.k2 span{font-weight:600}.c{display:inline-block;font-size:12px;border:1px solid;border-radius:10px;padding:1px 8px;margin:2px 4px 2px 0;background:#fff}.t{display:inline-block;font-size:12px;font-weight:400;background:#111;color:#fff;border-radius:10px;padding:1px 8px;margin-right:6px}pre{white-space:pre-wrap;font:inherit;margin:4px 0}.x{margin-top:6px;padding:8px 10px;background:#f9fafb;border-radius:8px;font-size:14px}footer{margin-top:28px;color:#9ca3af;font-size:12px}'+C.map((c,k)=>`.k${k}{border-color:${c};background:${G[k]}}.c.k${k}{color:${c};background:#fff}`).join('');
  const leg=SY.map(([y,k,n])=>`<span class="c k${k}">${y} ${n}</span>`).join('');
  const body=ls.map(l=>`<h1>📚 ${e(l.title)}</h1><div class=m>📅 ${new Date(l.date).toLocaleDateString('pl')} · ${tm(dur(l))}</div><div>${leg}</div>`+l.notes.map(n=>{const c={};bls(n.summary).forEach(b=>b.k&&(c[b.k]=(c[b.k]||0)+1));
-  return `<h2><span class=t>${e(nw(n,l))}</span>${e(n.title)}</h2>`+SY.filter(([y,k])=>c[k]&&k<=3).map(([y,k])=>`<span class="c k${k}">${y} ${c[k]}</span>`).join('')+bls(n.summary).map(b=>`<div class="b k${b.k}"><i>${b.sym}</i><span>${e(b.t)}</span></div>`).join('')+(n.authors?`<div class=x><b>Autorzy</b><pre>${e(n.authors)}</pre></div>`:'')+(n.ver?`<div class=x><b>Weryfikacja</b><pre>${e(n.ver)}</pre></div>`:'')}).join('')).join('<hr style="margin:30px 0">');
+  return `<h2><span class=t>${e(nw(n,l))}</span>${e(n.title)}</h2>`+SY.filter(([y,k])=>c[k]&&k<=3).map(([y,k])=>`<span class="c k${k}">${y} ${c[k]}</span>`).join('')+bls(n.summary).map(b=>`<div class="b k${b.k}"><i>${b.sym}</i><span>${e(b.t)}</span></div>`).join('')+(n.authors?`<div class=x><b>Autorzy</b><pre>${e(n.authors)}</pre></div>`:'')+(n.ver?`<div class=x><b>Weryfikacja</b><pre>${e(n.ver)}</pre></div>`:'')}).join('')+vexp(l)).join('<hr style="margin:30px 0">');
  return `<!doctype html><html lang=pl><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><title>${e(ls[0].title)} – notatki</title><style>${css}</style><body>${body}<footer>Notatnik Słuchacza ${VER} · Autor: Michał Rzekiecki</footer></body></html>`}
 function notesOf(one,m){const ls=(one?[L]:picked()).filter(l=>l.notes.length);return{ls,t:m===2?(ls.length?notesHtml(ls):''):ls.map(l=>notesTxt(l,m)).join('\n\n———\n\n')}}
 function noNotes(){dlg();S.msg='Brak notatek – kliknij ✨ Sporządź notatki';render()}
-function dlNotes(one,m){const{ls,t}=notesOf(one,m);if(!ls.length)return noNotes();dl(new Blob([t],{type:m===2?'text/html':m?'text/markdown':'text/plain'}),(ls.length>1?'notatnik_notatki_':safe(ls[0].title)+'_notatki_')+stamp()+(m===2?'.html':m?'.md':'.txt'));dlg();S.msg='✅ Notatki pobrane (sprawdź Pobrane)';render()}
-function shareNotes(one,h){const{ls,t}=notesOf(one,h?2:0);if(!ls.length)return noNotes();dlg();
- if(h){try{if(navigator.canShare){const f=new File([t],(ls.length>1?'notatnik_notatki_':safe(ls[0].title)+'_notatki_')+stamp()+'.html',{type:'text/html'});if(navigator.canShare({files:[f]})){navigator.share({files:[f],title:ls[0].title}).catch(x=>{if(x.name!=='AbortError')dlNotes(one,2)});return}}}catch(x){}return dlNotes(one,2)}
- if(navigator.share)navigator.share({title:ls.length>1?'Notatnik Słuchacza':ls[0].title,text:t}).catch(e=>{if(e.name!=='AbortError')dlNotes(one)});else dlNotes(one)}
-function copyNotes(one){const{ls,t}=notesOf(one,0);if(!ls.length)return noNotes();navigator.clipboard.writeText(t).then(()=>{dlg();S.msg='✅ Notatki skopiowane';render()},()=>dlNotes(one))}
-function dlMenu(){const n=L.notes.length,d=n?'':'disabled';dlg(`<h3>⬇ Pobierz na telefon</h3><div class=mut>Notatki skondensowane (${n})</div><button class=p ${d} onclick="dlNotes(1,2)">🎨 Notatki kolorowe (.html)</button><br><br><button ${d} onclick="dlNotes(1)">📝 .txt</button> <button ${d} onclick="dlNotes(1,1)">.md</button>${n?'':'<div class=mut>Brak notatek – kliknij ✨ Sporządź notatki.</div>'}<div class=mut style="margin-top:14px">Rozmowa i audio</div><button onclick="dlChat(1)">💬 Rozmowa jak czat (.txt)</button><br><br><button onclick="mp3Dlg(1)">🧹 Audio: oczyść i eksportuj MP3</button><br><br><button onclick="dlg();zipAudio()">🗜 ZIP: surowe nagrania (webm) + tekst</button><br><br><button onclick="dlg()">Zamknij</button>`)}
-function driveMenu(){dlg(`<h3>☁ Dysk Google</h3><p class=mut>Wysyła do folderu „Notatnik Słuchacza”: nagrania, rozmowę, notatki (kolorowe .html i .md) i kopię techniczną. Za każdym razem wybierasz konto Google.</p><button class=p onclick="dlg();toDrive()">☁ Wyślij na Dysk (wybierz konto)</button>${L.gdir?` <a href="https://drive.google.com/drive/folders/${L.gdir}" target=_blank rel=noopener style="color:#60a5fa">Otwórz folder ↗</a>`:''}<br><br><button onclick="dlg();zipAudio(1)">📱 Inaczej: ZIP przez menu telefonu (Dysk, Pliki…)</button><br><br><button onclick="dlg()">Zamknij</button>`)}
-function moreMenu(){dlg(`<h3>⋯ Więcej</h3><button onclick="shareNotes(1,1)">🎨 Udostępnij kolorowe notatki (.html)</button><br><br><button onclick="shareNotes(1)">📤 Udostępnij notatki jako tekst</button><br><br><button onclick="copyNotes(1)">📋 Kopiuj notatki</button><br><br><button onclick="mergeAll()">🔗 Scal podobne notatki</button><br><br><button onclick="redoNotes()">🔄 Notatki od nowa (większe bloki)</button><br><br><button onclick="shareChat(1)">📤 Udostępnij rozmowę jak czat</button><br><br><button onclick="exp()">👁 Podgląd Markdown (notatki + transkrypcja)</button><br><br><button class=s onclick="diag()">🔍 Diagnoza nagrania</button> <button class=s onclick="dlJson()">Kopia techniczna (JSON)</button> <button onclick="dlg()">Zamknij</button>`)}
+function copyNotes(one){const{ls,t}=notesOf(one,0);if(!ls.length)return noNotes();navigator.clipboard.writeText(t).then(()=>{dlg();S.msg='✅ Notatki skopiowane';render()},()=>{dlg();S.msg='Nie udało się skopiować – użyj ⬆ Eksport';render()})}
 function dlJson(){dl(new Blob([JSON.stringify(L,null,1)],{type:'application/json'}),safe(L.title)+'_'+stamp()+'.json');dlg()}
 const A={a:new Audio(),k:-1,url:'',t:0,drag:false,sp:1,lid:'',gen:0};A.a.preload='auto';
 const plUi=()=>{const pp=$('#pp');if(!pp||!L)return;pp.textContent=A.a.paused?'▶':'⏸';if(!A.drag)$('#ps').value=Math.floor(A.t);$('#pt').textContent=tm(A.t)+' / '+tm(dur(L))};
@@ -251,7 +340,7 @@ function plSync(){const e=$('#pl');if(!e)return;if(!(L&&!S.rec&&L.chunks.length)
 async function plLoad(k,off,play){const c=L.chunks[k];if(!c){A.a.pause();plUi();return}const my=++A.gen,b=await tx('chunk','readonly',s=>s.get(L.id+':'+c.i));if(my!==A.gen)return;
  if(!b)return plLoad(k+1,0,play);if(A.url)URL.revokeObjectURL(A.url);A.url=URL.createObjectURL(b);A.k=k;
  A.a.onloadedmetadata=()=>{try{if(off>0.05)A.a.currentTime=off}catch(e){}};A.a.src=A.url;A.a.playbackRate=A.sp;
- if(play){try{await A.a.play()}catch(e){if(my===A.gen){S.msg='Odtwarzanie: '+(e.name==='NotSupportedError'?'ta przeglądarka nie odtwarza webm – użyj 🎧 MP3':e.message);render()}}}plUi()}
+ if(play){try{await A.a.play()}catch(e){if(my===A.gen){S.msg='Odtwarzanie: '+(e.name==='NotSupportedError'?'ta przeglądarka nie odtwarza webm – użyj ⬆ Eksport → MP3':e.message);render()}}}plUi()}
 function plAt(t){if(!L||S.rec||!L.chunks.length)return;let k=L.chunks.findIndex(c=>t<c.start+c.dur);if(k<0)k=L.chunks.length-1;const c=L.chunks[k];A.t=Math.max(t,c.start);plLoad(k,Math.max(0,t-c.start),true)}
 function plToggle(){if(!L)return;if(!A.a.paused){A.a.pause();return}if(A.k<0)plAt(A.t);else if(A.a.ended&&A.k>=L.chunks.length-1)plAt(0);else A.a.play().catch(()=>{})}
 function plDrag(v){A.drag=true;$('#pt').textContent=tm(+v)+' / '+tm(dur(L))}
@@ -259,12 +348,8 @@ function plSeek(v){A.drag=false;plAt(+v)}
 function plSpeed(){A.sp=A.sp===1?1.5:A.sp===1.5?2:1;A.a.playbackRate=A.sp;$('#pv').textContent=A.sp+'×'}
 A.a.ontimeupdate=()=>{if(A.k<0||!L||!L.chunks[A.k])return;A.t=L.chunks[A.k].start+A.a.currentTime;plUi()};
 A.a.onended=()=>{if(L&&A.k+1<L.chunks.length)plLoad(A.k+1,0,true);else plUi()};A.a.onplay=A.a.onpause=plUi;
-A.a.onerror=()=>{if(A.a.src){S.msg='Odtwarzanie: ta przeglądarka nie odtwarza tego formatu (webm) – użyj 🎧 MP3';render()}};
+A.a.onerror=()=>{if(A.a.src){S.msg='Odtwarzanie: ta przeglądarka nie odtwarza tego formatu (webm) – użyj ⬆ Eksport → MP3';render()}};
 const put=l=>tx('lec','readwrite',s=>s.put(l)),picked=()=>LS.filter(l=>S.sel&&S.sel.has(l.id));
-function chatTxt(one){const ls=one?[L]:picked();return{ls,t:ls.map(l=>chat(l)).join('\n\n———\n\n')}}
-function dlChat(one){const{ls,t}=chatTxt(one);if(!ls.length)return;dl(new Blob([t],{type:'text/plain'}),(ls.length>1?'notatnik_czat_':safe(ls[0].title)+'_czat_')+stamp()+'.txt');if(one)dlg()}
-function shareChat(one){const{ls,t}=chatTxt(one);if(!ls.length)return;if(navigator.share)navigator.share({title:ls.length>1?'Notatnik Słuchacza':ls[0].title,text:t}).catch(e=>{if(e.name!=='AbortError')dlChat(one)});else dlChat(one)}
-function dlJsonSel(){const ls=picked();if(ls.length)dl(new Blob([JSON.stringify(ls,null,1)],{type:'application/json'}),'notatnik_kopia_'+stamp()+'.json')}
 async function selMenu(){if(S.rec)return;await go();if(LS.length)selOn()}
 function selOn(){S.sel=new Set();S.msg='';S.link='';render()}
 function selOff(){S.sel=null;S.msg='';render()}
@@ -273,8 +358,7 @@ function selTog(id,v){v?S.sel.add(id):S.sel.delete(id);render()}
 function selView(){const n=S.sel.size,d=n?'':'disabled';$('#app').innerHTML=`<div style="display:flex;gap:8px;flex-wrap:wrap"><button onclick="selOff()">← Wróć</button><button onclick="selAll()">${n===LS.length?'Odznacz wszystkie':'Zaznacz wszystkie'}</button></div>`
  +(S.msg?`<div class=mut style="color:#fbbf24;margin-top:8px">${esc(S.msg)}</div>`:'')+(S.link?`<a href="${S.link}" target=_blank rel=noopener style="color:#60a5fa">Otwórz folder na Dysku ↗</a>`:'')
  +LS.map(l=>`<label class=card style="display:flex;gap:10px;align-items:center"><input type=checkbox style="width:auto" ${S.sel.has(l.id)?'checked':''} onchange="selTog('${l.id}',this.checked)"><div><div>${esc(l.title)}</div><div class=mut>${new Date(l.date).toLocaleString('pl')} · ${tm(dur(l))}</div></div></label>`).join('')
- +`<div class=card><b>Zaznaczono: ${n}</b><div class=mut style="margin:12px 0 4px">☁ Dysk Google</div><button class=p ${d} onclick="toDrive(picked())">☁ Wyślij na Dysk Google (wybierz konto)</button><div class=mut style="margin:14px 0 4px">⬇ Pobierz na telefon</div><button class=p ${d} onclick="dlNotes(0,2)">🎨 Notatki kolorowe (.html)</button> <button ${d} onclick="dlNotes(0)">.txt</button> <button ${d} onclick="dlNotes(0,1)">.md</button><br><br><button ${d} onclick="dlChat()">💬 Rozmowa jak czat (.txt)</button><br><br><button ${d} onclick="mp3Dlg()">🧹 Oczyść dźwięk + MP3</button><br><br><label style="display:flex;gap:8px;align-items:center"><input type=checkbox style="width:auto" ${S.aud===false?'':'checked'} onchange="S.aud=this.checked"> Dołącz nagrania audio do ZIP</label><br><button ${d} onclick="zipSel()">🗜 ZIP: surowe nagrania (webm) + tekst</button><div class=mut style="margin:14px 0 4px">⋯ Inne</div><button ${d} onclick="shareNotes()">📤 Udostępnij notatki</button> <button ${d} onclick="shareChat()">📤 Udostępnij rozmowę</button><br><br><button ${d} onclick="zipSel(1)">📱 ZIP przez menu telefonu</button> <button class=s ${d} onclick="dlJsonSel()">Kopia techniczna (JSON)</button><br><br><button class=r ${d} onclick="delLec(picked().map(x=>x.id))">🗑 Usuń zaznaczone</button></div>`}
-function zipDone(zb,zn,share){if(share){window.ZF=new File([zb],zn,{type:'application/zip'});S.msg='';dlg(`<h3>ZIP gotowy</h3><p class=mut>Kliknij i wybierz „Dysk” (Google Drive) oraz swoje konto z listy telefonu.</p><button class=p onclick="shareZip()">☁ Wybierz Dysk i konto</button> <button onclick="dlg()">Zamknij</button>`)}else{dl(zb,zn);S.msg='✅ ZIP gotowy (sprawdź Pobrane)'}}
+ +`<div class=card><b>Zaznaczono: ${n}</b><div style="display:flex;gap:8px;margin-top:8px"><button class=p style="flex:1" ${d} onclick="exDlg(0)">⬆ Eksport</button><button class=r ${d} onclick="delLec(picked().map(x=>x.id))">🗑 Usuń</button></div></div>`}
 const LAME='https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js';
 // ---------- oczyszczanie dźwięku: redukcja szumu tła (odejmowanie widmowe, profil szumu z cichych ramek każdego kawałka)
 const FN=1024,FH=512,FB=FN/2+1,FW=Float64Array.from({length:FN},(_,i)=>Math.sin(Math.PI*(i+0.5)/FN));
@@ -322,17 +406,6 @@ async function toMp3(l,prog,o={}){await loadJS(LAME);const ctx=new(window.AudioC
 const pt=v=>{const a=String(v).trim().split(':').map(x=>x.trim()===''?NaN:Number(x.replace(',','.')));return a.length>3||a.some(x=>!Number.isFinite(x)||x<0)?NaN:a.reduce((q,x)=>q*60+x,0)};
 function zrPick(v){if(v==='c')return;const d=dur(L),[a,b]=v?v.split(',').map(Number):[0,d];S.zf=tm(a);S.zt=tm(Math.min(b,d));$('#zf').value=S.zf;$('#zt').value=S.zt}
 function zrNow(w){const v=tm(A.t||0);S[w]=v;$('#'+w).value=v;$('#zs').value='c'}
-function mp3Dlg(one){let zr='';if(one&&L){const d=dur(L);if(S.zl!==L.id){S.zl=L.id;S.zf='0:00';S.zt=tm(d)}const ps=P();
-  zr=`<div style="margin-top:12px"><b>Zakres do eksportu</b><select id=zs onchange="zrPick(this.value)" style="width:100%;margin:6px 0"><option value="">Cały wykład (${tm(d)})</option><option value=c>Własny fragment (wpisz poniżej)</option>${ps.length>1?ps.map((x,i)=>`<option value="${x.start},${i+1<ps.length?ps[i+1].start:d}">📌 ${esc(x.name)} (${tm(x.start)}–${tm(i+1<ps.length?ps[i+1].start:d)})</option>`).join(''):''}${L.notes.map(n=>`<option value="${n.start},${n.end}">📝 ${esc(n.title).slice(0,40)} (${tm(n.start)}–${tm(n.end)})</option>`).join('')}</select>
-  <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">Od <input id=zf value="${S.zf}" oninput="S.zf=this.value;zs.value='c'" style="width:84px"> <button class=s onclick="zrNow('zf')">⏱ z odtwarzacza</button></div>
-  <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:6px">Do <input id=zt value="${S.zt}" oninput="S.zt=this.value;zs.value='c'" style="width:84px"> <button class=s onclick="zrNow('zt')">⏱ z odtwarzacza</button></div><p class=mut>Format 1:30 albo 1:02:03. Obróbka dotyczy tylko wybranego zakresu, więc krótki fragment liczy się w sekundach. Przycisk „z odtwarzacza” bierze pozycję, na której zatrzymałeś odtwarzacz.</p></div>`}
- dlg(`<h3>🧹 Oczyść dźwięk i eksportuj MP3</h3>${zr}<br><label style="display:flex;gap:8px;align-items:center"><input type=checkbox style="width:auto" ${S.dn===false?'':'checked'} onchange="S.dn=this.checked"> 🧹 Usuń szum tła (szum sali, buczenie, szum nagrania)</label><br><label style="display:flex;gap:8px;align-items:center"><input type=checkbox style="width:auto" ${S.cut===false?'':'checked'} onchange="S.cut=this.checked"> ✂ Usuń ciszę (pauzy dłuższe niż 0,7 s skracam do 0,25 s)</label><br><label style="display:flex;gap:8px;align-items:center"><input type=checkbox style="width:auto" ${S.boost===false?'':'checked'} onchange="S.boost=this.checked"> 🔊 Wzmocnij ciche fragmenty (do ×8, szumu w pauzach nie podbijam)</label><p class=mut>Po usunięciu ciszy czas w pliku nie zgadza się z godzinami w transkrypcji. Przy kilku godzinach nagrania obróbka potrwa kilka minut (odszumianie najdłużej), nie zamykaj strony i nie blokuj ekranu.</p><button class=p onclick="dlg();mp3Go(${one?1:0})">🎧 Eksportuj MP3</button> <button onclick="dlg()">Anuluj</button>`)}
-async function mp3Go(one){const ls=one?[L]:picked();if(!ls.length)return;const o={cut:S.cut!==false,boost:S.boost!==false,denoise:S.dn!==false};let sfx='',span=0;try{if(one){const d=dur(L),a=pt(S.zf??'0:00'),b=pt(S.zt??tm(d));if(!(a>=0&&b>a))throw new Error('zły zakres – wpisz Od i Do w formacie 1:30');const a2=Math.min(a,d),b2=Math.min(b,d);if(b2-a2<1)throw new Error('zakres poza nagraniem (wykład trwa '+tm(d)+')');if(a2>0.5||b2<d-0.5){o.rng=[a2,b2];span=b2-a2;sfx='_'+tm(a2).replace(/:/g,'-')+'_'+tm(b2).replace(/:/g,'-')}}
- let z=null,sk=0,secs=0,orig=0;if(ls.length>1){await loadJS('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');z=new JSZip()}
- for(const[k,l]of ls.entries()){const{blob,skip,secs:sc}=await toMp3(l,(a,b,ph)=>{S.msg=`${ph||'MP3'}${ls.length>1?` (wykład ${k+1}/${ls.length})`:''}: ${a}/${b}`;render()},o);sk+=skip;secs+=sc;orig+=o.rng?span:dur(l);const name=safe(l.title)+'_'+new Date(l.date).toISOString().slice(0,10)+sfx+'.mp3';
-  if(z)z.file(String(k+1).padStart(2,'0')+'_'+name,blob,{compression:'STORE'});else dl(blob,name)}
- if(z)dl(await z.generateAsync({type:'blob',streamFiles:true}),'notatnik_mp3_'+stamp()+'.zip');
- S.msg='✅ MP3 gotowe (sprawdź Pobrane)'+(o.rng?` · fragment ${tm(o.rng[0])}–${tm(o.rng[1])}`:'')+(o.cut?` · ${tm(orig)} → ${tm(secs)} po usunięciu ciszy`:'')+(sk?` · uwaga: ${sk} kawałków 30 s było nieczytelnych`+(o.cut?'':' (zastąpione ciszą)'):'')}catch(e){S.msg='MP3: '+e.message}render()}
 async function diag(){const l=L,idx=new Set(l.chunks.map(c=>c.i)),mx=Math.max(-1,...idx),miss=[],nof=[];let sz=0;for(let i=0;i<=mx;i++)if(!idx.has(i))miss.push(i+1);
  for(const c of l.chunks){const b=await tx('chunk','readonly',s=>s.get(l.id+':'+c.i));if(b)sz+=b.size;else nof.push(c.i+1)}
  const tl=dur(l),last=l.utt.length?Math.max(...l.utt.map(u=>u.e||u.s)):0,pv=l.utt.filter(u=>u.tmp),out=pv.filter(u=>!l.chunks.some(c=>u.s>=c.start-1&&u.s<c.start+c.dur+1)),W=[];
@@ -343,17 +416,6 @@ async function diag(){const l=L,idx=new Set(l.chunks.map(c=>c.i)),mx=Math.max(-1
  dlg(`<h3>Diagnoza: ${esc(l.title)}</h3><p class=mut>Kawałków audio: ${l.chunks.length} · oś czasu ${tm(tl)} · pliki ≈ ${(sz/1048576).toFixed(1)} MB<br>Ostatni tekst: ${tm(last)}<br>Brakujące numery kawałków: ${miss.length?miss.join(', '):'brak'}${nof.length?'<br>Brak pliku audio: '+nof.join(', '):''}<br>Linie „podgląd”: ${pv.length} (bez nagrania: ${out.length})</p><p>${W.map(esc).join('<br>')}</p>${out.length?`<button class=r onclick="delPrev()">Usuń ${out.length} linii podglądu bez nagrania</button> `:''}<button onclick="dlg()">Zamknij</button>`)}
 function delPrev(){dlg(`<h3>Usunąć linie podglądu bez nagrania?</h3><p class=mut>To tekst z mikrofonu na żywo, dla którego nie ma pliku audio. Tej operacji nie można cofnąć.</p><button class=r onclick="doDelPrev()">Tak, usuń</button> <button onclick="dlg()">Anuluj</button>`)}
 async function doDelPrev(){L.utt=L.utt.filter(u=>!u.tmp||L.chunks.some(c=>u.s>=c.start-1&&u.s<c.start+c.dur+1));await saveL();dlg();render()}
-async function zipSel(share){const ls=picked();if(!ls.length)return;try{S.msg='ZIP: przygotowuję…';render();await loadJS('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');
- const z=new JSZip(),au=S.aud!==false,tot=au?ls.reduce((a,l)=>a+l.chunks.length,0):0;let n=0;
- for(const[k,l]of ls.entries()){const f=z.folder(String(k+1).padStart(2,'0')+'_'+safe(l.title));
-  if(au)for(const c of l.chunks){const b=await tx('chunk','readonly',s=>s.get(l.id+':'+c.i));if(b)f.file(cname(c,b,l),b,{compression:'STORE'});S.msg=`ZIP: ${++n}/${tot}`;if(n%10==0)render()}
-  f.file('rozmowa.txt',chat(l));f.file('notatki.md',md(l))}
- S.msg='ZIP: pakuję…';render();zipDone(await z.generateAsync({type:'blob',streamFiles:true}),'notatnik_'+ls.length+'_wykladow_'+stamp()+'.zip',share)}catch(e){S.msg='ZIP: '+e.message}render()}
-async function zipAudio(share){try{S.msg='ZIP: przygotowuję…';render();await loadJS('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');const z=new JSZip();let n=0;
- for(const c of L.chunks){const b=await tx('chunk','readonly',s=>s.get(L.id+':'+c.i));if(b)z.file(cname(c,b),b,{compression:'STORE'});S.msg=`ZIP: ${++n}/${L.chunks.length}`;if(n%10==0)render()}
- z.file('transkrypcja.md',md());S.msg='ZIP: pakuję…';render();const zb=await z.generateAsync({type:'blob',streamFiles:true}),zn=safe(L.title)+'.zip';
- zipDone(zb,zn,share)}catch(e){S.msg='ZIP: '+e.message}render()}
-function shareZip(){try{if(navigator.canShare&&navigator.canShare({files:[ZF]}))navigator.share({files:[ZF],title:ZF.name}).then(()=>dlg()).catch(e=>{if(e.name!=='AbortError'){dl(ZF,ZF.name);dlg()}});else{dl(ZF,ZF.name);dlg()}}catch(e){dl(ZF,ZF.name);dlg()}}
 async function mkNotes(){if(!canAI()){S.msg='Notatki wymagają internetu i klucza Anthropic (☰ → Ustawienia: „notatki/AI” musi być ✅)';render();return}
  const n0=L.notes.length;S.msg='✨ Tworzę notatki…';render();S.busy=false;await pump(true);S.msg=L.notes.length>n0?'':(/^(Notatki|Chmura)/.test(S.msg||'')?S.msg:'Brak nowego tekstu do notatek');render()}
 const gtoken=()=>new Promise(async(res,rej)=>{try{if(!gcid())throw new Error('Wpisz Google Client ID w Ustawieniach');await loadJS('https://accounts.google.com/gsi/client');
@@ -367,21 +429,6 @@ async function gfolder(tok,name,parent){const r=await fetch('https://www.googlea
 async function gput(tok,name,blob,parent){const b='B'+Math.random().toString(36).slice(2),meta=JSON.stringify({name,parents:[parent]});
  const body=new Blob([`--${b}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${meta}\r\n--${b}\r\nContent-Type: ${blob.type||'application/octet-stream'}\r\n\r\n`,blob,`\r\n--${b}--`]);
  const r=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',{method:'POST',headers:{Authorization:'Bearer '+tok,'Content-Type':'multipart/related; boundary='+b},body});if(!r.ok)throw await gerr(r);return(await r.json()).id}
-async function toDrive(ls){ls=ls||[L];try{S.link='';S.msg='Drive: wybierz konto Google…';render();const tok=await gtoken(),H={Authorization:'Bearer '+tok};
- let who='';try{who=(await(await fetch('https://www.googleapis.com/drive/v3/about?fields=user(emailAddress)',{headers:H})).json()).user.emailAddress}catch(e){}
- const ok=async id=>id&&(await fetch('https://www.googleapis.com/drive/v3/files/'+id+'?fields=id,trashed',{headers:H})).ok,rk='groot_'+who,acc='Drive'+(who?' ('+who+')':'');
- S.msg=acc+': wysyłam…';render();
- let root=cfg(rk);if(!(await ok(root))){root=await gfolder(tok,'Notatnik Słuchacza');localStorage[rk]=root}
- let k=0;for(const l of ls){k++;const pre=acc+(ls.length>1?` · wykład ${k}/${ls.length}`:'')+': ';
-  if((l.gacc||'')!==who){l.gdir='';l.chunks.forEach(c=>{delete c.gid});l.gacc=who}
-  if(!(await ok(l.gdir))){l.gdir=await gfolder(tok,l.title+' '+new Date(l.date).toISOString().slice(0,10),root);await put(l)}
-  const todo=l.chunks.filter(c=>!c.gid);let n=0;
-  for(const c of todo){const b=await tx('chunk','readonly',s=>s.get(l.id+':'+c.i));if(!b){c.gid='-';continue}c.gid=await gput(tok,cname(c,b,l),b,l.gdir);await put(l);S.msg=pre+`${++n}/${todo.length}`;render()}
-  await gput(tok,'rozmowa_'+stamp()+'.txt',new Blob([chat(l)],{type:'text/plain'}),l.gdir);
-  await gput(tok,'notatki_'+stamp()+'.md',new Blob([md(l)],{type:'text/markdown'}),l.gdir);
-  if(l.notes.length)await gput(tok,'notatki_kolorowe_'+stamp()+'.html',new Blob([notesHtml([l])],{type:'text/html'}),l.gdir);
-  await gput(tok,'kopia_techniczna_'+stamp()+'.json',new Blob([JSON.stringify(l)],{type:'application/json'}),l.gdir);await put(l)}
- S.link='https://drive.google.com/drive/folders/'+(ls.length>1?root:ls[0].gdir);S.msg='✅ Wysłano'+(ls.length>1?' ('+ls.length+' wykładów)':'')+(who?' na konto '+who:'')+' (Mój Dysk → Notatnik Słuchacza)'}catch(e){S.msg='Drive: '+e.message}render()}
 try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
 if(gcid())loadJS('https://accounts.google.com/gsi/client').catch(()=>{});
 fetch('/api/n/status').then(r=>r.ok?r.json():{}).then(j=>{cap.stt=!!j.stt;cap.claude=!!j.claude;cap.ckey=!!j.ckey;pump()}).catch(()=>{});
