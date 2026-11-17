@@ -29,7 +29,7 @@ input,textarea,select{width:100%;margin:4px 0}
 <script>
 const GID='461701670960-b0ivbr1cktr8ocfbdaffpplmr09thc6j.apps.googleusercontent.com',gcid=()=>GID; // Client ID jest publiczny z założenia; stary zapis z Ustawień usuwany (powodował 401)
 try{localStorage.removeItem('gcid')}catch(e){}
-const $=s=>document.querySelector(s),cfg=k=>localStorage.getItem(k)||'',VER='v0.22';
+const $=s=>document.querySelector(s),cfg=k=>localStorage.getItem(k)||'',VER='v0.23';
 const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 const tm=s=>{s=Math.floor(s);const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60,p=n=>String(n).padStart(2,'0');return(h?h+':':'')+p(m)+':'+p(x)};
 const SYS='Jesteś asystentem studenta na wykładzie. Odpowiadaj po polsku, zwięźle, rzeczowo.';
@@ -152,7 +152,7 @@ function mergeNotes(a){const o=[];let n=0;for(const x of a){const p=o[o.length-1
  if(p&&sameT(p.title,x.title)&&x.start-p.end<=120&&!p.authors&&!p.ver&&!x.authors&&!x.ver){const A=bls(p.summary),B=bls(x.summary),seen=new Set(A.map(b=>b.t.toLowerCase())),add=B.filter(b=>!seen.has(b.t.toLowerCase()));
   if(A.length+add.length<=10){p.summary=[...A,...add].map(b=>(b.k?b.sym:'•')+' '+b.t).join('\n');p.end=Math.max(p.end,x.end);n++;continue}}
  o.push({...x})}return{a:o,n}}
-const NP='Zrób ZWIĘZŁE notatki z wykładu. Łącz w DUŻE bloki tematyczne (zwykle 8–15 min; nie dziel jednego tematu na części i nie rób bloków krótszych niż 5 min). Linie: [sekundy] ROLA: tekst (WYKŁADOWCA, PYTANIE z sali, ODPOWIEDŹ wykładowcy). Dla każdego bloku: title (krótki, max 6 słów), start_s, end_s, summary = 3–5 krótkich punktów (każdy max 15 słów, sama esencja), oddzielonych \\n. Każdy punkt zaczyna się symbolem: 🔑 definicja/kluczowe pojęcie, ⚠️ bardzo ważne/uwaga/częsty błąd, 📅 termin/egzamin/zadanie/wymóg, 💡 przykład, ❓ pytanie z sali → odpowiedź (w jednym punkcie), • zwykły punkt. Symboli ważności używaj oszczędnie, tylko gdy naprawdę ważne. Zwróć WYŁĄCZNIE tablicę JSON, bez komentarzy i bez ```: [{"title":"","start_s":0,"end_s":0,"summary":""}]\n\n';
+const NP='Zrób ZWIĘZŁE notatki z wykładu. Łącz w DUŻE bloki tematyczne (zwykle 8–15 min; nie dziel jednego tematu na części i nie rób bloków krótszych niż 5 min). Linie: [sekundy] ROLA: tekst (WYKŁADOWCA, PYTANIE z sali, ODPOWIEDŹ wykładowcy). Dla każdego bloku: title (krótki, max 6 słów), start_s, end_s, summary = 3–5 krótkich punktów (każdy max 15 słów, sama esencja), oddzielonych \\n. Każdy punkt zaczyna się symbolem: 🔑 definicja/kluczowe pojęcie, ⚠️ bardzo ważne/uwaga/częsty błąd, 📅 termin/egzamin/zadanie/wymóg, 💡 przykład, ❓ pytanie z sali → odpowiedź (w jednym punkcie), • zwykły punkt. Symbole ⚠️ i 📅 dawaj oszczędnie: najwyżej 2 na blok i tylko przy naprawdę ważnych rzeczach; resztę oznacz • (zwykły punkt), 🔑 lub 💡. Zwróć WYŁĄCZNIE tablicę JSON, bez komentarzy i bez ```: [{"title":"","start_s":0,"end_s":0,"summary":""}]\n\n';
 const npc=()=>{const p=L.notes.length?L.notes[L.notes.length-1].title:'';return NP.trimEnd()+(p?' Poprzedni blok miał tytuł „'+p.replace(/[„”"]/g,'')+'” – jeśli ten sam temat trwa dalej, użyj DOKŁADNIE tego tytułu.':'')+'\n\n'};
 async function notes(force){if(!canAI()||!L)return;
  const R=roles(),fresh=L.utt.map((u,i)=>[u,R[i]]).filter(([u])=>!u.tmp&&u.s>=L.notedUntil);if(!fresh.length)return;
