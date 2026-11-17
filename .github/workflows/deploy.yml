@@ -17,3 +17,12 @@ jobs:
           workingDirectory: 00_Worker
           wranglerVersion: "4"
           command: deploy
+      - name: Sync ANTHROPIC_API_KEY do Workera (jeśli jest w GitHub secrets)
+        continue-on-error: true
+        working-directory: 00_Worker
+        env:
+          KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -n "$KEY" ]; then printf %s "$KEY" | npx --yes wrangler@4 secret put ANTHROPIC_API_KEY && echo "ANTHROPIC_API_KEY ustawiony"; else echo "Brak ANTHROPIC_API_KEY w GitHub secrets"; fi

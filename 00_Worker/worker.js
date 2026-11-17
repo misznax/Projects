@@ -248,7 +248,7 @@ export default {
       if (url.pathname === '/api/stats') return J(await stats(env));
       const sm = url.pathname.match(/^\/api\/state\/([a-z0-9_-]+)$/);
       if (sm) return appState(request, env, sm[1]);
-      if (url.pathname === '/api/n/status') return J({ stt: !!(env.OPENAI_API_KEY || env.AI), diar: !!env.OPENAI_API_KEY, claude: !!env.ANTHROPIC_API_KEY });
+      if (url.pathname === '/api/n/status') return J({ stt: !!(env.OPENAI_API_KEY || env.AI), diar: !!env.OPENAI_API_KEY, claude: !!(env.ANTHROPIC_API_KEY || env.AI), ckey: !!env.ANTHROPIC_API_KEY });
       // 04 Notatnik Słuchacza: proxy do OpenAI (transkrypcja + mówcy) i Claude (notatki, autorzy, weryfikacja); klucze tylko jako sekrety Workera
       if (url.pathname === '/api/n/stt' && request.method === 'POST') {
         if (+(request.headers.get('content-length') || 0) > 8e6) return J({ code: 'too_big' }, 413);
@@ -265,8 +265,15 @@ export default {
         return new Response(r.body, { status: r.status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
       }
       if (url.pathname === '/api/n/claude' && request.method === 'POST') {
-        if (!env.ANTHROPIC_API_KEY) return J({ code: 'no_key' }, 501);
         let b; try { b = await request.json(); } catch { return J({ code: 'bad' }, 400); }
+        if (!env.ANTHROPIC_API_KEY) { // bez klucza Anthropic: tryb podstawowy na Workers AI (Llama), bez wyszukiwania w sieci
+          if (!env.AI) return J({ code: 'no_key' }, 501);
+          try {
+            const sys = String(b.system || '').slice(0, 2000) + (b.tools ? ' Tryb bez dostępu do internetu: zaznacz, że odpowiadasz z pamięci modelu i nie podawaj wymyślonych źródeł.' : '');
+            const o = await env.AI.run('@cf/meta/llama-3.3-70b-instruct-fp8-fast', { messages: [{ role: 'system', content: sys }, { role: 'user', content: String(((b.messages || [])[0] || {}).content || '').slice(0, 60000) }], max_tokens: Math.min(+b.max_tokens || 1800, 3000) });
+            return J({ content: [{ type: 'text', text: o.response || '' }] });
+          } catch (e) { return J({ code: 'ai_error', msg: String(e).slice(0, 200) }, 502); }
+        }
         const models = ['claude-haiku-5-5', 'claude-sonnet-5-5'];
         const body = { model: models.includes(b.model) ? b.model : models[0], max_tokens: Math.min(+b.max_tokens || 1800, 3000), system: String(b.system || '').slice(0, 2000), messages: Array.isArray(b.messages) ? b.messages.slice(0, 1) : [] };
         if (b.tools) body.tools = [{ type: 'web_search_20250305', name: 'web_search', max_uses: 3 }];

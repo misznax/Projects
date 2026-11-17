@@ -22,7 +22,7 @@ input,textarea,select{width:100%;margin:4px 0}
 <div id="app"></div>
 <script>
 const gcid=()=>localStorage.getItem('gcid')||'567326129811-v1fvoqoao7r34ju0u3quni9c4pkdkemp.apps.googleusercontent.com'; // Client ID jest publiczny z założenia
-const $=s=>document.querySelector(s),cfg=k=>localStorage.getItem(k)||'',VER='v0.08';
+const $=s=>document.querySelector(s),cfg=k=>localStorage.getItem(k)||'',VER='v0.09';
 const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 const tm=s=>{s=Math.floor(s);const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60,p=n=>String(n).padStart(2,'0');return(h?h+':':'')+p(m)+':'+p(x)};
 const SYS='Jesteś asystentem studenta na wykładzie. Odpowiadaj po polsku, zwięźle, rzeczowo.';
@@ -140,7 +140,7 @@ function exp(){const o=md();dlg(`<h3>Eksport (Markdown)</h3><textarea rows=12 re
 function dlg(h){$('#dlg').style.display=h?'block':'none';if(h)$('#dc').innerHTML=h}
 function menu(){dlg(`<button onclick="sett()">⚙ Ustawienia</button> <button onclick="sug()">💡 Sugestie</button> <button onclick="dlg();bkAll()">⛁ Kopia wszystkich (JSON)</button> <button onclick="about()">ℹ O autorze</button> <button onclick="dlg()">✕</button>`)}
 function sett(){dlg(`<h3>Ustawienia</h3><label class=mut>Tryb transkrypcji</label><select id=m onchange="localStorage.mode=this.value"><option value="">Auto (chmura ↔ offline)</option><option value=cloud ${cfg('mode')==='cloud'?'selected':''}>Tylko chmura</option><option value=offline ${cfg('mode')==='offline'?'selected':''}>Tylko offline (audio + podgląd)</option></select>
- <p class=mut>Klucze na serwerze: transkrypcja ${cap.stt?'✅':'❌'} · notatki/AI ${cap.claude?'✅':'❌'}. Poniżej tylko gdy ❌ (zapis w tym telefonie).</p>
+ <p class=mut>Klucze na serwerze: transkrypcja ${cap.stt?'✅':'❌'} · notatki/AI ${cap.claude?(cap.ckey?'✅':'⚠ tryb podstawowy (bez klucza Anthropic)'):'❌'}. Poniżej tylko gdy ❌ (zapis w tym telefonie).</p>
  <label class=mut>Klucz OpenAI (transkrypcja + mówcy)</label><input type=password value="${esc(cfg('oai'))}" oninput="localStorage.oai=this.value">
  <label class=mut>Klucz Anthropic (notatki, autorzy, weryfikacja)</label><input type=password value="${esc(cfg('ant'))}" oninput="localStorage.ant=this.value">
  <label class=mut>Czas w transkrypcji</label><select onchange="localStorage.tmode=this.value"><option value=both ${cfg('tmode')==='both'||!cfg('tmode')?'selected':''}>Godzina · czas nagrania</option><option value=clock ${cfg('tmode')==='clock'?'selected':''}>Tylko godzina</option><option value=len ${cfg('tmode')==='len'?'selected':''}>Tylko czas nagrania</option></select>
@@ -167,7 +167,7 @@ async function zipAudio(){try{S.msg='ZIP: przygotowuję…';render();await loadJ
 async function mkNotes(){if(!canAI()){S.msg='Notatki wymagają internetu i klucza Anthropic (☰ → Ustawienia: „notatki/AI” musi być ✅)';render();return}
  const n0=L.notes.length;S.msg='✨ Tworzę notatki…';render();S.busy=false;await pump(true);S.msg=L.notes.length>n0?'':'Brak nowego tekstu do notatek (lub błąd – sprawdź komunikat)';render()}
 const gtoken=()=>new Promise(async(res,rej)=>{try{if(!gcid())throw new Error('Wpisz Google Client ID w Ustawieniach');await loadJS('https://accounts.google.com/gsi/client');
- google.accounts.oauth2.initTokenClient({client_id:gcid(),scope:'https://www.googleapis.com/auth/drive.file',prompt:'select_account',callback:r=>r.access_token?res(r.access_token):rej(new Error(r.error==='access_denied'?'Brak zgody. Jeśli to Twoje konto: w Google Cloud → Ekran zgody OAuth → Test users dodaj swój Gmail':'Google: '+(r.error_description||r.error||'brak zgody')))}).requestAccessToken()}catch(e){rej(e)}});
+ google.accounts.oauth2.initTokenClient({client_id:gcid(),scope:'https://www.googleapis.com/auth/drive.file',prompt:'select_account',callback:r=>r.access_token?res(r.access_token):rej(new Error('[ID '+gcid().slice(0,6)+'…'+gcid().slice(-30,-24)+'] '+(r.error==='access_denied'?'Brak zgody. Jeśli to Twoje konto: w Google Cloud → Ekran zgody OAuth → Test users dodaj swój Gmail':'Google: '+(r.error_description||r.error||'brak zgody'))))}).requestAccessToken()}catch(e){rej(e)}});
 async function gerr(r){let t='';try{t=await r.text()}catch(e){}
  if(/accessNotConfigured|has not been used|SERVICE_DISABLED/i.test(t))return new Error('Włącz „Google Drive API” w Google Cloud (APIs & Services → Library)');
  if(r.status===401)return new Error('Sesja Google wygasła – spróbuj ponownie');
@@ -190,6 +190,6 @@ async function toDrive(){try{S.link='';S.msg='Drive: wybierz konto Google…';re
  S.link='https://drive.google.com/drive/folders/'+L.gdir;S.msg='✅ Kopia wysłana'+(who?' na konto '+who:'')+' (Mój Dysk → Notatnik Słuchacza)'}catch(e){S.msg='Drive: '+e.message}render()}
 try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
 if(gcid())loadJS('https://accounts.google.com/gsi/client').catch(()=>{});
-fetch('/api/n/status').then(r=>r.ok?r.json():{}).then(j=>{cap.stt=!!j.stt;cap.claude=!!j.claude;pump()}).catch(()=>{});
+fetch('/api/n/status').then(r=>r.ok?r.json():{}).then(j=>{cap.stt=!!j.stt;cap.claude=!!j.claude;cap.ckey=!!j.ckey;pump()}).catch(()=>{});
 go();
 </script></body></html>
