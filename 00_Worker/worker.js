@@ -224,7 +224,7 @@ async function interest(request, env) {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return J({ code: 'bad_email' }, 400);
   if (!WANT_APPS.includes(app)) return J({ code: 'bad_app' }, 400);
   if (!interestReady) {
-    await env.DB.prepare('CREATE TABLE IF NOT EXISTS interest (id INTEGER PRIMARY KEY AUTOINCREMENT, t INTEGER NOT NULL, name TEXT NOT NULL, email TEXT NOT NULL, app TEXT NOT NULL, country TEXT, UNIQUE (email, app))').run();
+    await env.DB.prepare('CREATE TABLE IF NOT EXISTS interest (id INTEGER PRIMARY KEY AUTOINCREMENT, t INTEGER NOT NULL, name TEXT NOT NULL, email TEXT NOT NULL, app TEXT NOT NULL, country TEXT, notified INTEGER NOT NULL DEFAULT 0, UNIQUE (email, app))').run();
     interestReady = true;
   }
   const c = await env.DB.prepare('SELECT COUNT(*) AS n FROM interest').first();
