@@ -2,7 +2,7 @@
 """Startup Board - do 8 swobodnych paneli roboczych z pamięcią stanu.
 
 Skróty: Ctrl+N nowy plik | Ctrl+O otwórz | Ctrl+S zapisz | Ctrl+Shift+S zapisz jako | Ctrl+W zamknij plik
-        Ctrl+F znajdź (F3 / Shift+F3 dalej / wstecz) | Ctrl+V wklej tekst/obraz/plik do pustego panelu | Ctrl+Shift+V obraz
+        Ctrl+F znajdź (F3 / Shift+F3 dalej / wstecz) | Ctrl+Shift+O folder w panelu (F5 kopiuj, F6 przenieś, F7 nowy folder) | Ctrl+V wklej tekst/obraz/plik do pustego panelu | Ctrl+Shift+V obraz
         Ctrl+, ustawienia | Ctrl+M pokaż/ukryj pasek menu | Ctrl+Shift+E układ siatki | Alt+1..8 panel
 Panele: przeciągaj za pasek tytułowy, zmieniaj rozmiar łapiąc krawędź/róg.
         Przyciąganie magnetyczne do krawędzi innych paneli (Alt = wyłącz).
@@ -15,6 +15,7 @@ import json
 import math
 import os
 import re
+import shutil
 import sys
 import tempfile
 import time
@@ -22,7 +23,7 @@ from functools import lru_cache
 from pathlib import Path
 
 from PySide6.QtCore import (QByteArray, QEvent, QLockFile, QPoint, QPointF, QRect, QRectF, QSize, QStandardPaths,
-                            Qt, QTimer, QUrl, Signal)
+                            Qt, QThread, QTimer, QUrl, Signal)
 from PySide6.QtGui import (QAction, QActionGroup, QColor, QDesktopServices, QFont, QIcon, QImage, QImageReader,
                            QKeySequence, QLinearGradient, QPainter, QPalette, QPen, QPixmap, QPolygonF, QShortcut, QSyntaxHighlighter,
                            QTextCharFormat, QTextCursor, QTextDocument, QBrush)
@@ -32,6 +33,8 @@ from PySide6.QtWidgets import (
     QMainWindow, QMenu, QMessageBox, QPlainTextEdit, QPushButton, QScrollArea, QSizePolicy, QSpinBox, QStackedWidget,
     QToolButton, QVBoxLayout, QWidget,
 )
+from PySide6.QtWidgets import QAbstractItemView, QFileIconProvider, QFileSystemModel, QHeaderView, QTreeView
+from PySide6.QtCore import QDir, QFile
 
 APP_NAME = "Startup Board"
 APP_VERSION = "v1.1"  # zmieniać tylko na polecenie autora
@@ -746,7 +749,7 @@ class ImageViewer(QScrollArea):
 class Placeholder(QWidget):
     """Pusty panel: duży plus (nowy plik tekstowy) + skróty do obrazu i otwierania plików.
     Dopasowuje się do wielkości panelu (w małym zostaje sam plus)."""
-    DEFAULT_HINT = "albo przeciągnij tu plik · Ctrl+V wkleja tekst, obraz lub plik"
+    DEFAULT_HINT = "albo przeciągnij tu plik lub folder · Ctrl+V wkleja tekst, obraz lub plik"
 
     def __init__(self):
         super().__init__()
@@ -772,7 +775,8 @@ class Placeholder(QWidget):
         self.btn_open = QPushButton("Otwórz plik…", toolTip="Otwórz plik tekstowy, PDF lub obraz (Ctrl+O)")
         self.btn_clip = QPushButton("Obraz ze schowka", toolTip="Wklej obraz ze schowka (Ctrl+Shift+V; Ctrl+V wkleja też tekst i pliki)")
         self.btn_img = QPushButton("Obraz z pliku…", toolTip="Otwórz plik graficzny (PNG, JPG, BMP, GIF, WEBP…)")
-        for b in (self.btn_open, self.btn_clip, self.btn_img):
+        self.btn_dir = QPushButton("Folder…", toolTip="Pokaż zawartość folderu w panelu (Ctrl+Shift+O)")
+        for b in (self.btn_open, self.btn_dir, self.btn_clip, self.btn_img):
             b.setCursor(Qt.CursorShape.PointingHandCursor)
             self.row_l.addWidget(b)
         v.addStretch(1)
@@ -824,6 +828,265 @@ class Placeholder(QWidget):
         self.lbl_hint.setStyleSheet(f"color:{UI['err'] if self._err else mute};")
 
 
+# ---------- panel folderu (styl Total Commandera, lekki: jeden katalog naraz, bez skanowania w głąb) ----------
+
+class _Xfer(QThread):
+    """Kopiowanie / przenoszenie w tle, żeby okno nie zamarzało przy dużych plikach."""
+    finished_n = Signal(int, str)
+
+    def __init__(self, paths: list[str], dest: str, move: bool, overwrite: bool):
+        super().__init__()
+        self.paths, self.dest, self.move, self.overwrite = paths, dest, move, overwrite
+
+    def run(self):
+        n, err = 0, ""
+        for src in self.paths:
+            try:
+                s_, d_ = Path(src), Path(self.dest) / Path(src).name
+                if d_.resolve() == s_.resolve() or (s_.is_dir() and str(d_.resolve()).startswith(str(s_.resolve()) + os.sep)):
+                    err = f"nie można skopiować „{s_.name}” w samo siebie"
+                    continue
+                if d_.exists():
+                    if not self.overwrite:
+                        continue
+                    if self.move:
+                        shutil.rmtree(d_) if d_.is_dir() else d_.unlink()
+                if self.move:
+                    shutil.move(str(s_), str(d_))
+                elif s_.is_dir():
+                    shutil.copytree(s_, d_, dirs_exist_ok=True)
+                else:
+                    shutil.copy2(s_, d_)
+                n += 1
+            except Exception as ex:
+                err = f"{Path(src).name}: {ex}"
+        self.finished_n.emit(n, err)
+
+
+class _PlModel(QFileSystemModel):
+    """QFileSystemModel z polskimi nagłówkami kolumn."""
+    _H = {0: "Nazwa", 1: "Rozmiar", 3: "Zmieniono"}
+
+    def headerData(self, section, orientation, role=Qt.ItemDataRole.DisplayRole):
+        if orientation == Qt.Orientation.Horizontal and role == Qt.ItemDataRole.DisplayRole and section in self._H:
+            return self._H[section]
+        return super().headerData(section, orientation, role)
+
+
+class FolderView(QWidget):
+    """Lista plików folderu: Enter / dwuklik otwiera, Backspace w górę, F2 nazwa, F5 kopiuj, F6 przenieś,
+    F7 nowy folder, Del do kosza. Kopiowanie/przenoszenie idzie do drugiego panelu folderu."""
+    openFile = Signal(str)
+    navigated = Signal(str)
+    counted = Signal(str)
+    transfer = Signal(list, bool)
+    activated = Signal()
+
+    def __init__(self):
+        super().__init__()
+        self.setObjectName("fv")
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        self.root = ""
+        self.model = _PlModel(self)
+        self.model.setFilter(QDir.Filter.AllEntries | QDir.Filter.NoDotAndDotDot)
+        ip = QFileIconProvider()
+        ip.setOptions(QFileIconProvider.Option.DontUseCustomDirectoryIcons)
+        self.model.setIconProvider(ip)
+        self.model.directoryLoaded.connect(self._loaded)
+        self.drives = QComboBox()
+        self.drives.setToolTip("Dysk")
+        self.drives.setFixedWidth(64)
+        for d in QDir.drives():
+            self.drives.addItem(d.absoluteFilePath().rstrip("/\\") or d.absoluteFilePath(), d.absoluteFilePath())
+        self.btn_up = QToolButton(text="↑", toolTip="Folder wyżej (Backspace)")
+        self.path_edit = QLineEdit()
+        self.path_edit.setToolTip("Ścieżka – wpisz i naciśnij Enter")
+        top = QHBoxLayout()
+        top.setContentsMargins(4, 3, 4, 3)
+        top.setSpacing(4)
+        top.addWidget(self.drives)
+        top.addWidget(self.btn_up)
+        top.addWidget(self.path_edit, 1)
+        self.view = QTreeView()
+        self.view.setModel(self.model)
+        self.view.setFrameShape(QFrame.Shape.NoFrame)
+        self.view.setRootIsDecorated(False)
+        self.view.setItemsExpandable(False)
+        self.view.setUniformRowHeights(True)
+        self.view.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
+        self.view.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.view.setSortingEnabled(True)
+        self.view.sortByColumn(0, Qt.SortOrder.AscendingOrder)
+        self.view.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.view.setColumnHidden(2, True)
+        hv = self.view.header()
+        hv.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        hv.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
+        hv.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
+        hv.setStretchLastSection(False)
+        v = QVBoxLayout(self)
+        v.setContentsMargins(0, 0, 0, 0)
+        v.setSpacing(0)
+        v.addLayout(top)
+        v.addWidget(self.view, 1)
+        self.view.installEventFilter(self)
+        self.view.viewport().installEventFilter(self)
+        self.path_edit.returnPressed.connect(lambda: self.navigate(self.path_edit.text().strip().strip('"')))
+        self.btn_up.clicked.connect(self.go_up)
+        self.drives.activated.connect(lambda i: self.navigate(self.drives.itemData(i)))
+        self.view.doubleClicked.connect(lambda _i: self.open_current())
+        self.view.customContextMenuRequested.connect(self._menu)
+        self.apply_colors()
+
+    # --- nawigacja ---
+    def navigate(self, path: str) -> bool:
+        p = Path(path)
+        try:
+            ok = p.is_dir()
+        except OSError:
+            ok = False
+        if not ok:
+            self.path_edit.setText(self.root)
+            self.counted.emit("⚠ brak folderu")
+            return False
+        self.root = str(p.resolve()) if str(p) else str(p)
+        self.model.setRootPath(self.root)
+        self.view.setRootIndex(self.model.index(self.root))
+        self.path_edit.setText(self.root)
+        i = self.drives.findData(Path(self.root).anchor)
+        if i >= 0:
+            self.drives.setCurrentIndex(i)
+        self.view.setCurrentIndex(self.model.index(0, 0, self.view.rootIndex()))
+        self.counted.emit("folder")
+        self.navigated.emit(self.root)
+        return True
+
+    def go_up(self):
+        par = Path(self.root).parent
+        if str(par) != self.root:
+            old = Path(self.root)
+            if self.navigate(str(par)):
+                ix = self.model.index(str(old))
+                if ix.isValid():
+                    self.view.setCurrentIndex(ix)
+
+    def _loaded(self, path: str):
+        if Path(path) == Path(self.root):
+            self.counted.emit(f"folder · {self.model.rowCount(self.view.rootIndex())} elem.")
+
+    def selected(self) -> list[str]:
+        rows = {i.row() for i in self.view.selectionModel().selectedIndexes()}
+        return [self.model.filePath(self.model.index(r, 0, self.view.rootIndex())) for r in sorted(rows)]
+
+    def open_current(self):
+        ix = self.view.currentIndex()
+        if not ix.isValid():
+            return
+        path = self.model.filePath(ix)
+        if self.model.isDir(ix):
+            self.navigate(path)
+        else:
+            self.openFile.emit(path)
+
+    # --- operacje ---
+    def new_folder(self):
+        name, ok = QInputDialog.getText(self, "Nowy folder", "Nazwa folderu:")
+        if ok and name.strip():
+            try:
+                (Path(self.root) / name.strip()).mkdir()
+            except Exception as ex:
+                QMessageBox.warning(self, "Nowy folder", str(ex))
+
+    def rename(self):
+        sel = self.selected()
+        if len(sel) != 1:
+            return
+        old = Path(sel[0])
+        name, ok = QInputDialog.getText(self, "Zmień nazwę", "Nowa nazwa:", text=old.name)
+        if ok and name.strip() and name.strip() != old.name:
+            try:
+                old.rename(old.with_name(name.strip()))
+            except Exception as ex:
+                QMessageBox.warning(self, "Zmień nazwę", str(ex))
+
+    def delete(self):
+        sel = self.selected()
+        if not sel:
+            return
+        what = f"„{Path(sel[0]).name}”" if len(sel) == 1 else f"{len(sel)} elementów"
+        if QMessageBox.question(self, "Usuń", f"Przenieść {what} do kosza?") != QMessageBox.StandardButton.Yes:
+            return
+        bad = [Path(x).name for x in sel if not QFile.moveToTrash(x)]
+        if bad:
+            QMessageBox.warning(self, "Usuń", "Nie udało się przenieść do kosza:\n" + "\n".join(bad[:8]))
+
+    def ask_transfer(self, move: bool):
+        sel = self.selected()
+        if sel:
+            self.transfer.emit(sel, move)
+
+    def _menu(self, pos):
+        sel = self.selected()
+        m = QMenu(self)
+        m.addAction("Otwórz").triggered.connect(self.open_current)
+        m.addSeparator()
+        m.addAction("Kopiuj do drugiego panelu (F5)").triggered.connect(lambda: self.ask_transfer(False))
+        m.addAction("Przenieś do drugiego panelu (F6)").triggered.connect(lambda: self.ask_transfer(True))
+        m.addSeparator()
+        m.addAction("Nowy folder (F7)").triggered.connect(self.new_folder)
+        ar = m.addAction("Zmień nazwę (F2)")
+        ar.triggered.connect(self.rename)
+        ar.setEnabled(len(sel) == 1)
+        m.addAction("Usuń do kosza (Del)").triggered.connect(self.delete)
+        m.addSeparator()
+        m.addAction("Kopiuj ścieżkę").triggered.connect(
+            lambda: QApplication.clipboard().setText("\n".join(sel) if sel else self.root))
+        m.addAction("Pokaż w Eksploratorze").triggered.connect(
+            lambda: QDesktopServices.openUrl(QUrl.fromLocalFile(self.root)))
+        m.exec(self.view.viewport().mapToGlobal(pos))
+
+    def eventFilter(self, obj, ev):
+        if ev.type() == QEvent.Type.FocusIn or (obj is self.view.viewport() and ev.type() == QEvent.Type.MouseButtonPress):
+            self.activated.emit()
+        if obj is self.view and ev.type() == QEvent.Type.KeyPress:
+            k = ev.key()
+            if k in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+                self.open_current()
+            elif k == Qt.Key.Key_Backspace:
+                self.go_up()
+            elif k == Qt.Key.Key_F2:
+                self.rename()
+            elif k == Qt.Key.Key_F5:
+                self.ask_transfer(False)
+            elif k == Qt.Key.Key_F6:
+                self.ask_transfer(True)
+            elif k == Qt.Key.Key_F7:
+                self.new_folder()
+            elif k == Qt.Key.Key_Delete:
+                self.delete()
+            else:
+                return False
+            return True
+        return False
+
+    def apply_colors(self):
+        u, c = UI, COLORS
+        self.setStyleSheet(
+            f"#fv{{background:{c['bg']};}}"
+            f"QTreeView{{background:{c['bg']};color:{c['text']};border:none;outline:0;"
+            f"selection-background-color:{u['sel']};selection-color:{c['text']};}}"
+            f"QTreeView::item{{padding:1px 2px;}}"
+            f"QTreeView::item:hover{{background:{u['border']};}}"
+            f"QHeaderView::section{{background:{u['hdr_bg']};color:{u['mute']};border:none;"
+            f"border-bottom:1px solid {u['border']};padding:2px 6px;}}"
+            f"QLineEdit,QComboBox{{background:{u['hdr_bg']};color:{u['hdr_fg']};border:1px solid {u['border']};"
+            f"border-radius:3px;padding:1px 4px;}}"
+            f"QToolButton{{background:{u['hdr_bg']};color:{u['hdr_fg']};border:1px solid {u['border']};"
+            f"border-radius:3px;padding:1px 7px;}}"
+            f"QToolButton:hover{{border-color:{u['border_a']};}}")
+
+
+
 # ---------- edytor ----------
 
 class Editor(QPlainTextEdit):
@@ -854,17 +1117,21 @@ class Editor(QPlainTextEdit):
 
 class TextPane(QFrame):
     activated = Signal(object)
+    transferRequested = Signal(object, list, bool)  # (panel, ścieżki, przenieś?)
+    openFromFolder = Signal(object, str)
     removeRequested = Signal(object)  # × / Ctrl+W na pustym panelu = usuń panel
     menuRequested = Signal(QPoint)  # globalna pozycja, gdzie pokazać menu
     pathChanged = Signal(str)       # plik otwarty / zapisany przez użytkownika (lista ostatnich)
     img_dir = Path(tempfile.gettempdir()) / "startupboard_obrazy"  # obrazy wklejone ze schowka (ustawia okno)
-    PH, ED, PDF, IMG = 0, 1, 2, 3   # strony QStackedWidget
+    PH, ED, PDF, IMG, FOLD = 0, 1, 2, 3, 4   # strony QStackedWidget
 
     def __init__(self, index: int):
         super().__init__()
         self.index = index
         self.path: str | None = None
-        self.kind = "text"  # text | pdf | image
+        self.kind = "text"  # text | pdf | image | folder
+        self.fv: FolderView | None = None  # panel folderu tworzony na żądanie
+        self._fcount = "folder"
         self.untitled = False  # nowy dokument jeszcze bez pliku
         self.clip = False      # obraz wklejony ze schowka (plik w folderze aplikacji)
         self.img_size = (0, 0)
@@ -950,6 +1217,7 @@ class TextPane(QFrame):
         self.ph.btn_open.clicked.connect(self.ask_open)
         self.ph.btn_clip.clicked.connect(lambda: self.paste_image())
         self.ph.btn_img.clicked.connect(self.ask_open_image)
+        self.ph.btn_dir.clicked.connect(self.ask_open_dir)
         self.ph.customContextMenuRequested.connect(lambda pos: self.menuRequested.emit(self.ph.mapToGlobal(pos)))
         self.find_edit.textChanged.connect(self._find_live)
         self.find_edit.returnPressed.connect(lambda: self.find_next())
@@ -980,6 +1248,8 @@ class TextPane(QFrame):
             f"QPlainTextEdit{{background:{COLORS['bg']};color:{COLORS['text']};"
             f"selection-background-color:{UI['sel']};selection-color:{COLORS['text']};}}")
         self.ph.apply_colors()
+        if self.fv:
+            self.fv.apply_colors()
         cv = UI["canvas"]
         self.imgv.setStyleSheet(f"QScrollArea{{background:{cv};}}QScrollArea>QWidget>QWidget{{background:{cv};}}")
         self.pdf.restyle()
@@ -1053,8 +1323,9 @@ class TextPane(QFrame):
         self.check_external()
 
     def focus_editor(self):
-        w = {self.ED: self.editor, self.PDF: self.pdf, self.IMG: self.imgv}.get(
-            self.stack.currentIndex(), self.ph.btn_plus)
+        w = {self.ED: self.editor, self.PDF: self.pdf, self.IMG: self.imgv,
+             self.FOLD: self.fv.view if self.fv else None}.get(
+            self.stack.currentIndex(), None) or self.ph.btn_plus
         w.setFocus()
         self.activated.emit(self)
 
@@ -1094,8 +1365,13 @@ class TextPane(QFrame):
             self.lbl_name.setToolTip("")
             self.lbl_state.setText("")
             return
-        self.lbl_name.setText(Path(self.path).name)
+        self.lbl_name.setText(Path(self.path).name or self.path)
         self.lbl_name.setToolTip(self.path)
+        if self.kind == "folder" and not self.missing:
+            self.lbl_state.setText(self._fcount)
+            self.lbl_state.setStyleSheet(f"color:{UI['info']};")
+            self.lbl_state.setToolTip("Enter otwiera · Backspace w górę · F2 nazwa · F5 kopiuj · F6 przenieś · F7 nowy folder · Del kosz")
+            return
         if self.missing:
             txt, col = "⚠ nie otwarto", UI["err"]
         elif self.conflict:
@@ -1220,6 +1496,10 @@ class TextPane(QFrame):
         self.pdf.close_doc()
         self.imgv.clear()
         self.find_bar.hide()
+        if self.fv is not None:  # zwolnij widok folderu (obserwator plików, model)
+            self.stack.removeWidget(self.fv)
+            self.fv.deleteLater()
+            self.fv = None
         self.kind, self.untitled, self.clip = "text", False, False
         self.missing = self.conflict = False
         self.ph.set_hint(None)
@@ -1230,6 +1510,8 @@ class TextPane(QFrame):
         fresh = not st  # otwarcie zrobione przez użytkownika (nie odtwarzanie stanu) -> lista ostatnich
         st = st or {}
         p = Path(path)
+        if p.is_dir():
+            return self.open_folder(str(p), fresh, ask=False)
         ext = p.suffix.lower()
         kind = "pdf" if ext == ".pdf" else "image" if ext in IMG_EXTS else "text"
         try:
@@ -1246,6 +1528,52 @@ class TextPane(QFrame):
         if ok and fresh and not self.clip:
             self._note_path()
         return ok
+
+    def open_folder(self, path: str, fresh: bool = True, ask: bool = True) -> bool:
+        if ask and not self.confirm_close():
+            return False
+        if not Path(path).is_dir():
+            self._set_missing(path, "folder nie istnieje")
+            return False
+        self._release()
+        self.editor.setPlainText("")
+        self.editor.document().setModified(False)
+        self.kind, self.path, self.mtime, self.disk_size = "folder", path, None, 0
+        self._fcount = "folder"
+        self.btn_wrap.setEnabled(False)
+        fv = self.fv = FolderView()
+        self.stack.addWidget(fv)
+        fv.counted.connect(self._on_fcount)
+        fv.navigated.connect(self._on_fnav)
+        fv.openFile.connect(lambda f: self.openFromFolder.emit(self, f))
+        fv.transfer.connect(lambda paths, mv: self.transferRequested.emit(self, paths, mv))
+        fv.activated.connect(lambda: self.activated.emit(self))
+        fv.navigate(path)
+        self.stack.setCurrentIndex(self.FOLD)
+        self.refresh_header()
+        if fresh:
+            LAST["dir"] = path
+        return True
+
+    def _on_fcount(self, txt: str):
+        self._fcount = txt
+        self.refresh_header()
+
+    def _on_fnav(self, path: str):
+        self.path = path
+        self.refresh_header()
+
+    def note(self, msg: str, ms: int = 3500):
+        """Chwilowy komunikat w nagłówku (np. wynik kopiowania)."""
+        self.lbl_state.setText(msg)
+        QTimer.singleShot(ms, self.refresh_header)
+
+    def ask_open_dir(self):
+        if not self.confirm_close():
+            return
+        d = QFileDialog.getExistingDirectory(self, "Otwórz folder w panelu", self._start_dir())
+        if d:
+            self.open_folder(d, ask=False)
 
     def _open_text(self, p: Path, raw: bytes, stt, st: dict) -> bool:
         if b"\x00" in raw[:8192] and not raw.startswith((codecs.BOM_UTF16_LE, codecs.BOM_UTF16_BE)):
@@ -2205,6 +2533,7 @@ class MainWindow(QMainWindow):
         TextPane.img_dir = self.state_dir / "obrazy"
         self._ready = False
         self._app_css = ""
+        self._xfers: list = []
         self._last_json = ""
         self._pending: list[tuple[TextPane, dict]] = []
         self._args: list[str] = []
@@ -2258,6 +2587,8 @@ class MainWindow(QMainWindow):
     def _wire(self, p: TextPane):
         p.activated.connect(self.set_current)
         p.removeRequested.connect(self.remove_pane)
+        p.openFromFolder.connect(self.open_from_folder)
+        p.transferRequested.connect(self.transfer_files)
         p.menuRequested.connect(self.show_popup)
         p.pathChanged.connect(self.note_recent)
 
@@ -2289,6 +2620,7 @@ class MainWindow(QMainWindow):
         m = mb.addMenu("&Plik")
         m.addAction(self._act("Nowy plik tekstowy", self.new_document, "Ctrl+N"))
         m.addAction(self._act("Otwórz w aktywnym panelu…", lambda: self.current.ask_open(), "Ctrl+O"))
+        m.addAction(self._act("Otwórz folder w panelu…", self.open_folder_dialog, "Ctrl+Shift+O"))
         self.m_recent = m.addMenu("Ostatnie pliki")
         self.m_recent.aboutToShow.connect(self._fill_recent)
         m.addSeparator()
@@ -2706,7 +3038,7 @@ class MainWindow(QMainWindow):
             self.current.flash("Schowek jest pusty")
             return
         files = [f for f in (u.toLocalFile() for u in md.urls() if u.isLocalFile())] if md.hasUrls() else []
-        files = [f for f in files if Path(f).is_file()][:MAX_PANES]
+        files = [f for f in files if Path(f).exists()][:MAX_PANES]
         if files:
             last = None
             for f in files:
@@ -2733,6 +3065,51 @@ class MainWindow(QMainWindow):
         p = self.target_pane()
         if p.paste_image():
             self._focus(p)
+
+    def open_folder_dialog(self):
+        p = self.target_pane()
+        p.ask_open_dir()
+        if not p.is_empty():
+            self._focus(p)
+
+    def open_from_folder(self, src: TextPane, path: str):
+        """Plik wybrany w panelu folderu otwiera się w wolnym panelu (folder zostaje na miejscu)."""
+        p = self.target_pane()
+        if p is src:
+            src.note("Brak wolnego panelu")
+            return
+        if p.open_file(path, ask=not p.is_empty()):
+            self._focus(p)
+
+    def transfer_files(self, src: TextPane, paths: list, move: bool):
+        """F5 / F6: kopiuj / przenieś do drugiego panelu folderu (najświeższego innego), inaczej wybierz folder."""
+        others = [q for q in reversed(self.canvas.order) if q is not src and q.kind == "folder" and q.fv]
+        dest = others[0].fv.root if others else QFileDialog.getExistingDirectory(self, "Folder docelowy", src.fv.root)
+        if not dest:
+            return
+        verb = "Przenieść" if move else "Kopiować"
+        what = f"„{Path(paths[0]).name}”" if len(paths) == 1 else f"{len(paths)} elementów"
+        clash = [x for x in paths if (Path(dest) / Path(x).name).exists()]
+        box = QMessageBox(QMessageBox.Icon.Question, verb, f"{verb} {what} do:\n{dest}", parent=self)
+        yes = box.addButton("Tak", QMessageBox.ButtonRole.YesRole)
+        box.addButton("Anuluj", QMessageBox.ButtonRole.RejectRole)
+        if clash:
+            box.setInformativeText(f"{len(clash)} z nich już istnieje w folderze docelowym.")
+            skip = box.addButton("Pomiń istniejące", QMessageBox.ButtonRole.NoRole)
+            yes.setText("Nadpisz istniejące")
+        box.exec()
+        b = box.clickedButton()
+        if b is not yes and not (clash and b is skip):
+            return
+        th = _Xfer(paths, dest, move, overwrite=b is yes)
+        self._xfers.append(th)
+
+        def done(n, err):
+            self._xfers.remove(th)
+            th.deleteLater()
+            src.note((f"{'przeniesiono' if move else 'skopiowano'}: {n}") + (f" · ⚠ {err}" if err else ""), 6000)
+        th.finished_n.connect(done)
+        th.start()
 
     def open_image_file(self):
         p = self.target_pane()
