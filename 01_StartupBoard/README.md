@@ -3,7 +3,7 @@
 Do 8 swobodnych paneli roboczych z pamięcią stanu: pliki tekstowe (kolorowanie Python/HTML/SQL), PDF i obrazy.
 Autor: Michał Rzekiecki · kontakt: michus@gmail.com
 
-- Pobierz: Releases → `startupboard-latest` → `StartupBoard.zip`, rozpakuj i uruchom `StartupBoard.exe`.
+- Pobierz: Releases → `startupboard-latest` → `StartupBoard_v1.1.zip`, rozpakuj i uruchom `StartupBoard.exe`.
 - Źródła: `src/`, build: `python build_exe.py`, kopie wersji: `backup/`.
 - Stan zapisuje się w `%LOCALAPPDATA%\smialo\StartupBoard\` (menu Pomoc → „Folder z ustawieniami"): `state.json`, `zestawy\`, `obrazy\`, `startupboard.log`.
 

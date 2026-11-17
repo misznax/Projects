@@ -836,6 +836,7 @@ class Editor(QPlainTextEdit):
 
 class TextPane(QFrame):
     activated = Signal(object)
+    removeRequested = Signal(object)  # × / Ctrl+W na pustym panelu = usuń panel
     menuRequested = Signal(QPoint)  # globalna pozycja, gdzie pokazać menu
     pathChanged = Signal(str)       # plik otwarty / zapisany przez użytkownika (lista ostatnich)
     img_dir = Path(tempfile.gettempdir()) / "startupboard_obrazy"  # obrazy wklejone ze schowka (ustawia okno)
@@ -1458,6 +1459,9 @@ class TextPane(QFrame):
         self.refresh_header()
 
     def close_file(self):
+        if self.is_empty() and self.demo is None:
+            self.removeRequested.emit(self)
+            return
         if self.confirm_close():
             self.clear_content()
 
@@ -2235,6 +2239,7 @@ class MainWindow(QMainWindow):
 
     def _wire(self, p: TextPane):
         p.activated.connect(self.set_current)
+        p.removeRequested.connect(self.remove_pane)
         p.menuRequested.connect(self.show_popup)
         p.pathChanged.connect(self.note_recent)
 
@@ -2633,15 +2638,17 @@ class MainWindow(QMainWindow):
         self.set_current(p)
         p.focus_editor()
 
-    def remove_pane(self):
+    def remove_pane(self, p=None):
         if len(self.panes) <= 1:
             return
-        p = self.current
+        p = p if isinstance(p, TextPane) else self.current
         if not p.confirm_close():
             return
         idx = self.panes.index(p)
+        was_current = p is self.current
         self.canvas.remove_pane(p)
-        self.set_current(self.panes[min(idx, len(self.panes) - 1)])
+        if was_current:
+            self.set_current(self.panes[min(idx, len(self.panes) - 1)])
 
     def _set_pane_count(self, n: int):
         while len(self.panes) < n:

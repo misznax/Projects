@@ -1,7 +1,7 @@
 """Buduje StartupBoard jako folder + ZIP (szybki start, bez rozpakowywania do TEMP).
 
 Użycie:  python build_exe.py        (wymaga: pip install PySide6-Essentials pypdfium2 pyinstaller)
-Wynik:   dist/StartupBoard.zip  (rozpakuj i uruchom StartupBoard/StartupBoard.exe)
+Wynik:   dist/StartupBoard_vX.Y.zip  (rozpakuj i uruchom StartupBoard/StartupBoard.exe)
 """
 import shutil
 import subprocess
@@ -15,5 +15,7 @@ subprocess.run(
      "--collect-all", "pypdfium2", "--collect-all", "pypdfium2_raw",
      str(root / "src" / "startup_board.py")],
     check=True, cwd=root)
-zip_path = shutil.make_archive(str(root / "dist" / "StartupBoard"), "zip", root / "dist", "StartupBoard")
+import re
+ver = re.search(r'APP_VERSION = "(v[^"]+)"', (root / "src" / "startup_board.py").read_text("utf-8")).group(1)
+zip_path = shutil.make_archive(str(root / "dist" / f"StartupBoard_{ver}"), "zip", root / "dist", "StartupBoard")
 print("Gotowe:", zip_path)
