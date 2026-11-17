@@ -1,2 +1,4 @@
 dist/
 node_modules/
+00_Worker/home/media/
+__pycache__/

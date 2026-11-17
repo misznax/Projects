@@ -476,6 +476,108 @@ dialog .src{font-size:.82rem;margin-top:1em}
 #lb{padding:0;max-width:min(96vw,1400px);width:auto;background:#06161b;border-radius:18px}
 #lb img{display:block;max-width:96vw;max-height:92vh;width:auto;height:auto;border-radius:18px}
 
+/* ───── Animowane demo (kroki ustawia main.js: data-s, .on, .at, .at2) ───── */
+@property --p{syntax:'<number>';inherits:false;initial-value:0}
+@keyframes fi{from{opacity:0;transform:translateY(.5em)}to{opacity:1;transform:none}}
+@keyframes grow{to{width:100%}}
+.sh,.sb,.sv,.svf,.sbf,.sf{display:none}
+.sh.at{display:inline;animation:fi .5s both}
+.sb.at{display:block;animation:fi .5s both}
+.sv.on{display:block;animation:fi .55s both}
+.svf.on{display:flex;animation:fi .55s both}
+.sf.on{display:flex;animation:fi .55s both}
+.sbf.on{display:flex;flex-direction:column;gap:.42em;animation:fi .5s both}
+.mock[data-caps]{padding-bottom:4.3em}
+.dcap{position:absolute;left:1em;right:1em;bottom:.8em;display:flex;flex-direction:column;align-items:center;gap:.5em;text-align:center}
+.dcap p{margin:0;font-size:.82em;font-weight:600;color:#d9f2ee;min-height:2.6em;display:flex;align-items:center}
+.dcap .dd{display:flex;gap:.45em}
+.dcap button{width:.75em;height:.75em;padding:0;border:0;border-radius:1em;background:rgba(255,255,255,.28);cursor:pointer;transition:width .3s,background .3s}
+.dcap button.on{width:2em;background:var(--sea-300)}
+.win{position:relative}
+/* StartupBoard */
+.tl{position:relative;transition:border-color .3s,box-shadow .3s}
+.tl.hlt.at{border-color:var(--amber-1);box-shadow:0 0 0 .25em rgba(255,193,90,.35)}
+.tl.rem.at2{animation:pop .7s both;animation-delay:calc(var(--i)*.14s)}
+@keyframes pop{40%{transform:scale(1.045);box-shadow:0 0 0 .25em rgba(45,212,191,.4)}}
+.tb s.new{background:var(--sea-400);animation:typ2 1.4s steps(8) both}
+@keyframes typ2{from{width:0!important}}
+.drag{position:absolute;z-index:3;left:9%;top:34%;display:none;align-items:center;gap:.4em;padding:.35em .8em;border-radius:.5em;background:#fff;border:1px solid var(--sea-500);box-shadow:0 .7em 1.2em -.3em rgba(0,0,0,.4);font-size:.7em;font-weight:700}
+.drag.at{display:flex;animation:dragin 2.3s ease-in-out both}
+.drag i{width:.7em;height:.9em;border-radius:.15em;background:var(--sea-400)}
+@keyframes dragin{0%{transform:translate(1em,-3em);opacity:0}15%{opacity:1}70%,92%{transform:translate(0,7.5em) rotate(-3deg);opacity:1}100%{transform:translate(0,7.8em) scale(.9);opacity:0}}
+.toast2{position:absolute;left:50%;bottom:1em;translate:-50% 0;z-index:3;padding:.5em 1.1em;border-radius:99px;background:#0d3a44;color:#d9f2ee;font-size:.7em;font-weight:600;white-space:nowrap;box-shadow:0 .8em 1.4em -.4em rgba(0,0,0,.5)}
+.toast2 b{color:var(--sea-300)}
+/* Nawyk */
+.nb{position:relative;overflow:hidden}
+.ring{transition:--p .9s ease}
+.ring[data-pv]{background:conic-gradient(var(--sea-500) calc(var(--p)*1%),#d6e9e7 0)}
+.task{animation:fi .5s both;animation-delay:calc(var(--i)*.12s)}
+.task i{transition:background .3s calc(var(--i,0)*.3s),border-color .3s calc(var(--i,0)*.3s)}
+.task.on i{background:var(--sea-500);border-color:var(--sea-500)}
+.task.on i::after{content:"";position:absolute;left:.33em;top:.1em;width:.32em;height:.62em;border:solid #fff;border-width:0 .15em .15em 0;transform:rotate(45deg)}
+.task.on span{color:#6b8a90;text-decoration:line-through}
+.ex{position:relative;overflow:hidden;transition:box-shadow .4s,transform .4s}
+.ex.at2{box-shadow:0 0 0 .22em rgba(255,193,90,.55);transform:scale(1.015)}
+.exbar{position:absolute;left:0;bottom:0;height:.28em;width:0;background:#fff;opacity:.9;display:none}
+.exbar.at{display:block;animation:grow 2.7s linear forwards}
+.sum{position:absolute;left:.7em;right:.7em;top:3.7em;bottom:.7em;padding:.8em 1em;border-radius:.8em;background:linear-gradient(160deg,#0f4a55,#0a2229);color:#e6f2f1;display:flex;flex-direction:column;gap:.5em;transform:translateY(112%);transition:transform .7s cubic-bezier(.2,.8,.2,1);z-index:2}
+.sum.at{transform:none}
+.sum b{font-size:.8em}
+.cht{flex:1;display:flex;align-items:flex-end;gap:.5em;padding-top:.5em}
+.cht u{flex:1;height:var(--h);border-radius:.3em .3em 0 0;background:linear-gradient(var(--sea-300),var(--sea-500));text-decoration:none}
+.sum.at .cht u{animation:barup .9s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--i)*.1s + .4s)}
+@keyframes barup{from{height:0}}
+.syn{font-size:.68em;color:#99f6e4;text-align:center;padding:.4em;border-radius:.6em;background:rgba(255,255,255,.07)}
+/* Esencja */
+.typ{display:inline-block;overflow:hidden;white-space:nowrap;vertical-align:bottom;font-style:normal;width:0;font-family:ui-monospace,Consolas,monospace;color:#10242a}
+.typ::before{content:"youtube.com/watch?v=Ab3x9Q"}
+.typ.at{animation:typing 1.8s steps(28) forwards;border-right:.12em solid var(--sea-500)}
+.typ.full{width:auto}
+.typ.full:not(.on){display:none}
+@keyframes typing{to{width:28ch}}
+.btn2.at{animation:press .6s .1s both}
+@keyframes press{40%{transform:scale(.9);filter:brightness(1.2)}}
+.hint{font-size:.74em;color:#6b8a90;padding:.8em;text-align:center;border:1px dashed #b5cfcc;border-radius:.6em}
+.ldg{font-size:.74em;color:#3a5158}
+.ldg u{display:block;height:.4em;border-radius:9px;background:#d6e9e7;margin-top:.5em;position:relative;overflow:hidden}
+.ldg u::after{content:"";position:absolute;inset:0;width:100%;background:var(--sea-500);animation:growf 2.4s ease-out both}
+@keyframes growf{from{width:0}}
+.pt.at{display:flex;animation:fi .5s both;animation-delay:calc(var(--i)*.35s)}
+.pt{display:none}
+mark{background-repeat:no-repeat;background-size:100% 100%;background-position:0 0}
+.pt.at mark{animation:hl .7s both;animation-delay:calc(var(--i)*.35s + .4s)}
+@keyframes hl{from{background-size:0 100%}}
+.pl .pg u{inset:0 58% 0 0}
+.pl.at .pg u{animation:prog 2.6s linear both}
+@keyframes prog{from{inset:0 100% 0 0}}
+.tg b{transition:background .3s,color .3s}
+/* Notatnik */
+.rb{position:relative}
+.acts{align-items:center;flex-wrap:wrap}
+.acts b.at{animation:press2 .9s both}
+.acts b.a1.at{animation-delay:.1s}.acts b.a2.at{animation-delay:.9s}.acts b.a3.at{animation-delay:1.7s}
+@keyframes press2{35%{background:var(--sea-500);color:#fff;border-color:var(--sea-500);transform:scale(1.07)}100%{background:transparent;color:inherit}}
+.acts .ok{font-size:.66em;color:#99f6e4;margin-left:auto;animation:fi .5s 2.2s both!important}
+/* Anatomia */
+.scene{position:relative}
+.scene svg{transition:transform .9s cubic-bezier(.2,.8,.2,1)}
+.scene.at svg{transform:scaleX(-1)}
+.l-mus path{opacity:.55;transition:opacity .4s,filter .4s}
+.l-mus path.at{opacity:1;filter:drop-shadow(0 0 5px rgba(94,234,212,.9))}
+.l-ner,.l-ves{stroke-dasharray:1;stroke-dashoffset:0}
+.l-ner.on,.l-ves.on{display:inline;animation:draw 1.6s ease both}
+@keyframes draw{from{stroke-dashoffset:1}}
+.lab{position:absolute;left:5%;bottom:5%;padding:.45em .8em;border-radius:.6em;background:rgba(6,42,50,.88);border:1px solid rgba(94,234,212,.4);line-height:1.25}
+.lab b{display:block;font-size:.78em;color:#fff}
+.lab i{display:block;font-size:.62em;color:#99f6e4}
+.side .tg{margin:.2em 0}
+.side .tg b{background:rgba(255,255,255,.08);color:#9fc4c0}
+.side .tg b.on{background:var(--sea-500);color:#fff}
+@media (prefers-reduced-motion:reduce){.sh.at,.sb.at,.sv.on,.svf.on,.sf.on,.sbf.on{animation:none}}
+.tb s.new.sh:not(.at){display:none}
+.tb s.new.at{display:block}
+.nt.on{display:flex;flex-direction:column}
+
 </style>
 </head>
 <body>
@@ -519,7 +621,7 @@ dialog .src{font-size:.82rem;margin-top:1em}
     </div>
     <div class="stage" aria-hidden="true">
       <div class="stage-in" id="tilt">
-        <div class="hero-mock"><div class="mock"><div class="win"><div class="bar"><i></i><i></i><i></i><span>StartupBoard</span></div><div class="board"><div class="tl act"><div class="th"><b>plan_dnia.txt</b><em>● zapisany · 1,8 KB</em></div><div class="tb"><s class="" style="width:92%"></s><s class="" style="width:78%"></s><s class="" style="width:85%"></s><s class="" style="width:60%"></s><s class="" style="width:88%"></s><s class="" style="width:70%"></s><s class="" style="width:45%"></s></div></div><div class="tl "><div class="th"><b>kontakty.txt</b><em>● zapisany · 0,9 KB</em></div><div class="tb"><s class="" style="width:70%"></s><s class="" style="width:88%"></s><s class="" style="width:55%"></s><s class="" style="width:80%"></s><s class="" style="width:64%"></s></div></div><div class="tl dirty"><div class="th"><b>oferta_v3.txt</b><em>◐ zmieniony · 4,2 KB</em></div><div class="tb"><s class="" style="width:90%"></s><s class="" style="width:82%"></s><s class="" style="width:86%"></s><s class="" style="width:74%"></s><s class="" style="width:92%"></s><s class="" style="width:58%"></s><s class="" style="width:80%"></s><s class="" style="width:66%"></s></div></div><div class="tl empty"><div class="th"><b>— pusty —</b><em></em></div><div class="tb"><div class="ph2">przeciągnij tu plik</div></div></div><div class="tl "><div class="th"><b>notatki.txt</b><em>● zapisany · 2,6 KB</em></div><div class="tb"><s class="" style="width:84%"></s><s class="" style="width:60%"></s><s class="" style="width:90%"></s><s class="" style="width:72%"></s><s class="" style="width:50%"></s><s class="" style="width:78%"></s></div></div><div class="tl "><div class="th"><b>todo.txt</b><em>● zapisany · 0,4 KB</em></div><div class="tb"><s class="" style="width:60%"></s><s class="" style="width:74%"></s><s class="" style="width:48%"></s><s class="" style="width:66%"></s></div></div></div></div></div></div>
+        <div class="hero-mock"><div class="mock" data-demo data-ms="2800"><div class="win"><div class="bar"><i></i><i></i><i></i><span>StartupBoard</span></div><div class="board"><div class="tl act rem" data-at2="5" style="--i:0"><div class="th"><b>plan_dnia.txt</b><em>● zapisany · 1,8 KB</em></div><div class="tb"><s class="" style="width:92%"></s><s class="" style="width:78%"></s><s class="" style="width:85%"></s><s class="" style="width:60%"></s><s class="" style="width:88%"></s><s class="" style="width:70%"></s><s class="" style="width:45%"></s></div></div><div class="tl rem" data-at2="5" style="--i:1"><div class="th"><b>kontakty.txt</b><em>● zapisany · 0,9 KB</em></div><div class="tb"><s class="" style="width:70%"></s><s class="" style="width:88%"></s><s class="" style="width:55%"></s><s class="" style="width:80%"></s><s class="" style="width:64%"></s></div></div><div class="tl dirty rem" data-at2="5" style="--i:2"><div class="th"><b>oferta_v3.txt</b><em>◐ zmieniony · 4,2 KB</em></div><div class="tb"><s class="" style="width:90%"></s><s class="" style="width:82%"></s><s class="" style="width:86%"></s><s class="" style="width:74%"></s><s class="" style="width:92%"></s><s class="" style="width:58%"></s><s class="" style="width:80%"></s><s class="" style="width:66%"></s></div></div><div class="tl hlt rem" data-at2="5" style="--i:3" data-at="1,3"><div class="th"><b><span class="sh" data-at="1">— pusty —</span><span class="sh" data-at="2,3,4,5">umowa.txt</span></b><em><span class="sh" data-at="2">● zapisany · 3,1 KB</span><span class="sh" data-at="3">◐ zmieniony · 3,4 KB</span><span class="sh" data-at="4,5">● zapisany · 3,4 KB</span></em></div><div class="tb"><div class="ph2 sb" data-at="1">przeciągnij tu plik</div><div class="sbf" data-from="2"><s class="" style="width:88%"></s><s class="" style="width:70%"></s><s class="" style="width:82%"></s><s class="" style="width:60%"></s><s class="" style="width:76%"></s><s class="new sh" data-at="3" style="width:64%"></s></div></div></div><div class="tl rem" data-at2="5" style="--i:4"><div class="th"><b>notatki.txt</b><em>● zapisany · 2,6 KB</em></div><div class="tb"><s class="" style="width:84%"></s><s class="" style="width:60%"></s><s class="" style="width:90%"></s><s class="" style="width:72%"></s><s class="" style="width:50%"></s><s class="" style="width:78%"></s></div></div><div class="tl rem" data-at2="5" style="--i:5"><div class="th"><b>todo.txt</b><em>● zapisany · 0,4 KB</em></div><div class="tb"><s class="" style="width:60%"></s><s class="" style="width:74%"></s><s class="" style="width:48%"></s><s class="" style="width:66%"></s></div></div></div><div class="drag sb" data-at="1"><i></i>umowa.txt</div><div class="toast2 sb" data-at="5"><b>✔</b> Układ zapamiętany. Jutro wszystko czeka otwarte.</div></div></div></div>
         <div class="float f1"><div class="mini ringcard"><div class="ring" style="--p:72"><span>72%</span></div><div><small>Postęp dnia</small><b>5 z 7 zadań</b></div></div></div>
         <div class="float f2"><div class="mini reccard"><div class="rec"><span class="dot"></span>REC <b>00:42:10</b></div><div class="wv"><i style="--d:0.0s"></i><i style="--d:0.7s"></i><i style="--d:0.3s"></i><i style="--d:1.0s"></i><i style="--d:0.6s"></i><i style="--d:0.2s"></i><i style="--d:0.9s"></i><i style="--d:0.5s"></i><i style="--d:0.1s"></i><i style="--d:0.8s"></i><i style="--d:0.4s"></i><i style="--d:0.0s"></i><i style="--d:0.7s"></i><i style="--d:0.3s"></i><i style="--d:1.0s"></i><i style="--d:0.6s"></i></div><div class="ln q"><span class="sp b">❓ Pytanie</span>wyłapane automatycznie</div></div></div>
       </div>
@@ -550,7 +652,7 @@ dialog .src{font-size:.82rem;margin-top:1em}
   <div class="media">
     <div class="viewer">
       <div class="vstage">
-        <div class="vslide on" data-i="0"><div class="mock"><div class="win"><div class="bar"><i></i><i></i><i></i><span>StartupBoard</span></div><div class="board"><div class="tl act"><div class="th"><b>plan_dnia.txt</b><em>● zapisany · 1,8 KB</em></div><div class="tb"><s class="" style="width:92%"></s><s class="" style="width:78%"></s><s class="" style="width:85%"></s><s class="" style="width:60%"></s><s class="" style="width:88%"></s><s class="" style="width:70%"></s><s class="" style="width:45%"></s></div></div><div class="tl "><div class="th"><b>kontakty.txt</b><em>● zapisany · 0,9 KB</em></div><div class="tb"><s class="" style="width:70%"></s><s class="" style="width:88%"></s><s class="" style="width:55%"></s><s class="" style="width:80%"></s><s class="" style="width:64%"></s></div></div><div class="tl dirty"><div class="th"><b>oferta_v3.txt</b><em>◐ zmieniony · 4,2 KB</em></div><div class="tb"><s class="" style="width:90%"></s><s class="" style="width:82%"></s><s class="" style="width:86%"></s><s class="" style="width:74%"></s><s class="" style="width:92%"></s><s class="" style="width:58%"></s><s class="" style="width:80%"></s><s class="" style="width:66%"></s></div></div><div class="tl empty"><div class="th"><b>— pusty —</b><em></em></div><div class="tb"><div class="ph2">przeciągnij tu plik</div></div></div><div class="tl "><div class="th"><b>notatki.txt</b><em>● zapisany · 2,6 KB</em></div><div class="tb"><s class="" style="width:84%"></s><s class="" style="width:60%"></s><s class="" style="width:90%"></s><s class="" style="width:72%"></s><s class="" style="width:50%"></s><s class="" style="width:78%"></s></div></div><div class="tl "><div class="th"><b>todo.txt</b><em>● zapisany · 0,4 KB</em></div><div class="tb"><s class="" style="width:60%"></s><s class="" style="width:74%"></s><s class="" style="width:48%"></s><s class="" style="width:66%"></s></div></div></div></div></div></div>
+        <div class="vslide on" data-i="0"><div class="mock" data-demo data-ms="2800" data-caps="Przeciągasz plik w wolne pole|Plik otwiera się od razu, z zawijaniem wierszy|Piszesz, a pole pokazuje „zmieniony”|Ctrl+S i znów „zapisany”|Jutro układ wraca sam, bez szukania"><div class="win"><div class="bar"><i></i><i></i><i></i><span>StartupBoard</span></div><div class="board"><div class="tl act rem" data-at2="5" style="--i:0"><div class="th"><b>plan_dnia.txt</b><em>● zapisany · 1,8 KB</em></div><div class="tb"><s class="" style="width:92%"></s><s class="" style="width:78%"></s><s class="" style="width:85%"></s><s class="" style="width:60%"></s><s class="" style="width:88%"></s><s class="" style="width:70%"></s><s class="" style="width:45%"></s></div></div><div class="tl rem" data-at2="5" style="--i:1"><div class="th"><b>kontakty.txt</b><em>● zapisany · 0,9 KB</em></div><div class="tb"><s class="" style="width:70%"></s><s class="" style="width:88%"></s><s class="" style="width:55%"></s><s class="" style="width:80%"></s><s class="" style="width:64%"></s></div></div><div class="tl dirty rem" data-at2="5" style="--i:2"><div class="th"><b>oferta_v3.txt</b><em>◐ zmieniony · 4,2 KB</em></div><div class="tb"><s class="" style="width:90%"></s><s class="" style="width:82%"></s><s class="" style="width:86%"></s><s class="" style="width:74%"></s><s class="" style="width:92%"></s><s class="" style="width:58%"></s><s class="" style="width:80%"></s><s class="" style="width:66%"></s></div></div><div class="tl hlt rem" data-at2="5" style="--i:3" data-at="1,3"><div class="th"><b><span class="sh" data-at="1">— pusty —</span><span class="sh" data-at="2,3,4,5">umowa.txt</span></b><em><span class="sh" data-at="2">● zapisany · 3,1 KB</span><span class="sh" data-at="3">◐ zmieniony · 3,4 KB</span><span class="sh" data-at="4,5">● zapisany · 3,4 KB</span></em></div><div class="tb"><div class="ph2 sb" data-at="1">przeciągnij tu plik</div><div class="sbf" data-from="2"><s class="" style="width:88%"></s><s class="" style="width:70%"></s><s class="" style="width:82%"></s><s class="" style="width:60%"></s><s class="" style="width:76%"></s><s class="new sh" data-at="3" style="width:64%"></s></div></div></div><div class="tl rem" data-at2="5" style="--i:4"><div class="th"><b>notatki.txt</b><em>● zapisany · 2,6 KB</em></div><div class="tb"><s class="" style="width:84%"></s><s class="" style="width:60%"></s><s class="" style="width:90%"></s><s class="" style="width:72%"></s><s class="" style="width:50%"></s><s class="" style="width:78%"></s></div></div><div class="tl rem" data-at2="5" style="--i:5"><div class="th"><b>todo.txt</b><em>● zapisany · 0,4 KB</em></div><div class="tb"><s class="" style="width:60%"></s><s class="" style="width:74%"></s><s class="" style="width:48%"></s><s class="" style="width:66%"></s></div></div></div><div class="drag sb" data-at="1"><i></i>umowa.txt</div><div class="toast2 sb" data-at="5"><b>✔</b> Układ zapamiętany. Jutro wszystko czeka otwarte.</div></div><div class="dcap"></div></div></div>
       </div>
       
     </div>
@@ -579,9 +681,9 @@ dialog .src{font-size:.82rem;margin-top:1em}
   <div class="media">
     <div class="viewer">
       <div class="vstage">
-        <div class="vslide on" data-i="0"><img src="https://twojastrona.smialo.org/img/apps/nawyk-1.webp" alt="Nawyk — ekran 1" loading="lazy" decoding="async"></div><div class="vslide" data-i="1"><img src="https://twojastrona.smialo.org/img/apps/nawyk-2.webp" alt="Nawyk — ekran 2" loading="lazy" decoding="async"></div><div class="vslide" data-i="2"><img src="https://twojastrona.smialo.org/img/apps/nawyk-3.webp" alt="Nawyk — ekran 3" loading="lazy" decoding="async"></div><div class="vslide" data-i="3"><img src="https://twojastrona.smialo.org/img/apps/nawyk-4.webp" alt="Nawyk — ekran 4" loading="lazy" decoding="async"></div>
+        <div class="vslide on" data-i="0"><div class="mock" data-demo data-ms="2800" data-caps="Rano dostajesz gotowy plan dnia|Odhaczasz zadania, pierścień rośnie|Timer prowadzi przez ćwiczenie|Wieczorem: wykres postępu i synchronizacja z telefonem"><div class="win"><div class="bar"><i></i><i></i><i></i><span>Nawyk — menedżer dnia</span></div><div class="nb"><div class="nh"><div><small>Dzień dobry</small><b>Wtorek, 17 listopada</b></div><div class="ring" data-pv="0 60 80 100" style="--p:0"><span>0%</span></div></div><div class="nstrip"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i></div><div class="task" data-from="2" style="--i:0"><i></i><span>Szklanka wody i okno</span><em>2 min</em></div><div class="task" data-from="2" style="--i:1"><i></i><span>Plan pierwszych 25 minut</span><em>3 min</em></div><div class="task" data-from="2" style="--i:2"><i></i><span>Rozgrzewka głosu</span><em>6 min</em></div><div class="task" data-from="3" style="--i:3"><i></i><span>Jedna karta, jedno zadanie</span><em>5 min</em></div><div class="task" data-from="4" style="--i:4"><i></i><span>Domknięcie dnia</span><em>5 min</em></div><div class="ex" data-at2="3"><div><small>Ćwiczenie dnia</small><b>Poranna mobilność</b></div><div class="tm"><span class="sh" data-at="1,2">02:00</span><span class="sh" data-at="3">01:12</span><span class="sh" data-at="4">✔</span></div><span class="exbar" data-at="3"></span></div><div class="sum" data-at="4"><b>Ten tydzień</b><div class="cht"><u style="--h:55%;--i:0"></u><u style="--h:70%;--i:1"></u><u style="--h:40%;--i:2"></u><u style="--h:85%;--i:3"></u><u style="--h:65%;--i:4"></u><u style="--h:92%;--i:5"></u><u style="--h:100%;--i:6"></u></div><div class="syn">☁ Zsynchronizowano: telefon ↔ komputer</div></div></div></div><div class="dcap"></div></div></div><div class="vslide" data-i="1"><img src="https://twojastrona.smialo.org/img/apps/nawyk-1.webp" alt="Nawyk — ekran 1" loading="lazy" decoding="async"></div><div class="vslide" data-i="2"><img src="https://twojastrona.smialo.org/img/apps/nawyk-2.webp" alt="Nawyk — ekran 2" loading="lazy" decoding="async"></div><div class="vslide" data-i="3"><img src="https://twojastrona.smialo.org/img/apps/nawyk-3.webp" alt="Nawyk — ekran 3" loading="lazy" decoding="async"></div><div class="vslide" data-i="4"><img src="https://twojastrona.smialo.org/img/apps/nawyk-4.webp" alt="Nawyk — ekran 4" loading="lazy" decoding="async"></div>
       </div>
-      <div class="vthumbs" style="--n:4"><button class="vthumb on" data-i="0" aria-label="Ekran 1" style="background-image:url(https://twojastrona.smialo.org/img/apps/nawyk-1-t.webp)"></button><button class="vthumb" data-i="1" aria-label="Ekran 2" style="background-image:url(https://twojastrona.smialo.org/img/apps/nawyk-2-t.webp)"></button><button class="vthumb" data-i="2" aria-label="Ekran 3" style="background-image:url(https://twojastrona.smialo.org/img/apps/nawyk-3-t.webp)"></button><button class="vthumb" data-i="3" aria-label="Ekran 4" style="background-image:url(https://twojastrona.smialo.org/img/apps/nawyk-4-t.webp)"></button></div>
+      <div class="vthumbs" style="--n:5"><button class="vthumb on anim" data-i="0" aria-label="Animacja"><span>▶</span><em>Na żywo</em></button><button class="vthumb" data-i="1" aria-label="Ekran 1" style="background-image:url(https://twojastrona.smialo.org/img/apps/nawyk-1-t.webp)"></button><button class="vthumb" data-i="2" aria-label="Ekran 2" style="background-image:url(https://twojastrona.smialo.org/img/apps/nawyk-2-t.webp)"></button><button class="vthumb" data-i="3" aria-label="Ekran 3" style="background-image:url(https://twojastrona.smialo.org/img/apps/nawyk-3-t.webp)"></button><button class="vthumb" data-i="4" aria-label="Ekran 4" style="background-image:url(https://twojastrona.smialo.org/img/apps/nawyk-4-t.webp)"></button></div>
     </div>
   </div>
   <div class="copy">
@@ -608,9 +710,9 @@ dialog .src{font-size:.82rem;margin-top:1em}
   <div class="media">
     <div class="viewer">
       <div class="vstage">
-        <div class="vslide on" data-i="0"><img src="https://twojastrona.smialo.org/img/apps/esencja-2.webp" alt="Esencja — ekran 1" loading="lazy" decoding="async"></div><div class="vslide" data-i="1"><img src="https://twojastrona.smialo.org/img/apps/esencja-1.webp" alt="Esencja — ekran 2" loading="lazy" decoding="async"></div><div class="vslide" data-i="2"><img src="https://twojastrona.smialo.org/img/apps/esencja-3.webp" alt="Esencja — ekran 3" loading="lazy" decoding="async"></div><div class="vslide" data-i="3"><img src="https://twojastrona.smialo.org/img/apps/esencja-4.webp" alt="Esencja — ekran 4" loading="lazy" decoding="async"></div>
+        <div class="vslide on" data-i="0"><div class="mock" data-demo data-ms="2800" data-caps="Wklejasz link do filmu|Esencja pobiera transkrypcję|Konkrety po polsku, najważniejsze podświetlone|Lektor czyta na głos, tempo 0,5–4×"><div class="win"><div class="bar"><i></i><i></i><i></i><span>Esencja</span></div><div class="eb"><div class="inp"><span><i class="typ" data-at="1"></i><i class="typ full" data-from="2"></i></span><b data-at="2" class="btn2">Streść</b></div><div class="hint sb" data-at="1">Wklej link i kliknij „Streść”</div><div class="ldg sb" data-at="2"><span>Pobieram transkrypcję…</span><u></u></div><div class="vid svf" data-from="2" data-to="3"><div class="thumb"><i></i></div><div><b>Jak zbudować nawyk w 30 dni</b><small>24:10 min → czytasz w 1:30</small></div></div><div class="quote sv" data-from="3" data-to="3"><b>Esencja:</b> małe kroki wygrywają z wielkimi planami.</div><div class="pt" data-at="3,4" style="--i:0"><i></i><span>Zacznij od <mark>2 minut</mark> dziennie</span></div><div class="pt" data-at="3,4" style="--i:1"><i></i><span>Dopisz nawyk do <mark>istniejącej rutyny</mark></span></div><div class="pt" data-at="3,4" style="--i:2"><i></i><span>Mierz <mark>serię dni</mark>, nie perfekcję</span></div><div class="pt" data-at="3,4" style="--i:3"><i></i><span>Zaplanuj <mark>pierwszy krok</mark> na jutro</span></div><div class="tg"><b data-to="3">Mini</b><b data-to="3" class="on">Barwny</b><b data-from="4">Lektor</b></div><div class="pl svf" data-from="4" data-at="4"><b>▶</b><span class="pg"><u></u></span><em>1,3×</em></div></div></div><div class="dcap"></div></div></div><div class="vslide" data-i="1"><img src="https://twojastrona.smialo.org/img/apps/esencja-2.webp" alt="Esencja — ekran 1" loading="lazy" decoding="async"></div><div class="vslide" data-i="2"><img src="https://twojastrona.smialo.org/img/apps/esencja-1.webp" alt="Esencja — ekran 2" loading="lazy" decoding="async"></div><div class="vslide" data-i="3"><img src="https://twojastrona.smialo.org/img/apps/esencja-3.webp" alt="Esencja — ekran 3" loading="lazy" decoding="async"></div><div class="vslide" data-i="4"><img src="https://twojastrona.smialo.org/img/apps/esencja-4.webp" alt="Esencja — ekran 4" loading="lazy" decoding="async"></div>
       </div>
-      <div class="vthumbs" style="--n:4"><button class="vthumb on" data-i="0" aria-label="Ekran 1" style="background-image:url(https://twojastrona.smialo.org/img/apps/esencja-2-t.webp)"></button><button class="vthumb" data-i="1" aria-label="Ekran 2" style="background-image:url(https://twojastrona.smialo.org/img/apps/esencja-1-t.webp)"></button><button class="vthumb" data-i="2" aria-label="Ekran 3" style="background-image:url(https://twojastrona.smialo.org/img/apps/esencja-3-t.webp)"></button><button class="vthumb" data-i="3" aria-label="Ekran 4" style="background-image:url(https://twojastrona.smialo.org/img/apps/esencja-4-t.webp)"></button></div>
+      <div class="vthumbs" style="--n:5"><button class="vthumb on anim" data-i="0" aria-label="Animacja"><span>▶</span><em>Na żywo</em></button><button class="vthumb" data-i="1" aria-label="Ekran 1" style="background-image:url(https://twojastrona.smialo.org/img/apps/esencja-2-t.webp)"></button><button class="vthumb" data-i="2" aria-label="Ekran 2" style="background-image:url(https://twojastrona.smialo.org/img/apps/esencja-1-t.webp)"></button><button class="vthumb" data-i="3" aria-label="Ekran 3" style="background-image:url(https://twojastrona.smialo.org/img/apps/esencja-3-t.webp)"></button><button class="vthumb" data-i="4" aria-label="Ekran 4" style="background-image:url(https://twojastrona.smialo.org/img/apps/esencja-4-t.webp)"></button></div>
     </div>
   </div>
   <div class="copy">
@@ -637,7 +739,7 @@ dialog .src{font-size:.82rem;margin-top:1em}
   <div class="media">
     <div class="viewer">
       <div class="vstage">
-        <div class="vslide on" data-i="0"><div class="mock"><div class="win dk"><div class="bar"><i></i><i></i><i></i><span>Notatnik Słuchacza</span></div><div class="rb"><div class="rec"><span class="dot"></span>REC <b>00:42:10</b></div><div class="wv"><i style="--d:0.0s"></i><i style="--d:0.7s"></i><i style="--d:0.3s"></i><i style="--d:1.0s"></i><i style="--d:0.6s"></i><i style="--d:0.2s"></i><i style="--d:0.9s"></i><i style="--d:0.5s"></i><i style="--d:0.1s"></i><i style="--d:0.8s"></i><i style="--d:0.4s"></i><i style="--d:0.0s"></i><i style="--d:0.7s"></i><i style="--d:0.3s"></i><i style="--d:1.0s"></i><i style="--d:0.6s"></i><i style="--d:0.2s"></i><i style="--d:0.9s"></i><i style="--d:0.5s"></i><i style="--d:0.1s"></i><i style="--d:0.8s"></i><i style="--d:0.4s"></i><i style="--d:0.0s"></i><i style="--d:0.7s"></i><i style="--d:0.3s"></i><i style="--d:1.0s"></i><i style="--d:0.6s"></i><i style="--d:0.2s"></i><i style="--d:0.9s"></i><i style="--d:0.5s"></i></div><div class="ln"><span class="sp a">Wykładowca</span>Kluczem jest regularność, nie intensywność.</div><div class="ln q"><span class="sp b">❓ Pytanie</span>Ile czasu dziennie wystarczy?</div><div class="ln"><span class="sp c">✔ Odpowiedź</span>Dwie minuty, ale każdego dnia.</div><div class="nt"><small>Notatka · temat 1</small><b>Regularność wygrywa z intensywnością</b><span>• krótkie, codzienne sesje</span><span>• serie dni jako miara postępu</span></div><div class="acts"><b>Notatki</b><b>Autorzy</b><b>Zweryfikuj</b></div></div></div></div></div><div class="vslide" data-i="1"><img src="https://twojastrona.smialo.org/img/apps/notatnik-1.webp" alt="Notatnik Słuchacza — ekran 1" loading="lazy" decoding="async"></div><div class="vslide" data-i="2"><img src="https://twojastrona.smialo.org/img/apps/notatnik-3.webp" alt="Notatnik Słuchacza — ekran 2" loading="lazy" decoding="async"></div><div class="vslide" data-i="3"><img src="https://twojastrona.smialo.org/img/apps/notatnik-4.webp" alt="Notatnik Słuchacza — ekran 3" loading="lazy" decoding="async"></div>
+        <div class="vslide on" data-i="0"><div class="mock" data-demo data-ms="2800" data-caps="Nagrywasz wykład w tle, także przy wygaszonym ekranie|Pytanie z sali wyłapane osobno|Co ok. 5 minut powstaje notatka tematyczna|Autorzy, Zweryfikuj i eksport do Markdown"><div class="win dk"><div class="bar"><i></i><i></i><i></i><span>Notatnik Słuchacza</span></div><div class="rb"><div class="rec"><span class="dot"></span>REC <b>00:42:10</b></div><div class="wv"><i style="--d:0.0s"></i><i style="--d:0.7s"></i><i style="--d:0.3s"></i><i style="--d:1.0s"></i><i style="--d:0.6s"></i><i style="--d:0.2s"></i><i style="--d:0.9s"></i><i style="--d:0.5s"></i><i style="--d:0.1s"></i><i style="--d:0.8s"></i><i style="--d:0.4s"></i><i style="--d:0.0s"></i><i style="--d:0.7s"></i><i style="--d:0.3s"></i><i style="--d:1.0s"></i><i style="--d:0.6s"></i><i style="--d:0.2s"></i><i style="--d:0.9s"></i><i style="--d:0.5s"></i><i style="--d:0.1s"></i><i style="--d:0.8s"></i><i style="--d:0.4s"></i><i style="--d:0.0s"></i><i style="--d:0.7s"></i><i style="--d:0.3s"></i><i style="--d:1.0s"></i><i style="--d:0.6s"></i><i style="--d:0.2s"></i><i style="--d:0.9s"></i><i style="--d:0.5s"></i></div><div class="ln sf" data-from="1"><span class="sp a">Wykładowca</span>Kluczem jest regularność, nie intensywność.</div><div class="ln q sf" data-from="2"><span class="sp b">❓ Pytanie</span>Ile czasu dziennie wystarczy?</div><div class="ln sf" data-from="2"><span class="sp c">✔ Odpowiedź</span>Dwie minuty, ale każdego dnia.</div><div class="nt sv" data-from="3"><small>Notatka · temat 1</small><b>Regularność wygrywa z intensywnością</b><span>• krótkie, codzienne sesje</span><span>• serie dni jako miara postępu</span></div><div class="acts"><b data-at="4" class="a1">Notatki</b><b data-at="4" class="a2">Autorzy</b><b data-at="4" class="a3">Zweryfikuj</b><span class="ok sh" data-at="4">✔ Źródło potwierdzone</span></div></div></div><div class="dcap"></div></div></div><div class="vslide" data-i="1"><img src="https://twojastrona.smialo.org/img/apps/notatnik-1.webp" alt="Notatnik Słuchacza — ekran 1" loading="lazy" decoding="async"></div><div class="vslide" data-i="2"><img src="https://twojastrona.smialo.org/img/apps/notatnik-3.webp" alt="Notatnik Słuchacza — ekran 2" loading="lazy" decoding="async"></div><div class="vslide" data-i="3"><img src="https://twojastrona.smialo.org/img/apps/notatnik-4.webp" alt="Notatnik Słuchacza — ekran 3" loading="lazy" decoding="async"></div>
       </div>
       <div class="vthumbs" style="--n:4"><button class="vthumb on anim" data-i="0" aria-label="Animacja"><span>▶</span><em>Na żywo</em></button><button class="vthumb" data-i="1" aria-label="Ekran 1" style="background-image:url(https://twojastrona.smialo.org/img/apps/notatnik-1-t.webp)"></button><button class="vthumb" data-i="2" aria-label="Ekran 2" style="background-image:url(https://twojastrona.smialo.org/img/apps/notatnik-3-t.webp)"></button><button class="vthumb" data-i="3" aria-label="Ekran 3" style="background-image:url(https://twojastrona.smialo.org/img/apps/notatnik-4-t.webp)"></button></div>
     </div>
@@ -666,9 +768,9 @@ dialog .src{font-size:.82rem;margin-top:1em}
   <div class="media">
     <div class="viewer">
       <div class="vstage">
-        <div class="vslide on" data-i="0"><img src="https://twojastrona.smialo.org/img/apps/anatomia-1.webp" alt="Anatomia 3D — ekran 1" loading="lazy" decoding="async"></div><div class="vslide" data-i="1"><img src="https://twojastrona.smialo.org/img/apps/anatomia-2.webp" alt="Anatomia 3D — ekran 2" loading="lazy" decoding="async"></div><div class="vslide" data-i="2"><img src="https://twojastrona.smialo.org/img/apps/anatomia-3.webp" alt="Anatomia 3D — ekran 3" loading="lazy" decoding="async"></div>
+        <div class="vslide on" data-i="0"><div class="mock" data-demo data-ms="2800" data-caps="Zaczynasz od szkieletu, warstwy włączasz osobno|Włączasz mięśnie i klikasz: biceps brachii|Antagonista jednym kliknięciem: triceps brachii|Dokładasz nerwy i naczynia|Strona prawa, lewa lub obie"><div class="win dk an"><div class="bar"><i></i><i></i><i></i><span>Anatomia 3D</span></div><div class="ab"><div class="scene" data-at="5"><svg viewBox="0 0 300 240" aria-hidden="true"><defs><linearGradient id="mus" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5eead4"/><stop offset="1" stop-color="#0f766e"/></linearGradient><linearGradient id="mus2" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#7dd3fc"/><stop offset="1" stop-color="#1d6fa5"/></linearGradient></defs><ellipse cx="150" cy="222" rx="118" ry="11" fill="rgba(45,212,191,.16)"/><ellipse cx="150" cy="222" rx="78" ry="6" fill="none" stroke="rgba(94,234,212,.35)"/><g class="limb"><g class="l-bone"><circle cx="88" cy="44" r="19" fill="#e9f2f0"/><line x1="92" y1="50" x2="144" y2="144" stroke="#e9f2f0" stroke-width="11" stroke-linecap="round"/><line x1="146" y1="148" x2="226" y2="204" stroke="#e9f2f0" stroke-width="10" stroke-linecap="round"/><line x1="136" y1="152" x2="214" y2="212" stroke="#c9dcda" stroke-width="8" stroke-linecap="round"/><circle cx="142" cy="146" r="9" fill="#f3fbfa"/></g><g class="l-mus sv" data-from="2"><path class="m-bi" data-at="2" d="M104 52 C138 54 160 92 148 132 C132 124 106 96 98 62Z" fill="url(#mus)"/><path class="m-tri" data-at="3" d="M82 60 C66 96 92 136 128 152 C140 150 142 142 134 136 C112 118 96 92 94 64Z" fill="url(#mus2)"/></g><path class="l-ner sv" data-from="4" pathLength="1" d="M98 58 C116 88 132 116 150 142 C172 164 200 186 226 202" stroke="#ffd36b" stroke-width="2.2" fill="none" stroke-linecap="round"/><path class="l-ves sv" data-from="4" pathLength="1" d="M110 50 C142 62 160 100 150 136 C176 162 202 180 220 196" stroke="#ff6b6b" stroke-width="2.2" fill="none" stroke-linecap="round"/></g></svg><div class="lab"><b><span class="sh" data-at="1">Kość ramienna</span><span class="sh" data-at="2">Biceps brachii</span><span class="sh" data-at="3">Triceps brachii</span><span class="sh" data-at="4,5">Nerwy i naczynia</span></b><i><span class="sh" data-at="1">Humerus</span><span class="sh" data-at="2">Musculus biceps brachii</span><span class="sh" data-at="3">antagonista · Musculus triceps brachii</span><span class="sh" data-at="4,5">Nervi et vasa</span></i></div></div><div class="side"><small>Warstwy</small><ul><li data-from="1"><i></i>Kości</li><li data-from="2"><i></i>Mięśnie</li><li data-from="1"><i></i>Stawy</li><li data-from="99"><i></i>Więzadła</li><li data-from="4"><i></i>Nerwy</li><li data-from="4"><i></i>Naczynia</li></ul><div class="tg"><b data-to="4">Prawa</b><b data-from="5">Lewa</b><b>Obie</b></div><div class="card"><small><span class="sh" data-at="1">Zaznaczono</span><span class="sh" data-at="2">Zaznaczono</span><span class="sh" data-at="3">Antagonista</span><span class="sh" data-at="4">Aktywne warstwy</span><span class="sh" data-at="5">Strona</span></small><b><span class="sh" data-at="1">Kość ramienna</span><span class="sh" data-at="2">Biceps brachii</span><span class="sh" data-at="3">Triceps brachii</span><span class="sh" data-at="4">5 z 6</span><span class="sh" data-at="5">lewa</span></b></div></div></div></div><div class="dcap"></div></div></div><div class="vslide" data-i="1"><img src="https://twojastrona.smialo.org/img/apps/anatomia-1.webp" alt="Anatomia 3D — ekran 1" loading="lazy" decoding="async"></div><div class="vslide" data-i="2"><img src="https://twojastrona.smialo.org/img/apps/anatomia-2.webp" alt="Anatomia 3D — ekran 2" loading="lazy" decoding="async"></div><div class="vslide" data-i="3"><img src="https://twojastrona.smialo.org/img/apps/anatomia-3.webp" alt="Anatomia 3D — ekran 3" loading="lazy" decoding="async"></div>
       </div>
-      <div class="vthumbs" style="--n:3"><button class="vthumb on" data-i="0" aria-label="Ekran 1" style="background-image:url(https://twojastrona.smialo.org/img/apps/anatomia-1-t.webp)"></button><button class="vthumb" data-i="1" aria-label="Ekran 2" style="background-image:url(https://twojastrona.smialo.org/img/apps/anatomia-2-t.webp)"></button><button class="vthumb" data-i="2" aria-label="Ekran 3" style="background-image:url(https://twojastrona.smialo.org/img/apps/anatomia-3-t.webp)"></button></div>
+      <div class="vthumbs" style="--n:4"><button class="vthumb on anim" data-i="0" aria-label="Animacja"><span>▶</span><em>Na żywo</em></button><button class="vthumb" data-i="1" aria-label="Ekran 1" style="background-image:url(https://twojastrona.smialo.org/img/apps/anatomia-1-t.webp)"></button><button class="vthumb" data-i="2" aria-label="Ekran 2" style="background-image:url(https://twojastrona.smialo.org/img/apps/anatomia-2-t.webp)"></button><button class="vthumb" data-i="3" aria-label="Ekran 3" style="background-image:url(https://twojastrona.smialo.org/img/apps/anatomia-3-t.webp)"></button></div>
     </div>
   </div>
   <div class="copy">
@@ -785,7 +887,7 @@ dialog .src{font-size:.82rem;margin-top:1em}
       <a href="https://twojastrona.smialo.org/aplikacje/regulamin/" target="_blank" rel="noopener">Regulamin</a>
       <a href="https://twojastrona.smialo.org/polityka-prywatnosci/" target="_blank" rel="noopener">Polityka prywatności</a>
     </div>
-    <p class="fine">© 2026 Michał Rzekiecki · Web Elegance (Kreacja Stron Internetowych) · NIP 6222614711 · v0.03 · Modele 3D w Anatomii: Z-Anatomy / BodyParts3D (CC BY-SA)</p>
+    <p class="fine">© 2026 Michał Rzekiecki · Web Elegance (Kreacja Stron Internetowych) · NIP 6222614711 · v0.04 · Modele 3D w Anatomii: Z-Anatomy / BodyParts3D (CC BY-SA)</p>
   </div>
 </footer>
 
@@ -810,7 +912,7 @@ dialog .src{font-size:.82rem;margin-top:1em}
 <dialog id="dAbout">
   <h2>O autorze</h2>
   <p><b>Aplikacje — strona główna</b></p>
-  <p>Wersja: v0.03</p>
+  <p>Wersja: v0.04</p>
   <p>Autor: Michał Rzekiecki</p>
   <p>Kontakt: <a href="mailto:kontakt@smialo.org">kontakt@smialo.org</a></p>
   <div class="drow"><button class="btn btn-line" data-close>Zamknij</button></div>
@@ -923,6 +1025,49 @@ dialog .src{font-size:.82rem;margin-top:1em}
   var lb = $('#lb'), lbImg = $('#lbImg');
   $$('.vslide img').forEach(function (im) { im.addEventListener('click', function () { lbImg.src = im.src; if (lb.showModal) lb.showModal(); }); });
   if (lb) lb.addEventListener('click', function () { lb.close(); });
+
+
+  /* animowane demo: kroki */
+  (function () {
+    var demos = $$('[data-demo]'); if (!demos.length) return;
+    var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    demos.forEach(function (m) {
+      var caps = (m.dataset.caps || '').split('|').filter(Boolean), n = caps.length || 5, s = 0, vis = true, timer, hold = false;
+      if (!caps.length) n = 5;
+      var dcap = $('.dcap', m), dots = [];
+      if (dcap && caps.length) {
+        dcap.innerHTML = '<p></p><div class="dd"></div>';
+        var dd = $('.dd', dcap);
+        caps.forEach(function (c, i) { var b = document.createElement('button'); b.type = 'button'; b.setAttribute('aria-label', 'Krok ' + (i + 1) + ': ' + c); b.addEventListener('click', function () { go(i + 1, true); }); dd.appendChild(b); dots.push(b); });
+      }
+      function inl(e, k) {
+        var f = e.dataset.from ? +e.dataset.from : 0, t = e.dataset.to ? +e.dataset.to : 99;
+        return k >= f && k <= t;
+      }
+      function has(list, k) { return (',' + list + ',').indexOf(',' + k + ',') > -1; }
+      function go(k, manual) {
+        s = k; m.dataset.s = k;
+        $$('[data-from],[data-to]', m).forEach(function (e) { e.classList.toggle('on', inl(e, k)); });
+        $$('[data-at]', m).forEach(function (e) { e.classList.toggle('at', has(e.dataset.at, k)); });
+        $$('[data-at2]', m).forEach(function (e) { e.classList.toggle('at2', has(e.dataset.at2, k)); });
+        $$('[data-pv]', m).forEach(function (e) { var v = e.dataset.pv.split(' ')[k - 1]; e.style.setProperty('--p', v); var sp = $('span', e); if (sp) sp.textContent = v + '%'; });
+        if (caps.length) { $('.dcap p', m).textContent = caps[k - 1]; dots.forEach(function (d, i) { d.classList.toggle('on', i === k - 1); }); }
+        if (manual) { hold = true; clearTimeout(timer); timer = setTimeout(function () { hold = false; tick(); }, 9000); }
+      }
+      function active() {
+        var sl = m.closest ? m.closest('.vslide') : null;
+        return vis && !document.hidden && (!sl || sl.classList.contains('on'));
+      }
+      function tick() {
+        clearTimeout(timer);
+        timer = setTimeout(function () { if (!hold && active()) go(s % n + 1); tick(); }, +m.dataset.ms || 2800);
+      }
+      go(1);
+      if (reduce) return;
+      if ('IntersectionObserver' in window) new IntersectionObserver(function (es) { vis = es[0].isIntersecting; }, { threshold: .25 }).observe(m);
+      tick();
+    });
+  })();
 
   /* zapis na listę chętnych */
   var dW = $('#dWant'), wF = $('#wantF');

@@ -1,20 +1,40 @@
 #!/usr/bin/env python3
 """Strona główna projects.michus.workers.dev  (v0.01)
-Autor: Michał Rzekiecki · michus@gmail.com
+Autor: Michał Rzekiecki
 Składa src/template.html + src/style.css + src/main.js + dane aplikacji z tego pliku -> index.html
 Uruchom:  python3 build.py
 """
 import html
+import urllib.request
 from pathlib import Path
 from urllib.parse import quote
 
-VERSION = "v0.03"
-IMG = "https://twojastrona.smialo.org/img/apps/"
+VERSION = "v0.04"
+HOSTS = ["https://stronywww.michus.workers.dev/img/", "https://twojastrona.smialo.org/img/"]
+MEDIA = Path(__file__).parent / "media" / "img"
 SHOTS = {"nawyk": ["nawyk-1", "nawyk-2", "nawyk-3", "nawyk-4"], "esencja": ["esencja-2", "esencja-1", "esencja-3", "esencja-4"],
          "notatnik": ["notatnik-2", "notatnik-1", "notatnik-3", "notatnik-4"], "anatomia": ["anatomia-1", "anatomia-2", "anatomia-3"]}
 MAIL = "kontakt@smialo.org"
 HERE = Path(__file__).parent
 esc = html.escape
+
+
+def asset(rel):
+    """Obraz hostowany u nas (pobrany przy buildzie). Gdy pobranie się nie uda, link do źródła."""
+    dest = MEDIA / rel
+    if not dest.exists():
+        for h in HOSTS:
+            try:
+                req = urllib.request.Request(h + rel, headers={"User-Agent": "Mozilla/5.0 (build)"})
+                with urllib.request.urlopen(req, timeout=20) as r:
+                    data = r.read()
+                if len(data) > 500:
+                    dest.parent.mkdir(parents=True, exist_ok=True)
+                    dest.write_bytes(data)
+                    break
+            except Exception:
+                continue
+    return f"/media/img/{rel}" if dest.exists() else HOSTS[1] + rel
 
 
 def consult(subject, body_hint=""):
@@ -33,103 +53,7 @@ def trial(subject):
     return f"mailto:{MAIL}?subject={quote('Pytanie – ' + subject)}&body={quote(body)}"
 
 
-# ───────────────────────── makiety interfejsów (CSS, bez obrazków) ─────────────────────────
-def sk(*ws, c=""):
-    return "".join(f'<s class="{c}" style="width:{w}%"></s>' for w in ws)
-
-
-def bar(title):
-    return f'<div class="bar"><i></i><i></i><i></i><span>{title}</span></div>'
-
-
-def tile(name, state, body, cls=""):
-    return (f'<div class="tl {cls}"><div class="th"><b>{name}</b><em>{state}</em></div>'
-            f'<div class="tb">{body}</div></div>')
-
-
-def mock_board():
-    t = [
-        tile("plan_dnia.txt", "● zapisany · 1,8 KB", sk(92, 78, 85, 60, 88, 70, 45), "act"),
-        tile("kontakty.txt", "● zapisany · 0,9 KB", sk(70, 88, 55, 80, 64)),
-        tile("oferta_v3.txt", "◐ zmieniony · 4,2 KB", sk(90, 82, 86, 74, 92, 58, 80, 66), "dirty"),
-        tile("— pusty —", "", '<div class="ph2">przeciągnij tu plik</div>', "empty"),
-        tile("notatki.txt", "● zapisany · 2,6 KB", sk(84, 60, 90, 72, 50, 78)),
-        tile("todo.txt", "● zapisany · 0,4 KB", sk(60, 74, 48, 66)),
-    ]
-    return f'<div class="mock"><div class="win">{bar("StartupBoard")}<div class="board">{"".join(t)}</div></div></div>'
-
-
-def mock_nawyk():
-    tasks = [
-        ("done", "Szklanka wody i okno", "2 min"),
-        ("done", "Plan pierwszych 25 minut", "3 min"),
-        ("done", "Rozgrzewka głosu", "6 min"),
-        ("", "Jedna karta, jedno zadanie", "5 min"),
-        ("", "Domknięcie dnia", "5 min"),
-    ]
-    rows = "".join(f'<div class="task {c}"><i></i><span>{n}</span><em>{m}</em></div>' for c, n, m in tasks)
-    strip = "".join(f'<i class="{"on" if i < 9 else ""}"></i>' for i in range(14))
-    return (f'<div class="mock"><div class="win">{bar("Nawyk — menedżer dnia")}<div class="nb">'
-            '<div class="nh"><div><small>Dzień dobry</small><b>Wtorek, 17 listopada</b></div>'
-            '<div class="ring" style="--p:60"><span>60%</span></div></div>'
-            f'<div class="nstrip">{strip}</div>{rows}'
-            '<div class="ex"><div><small>Ćwiczenie dnia</small><b>Poranna mobilność</b></div>'
-            '<div class="tm">02:00</div></div></div></div></div>')
-
-
-def mock_esencja():
-    return ('<div class="mock"><div class="win">' + bar("Esencja") +
-            '<div class="eb"><div class="inp"><span>youtube.com/watch?v=…</span><b>Streść</b></div>'
-            '<div class="vid"><div class="thumb"><i></i></div><div><b>Jak zbudować nawyk w 30 dni</b>'
-            '<small>24:10 min → czytasz w 1:30</small></div></div>'
-            '<div class="quote"><b>Esencja:</b> małe kroki wygrywają z wielkimi planami.</div>'
-            '<div class="pt"><i></i><span>Zacznij od <mark>2 minut</mark> dziennie</span></div>'
-            '<div class="pt"><i></i><span>Dopisz nawyk do <mark>istniejącej rutyny</mark></span></div>'
-            '<div class="pt"><i></i><span>Mierz <mark>serię dni</mark>, nie perfekcję</span></div>'
-            '<div class="pt"><i></i><span>Zaplanuj <mark>pierwszy krok</mark> na jutro</span></div>'
-            '<div class="tg"><b>Mini</b><b class="on">Barwny</b><b>Lektor</b></div>'
-            '<div class="pl"><b>▶</b><span class="pg"><u></u></span><em>1,3×</em></div>'
-            '</div></div></div>')
-
-
-def mock_notatnik():
-    bars = "".join(f'<i style="--d:{(i * 7) % 11 / 10:.1f}s"></i>' for i in range(30))
-    return ('<div class="mock"><div class="win dk">' + bar("Notatnik Słuchacza") +
-            '<div class="rb"><div class="rec"><span class="dot"></span>REC <b>00:42:10</b></div>'
-            f'<div class="wv">{bars}</div>'
-            '<div class="ln"><span class="sp a">Wykładowca</span>Kluczem jest regularność, nie intensywność.</div>'
-            '<div class="ln q"><span class="sp b">❓ Pytanie</span>Ile czasu dziennie wystarczy?</div>'
-            '<div class="ln"><span class="sp c">✔ Odpowiedź</span>Dwie minuty, ale każdego dnia.</div>'
-            '<div class="nt"><small>Notatka · temat 1</small><b>Regularność wygrywa z intensywnością</b>'
-            '<span>• krótkie, codzienne sesje</span><span>• serie dni jako miara postępu</span></div>'
-            '<div class="acts"><b>Notatki</b><b>Autorzy</b><b>Zweryfikuj</b></div>'
-            '</div></div></div>')
-
-
-def mock_anatomia():
-    svg = ('<svg viewBox="0 0 300 240" aria-hidden="true">'
-           '<defs><linearGradient id="mus" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5eead4"/>'
-           '<stop offset="1" stop-color="#0f766e"/></linearGradient></defs>'
-           '<ellipse cx="150" cy="222" rx="118" ry="11" fill="rgba(45,212,191,.16)"/>'
-           '<ellipse cx="150" cy="222" rx="78" ry="6" fill="none" stroke="rgba(94,234,212,.35)"/>'
-           '<g class="limb"><circle cx="88" cy="44" r="19" fill="#e9f2f0"/>'
-           '<path d="M88 40 C96 36 108 40 112 50 L150 132 C153 140 148 148 140 147 C132 146 128 140 125 134 L84 56 C81 50 82 44 88 40Z" fill="#dfeceb"/>'
-           '<path d="M104 52 C138 54 160 92 148 132 C132 124 106 96 98 62Z" fill="url(#mus)" opacity=".95"/>'
-           '<line x1="146" y1="148" x2="226" y2="204" stroke="#e9f2f0" stroke-width="10" stroke-linecap="round"/>'
-           '<line x1="136" y1="152" x2="214" y2="212" stroke="#c9dcda" stroke-width="8" stroke-linecap="round"/>'
-           '<circle cx="142" cy="146" r="9" fill="#f3fbfa"/></g>'
-           '<g class="pin"><circle cx="128" cy="92" r="5" fill="#ffb347"/><circle cx="128" cy="92" r="11" fill="none" stroke="#ffb347"/></g>'
-           '<path d="M133 88 L190 56" stroke="#ffb347" stroke-width="1.4" fill="none"/>'
-           '<rect x="190" y="38" width="104" height="38" rx="9" fill="rgba(6,42,50,.85)" stroke="rgba(94,234,212,.5)"/>'
-           '<text x="198" y="54" fill="#fff" font-size="10" font-weight="700">Biceps brachii</text>'
-           '<text x="198" y="68" fill="#99f6e4" font-size="8.5" font-style="italic">Musculus biceps brachii</text>'
-           '</svg>')
-    layers = "".join(f'<li class="{"on" if i < 3 else ""}"><i></i>{n}</li>' for i, n in enumerate(
-        ["Kości", "Mięśnie", "Stawy", "Więzadła", "Nerwy", "Naczynia"]))
-    return ('<div class="mock"><div class="win dk an">' + bar("Anatomia 3D") +
-            f'<div class="ab"><div class="scene">{svg}</div>'
-            f'<div class="side"><small>Warstwy</small><ul>{layers}</ul>'
-            '<div class="card"><small>Antagonista</small><b>Triceps brachii</b></div></div></div></div></div>')
+from demos import mock_board, mock_nawyk, mock_esencja, mock_notatnik, mock_anatomia  # animowane makiety
 
 
 def mini_ring():
@@ -222,14 +146,14 @@ def render_app(a, i):
     n = a["id"]
     imgs = SHOTS.get(a["slug"], [])
     slides, thumbs = [], []
-    if a["slug"] in ("startupboard", "notatnik"):   # animowana makieta zostaje jako pierwszy ekran
+    if True:   # animowane demo jako pierwszy ekran
         slides.append(f'<div class="vslide on" data-i="0">{a["mock"]()}</div>')
         thumbs.append('<button class="vthumb on anim" data-i="0" aria-label="Animacja"><span>▶</span><em>Na żywo</em></button>')
     off = len(slides)
     for k, im in enumerate(imgs if a["slug"] != "notatnik" else imgs[1:]):
         on = " on" if off == 0 and k == 0 else ""
-        slides.append(f'<div class="vslide{on}" data-i="{off + k}"><img src="{IMG}{im}.webp" alt="{esc(a["name"])} — ekran {k + 1}" loading="lazy" decoding="async"></div>')
-        thumbs.append(f'<button class="vthumb{on}" data-i="{off + k}" aria-label="Ekran {k + 1}" style="background-image:url({IMG}{im}-t.webp)"></button>')
+        slides.append(f'<div class="vslide{on}" data-i="{off + k}"><img src="{asset(f"apps/{im}.webp")}" alt="{esc(a["name"])} — ekran {k + 1}" loading="lazy" decoding="async"></div>')
+        thumbs.append(f'<button class="vthumb{on}" data-i="{off + k}" aria-label="Ekran {k + 1}" style="background-image:url({asset(f"apps/{im}-t.webp")})"></button>')
     slides = "".join(slides)
     thumbs = f'<div class="vthumbs" style="--n:{len(thumbs)}">{"".join(thumbs)}</div>' if len(thumbs) > 1 else ""
     return f'''
@@ -286,9 +210,9 @@ def main():
                        "Po polsku", "Demo w przeglądarce", "3 dni próby"])
     out = (tpl.replace("{{CSS}}", css).replace("{{JS}}", js).replace("{{PILLS}}", pills)
            .replace("{{APPS}}", apps).replace("{{MARQUEE}}", marquee * 2)
-           .replace("{{HERO_MOCK}}", mock_board()).replace("{{MINI_RING}}", mini_ring())
+           .replace("{{HERO_MOCK}}", mock_board(False)).replace("{{MINI_RING}}", mini_ring())
            .replace("{{MINI_REC}}", mini_rec()).replace("{{LOGO1}}", logo("lg1")).replace("{{LOGO2}}", logo("lg2"))
-           .replace("{{OPTIONS}}", options()).replace("{{VERSION}}", VERSION).replace("{{MAIL}}", MAIL)
+           .replace("{{OPTIONS}}", options()).replace("{{HERO_APPS}}", asset("apps/hero-apps.webp")).replace("{{VERSION}}", VERSION).replace("{{MAIL}}", MAIL)
            .replace("{{CONSULT}}", consult("ogólna", "wybór aplikacji / wdrożenie pod moją firmę"))
            .replace("{{SUGGEST}}", f"mailto:{MAIL}?subject={quote('Sugestia – strona aplikacji')}"))
     (HERE / "index.html").write_text(out, encoding="utf-8")

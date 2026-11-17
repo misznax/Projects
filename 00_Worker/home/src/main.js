@@ -91,6 +91,49 @@
   $$('.vslide img').forEach(function (im) { im.addEventListener('click', function () { lbImg.src = im.src; if (lb.showModal) lb.showModal(); }); });
   if (lb) lb.addEventListener('click', function () { lb.close(); });
 
+
+  /* animowane demo: kroki */
+  (function () {
+    var demos = $$('[data-demo]'); if (!demos.length) return;
+    var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    demos.forEach(function (m) {
+      var caps = (m.dataset.caps || '').split('|').filter(Boolean), n = caps.length || 5, s = 0, vis = true, timer, hold = false;
+      if (!caps.length) n = 5;
+      var dcap = $('.dcap', m), dots = [];
+      if (dcap && caps.length) {
+        dcap.innerHTML = '<p></p><div class="dd"></div>';
+        var dd = $('.dd', dcap);
+        caps.forEach(function (c, i) { var b = document.createElement('button'); b.type = 'button'; b.setAttribute('aria-label', 'Krok ' + (i + 1) + ': ' + c); b.addEventListener('click', function () { go(i + 1, true); }); dd.appendChild(b); dots.push(b); });
+      }
+      function inl(e, k) {
+        var f = e.dataset.from ? +e.dataset.from : 0, t = e.dataset.to ? +e.dataset.to : 99;
+        return k >= f && k <= t;
+      }
+      function has(list, k) { return (',' + list + ',').indexOf(',' + k + ',') > -1; }
+      function go(k, manual) {
+        s = k; m.dataset.s = k;
+        $$('[data-from],[data-to]', m).forEach(function (e) { e.classList.toggle('on', inl(e, k)); });
+        $$('[data-at]', m).forEach(function (e) { e.classList.toggle('at', has(e.dataset.at, k)); });
+        $$('[data-at2]', m).forEach(function (e) { e.classList.toggle('at2', has(e.dataset.at2, k)); });
+        $$('[data-pv]', m).forEach(function (e) { var v = e.dataset.pv.split(' ')[k - 1]; e.style.setProperty('--p', v); var sp = $('span', e); if (sp) sp.textContent = v + '%'; });
+        if (caps.length) { $('.dcap p', m).textContent = caps[k - 1]; dots.forEach(function (d, i) { d.classList.toggle('on', i === k - 1); }); }
+        if (manual) { hold = true; clearTimeout(timer); timer = setTimeout(function () { hold = false; tick(); }, 9000); }
+      }
+      function active() {
+        var sl = m.closest ? m.closest('.vslide') : null;
+        return vis && !document.hidden && (!sl || sl.classList.contains('on'));
+      }
+      function tick() {
+        clearTimeout(timer);
+        timer = setTimeout(function () { if (!hold && active()) go(s % n + 1); tick(); }, +m.dataset.ms || 2800);
+      }
+      go(1);
+      if (reduce) return;
+      if ('IntersectionObserver' in window) new IntersectionObserver(function (es) { vis = es[0].isIntersecting; }, { threshold: .25 }).observe(m);
+      tick();
+    });
+  })();
+
   /* zapis na listę chętnych */
   var dW = $('#dWant'), wF = $('#wantF');
   $$('[data-want]').forEach(function (b) {
