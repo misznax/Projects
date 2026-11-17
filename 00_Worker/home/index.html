@@ -470,6 +470,12 @@ dialog .src{font-size:.82rem;margin-top:1em}
 .custom-card h2{font-size:clamp(1.5rem,3vw,2.1rem);letter-spacing:-.03em;margin:.2em 0 .3em}.custom-card p{color:var(--mute);max-width:34em}.custom-card .eyebrow{margin-bottom:.4em}
 @media (max-width:760px){.plans{grid-template-columns:1fr}.meta div{grid-template-columns:1fr}}
 
+.vstage{aspect-ratio:7/5}
+.vslide img{object-fit:cover;cursor:zoom-in}
+.vthumb{aspect-ratio:7/5}
+#lb{padding:0;max-width:min(96vw,1400px);width:auto;background:#06161b;border-radius:18px}
+#lb img{display:block;max-width:96vw;max-height:92vh;width:auto;height:auto;border-radius:18px}
+
 </style>
 </head>
 <body>
@@ -799,6 +805,8 @@ dialog .src{font-size:.82rem;margin-top:1em}
   </form>
 </dialog>
 
+<dialog id="lb"><img alt="Podgląd ekranu" id="lbImg"></dialog>
+
 <dialog id="dAbout">
   <h2>O autorze</h2>
   <p><b>Aplikacje — strona główna</b></p>
@@ -911,6 +919,10 @@ dialog .src{font-size:.82rem;margin-top:1em}
       });
     });
   });
+
+  var lb = $('#lb'), lbImg = $('#lbImg');
+  $$('.vslide img').forEach(function (im) { im.addEventListener('click', function () { lbImg.src = im.src; if (lb.showModal) lb.showModal(); }); });
+  if (lb) lb.addEventListener('click', function () { lb.close(); });
 
   /* zapis na listę chętnych */
   var dW = $('#dWant'), wF = $('#wantF');

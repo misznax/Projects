@@ -454,3 +454,9 @@ dialog .src{font-size:.82rem;margin-top:1em}
 .custom-card{display:flex;gap:28px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:clamp(26px,4vw,44px);border-radius:32px;background:#fff;border:1px solid var(--line);box-shadow:var(--shadow)}
 .custom-card h2{font-size:clamp(1.5rem,3vw,2.1rem);letter-spacing:-.03em;margin:.2em 0 .3em}.custom-card p{color:var(--mute);max-width:34em}.custom-card .eyebrow{margin-bottom:.4em}
 @media (max-width:760px){.plans{grid-template-columns:1fr}.meta div{grid-template-columns:1fr}}
+
+.vstage{aspect-ratio:7/5}
+.vslide img{object-fit:cover;cursor:zoom-in}
+.vthumb{aspect-ratio:7/5}
+#lb{padding:0;max-width:min(96vw,1400px);width:auto;background:#06161b;border-radius:18px}
+#lb img{display:block;max-width:96vw;max-height:92vh;width:auto;height:auto;border-radius:18px}

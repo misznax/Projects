@@ -87,6 +87,10 @@
     });
   });
 
+  var lb = $('#lb'), lbImg = $('#lbImg');
+  $$('.vslide img').forEach(function (im) { im.addEventListener('click', function () { lbImg.src = im.src; if (lb.showModal) lb.showModal(); }); });
+  if (lb) lb.addEventListener('click', function () { lb.close(); });
+
   /* zapis na listę chętnych */
   var dW = $('#dWant'), wF = $('#wantF');
   $$('[data-want]').forEach(function (b) {
