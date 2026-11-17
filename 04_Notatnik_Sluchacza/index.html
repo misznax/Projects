@@ -22,11 +22,11 @@ input,textarea,select{width:100%;margin:4px 0}
 <div id="dlg"><div id="dc"></div></div>
 <header><h1 onclick="go()">🎓 Notatnik Słuchacza</h1><button onclick="menu()">☰</button></header>
 <div id="app"></div>
-<div id="pl"><button id=pp onclick="plToggle()">▶</button><input type=range id=ps min=0 max=1 step=1 value=0 oninput="plDrag(this.value)" onchange="plSeek(this.value)"><span id=pt class=mut>0:00 / 0:00</span><button class=s id=pv onclick="plSpeed()">1×</button></div>
+<div id=upd onclick="location.replace(location.pathname+'?v='+Date.now())" style="display:none;position:fixed;top:0;left:0;right:0;z-index:99;background:#f59e0b;color:#000;padding:10px;text-align:center;font-weight:600">🔄 Jest nowa wersja – kliknij, aby odświeżyć</div><div id="pl"><button id=pp onclick="plToggle()">▶</button><input type=range id=ps min=0 max=1 step=1 value=0 oninput="plDrag(this.value)" onchange="plSeek(this.value)"><span id=pt class=mut>0:00 / 0:00</span><button class=s id=pv onclick="plSpeed()">1×</button></div>
 <script>
 const GID='461701670960-b0ivbr1cktr8ocfbdaffpplmr09thc6j.apps.googleusercontent.com',gcid=()=>GID; // Client ID jest publiczny z założenia; stary zapis z Ustawień usuwany (powodował 401)
 try{localStorage.removeItem('gcid')}catch(e){}
-const $=s=>document.querySelector(s),cfg=k=>localStorage.getItem(k)||'',VER='v0.18';
+const $=s=>document.querySelector(s),cfg=k=>localStorage.getItem(k)||'',VER='v0.19';
 const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 const tm=s=>{s=Math.floor(s);const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60,p=n=>String(n).padStart(2,'0');return(h?h+':':'')+p(m)+':'+p(x)};
 const SYS='Jesteś asystentem studenta na wykładzie. Odpowiadaj po polsku, zwięźle, rzeczowo.';
@@ -50,7 +50,7 @@ function render(){
  if(S.msg)h+=`<div class=mut style="color:#fbbf24">${esc(S.msg)}</div>`;
  if(S.link)h+=`<a href="${S.link}" target=_blank rel=noopener style="color:#60a5fa">Otwórz folder na Dysku ↗</a>`;
  if(pend&&!canSTT())h+=`<div class=mut style="color:#f87171">⏳ Audio czeka na transkrypcję: ${!on?'brak internetu':cfg('mode')==='offline'?'tryb „Tylko offline”':'brak klucza OpenAI (☰ → Ustawienia lub sekret OPENAI_API_KEY w Workerze)'}. Pierwszy tekst pojawia się ok. 30 s po starcie.</div>`;
- h+=`<div class=tabs><button class="${tab?'':'on'}" onclick="tab=0;render()">Notatki</button><button class="${tab?'on':''}" onclick="tab=1;render()">Transkrypcja</button><button onclick="exp()">⇪</button><button onclick="bk()">⛁</button><button onclick="delMenu()">🗑</button></div><button class=p onclick="mkNotes()" style="width:100%">✨ Sporządź notatki</button>`;
+ h+=`<div class=tabs><button class="${tab?'':'on'}" onclick="tab=0;render()">Notatki</button><button class="${tab?'on':''}" onclick="tab=1;render()">Transkrypcja</button><button onclick="exp()">⇪</button><button onclick="bk()">⛁</button><button onclick="delMenu()">🗑</button></div><button class=p onclick="mkNotes()" style="width:100%">✨ Sporządź notatki</button>${L.chunks.length&&!S.rec?`<button class=p onclick="mp3Dlg(1)" style="width:100%;margin-top:6px">🧹 Oczyść dźwięk i eksportuj MP3</button>`:''}`;
  if(!tab){h+=L.notes.length?'':'<p class=mut>Notatki po ok. 5 min nagrania (internet + klucz Anthropic).</p>';
   h+=L.notes.map((n,i)=>hdr(n.start)+`<div class=card><b onclick="plAt(${n.start})" style="cursor:pointer">▶ ${ts(n.start)} (${tm(n.end-n.start)})</b><div style="font-weight:600">${esc(n.title)}</div><pre>${esc(n.summary)}</pre>${n.authors?`<div class=card><b>AUTORZY</b><pre>${esc(n.authors)}</pre></div>`:''}${n.ver?`<div class=card><b>WERYFIKACJA</b><pre>${esc(n.ver)}</pre></div>`:''}<button class=s onclick="enrich(${i},0)">Autorzy</button> <button class=s onclick="enrich(${i},1)">Zweryfikuj</button> <button class=s onclick="delNote(${i})">🗑 Usuń</button> ${n.busy?'⏳':''}</div>`).join('')+(L.notes.length?`<button class=s onclick="delNote(-1)">🗑 Usuń wszystkie notatki</button>`:'')}
  else{const R=roles();h+=L.utt.map((u,i)=>hdr(u.s)+`<div class=card><b class=${R[i]==='Pytanie'?'P':R[i]==='Odpowiedź'?'O':'W'} onclick="plAt(${u.s})" style="cursor:pointer">▶ ${ts(u.s)} · ${R[i]}${u.tmp?' (podgląd)':''}</b><div>${esc(u.t)}</div></div>`).join('')||'<p class=mut>Pusto.</p>'}
@@ -125,7 +125,7 @@ async function claude(p,{model='claude-haiku-5-5',web=0,max=1800}={}){
  const body={model,max_tokens:max,system:SYS,messages:[{role:'user',content:p}]};if(web)body.tools=[{type:'web_search_20250305',name:'web_search',max_uses:3}];
  const r=cap.claude?await fetch('/api/n/claude',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)})
   :await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'x-api-key':cfg('ant'),'anthropic-version':'2023-06-01','content-type':'application/json','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify(body)});
- if(!r.ok)throw new Error(r.status);return((await rj(r)).content||[]).filter(b=>b.type==='text').map(b=>b.text).join('')}
+ if(!r.ok)throw new Error(r.status);return((await rj(r)).content||[]).filter(b=>b.type==='text').map(b=>typeof b.text==='string'?b.text:JSON.stringify(b.text)).join('')}
 const line=(u,r)=>`[${Math.floor(u.s)}] ${r==='Pytanie'?'PYTANIE':r==='Odpowiedź'?'ODPOWIEDŹ':'WYKŁADOWCA'}: ${u.t}`;
 const fixJson=s=>{let o='',q=0,e=0;for(const ch of s){if(q){if(e){e=0;o+=ch}else if(ch==='\\'){e=1;o+=ch}else if(ch==='"'){q=0;o+=ch}else if(ch==='\n')o+='\\n';else if(ch==='\r'||ch==='\t')o+=' ';else o+=ch}else{if(ch==='"')q=1;o+=ch}}return o};
 function parseNotes(raw){const s=String(raw||'').replace(/```(?:json)?/gi,''),i=s.indexOf('[');if(i<0)return null;
@@ -177,8 +177,8 @@ function sett(){dlg(`<h3>Ustawienia</h3><label class=mut>Tryb transkrypcji</labe
  <label class=mut>Klucz Anthropic (notatki, autorzy, weryfikacja)</label><input type=password value="${esc(cfg('ant'))}" oninput="localStorage.ant=this.value"></details>
  <label class=mut>Czas w transkrypcji</label><select onchange="localStorage.tmode=this.value"><option value=both ${cfg('tmode')==='both'||!cfg('tmode')?'selected':''}>Godzina · czas nagrania</option><option value=clock ${cfg('tmode')==='clock'?'selected':''}>Tylko godzina</option><option value=len ${cfg('tmode')==='len'?'selected':''}>Tylko czas nagrania</option></select>
  <label><input type=checkbox style="width:auto" ${cfg('dim')!=='0'?'checked':''} onchange="localStorage.dim=this.checked?1:0"> Zaciemnij ekran po 20 s nagrywania</label><br><br><button onclick="dlg()">Zamknij</button>`)}
-function about(){dlg(`<h3>Notatnik Słuchacza</h3><p>Wersja ${VER}<br>Autor: Michał Rzekiecki<br>Kontakt: michus@gmail.com<br><a href="prywatnosc.html" target=_blank rel=noopener style="color:#60a5fa">Polityka prywatności</a></p><button onclick="dlg()">Zamknij</button>`)}
-function sug(){dlg(`<h3>Sugestie</h3><p class=mut>Co sprawiłoby, że aplikacja byłaby jeszcze lepsza?</p><textarea rows=6 id=sg></textarea><a href="#" onclick="this.href='mailto:michus@gmail.com?subject='+encodeURIComponent('Notatnik Słuchacza - sugestia')+'&body='+encodeURIComponent(sg.value)"><button class=p>Wyślij (michus@gmail.com)</button></a> <button onclick="dlg()">Zamknij</button>`)}
+function about(){dlg(`<h3>Notatnik Słuchacza</h3><p>Wersja ${VER}<br>Autor: Michał Rzekiecki<br>Kontakt: kontakt@smialo.org<br><a href="prywatnosc.html" target=_blank rel=noopener style="color:#60a5fa">Polityka prywatności</a></p><button onclick="dlg()">Zamknij</button>`)}
+function sug(){dlg(`<h3>Sugestie</h3><p class=mut>Co sprawiłoby, że aplikacja byłaby jeszcze lepsza?</p><textarea rows=6 id=sg></textarea><a href="#" onclick="this.href='mailto:kontakt@smialo.org?subject='+encodeURIComponent('Notatnik Słuchacza - sugestia')+'&body='+encodeURIComponent(sg.value)"><button class=p>Wyślij (kontakt@smialo.org)</button></a> <button onclick="dlg()">Zamknij</button>`)}
 // ---------- czas zegarowy, kopie zapasowe, Google Drive
 function wallOf(t,l=L){const c=l.chunks.find(c=>t>=c.start-0.01&&t<c.start+c.dur+0.01)||l.chunks[l.chunks.length-1];
  return c&&c.wall?{d:new Date(c.wall+(t-c.start)*1000),approx:false}:{d:new Date(l.date+t*1000),approx:true}}
@@ -189,7 +189,7 @@ function dl(blob,name){const a=document.createElement('a');a.href=URL.createObje
 const _js={};const loadJS=src=>_js[src]||(_js[src]=new Promise((res,rej)=>{const e=document.createElement('script');e.src=src;e.onload=res;e.onerror=()=>rej(new Error('Brak internetu'));document.head.appendChild(e)}));
 function cname(c,blob,l=L){const d=wallOf(c.start,l).d,p=n=>String(n).padStart(2,'0');
  return `${String(c.i+1).padStart(4,'0')}_${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}_${p(d.getHours())}-${p(d.getMinutes())}-${p(d.getSeconds())}.${blob&&blob.type.includes('mp4')?'m4a':'webm'}`}
-function bk(){dlg(`<h3>Kopia / wysyłka</h3><p class=mut>Audio jest zapisane w kawałkach po 30 s (nazwy zawierają godzinę nagrania).</p><button class=p onclick="dlg();toDrive()">☁ Wyślij na Dysk Google (wybierz konto)</button>${L.gdir?` <a href="https://drive.google.com/drive/folders/${L.gdir}" target=_blank rel=noopener style="color:#60a5fa">Otwórz folder ↗</a>`:''}<br><br><button onclick="shareChat(1)">📤 Udostępnij jak czat (WhatsApp, SMS…)</button><br><br><button onclick="dlChat(1)">⬇ Tekst jak czat (.txt)</button><br><br><button onclick="mp3Dlg(1)">🎧 Audio jako MP3 (cisza, głośność…)</button><br><br><button onclick="dlg();zipAudio()">⬇ ZIP: surowe nagrania (webm) + tekst</button><br><br><button onclick="dlg();zipAudio(1)">📱 ZIP przez menu telefonu (Dysk, Pliki…)</button><br><br><button class=s onclick="diag()">🔍 Diagnoza nagrania</button> <button class=s onclick="dlJson()">Kopia techniczna (JSON)</button> <button onclick="dlg()">Zamknij</button>`)}
+function bk(){dlg(`<h3>Kopia / wysyłka</h3><p class=mut>Audio jest zapisane w kawałkach po 30 s (nazwy zawierają godzinę nagrania).</p><button class=p onclick="dlg();toDrive()">☁ Wyślij na Dysk Google (wybierz konto)</button>${L.gdir?` <a href="https://drive.google.com/drive/folders/${L.gdir}" target=_blank rel=noopener style="color:#60a5fa">Otwórz folder ↗</a>`:''}<br><br><button onclick="shareChat(1)">📤 Udostępnij jak czat (WhatsApp, SMS…)</button><br><br><button onclick="dlChat(1)">⬇ Tekst jak czat (.txt)</button><br><br><button onclick="mp3Dlg(1)">🧹 Oczyść dźwięk + MP3</button><br><br><button onclick="dlg();zipAudio()">⬇ ZIP: surowe nagrania (webm) + tekst</button><br><br><button onclick="dlg();zipAudio(1)">📱 ZIP przez menu telefonu (Dysk, Pliki…)</button><br><br><button class=s onclick="diag()">🔍 Diagnoza nagrania</button> <button class=s onclick="dlJson()">Kopia techniczna (JSON)</button> <button onclick="dlg()">Zamknij</button>`)}
 function dlJson(){dl(new Blob([JSON.stringify(L,null,1)],{type:'application/json'}),safe(L.title)+'_'+stamp()+'.json');dlg()}
 const A={a:new Audio(),k:-1,url:'',t:0,drag:false,sp:1,lid:'',gen:0};A.a.preload='auto';
 const plUi=()=>{const pp=$('#pp');if(!pp||!L)return;pp.textContent=A.a.paused?'▶':'⏸';if(!A.drag)$('#ps').value=Math.floor(A.t);$('#pt').textContent=tm(A.t)+' / '+tm(dur(L))};
@@ -220,9 +220,29 @@ function selTog(id,v){v?S.sel.add(id):S.sel.delete(id);render()}
 function selView(){const n=S.sel.size,d=n?'':'disabled';$('#app').innerHTML=`<div style="display:flex;gap:8px;flex-wrap:wrap"><button onclick="selOff()">← Wróć</button><button onclick="selAll()">${n===LS.length?'Odznacz wszystkie':'Zaznacz wszystkie'}</button></div>`
  +(S.msg?`<div class=mut style="color:#fbbf24;margin-top:8px">${esc(S.msg)}</div>`:'')+(S.link?`<a href="${S.link}" target=_blank rel=noopener style="color:#60a5fa">Otwórz folder na Dysku ↗</a>`:'')
  +LS.map(l=>`<label class=card style="display:flex;gap:10px;align-items:center"><input type=checkbox style="width:auto" ${S.sel.has(l.id)?'checked':''} onchange="selTog('${l.id}',this.checked)"><div><div>${esc(l.title)}</div><div class=mut>${new Date(l.date).toLocaleString('pl')} · ${tm(dur(l))}</div></div></label>`).join('')
- +`<div class=card><b>Zaznaczono: ${n}</b><br><br><button class=p ${d} onclick="toDrive(picked())">☁ Wyślij na Dysk Google (wybierz konto)</button><br><br><button ${d} onclick="shareChat()">📤 Udostępnij jak czat (WhatsApp, SMS…)</button><br><br><button ${d} onclick="dlChat()">⬇ Tekst jak czat (.txt)</button><br><br><label style="display:flex;gap:8px;align-items:center"><input type=checkbox style="width:auto" ${S.aud===false?'':'checked'} onchange="S.aud=this.checked"> Dołącz nagrania audio do ZIP</label><br><button ${d} onclick="mp3Dlg()">🎧 Audio jako MP3 (cisza, głośność…)</button><br><br><button ${d} onclick="zipSel()">⬇ ZIP: surowe nagrania (webm) + tekst</button> <button ${d} onclick="zipSel(1)">📱 ZIP przez menu telefonu</button><br><br><button class=s ${d} onclick="dlJsonSel()">Kopia techniczna (JSON)</button><br><br><button class=r ${d} onclick="delLec(picked().map(x=>x.id))">🗑 Usuń zaznaczone</button></div>`}
+ +`<div class=card><b>Zaznaczono: ${n}</b><br><br><button class=p ${d} onclick="toDrive(picked())">☁ Wyślij na Dysk Google (wybierz konto)</button><br><br><button ${d} onclick="shareChat()">📤 Udostępnij jak czat (WhatsApp, SMS…)</button><br><br><button ${d} onclick="dlChat()">⬇ Tekst jak czat (.txt)</button><br><br><label style="display:flex;gap:8px;align-items:center"><input type=checkbox style="width:auto" ${S.aud===false?'':'checked'} onchange="S.aud=this.checked"> Dołącz nagrania audio do ZIP</label><br><button ${d} onclick="mp3Dlg()">🧹 Oczyść dźwięk + MP3</button><br><br><button ${d} onclick="zipSel()">⬇ ZIP: surowe nagrania (webm) + tekst</button> <button ${d} onclick="zipSel(1)">📱 ZIP przez menu telefonu</button><br><br><button class=s ${d} onclick="dlJsonSel()">Kopia techniczna (JSON)</button><br><br><button class=r ${d} onclick="delLec(picked().map(x=>x.id))">🗑 Usuń zaznaczone</button></div>`}
 function zipDone(zb,zn,share){if(share){window.ZF=new File([zb],zn,{type:'application/zip'});S.msg='';dlg(`<h3>ZIP gotowy</h3><p class=mut>Kliknij i wybierz „Dysk” (Google Drive) oraz swoje konto z listy telefonu.</p><button class=p onclick="shareZip()">☁ Wybierz Dysk i konto</button> <button onclick="dlg()">Zamknij</button>`)}else{dl(zb,zn);S.msg='✅ ZIP gotowy (sprawdź Pobrane)'}}
 const LAME='https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js';
+// ---------- oczyszczanie dźwięku: redukcja szumu tła (odejmowanie widmowe, profil szumu z cichych ramek każdego kawałka)
+const FN=1024,FH=512,FB=FN/2+1,FW=Float64Array.from({length:FN},(_,i)=>Math.sin(Math.PI*(i+0.5)/FN));
+const FFT=(()=>{const N=FN,rev=new Uint16Array(N),cs=new Float64Array(N/2),sn=new Float64Array(N/2);
+ for(let i=0;i<N;i++){let r=0,x=i;for(let b=1;b<N;b<<=1){r=(r<<1)|(x&1);x>>=1}rev[i]=r}
+ for(let i=0;i<N/2;i++){cs[i]=Math.cos(2*Math.PI*i/N);sn[i]=-Math.sin(2*Math.PI*i/N)}
+ return(re,im,inv)=>{for(let i=0;i<N;i++){const j=rev[i];if(j>i){let t=re[i];re[i]=re[j];re[j]=t;t=im[i];im[i]=im[j];im[j]=t}}
+  for(let len=2;len<=N;len<<=1){const h=len>>1,st=N/len;for(let i=0;i<N;i+=len)for(let k=0;k<h;k++){const wr=cs[k*st],wi=inv?-sn[k*st]:sn[k*st],a=i+k,b=a+h,xr=re[b]*wr-im[b]*wi,xi=re[b]*wi+im[b]*wr;re[b]=re[a]-xr;im[b]=im[a]-xi;re[a]+=xr;im[a]+=xi}}
+  if(inv)for(let i=0;i<N;i++){re[i]/=N;im[i]/=N}}})();
+function denoise(x,alpha=1.3,floor=0.12){const n=x.length,nf=Math.ceil(n/FH)+1,SR=new Float32Array(nf*FB),SI=new Float32Array(nf*FB),M=new Float32Array(nf*FB),re=new Float64Array(FN),im=new Float64Array(FN);
+ for(let t=0;t<nf;t++){const st=(t-1)*FH;for(let i=0;i<FN;i++){const k=st+i;re[i]=k>=0&&k<n?x[k]*FW[i]:0;im[i]=0}FFT(re,im,0);
+  for(let b=0;b<FB;b++){const o=t*FB+b;SR[o]=re[b];SI[o]=im[b];M[o]=Math.hypot(re[b],im[b])}}
+ const N0=new Float32Array(FB),col=new Float32Array(nf),q=Math.max(1,Math.floor(nf*0.1));
+ for(let b=0;b<FB;b++){for(let t=0;t<nf;t++)col[t]=M[t*FB+b];col.sort();let a=0;for(let t=0;t<q;t++)a+=col[t];N0[b]=a/q}
+ const Ns=new Float32Array(FB);for(let b=0;b<FB;b++){let a=0,c=0;for(let d=-2;d<=2;d++){const k=b+d;if(k>=0&&k<FB){a+=N0[k];c++}}Ns[b]=3*a/c}
+ const out=new Float32Array(n),Gp=new Float32Array(FB).fill(1);
+ for(let t=0;t<nf;t++){for(let b=0;b<FB;b++){const o=t*FB+b;let G=b<2?0:Math.max(floor,1-alpha*Ns[b]/(M[o]+1e-12));G=G>Gp[b]?0.7*G+0.3*Gp[b]:0.35*G+0.65*Gp[b];Gp[b]=G;if(b<2)G=0;
+   re[b]=SR[o]*G;im[b]=SI[o]*G;if(b>0&&b<FB-1){re[FN-b]=re[b];im[FN-b]=-im[b]}}
+  FFT(re,im,1);const st=(t-1)*FH;for(let i=0;i<FN;i++){const k=st+i;if(k>=0&&k<n)out[k]+=re[i]*FW[i]}}
+ return out}
+
 async function toMp3(l,prog,o={}){await loadJS(LAME);const ctx=new(window.AudioContext||window.webkitAudioContext)(),sr=ctx.sampleRate,out=[],enc=new lamejs.Mp3Encoder(1,sr,64),z=new Int16Array(1152),W=Math.round(sr*0.05),proc=o.cut||o.boost,yl=()=>new Promise(r=>setTimeout(r,0));
  let ok=0,skip=0,total=0,pend=[],long=false,gs=1,thr=0.003;
  const emit=pcm=>{for(let i=0;i<pcm.length;i+=1152){const m=enc.encodeBuffer(pcm.subarray(i,i+1152));if(m.length)out.push(m)}total+=pcm.length};
@@ -234,10 +254,10 @@ async function toMp3(l,prog,o={}){await loadJS(LAME);const ctx=new(window.AudioC
  try{
   if(proc){const R=[];for(const[k,c]of l.chunks.entries()){prog(k+1,l.chunks.length,'Analiza');const buf=await dec(c);if(buf){const f=mono(buf);for(let i=0;i<f.length;i+=W)R.push(rms(f,i,Math.min(f.length,i+W)))}await yl()}
    const q=R.filter(x=>x>1e-5).sort((a,b)=>a-b);if(q.length){const p10=q[Math.floor(q.length*0.1)],p90=q[Math.floor(q.length*0.9)];thr=Math.max(0.0015,Math.min(p10*1.6,p90*0.4))}}
-  for(const[k,c]of l.chunks.entries()){prog(k+1,l.chunks.length,'MP3');const buf=await dec(c);
+  for(const[k,c]of l.chunks.entries()){prog(k+1,l.chunks.length,o.denoise?'Czyszczenie + MP3':'MP3');const buf=await dec(c);
    if(!buf){skip++;if(!o.cut)sil(c.dur);continue}
-   const f=mono(buf),n=f.length;
-   for(let i=0;i<n;i+=W){const e=Math.min(n,i+W),m=e-i,r=rms(f,i,e),loud=r>=thr;let g=1;if(o.boost&&loud)g=Math.max(1,Math.min(8,0.08/Math.max(r,1e-4)));
+   const fo=mono(buf),n=fo.length,f=o.denoise?denoise(fo):fo;
+   for(let i=0;i<n;i+=W){const e=Math.min(n,i+W),m=e-i,r=rms(f,i,e),loud=(o.denoise?rms(fo,i,e):r)>=thr;let g=1;if(o.boost&&loud)g=Math.max(1,Math.min(8,0.08/Math.max(r,1e-4)));
     const g0=gs;gs=g<gs?gs+(g-gs)*0.5:gs+(g-gs)*0.12;const w=new Int16Array(m);
     for(let j=0;j<m;j++){let v=f[i+j]*(g0+(gs-g0)*j/m);if(o.boost){if(v>0.8)v=0.8+0.2*Math.tanh((v-0.8)/0.2);else if(v<-0.8)v=-0.8-0.2*Math.tanh((-v-0.8)/0.2)}w[j]=Math.max(-1,Math.min(1,v))*32767}
     if(o.cut&&!loud){if(pend.length<14)pend.push(w);if(pend.length>=14)long=true}else{if(pend.length)flush();emit(w)}}
@@ -245,8 +265,8 @@ async function toMp3(l,prog,o={}){await loadJS(LAME);const ctx=new(window.AudioC
   if(pend.length)flush();
   if(!ok)throw new Error('ta przeglądarka nie odczytuje tych nagrań (webm) – użyj ZIP z surowymi plikami');
   out.push(enc.flush());return{blob:new Blob(out,{type:'audio/mpeg'}),skip,secs:total/sr}}finally{try{ctx.close()}catch(e){}}}
-function mp3Dlg(one){dlg(`<h3>Eksport MP3</h3><label style="display:flex;gap:8px;align-items:center"><input type=checkbox style="width:auto" ${S.cut===false?'':'checked'} onchange="S.cut=this.checked"> ✂ Usuń ciszę (pauzy dłuższe niż 0,7 s skracam do 0,25 s)</label><br><label style="display:flex;gap:8px;align-items:center"><input type=checkbox style="width:auto" ${S.boost===false?'':'checked'} onchange="S.boost=this.checked"> 🔊 Wzmocnij ciche fragmenty (do ×8, szumu w pauzach nie podbijam)</label><p class=mut>Po usunięciu ciszy czas w pliku nie zgadza się z godzinami w transkrypcji. Przy kilku godzinach nagrania obróbka potrwa kilka minut, nie zamykaj strony.</p><button class=p onclick="dlg();mp3Go(${one?1:0})">🎧 Eksportuj MP3</button> <button onclick="dlg()">Anuluj</button>`)}
-async function mp3Go(one){const ls=one?[L]:picked();if(!ls.length)return;const o={cut:S.cut!==false,boost:S.boost!==false};try{let z=null,sk=0,secs=0,orig=0;if(ls.length>1){await loadJS('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');z=new JSZip()}
+function mp3Dlg(one){dlg(`<h3>🧹 Oczyść dźwięk i eksportuj MP3</h3><label style="display:flex;gap:8px;align-items:center"><input type=checkbox style="width:auto" ${S.dn===false?'':'checked'} onchange="S.dn=this.checked"> 🧹 Usuń szum tła (szum sali, buczenie, szum nagrania)</label><br><label style="display:flex;gap:8px;align-items:center"><input type=checkbox style="width:auto" ${S.cut===false?'':'checked'} onchange="S.cut=this.checked"> ✂ Usuń ciszę (pauzy dłuższe niż 0,7 s skracam do 0,25 s)</label><br><label style="display:flex;gap:8px;align-items:center"><input type=checkbox style="width:auto" ${S.boost===false?'':'checked'} onchange="S.boost=this.checked"> 🔊 Wzmocnij ciche fragmenty (do ×8, szumu w pauzach nie podbijam)</label><p class=mut>Po usunięciu ciszy czas w pliku nie zgadza się z godzinami w transkrypcji. Przy kilku godzinach nagrania obróbka potrwa kilka minut (odszumianie najdłużej), nie zamykaj strony i nie blokuj ekranu.</p><button class=p onclick="dlg();mp3Go(${one?1:0})">🎧 Eksportuj MP3</button> <button onclick="dlg()">Anuluj</button>`)}
+async function mp3Go(one){const ls=one?[L]:picked();if(!ls.length)return;const o={cut:S.cut!==false,boost:S.boost!==false,denoise:S.dn!==false};try{let z=null,sk=0,secs=0,orig=0;if(ls.length>1){await loadJS('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');z=new JSZip()}
  for(const[k,l]of ls.entries()){const{blob,skip,secs:sc}=await toMp3(l,(a,b,ph)=>{S.msg=`${ph||'MP3'}${ls.length>1?` (wykład ${k+1}/${ls.length})`:''}: ${a}/${b}`;render()},o);sk+=skip;secs+=sc;orig+=dur(l);const name=safe(l.title)+'_'+new Date(l.date).toISOString().slice(0,10)+'.mp3';
   if(z)z.file(String(k+1).padStart(2,'0')+'_'+name,blob,{compression:'STORE'});else dl(blob,name)}
  if(z)dl(await z.generateAsync({type:'blob',streamFiles:true}),'notatnik_mp3_'+stamp()+'.zip');
@@ -303,4 +323,5 @@ try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}ca
 if(gcid())loadJS('https://accounts.google.com/gsi/client').catch(()=>{});
 fetch('/api/n/status').then(r=>r.ok?r.json():{}).then(j=>{cap.stt=!!j.stt;cap.claude=!!j.claude;cap.ckey=!!j.ckey;pump()}).catch(()=>{});
 go();
+fetch(location.pathname+'?c='+Date.now(),{cache:'no-store'}).then(r=>r.text()).then(t=>{const m=t.match(/VER='(v[\d.]+)'/);if(m&&m[1]!==VER){if(!S.rec&&!L&&!sessionStorage['u'+m[1]]){sessionStorage['u'+m[1]]=1;location.replace(location.pathname+'?v='+m[1])}else $('#upd').style.display='block'}}).catch(()=>{});
 </script></body></html>

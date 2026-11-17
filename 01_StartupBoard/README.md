@@ -1,7 +1,7 @@
 # Startup Board
 
 Do 8 swobodnych paneli roboczych z pamięcią stanu: pliki tekstowe (kolorowanie Python/HTML/SQL), PDF i obrazy.
-Autor: Michał Rzekiecki · kontakt: michus@gmail.com
+Autor: Michał Rzekiecki · kontakt: kontakt@smialo.org
 
 - Pobierz: Releases → `startupboard-latest` → `StartupBoard_v1.1.zip`, rozpakuj i uruchom `StartupBoard.exe`.
 - Źródła: `src/`, build: `python build_exe.py`, kopie wersji: `backup/`.

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Strona główna projects.michus.workers.dev  (v0.01)
-Autor: Michał Rzekiecki
+Autor: Michał Rzekiecki · kontakt@smialo.org
 Składa src/template.html + src/style.css + src/main.js + dane aplikacji z tego pliku -> index.html
 Uruchom:  python3 build.py
 """

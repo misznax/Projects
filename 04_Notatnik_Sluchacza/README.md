@@ -1,5 +1,5 @@
-# 04_Notatnik_Sluchacza (v0.18)
-Autor: Michał Rzekiecki, michus@gmail.com · adres: `projects.smialo.org/04/` (po dodaniu DNS/trasy także `notatnik.smialo.org`)
+# 04_Notatnik_Sluchacza (v0.19)
+Autor: Michał Rzekiecki, kontakt@smialo.org · adres: `projects.smialo.org/04/` (po dodaniu DNS/trasy także `notatnik.smialo.org`)
 
 Aplikacja WWW (jeden `index.html`, mobilna) do nagrywania wykładów:
 - nagrywanie ciągłe, plik audio (Opus 64 kb/s) co 30 s, zapis lokalny (IndexedDB), ekran sam się zaciemnia po 20 s (Wake Lock + czerń);

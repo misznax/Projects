@@ -36,7 +36,7 @@ from PySide6.QtWidgets import (
 APP_NAME = "Startup Board"
 APP_VERSION = "v1.1"  # zmieniać tylko na polecenie autora
 APP_AUTHOR = "Michał Rzekiecki"
-APP_CONTACT = "michus@gmail.com"
+APP_CONTACT = "kontakt@smialo.org"
 
 MAX_BYTES = 10 * 1024 * 1024        # limit pliku tekstowego
 MAX_PDF_BYTES = 200 * 1024 * 1024   # limit PDF

@@ -305,7 +305,7 @@ textarea.mono{font:12px/1.4 ui-monospace,Consolas,monospace;min-height:110px}
   <p>Wersja: <span id="verA"></span></p>
   <p>Autor: Michał Rzekiecki</p>
   <p class="src" style="margin-top:2px"><b>Co nowego w v0.04:</b> pytania na start dnia (sen i chęć 1–5), ocena po każdym ćwiczeniu, notatki z ćwiczeń dostępne codziennie oraz podsumowanie z wykresami samopoczucia i kształtowania nawyku.</p>
-  <p>Kontakt: <a href="mailto:michus@gmail.com">michus@gmail.com</a></p>
+  <p>Kontakt: <a href="mailto:kontakt@smialo.org">kontakt@smialo.org</a></p>
   <p class="src">Model charyzmy: Obecność · Moc · Ciepło (O. Fox Cabane, „The Charisma Myth”). Rozgrzewka głosu oparta na ćwiczeniach J. Treasure (TED). Ćwiczenia mają charakter ogólny — przy bólu, zawrotach głowy lub chrypce przerwij i skonsultuj się ze specjalistą.</p>
   <div class="drow"><button class="btn" data-close>Zamknij</button></div>
 </dialog>
@@ -314,9 +314,9 @@ textarea.mono{font:12px/1.4 ui-monospace,Consolas,monospace;min-height:110px}
   <h2>Sugestie</h2>
   <p>Co sprawiłoby, że Nawyk byłby jeszcze lepszy?</p>
   <textarea id="sugT" rows="5" placeholder="Twoja sugestia…" aria-label="Sugestia"></textarea>
-  <p class="src">Wyślij na <b>michus@gmail.com</b> — skopiuj tekst lub otwórz w poczcie.</p>
+  <p class="src">Wyślij na <b>kontakt@smialo.org</b> — skopiuj tekst lub otwórz w poczcie.</p>
   <div class="msg" id="sugM"></div>
-  <div class="drow"><button class="btn pri" id="sugCopy">Kopiuj</button><a class="btn" id="sugMail" href="mailto:michus@gmail.com">Otwórz w poczcie ↗</a><button class="btn ghost" data-close>Zamknij</button></div>
+  <div class="drow"><button class="btn pri" id="sugCopy">Kopiuj</button><a class="btn" id="sugMail" href="mailto:kontakt@smialo.org">Otwórz w poczcie ↗</a><button class="btn ghost" data-close>Zamknij</button></div>
 </dialog>
 
 <dialog id="dLook">
@@ -843,7 +843,7 @@ const TEMPLATES=[
 ];
 
 /* ───────── Nawyk v0.04 — logika aplikacji ───────── */
-const VER='v0.04', MAIL='michus@gmail.com', LS='nawyk.v1', APPKEY='nawyk';
+const VER='v0.04', MAIL='kontakt@smialo.org', LS='nawyk.v1', APPKEY='nawyk';
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const pad=n=>String(n).padStart(2,'0');
