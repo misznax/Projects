@@ -26,7 +26,7 @@ input,textarea,select{width:100%;margin:4px 0}
 <script>
 const GID='461701670960-b0ivbr1cktr8ocfbdaffpplmr09thc6j.apps.googleusercontent.com',gcid=()=>GID; // Client ID jest publiczny z założenia; stary zapis z Ustawień usuwany (powodował 401)
 try{localStorage.removeItem('gcid')}catch(e){}
-const $=s=>document.querySelector(s),cfg=k=>localStorage.getItem(k)||'',VER='v0.16';
+const $=s=>document.querySelector(s),cfg=k=>localStorage.getItem(k)||'',VER='v0.17';
 const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 const tm=s=>{s=Math.floor(s);const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60,p=n=>String(n).padStart(2,'0');return(h?h+':':'')+p(m)+':'+p(x)};
 const SYS='Jesteś asystentem studenta na wykładzie. Odpowiadaj po polsku, zwięźle, rzeczowo.';
@@ -169,7 +169,7 @@ function dl(blob,name){const a=document.createElement('a');a.href=URL.createObje
 const _js={};const loadJS=src=>_js[src]||(_js[src]=new Promise((res,rej)=>{const e=document.createElement('script');e.src=src;e.onload=res;e.onerror=()=>rej(new Error('Brak internetu'));document.head.appendChild(e)}));
 function cname(c,blob,l=L){const d=wallOf(c.start,l).d,p=n=>String(n).padStart(2,'0');
  return `${String(c.i+1).padStart(4,'0')}_${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}_${p(d.getHours())}-${p(d.getMinutes())}-${p(d.getSeconds())}.${blob&&blob.type.includes('mp4')?'m4a':'webm'}`}
-function bk(){dlg(`<h3>Kopia / wysyłka</h3><p class=mut>Audio jest zapisane w kawałkach po 30 s (nazwy zawierają godzinę nagrania).</p><button class=p onclick="dlg();toDrive()">☁ Wyślij na Dysk Google (wybierz konto)</button>${L.gdir?` <a href="https://drive.google.com/drive/folders/${L.gdir}" target=_blank rel=noopener style="color:#60a5fa">Otwórz folder ↗</a>`:''}<br><br><button onclick="shareChat(1)">📤 Udostępnij jak czat (WhatsApp, SMS…)</button><br><br><button onclick="dlChat(1)">⬇ Tekst jak czat (.txt)</button><br><br><button onclick="dlg();mp3Go(1)">🎧 Audio jako MP3 (1 plik)</button><br><br><button onclick="dlg();zipAudio()">⬇ ZIP: surowe nagrania (webm) + tekst</button><br><br><button onclick="dlg();zipAudio(1)">📱 ZIP przez menu telefonu (Dysk, Pliki…)</button><br><br><button class=s onclick="diag()">🔍 Diagnoza nagrania</button> <button class=s onclick="dlJson()">Kopia techniczna (JSON)</button> <button onclick="dlg()">Zamknij</button>`)}
+function bk(){dlg(`<h3>Kopia / wysyłka</h3><p class=mut>Audio jest zapisane w kawałkach po 30 s (nazwy zawierają godzinę nagrania).</p><button class=p onclick="dlg();toDrive()">☁ Wyślij na Dysk Google (wybierz konto)</button>${L.gdir?` <a href="https://drive.google.com/drive/folders/${L.gdir}" target=_blank rel=noopener style="color:#60a5fa">Otwórz folder ↗</a>`:''}<br><br><button onclick="shareChat(1)">📤 Udostępnij jak czat (WhatsApp, SMS…)</button><br><br><button onclick="dlChat(1)">⬇ Tekst jak czat (.txt)</button><br><br><button onclick="mp3Dlg(1)">🎧 Audio jako MP3 (cisza, głośność…)</button><br><br><button onclick="dlg();zipAudio()">⬇ ZIP: surowe nagrania (webm) + tekst</button><br><br><button onclick="dlg();zipAudio(1)">📱 ZIP przez menu telefonu (Dysk, Pliki…)</button><br><br><button class=s onclick="diag()">🔍 Diagnoza nagrania</button> <button class=s onclick="dlJson()">Kopia techniczna (JSON)</button> <button onclick="dlg()">Zamknij</button>`)}
 function dlJson(){dl(new Blob([JSON.stringify(L,null,1)],{type:'application/json'}),safe(L.title)+'_'+stamp()+'.json');dlg()}
 const A={a:new Audio(),k:-1,url:'',t:0,drag:false,sp:1,lid:'',gen:0};A.a.preload='auto';
 const plUi=()=>{const pp=$('#pp');if(!pp||!L)return;pp.textContent=A.a.paused?'▶':'⏸';if(!A.drag)$('#ps').value=Math.floor(A.t);$('#pt').textContent=tm(A.t)+' / '+tm(dur(L))};
@@ -200,24 +200,37 @@ function selTog(id,v){v?S.sel.add(id):S.sel.delete(id);render()}
 function selView(){const n=S.sel.size,d=n?'':'disabled';$('#app').innerHTML=`<div style="display:flex;gap:8px;flex-wrap:wrap"><button onclick="selOff()">← Wróć</button><button onclick="selAll()">${n===LS.length?'Odznacz wszystkie':'Zaznacz wszystkie'}</button></div>`
  +(S.msg?`<div class=mut style="color:#fbbf24;margin-top:8px">${esc(S.msg)}</div>`:'')+(S.link?`<a href="${S.link}" target=_blank rel=noopener style="color:#60a5fa">Otwórz folder na Dysku ↗</a>`:'')
  +LS.map(l=>`<label class=card style="display:flex;gap:10px;align-items:center"><input type=checkbox style="width:auto" ${S.sel.has(l.id)?'checked':''} onchange="selTog('${l.id}',this.checked)"><div><div>${esc(l.title)}</div><div class=mut>${new Date(l.date).toLocaleString('pl')} · ${tm(dur(l))}</div></div></label>`).join('')
- +`<div class=card><b>Zaznaczono: ${n}</b><br><br><button class=p ${d} onclick="toDrive(picked())">☁ Wyślij na Dysk Google (wybierz konto)</button><br><br><button ${d} onclick="shareChat()">📤 Udostępnij jak czat (WhatsApp, SMS…)</button><br><br><button ${d} onclick="dlChat()">⬇ Tekst jak czat (.txt)</button><br><br><label style="display:flex;gap:8px;align-items:center"><input type=checkbox style="width:auto" ${S.aud===false?'':'checked'} onchange="S.aud=this.checked"> Dołącz nagrania audio do ZIP</label><br><button ${d} onclick="mp3Go()">🎧 Audio jako MP3 (ZIP z plikami MP3)</button><br><br><button ${d} onclick="zipSel()">⬇ ZIP: surowe nagrania (webm) + tekst</button> <button ${d} onclick="zipSel(1)">📱 ZIP przez menu telefonu</button><br><br><button class=s ${d} onclick="dlJsonSel()">Kopia techniczna (JSON)</button></div>`}
+ +`<div class=card><b>Zaznaczono: ${n}</b><br><br><button class=p ${d} onclick="toDrive(picked())">☁ Wyślij na Dysk Google (wybierz konto)</button><br><br><button ${d} onclick="shareChat()">📤 Udostępnij jak czat (WhatsApp, SMS…)</button><br><br><button ${d} onclick="dlChat()">⬇ Tekst jak czat (.txt)</button><br><br><label style="display:flex;gap:8px;align-items:center"><input type=checkbox style="width:auto" ${S.aud===false?'':'checked'} onchange="S.aud=this.checked"> Dołącz nagrania audio do ZIP</label><br><button ${d} onclick="mp3Dlg()">🎧 Audio jako MP3 (cisza, głośność…)</button><br><br><button ${d} onclick="zipSel()">⬇ ZIP: surowe nagrania (webm) + tekst</button> <button ${d} onclick="zipSel(1)">📱 ZIP przez menu telefonu</button><br><br><button class=s ${d} onclick="dlJsonSel()">Kopia techniczna (JSON)</button></div>`}
 function zipDone(zb,zn,share){if(share){window.ZF=new File([zb],zn,{type:'application/zip'});S.msg='';dlg(`<h3>ZIP gotowy</h3><p class=mut>Kliknij i wybierz „Dysk” (Google Drive) oraz swoje konto z listy telefonu.</p><button class=p onclick="shareZip()">☁ Wybierz Dysk i konto</button> <button onclick="dlg()">Zamknij</button>`)}else{dl(zb,zn);S.msg='✅ ZIP gotowy (sprawdź Pobrane)'}}
 const LAME='https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js';
-async function toMp3(l,prog){await loadJS(LAME);const ctx=new(window.AudioContext||window.webkitAudioContext)(),sr=ctx.sampleRate,out=[],enc=new lamejs.Mp3Encoder(1,sr,64),z=new Int16Array(1152);let ok=0,skip=0;
- const sil=sec=>{for(let n=Math.round(sec*sr);n>0;n-=1152){const m=enc.encodeBuffer(z.subarray(0,Math.min(1152,n)));if(m.length)out.push(m)}};
- try{for(const[k,c]of l.chunks.entries()){const b=await tx('chunk','readonly',s=>s.get(l.id+':'+c.i));prog(k+1,l.chunks.length);
-   let buf=null;if(b)try{const ab=await b.arrayBuffer();buf=await new Promise((res,rej)=>{const p=ctx.decodeAudioData(ab,res,rej);p&&p.catch&&p.catch(rej)})}catch(e){}
-   if(!buf){skip++;sil(c.dur);continue}
-   const n=buf.length,pcm=new Int16Array(n),a=buf.getChannelData(0),y=buf.numberOfChannels>1?buf.getChannelData(1):null;
-   for(let i=0;i<n;i++){const v=y?(a[i]+y[i])/2:a[i];pcm[i]=Math.max(-1,Math.min(1,v))*32767}
-   for(let i=0;i<n;i+=1152){const m=enc.encodeBuffer(pcm.subarray(i,i+1152));if(m.length)out.push(m)}
-   const gap=c.dur-n/sr;if(gap>0.2)sil(gap);ok++;await new Promise(r=>setTimeout(r,0))}
+async function toMp3(l,prog,o={}){await loadJS(LAME);const ctx=new(window.AudioContext||window.webkitAudioContext)(),sr=ctx.sampleRate,out=[],enc=new lamejs.Mp3Encoder(1,sr,64),z=new Int16Array(1152),W=Math.round(sr*0.05),proc=o.cut||o.boost,yl=()=>new Promise(r=>setTimeout(r,0));
+ let ok=0,skip=0,total=0,pend=[],long=false,gs=1,thr=0.003;
+ const emit=pcm=>{for(let i=0;i<pcm.length;i+=1152){const m=enc.encodeBuffer(pcm.subarray(i,i+1152));if(m.length)out.push(m)}total+=pcm.length};
+ const sil=sec=>{for(let n=Math.round(sec*sr);n>0;n-=1152)emit(z.subarray(0,Math.min(1152,n)))};
+ const dec=async c=>{const b=await tx('chunk','readonly',s=>s.get(l.id+':'+c.i));if(!b)return null;try{const ab=await b.arrayBuffer();return await new Promise((res,rej)=>{const p=ctx.decodeAudioData(ab,res,rej);p&&p.catch&&p.catch(rej)})}catch(e){return null}};
+ const mono=buf=>{const n=buf.length,a=buf.getChannelData(0),y=buf.numberOfChannels>1?buf.getChannelData(1):null;if(!y)return a;const f=new Float32Array(n);for(let i=0;i<n;i++)f[i]=(a[i]+y[i])/2;return f};
+ const rms=(f,i,e)=>{let s=0;for(let j=i;j<e;j++)s+=f[j]*f[j];return Math.sqrt(s/(e-i))};
+ const flush=()=>{if(long)for(let i=0;i<5;i++)emit(pend[i]);else for(const p of pend)emit(p);pend=[];long=false};
+ try{
+  if(proc){const R=[];for(const[k,c]of l.chunks.entries()){prog(k+1,l.chunks.length,'Analiza');const buf=await dec(c);if(buf){const f=mono(buf);for(let i=0;i<f.length;i+=W)R.push(rms(f,i,Math.min(f.length,i+W)))}await yl()}
+   const q=R.filter(x=>x>1e-5).sort((a,b)=>a-b);if(q.length){const p10=q[Math.floor(q.length*0.1)],p90=q[Math.floor(q.length*0.9)];thr=Math.max(0.0015,Math.min(p10*1.6,p90*0.4))}}
+  for(const[k,c]of l.chunks.entries()){prog(k+1,l.chunks.length,'MP3');const buf=await dec(c);
+   if(!buf){skip++;if(!o.cut)sil(c.dur);continue}
+   const f=mono(buf),n=f.length;
+   for(let i=0;i<n;i+=W){const e=Math.min(n,i+W),m=e-i,r=rms(f,i,e),loud=r>=thr;let g=1;if(o.boost&&loud)g=Math.max(1,Math.min(8,0.08/Math.max(r,1e-4)));
+    const g0=gs;gs=g<gs?gs+(g-gs)*0.5:gs+(g-gs)*0.12;const w=new Int16Array(m);
+    for(let j=0;j<m;j++){let v=f[i+j]*(g0+(gs-g0)*j/m);if(o.boost){if(v>0.8)v=0.8+0.2*Math.tanh((v-0.8)/0.2);else if(v<-0.8)v=-0.8-0.2*Math.tanh((-v-0.8)/0.2)}w[j]=Math.max(-1,Math.min(1,v))*32767}
+    if(o.cut&&!loud){if(pend.length<14)pend.push(w);if(pend.length>=14)long=true}else{if(pend.length)flush();emit(w)}}
+   if(!o.cut){const gap=c.dur-n/sr;if(gap>0.2)sil(gap)}ok++;await yl()}
+  if(pend.length)flush();
   if(!ok)throw new Error('ta przeglądarka nie odczytuje tych nagrań (webm) – użyj ZIP z surowymi plikami');
-  out.push(enc.flush());return{blob:new Blob(out,{type:'audio/mpeg'}),skip}}finally{try{ctx.close()}catch(e){}}}
-async function mp3Go(one){const ls=one?[L]:picked();if(!ls.length)return;try{let z=null,sk=0;if(ls.length>1){await loadJS('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');z=new JSZip()}
- for(const[k,l]of ls.entries()){const{blob,skip}=await toMp3(l,(a,b)=>{S.msg=`MP3${ls.length>1?` (wykład ${k+1}/${ls.length})`:''}: ${a}/${b}`;render()});sk+=skip;const name=safe(l.title)+'_'+new Date(l.date).toISOString().slice(0,10)+'.mp3';
+  out.push(enc.flush());return{blob:new Blob(out,{type:'audio/mpeg'}),skip,secs:total/sr}}finally{try{ctx.close()}catch(e){}}}
+function mp3Dlg(one){dlg(`<h3>Eksport MP3</h3><label style="display:flex;gap:8px;align-items:center"><input type=checkbox style="width:auto" ${S.cut===false?'':'checked'} onchange="S.cut=this.checked"> ✂ Usuń ciszę (pauzy dłuższe niż 0,7 s skracam do 0,25 s)</label><br><label style="display:flex;gap:8px;align-items:center"><input type=checkbox style="width:auto" ${S.boost===false?'':'checked'} onchange="S.boost=this.checked"> 🔊 Wzmocnij ciche fragmenty (do ×8, szumu w pauzach nie podbijam)</label><p class=mut>Po usunięciu ciszy czas w pliku nie zgadza się z godzinami w transkrypcji. Przy kilku godzinach nagrania obróbka potrwa kilka minut, nie zamykaj strony.</p><button class=p onclick="dlg();mp3Go(${one?1:0})">🎧 Eksportuj MP3</button> <button onclick="dlg()">Anuluj</button>`)}
+async function mp3Go(one){const ls=one?[L]:picked();if(!ls.length)return;const o={cut:S.cut!==false,boost:S.boost!==false};try{let z=null,sk=0,secs=0,orig=0;if(ls.length>1){await loadJS('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');z=new JSZip()}
+ for(const[k,l]of ls.entries()){const{blob,skip,secs:sc}=await toMp3(l,(a,b,ph)=>{S.msg=`${ph||'MP3'}${ls.length>1?` (wykład ${k+1}/${ls.length})`:''}: ${a}/${b}`;render()},o);sk+=skip;secs+=sc;orig+=dur(l);const name=safe(l.title)+'_'+new Date(l.date).toISOString().slice(0,10)+'.mp3';
   if(z)z.file(String(k+1).padStart(2,'0')+'_'+name,blob,{compression:'STORE'});else dl(blob,name)}
- if(z)dl(await z.generateAsync({type:'blob',streamFiles:true}),'notatnik_mp3_'+stamp()+'.zip');S.msg='✅ MP3 gotowe (sprawdź Pobrane)'+(sk?` · uwaga: ${sk} kawałków 30 s było nieczytelnych i zastąpiłem je ciszą`:'')}catch(e){S.msg='MP3: '+e.message}render()}
+ if(z)dl(await z.generateAsync({type:'blob',streamFiles:true}),'notatnik_mp3_'+stamp()+'.zip');
+ S.msg='✅ MP3 gotowe (sprawdź Pobrane)'+(o.cut?` · ${tm(orig)} → ${tm(secs)} po usunięciu ciszy`:'')+(sk?` · uwaga: ${sk} kawałków 30 s było nieczytelnych`+(o.cut?'':' (zastąpione ciszą)'):'')}catch(e){S.msg='MP3: '+e.message}render()}
 async function diag(){const l=L,idx=new Set(l.chunks.map(c=>c.i)),mx=Math.max(-1,...idx),miss=[],nof=[];let sz=0;for(let i=0;i<=mx;i++)if(!idx.has(i))miss.push(i+1);
  for(const c of l.chunks){const b=await tx('chunk','readonly',s=>s.get(l.id+':'+c.i));if(b)sz+=b.size;else nof.push(c.i+1)}
  const tl=dur(l),last=l.utt.length?Math.max(...l.utt.map(u=>u.e||u.s)):0,pv=l.utt.filter(u=>u.tmp),out=pv.filter(u=>!l.chunks.some(c=>u.s>=c.start-1&&u.s<c.start+c.dur+1)),W=[];
