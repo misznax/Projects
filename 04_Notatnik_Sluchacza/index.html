@@ -21,8 +21,9 @@ input,textarea,select{width:100%;margin:4px 0}
 <header><h1 onclick="go()">🎓 Notatnik Słuchacza</h1><button onclick="menu()">☰</button></header>
 <div id="app"></div>
 <script>
-const gcid=()=>localStorage.getItem('gcid')||'567326129811-v1fvoqoao7r34ju0u3quni9c4pkdkemp.apps.googleusercontent.com'; // Client ID jest publiczny z założenia
-const $=s=>document.querySelector(s),cfg=k=>localStorage.getItem(k)||'',VER='v0.09';
+const GID='567326129811-v1fvoqoao7r34ju0u3quni9c4pkdkemp.apps.googleusercontent.com',gcid=()=>GID; // Client ID jest publiczny z założenia; stary zapis z Ustawień usuwany (powodował 401)
+try{localStorage.removeItem('gcid')}catch(e){}
+const $=s=>document.querySelector(s),cfg=k=>localStorage.getItem(k)||'',VER='v0.10';
 const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 const tm=s=>{s=Math.floor(s);const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60,p=n=>String(n).padStart(2,'0');return(h?h+':':'')+p(m)+':'+p(x)};
 const SYS='Jesteś asystentem studenta na wykładzie. Odpowiadaj po polsku, zwięźle, rzeczowo.';
@@ -141,10 +142,10 @@ function dlg(h){$('#dlg').style.display=h?'block':'none';if(h)$('#dc').innerHTML
 function menu(){dlg(`<button onclick="sett()">⚙ Ustawienia</button> <button onclick="sug()">💡 Sugestie</button> <button onclick="dlg();bkAll()">⛁ Kopia wszystkich (JSON)</button> <button onclick="about()">ℹ O autorze</button> <button onclick="dlg()">✕</button>`)}
 function sett(){dlg(`<h3>Ustawienia</h3><label class=mut>Tryb transkrypcji</label><select id=m onchange="localStorage.mode=this.value"><option value="">Auto (chmura ↔ offline)</option><option value=cloud ${cfg('mode')==='cloud'?'selected':''}>Tylko chmura</option><option value=offline ${cfg('mode')==='offline'?'selected':''}>Tylko offline (audio + podgląd)</option></select>
  <p class=mut>Klucze na serwerze: transkrypcja ${cap.stt?'✅':'❌'} · notatki/AI ${cap.claude?(cap.ckey?'✅':'⚠ tryb podstawowy (bez klucza Anthropic)'):'❌'}. Poniżej tylko gdy ❌ (zapis w tym telefonie).</p>
+ <details ${cap.stt&&cap.claude?'':'open'}><summary class=mut>Zaawansowane: własne klucze (zwykle zbędne)</summary>
  <label class=mut>Klucz OpenAI (transkrypcja + mówcy)</label><input type=password value="${esc(cfg('oai'))}" oninput="localStorage.oai=this.value">
- <label class=mut>Klucz Anthropic (notatki, autorzy, weryfikacja)</label><input type=password value="${esc(cfg('ant'))}" oninput="localStorage.ant=this.value">
+ <label class=mut>Klucz Anthropic (notatki, autorzy, weryfikacja)</label><input type=password value="${esc(cfg('ant'))}" oninput="localStorage.ant=this.value"></details>
  <label class=mut>Czas w transkrypcji</label><select onchange="localStorage.tmode=this.value"><option value=both ${cfg('tmode')==='both'||!cfg('tmode')?'selected':''}>Godzina · czas nagrania</option><option value=clock ${cfg('tmode')==='clock'?'selected':''}>Tylko godzina</option><option value=len ${cfg('tmode')==='len'?'selected':''}>Tylko czas nagrania</option></select>
- <label class=mut>Google Client ID (kopia na Drive)</label><input value="${esc(gcid())}" oninput="localStorage.gcid=this.value">
  <label><input type=checkbox style="width:auto" ${cfg('dim')!=='0'?'checked':''} onchange="localStorage.dim=this.checked?1:0"> Zaciemnij ekran po 20 s nagrywania</label><br><br><button onclick="dlg()">Zamknij</button>`)}
 function about(){dlg(`<h3>Notatnik Słuchacza</h3><p>Wersja ${VER}<br>Autor: Michał Rzekiecki<br>Kontakt: michus@gmail.com</p><button onclick="dlg()">Zamknij</button>`)}
 function sug(){dlg(`<h3>Sugestie</h3><p class=mut>Co sprawiłoby, że aplikacja byłaby jeszcze lepsza?</p><textarea rows=6 id=sg></textarea><a href="#" onclick="this.href='mailto:michus@gmail.com?subject='+encodeURIComponent('Notatnik Słuchacza - sugestia')+'&body='+encodeURIComponent(sg.value)"><button class=p>Wyślij (michus@gmail.com)</button></a> <button onclick="dlg()">Zamknij</button>`)}
@@ -167,7 +168,7 @@ async function zipAudio(){try{S.msg='ZIP: przygotowuję…';render();await loadJ
 async function mkNotes(){if(!canAI()){S.msg='Notatki wymagają internetu i klucza Anthropic (☰ → Ustawienia: „notatki/AI” musi być ✅)';render();return}
  const n0=L.notes.length;S.msg='✨ Tworzę notatki…';render();S.busy=false;await pump(true);S.msg=L.notes.length>n0?'':'Brak nowego tekstu do notatek (lub błąd – sprawdź komunikat)';render()}
 const gtoken=()=>new Promise(async(res,rej)=>{try{if(!gcid())throw new Error('Wpisz Google Client ID w Ustawieniach');await loadJS('https://accounts.google.com/gsi/client');
- google.accounts.oauth2.initTokenClient({client_id:gcid(),scope:'https://www.googleapis.com/auth/drive.file',prompt:'select_account',callback:r=>r.access_token?res(r.access_token):rej(new Error('[ID '+gcid().slice(0,6)+'…'+gcid().slice(-30,-24)+'] '+(r.error==='access_denied'?'Brak zgody. Jeśli to Twoje konto: w Google Cloud → Ekran zgody OAuth → Test users dodaj swój Gmail':'Google: '+(r.error_description||r.error||'brak zgody'))))}).requestAccessToken()}catch(e){rej(e)}});
+ google.accounts.oauth2.initTokenClient({client_id:gcid(),scope:'https://www.googleapis.com/auth/drive.file',prompt:'select_account',error_callback:e=>rej(new Error(e&&e.type==='popup_failed_to_open'?'Przeglądarka zablokowała okno logowania – zezwól na wyskakujące okna dla tej strony':e&&e.type==='popup_closed'?'Okno logowania zamknięte':'Logowanie Google: '+((e&&(e.message||e.type))||'błąd'))),callback:r=>r.access_token?res(r.access_token):rej(new Error('[ID '+gcid().slice(0,6)+'…'+gcid().slice(-30,-24)+'] '+(r.error==='access_denied'?'Brak zgody. Aplikacja Google jest w trybie testowym – opublikuj ją (Google Cloud → Auth platform → Audience → Publish app) albo dodaj konto w Test users':r.error==='invalid_client'?'Google nie zna tego Client ID (sprawdź projekt w Google Cloud)':'Google: '+(r.error_description||r.error||'brak zgody'))))}).requestAccessToken()}catch(e){rej(e)}});
 async function gerr(r){let t='';try{t=await r.text()}catch(e){}
  if(/accessNotConfigured|has not been used|SERVICE_DISABLED/i.test(t))return new Error('Włącz „Google Drive API” w Google Cloud (APIs & Services → Library)');
  if(r.status===401)return new Error('Sesja Google wygasła – spróbuj ponownie');
