@@ -112,7 +112,7 @@
       .then(function (x) {
         go.disabled = false;
         if (x.j && x.j.ok) { m.textContent = 'Dziękuję! Jesteś na liście. Dam znać o premierze.'; m.className = 'msg ok'; wF.reset(); setTimeout(function () { dW.close(); say('Zapisano na listę chętnych.'); }, 1800); }
-        else err(x.j && x.j.code === 'bad_email' ? 'Podaj poprawny e-mail.' : 'Nie udało się zapisać. Spróbuj za chwilę lub napisz na michus@gmail.com.');
+        else err(x.j && x.j.code === 'bad_email' ? 'Podaj poprawny e-mail.' : 'Nie udało się zapisać. Spróbuj za chwilę lub napisz na kontakt@smialo.org.');
       }, function () { go.disabled = false; err('Brak połączenia. Spróbuj ponownie.'); });
   });
 
@@ -127,7 +127,7 @@
     sugT.addEventListener('input', function () { sugMail.setAttribute('href', base + '&body=' + encodeURIComponent(sugT.value)); });
     sugCopy.addEventListener('click', function () {
       var t = sugT.value; if (!t) { say('Najpierw wpisz sugestię.'); return; }
-      (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(function () { say('Skopiowano. Wklej w wiadomości na michus@gmail.com.'); }, function () { sugT.select(); say('Zaznaczono tekst — skopiuj ręcznie (Ctrl+C).'); });
+      (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(function () { say('Skopiowano. Wklej w wiadomości na kontakt@smialo.org.'); }, function () { sugT.select(); say('Zaznaczono tekst — skopiuj ręcznie (Ctrl+C).'); });
     });
   }
 })();
