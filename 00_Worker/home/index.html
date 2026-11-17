@@ -455,6 +455,21 @@ dialog .src{font-size:.82rem;margin-top:1em}
 .price{font-size:.95rem;margin:-.4em 0 1.1em;padding:.5em .9em;border-radius:12px;background:rgba(255,193,90,.16);color:#6a3d00;font-weight:600}
 .vthumb em{display:block}
 
+.meta{display:grid;gap:.5em;margin:0 0 1.2em;padding:.9em 1.1em;border-radius:16px;background:var(--foam);border:1px solid var(--line);font-size:.9rem}
+.meta div{display:grid;grid-template-columns:7.2em 1fr;gap:.6em}
+.meta dt{font-weight:800;color:var(--sea-700);font-size:.74rem;letter-spacing:.1em;text-transform:uppercase;padding-top:.15em}
+.meta dd{margin:0;color:var(--mute)}
+.apps-hero{width:100%;max-height:380px;object-fit:cover;border-radius:30px;box-shadow:var(--shadow);margin:0 0 34px}
+.plans{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:40px}
+.plan{padding:26px 24px;border-radius:24px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);text-align:center;display:grid;gap:.3em}
+.plan.hot{border-color:var(--sea-400);background:linear-gradient(160deg,rgba(45,212,191,.2),rgba(255,255,255,.04))}
+.plan b{font-size:1.5rem;color:#fff}.plan span{color:var(--sea-300);font-weight:700;font-size:.85rem;letter-spacing:.1em;text-transform:uppercase}.plan em{font-style:normal;color:#b6d6d1;font-size:.9rem}
+.plans-note{text-align:center;margin-top:1.4em;color:#9fc4c0;font-size:.9rem}.plans-note a{color:var(--sea-300)}
+.custom{padding:40px 0 10px}
+.custom-card{display:flex;gap:28px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:clamp(26px,4vw,44px);border-radius:32px;background:#fff;border:1px solid var(--line);box-shadow:var(--shadow)}
+.custom-card h2{font-size:clamp(1.5rem,3vw,2.1rem);letter-spacing:-.03em;margin:.2em 0 .3em}.custom-card p{color:var(--mute);max-width:34em}.custom-card .eyebrow{margin-bottom:.4em}
+@media (max-width:760px){.plans{grid-template-columns:1fr}.meta div{grid-template-columns:1fr}}
+
 </style>
 </head>
 <body>
@@ -522,6 +537,7 @@ dialog .src{font-size:.82rem;margin-top:1em}
       <h2>Każda aplikacja rozwiązuje <em>jeden konkretny problem</em></h2>
       <p>Obejrzyj screeny i film, sprawdź demo. Jeśli któraś pasuje — zapisz się na dostęp. Gdy zbierze się określona liczba chętnych, ruszy sprzedaż.</p>
     </header>
+    <img class="apps-hero reveal" src="https://twojastrona.smialo.org/img/apps/hero-apps.webp" alt="Aplikacje na komputer i do przeglądarki" loading="lazy" decoding="async">
     <nav class="pills" id="pills" aria-label="Skocz do aplikacji"><a href="#startupboard" data-p="startupboard"><b>01</b>StartupBoard</a><a href="#nawyk" data-p="nawyk"><b>02</b>Nawyk</a><a href="#esencja" data-p="esencja"><b>03</b>Esencja</a><a href="#notatnik" data-p="notatnik"><b>04</b>Notatnik Słuchacza</a><a href="#anatomia" data-p="anatomia"><b>05</b>Anatomia 3D</a></nav>
     
 <article class="app reveal" id="startupboard" data-spot>
@@ -541,13 +557,14 @@ dialog .src{font-size:.82rem;margin-top:1em}
       <div><span class="lbl p">Problem</span><p>Każdy poranek zaczyna się od szukania tych samych plików i okien.</p></div>
       <div><span class="lbl s">Rozwiązanie</span><p>Układasz 6 pól raz. Następnego dnia pracujesz od razu, bez szukania.</p></div>
     </div>
-    <ul class="ben"><li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10.5 4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>6 pól na pliki w jednym oknie</span></li><li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10.5 4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Edytor w każdym polu: zawijanie wierszy, stan zapisu, rozmiar pliku</span></li><li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10.5 4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Przeciągnij i upuść plik, bez przeszukiwania folderów</span></li><li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10.5 4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Lekki program na Windows: rozpakuj ZIP i uruchom</span></li></ul>
+    <ul class="ben"><li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10.5 4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>6 paneli na pliki z kolorową składnią (m.in. skrypty)</span></li><li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10.5 4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Zapamiętuje układ, pliki i pozycję kursora po ponownym uruchomieniu</span></li><li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10.5 4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Edytor w każdym polu: zawijanie wierszy, stan zapisu, rozmiar pliku</span></li><li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10.5 4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Przeciągnij i upuść plik, bez przeszukiwania folderów</span></li><li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10.5 4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Lekki program na Windows: rozpakuj ZIP i uruchom</span></li></ul>
+    <dl class="meta"><div><dt>Dla kogo</dt><dd>Użytkownicy komputerów, którzy codziennie otwierają te same pliki.</dd></div><div><dt>Urządzenia</dt><dd>Windows 10 / 11 · bez instalacji · pliki nie są wysyłane do internetu</dd></div><div><dt>Wersja</dt><dd>1.1</dd></div></dl>
     <p class="road"><b>W planie:</b> docx · xlsx · pdf · okna innych programów</p>
     <p class="price"><b>Cena:</b> 49 zł na stałe lub 10 zł miesięcznie netto</p>
     <div class="chips"><span>Windows</span><span>Program offline</span></div>
     <div class="cta-row">
       <button type="button" class="btn btn-cta" data-want="StartupBoard">Zapisz się na dostęp <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h11m-4-5 5 5-5 5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-      <a class="btn btn-line" href="mailto:michus@gmail.com?subject=Pytanie%20%E2%80%93%20StartupBoard&body=Dzie%C5%84%20dobry%2C%0A%0Amam%20pytanie%20o%3A%20StartupBoard.%0A%0APozdrawiam">Zadaj pytanie <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h11m-4-5 5 5-5 5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+      <a class="btn btn-line" href="mailto:kontakt@smialo.org?subject=Pytanie%20%E2%80%93%20StartupBoard&body=Dzie%C5%84%20dobry%2C%0A%0Amam%20pytanie%20o%3A%20StartupBoard.%0A%0APozdrawiam">Zadaj pytanie <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h11m-4-5 5 5-5 5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
     </div>
   </div>
 </article>
@@ -570,6 +587,7 @@ dialog .src{font-size:.82rem;margin-top:1em}
       <div><span class="lbl s">Rozwiązanie</span><p>Dostajesz gotową listę kroków na dziś, timer prowadzący przez ćwiczenia i wykres postępu.</p></div>
     </div>
     <ul class="ben"><li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10.5 4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>100+ gotowych ćwiczeń: charyzma, głos, rozciąganie, skupienie</span></li><li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10.5 4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Sesje z timerem: rozgrzewka głosu, poranna mobilność</span></li><li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10.5 4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Dwa pytania na start dnia i podsumowanie z wykresami</span></li><li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10.5 4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Dane w chmurze: klucz synchronizacji łączy telefon i komputer</span></li></ul>
+    <dl class="meta"><div><dt>Dla kogo</dt><dd>Sportowcy, osoby pracujące zdalnie, mówcy i trenerzy.</dd></div><div><dt>Urządzenia</dt><dd>Komputer · tablet · telefon</dd></div><div><dt>Wersja</dt><dd>0.03</dd></div></dl>
     
     
     <div class="chips"><span>Przeglądarka</span><span>Chmura</span></div>
@@ -598,6 +616,7 @@ dialog .src{font-size:.82rem;margin-top:1em}
       <div><span class="lbl s">Rozwiązanie</span><p>Esencja pobiera transkrypcję, streszcza ją i wyróżnia konkrety. Możesz też posłuchać lektora.</p></div>
     </div>
     <ul class="ben"><li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10.5 4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Ctrl+V i gotowe: streszczenie po polsku</span></li><li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10.5 4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Wersja krótka oraz barwna z wyróżnionymi konkretami</span></li><li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10.5 4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Lektor czyta na głos: tempo 0,5–4×, przewijanie co 5 s</span></li><li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10.5 4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Długie filmy dzielone na części automatycznie</span></li></ul>
+    <dl class="meta"><div><dt>Dla kogo</dt><dd>Studenci, osoby uczące się języków i zapracowani.</dd></div><div><dt>Urządzenia</dt><dd>Komputer · tablet · telefon</dd></div><div><dt>Wersja</dt><dd>0.05</dd></div></dl>
     
     
     <div class="chips"><span>Przeglądarka</span><span>Wersja próbna</span></div>
@@ -626,6 +645,7 @@ dialog .src{font-size:.82rem;margin-top:1em}
       <div><span class="lbl s">Rozwiązanie</span><p>Nagrywa w tle, transkrybuje, odróżnia wykładowcę od pytań z sali i składa notatki tematyczne.</p></div>
     </div>
     <ul class="ben"><li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10.5 4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Pytania i odpowiedzi wyłapane osobno</span></li><li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10.5 4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Notatki co ok. 5 minut, podzielone tematycznie</span></li><li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10.5 4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Przyciski „Autorzy” i „Zweryfikuj” sprawdzają źródła w sieci</span></li><li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10.5 4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Eksport do Markdown; na iPhonie działa po zgaszeniu ekranu</span></li></ul>
+    <dl class="meta"><div><dt>Dla kogo</dt><dd>Studenci i uczestnicy szkoleń.</dd></div><div><dt>Urządzenia</dt><dd>Komputer · tablet · telefon</dd></div><div><dt>Wersja</dt><dd>0.07</dd></div></dl>
     
     
     <div class="chips"><span>iPhone</span><span>Przeglądarka</span></div>
@@ -654,6 +674,7 @@ dialog .src{font-size:.82rem;margin-top:1em}
       <div><span class="lbl s">Rozwiązanie</span><p>Interaktywny model z nazwami po polsku i łacinie. Włączasz tylko warstwy, których potrzebujesz.</p></div>
     </div>
     <ul class="ben"><li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10.5 4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>6 warstw: kości, mięśnie, stawy, więzadła, nerwy, naczynia</span></li><li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10.5 4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Przy stawach: typ, osie ruchu, powierzchnie, antagoniści</span></li><li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10.5 4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Strona prawa, lewa lub obie; wybór wielu mięśni naraz</span></li><li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10.5 4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Mapa ciała do szybkiej nawigacji</span></li></ul>
+    <dl class="meta"><div><dt>Dla kogo</dt><dd>Studenci medycyny i fizjoterapii, trenerzy i masażyści.</dd></div><div><dt>Urządzenia</dt><dd>Komputer · tablet · telefon</dd></div><div><dt>Wersja</dt><dd>0.05</dd></div></dl>
     
     
     <div class="chips"><span>Przeglądarka</span><span>WebGL</span></div>
@@ -679,6 +700,12 @@ dialog .src{font-size:.82rem;margin-top:1em}
       <li class="reveal"><span class="n">2</span><h3>3 dni próby</h3><p>Gdy ruszy sprzedaż, dostajesz wiadomość i 3 dni na wypróbowanie aplikacji.</p></li>
       <li class="reveal"><span class="n">3</span><h3>Wybierasz plan</h3><p>Subskrypcja na 1, 6 lub 12 miesięcy (StartupBoard: 49 zł na stałe lub 10 zł/mies. netto). Bez wyboru plan zostaje wstrzymany.</p></li>
     </ol>
+    <div class="plans reveal">
+      <div class="plan"><b>1 miesiąc</b><span>Subskrypcja</span><em>Cenę ogłosimy przed startem sprzedaży</em></div>
+      <div class="plan hot"><b>6 miesięcy</b><span>Subskrypcja</span><em>Cenę ogłosimy przed startem sprzedaży</em></div>
+      <div class="plan"><b>12 miesięcy</b><span>Subskrypcja</span><em>Cenę ogłosimy przed startem sprzedaży</em></div>
+    </div>
+    <p class="plans-note">Zapisani dowiedzą się o cenach jako pierwsi. Szczegóły: <a href="https://twojastrona.smialo.org/aplikacje/regulamin/" target="_blank" rel="noopener">zasady zakupu</a>.</p>
   </div>
 </section>
 
@@ -706,11 +733,22 @@ dialog .src{font-size:.82rem;margin-top:1em}
       <h2>Najczęstsze pytania</h2>
     </header>
     <div class="qa reveal">
-      <details open><summary>Czy muszę coś instalować?</summary><p>Cztery aplikacje działają w przeglądarce — wystarczy link z demo. StartupBoard to lekki program na Windows (ZIP: rozpakuj i uruchom). Notatnik Słuchacza ma też wersję na iPhone’a.</p></details>
-      <details><summary>Gdzie zapisują się moje dane?</summary><p>Nawyk zapisuje dane w chmurze, a klucz synchronizacji łączy Twoje urządzenia. Pozostałe aplikacje trzymają ustawienia lokalnie, u Ciebie.</p></details>
-      <details><summary>Ile to kosztuje?</summary><p>StartupBoard: 49 zł na stałe lub 10 zł miesięcznie netto. Aplikacje webowe: subskrypcja na 1, 6 lub 12 miesięcy; ceny ogłoszę przed startem sprzedaży. Zapis do niczego nie zobowiązuje.</p></details>
-      <details><summary>Czy mogę zamówić zmiany albo własną aplikację?</summary><p>Tak. Napisz na michus@gmail.com — ocenię, czy rozwiąże go któraś z obecnych aplikacji, czy trzeba zbudować coś nowego.</p></details>
-      <details><summary>Mam pomysł na ulepszenie. Gdzie go zgłosić?</summary><p>Użyj przycisku „Sugestie” w stopce albo w menu aplikacji. Wiadomość trafia bezpośrednio do autora.</p></details>
+      <details open><summary>Kto może kupić?</summary><p>Firmy, jednoosobowe działalności i osoby prywatne. Ceny podajemy netto.</p></details>
+      <details><summary>Czym różni się program od aplikacji webowej?</summary><p>StartupBoard działa lokalnie na Windows (10 lub 11), bez instalacji i bez wysyłania plików do internetu. Aplikacje webowe działają w przeglądarce, bez instalacji.</p></details>
+      <details><summary>Jak wygląda okres próbny i abonament?</summary><p>Zapis jest bezpłatny. Po starcie sprzedaży dostajesz 3 dni pełnego dostępu, potem wybierasz subskrypcję na 1, 6 lub 12 miesięcy. Bez wyboru dostęp zostaje wstrzymany.</p></details>
+      <details><summary>Jak wygląda zakup i dostawa?</summary><p>Po opłaceniu link do pobrania przychodzi e-mailem w ciągu 2 dni roboczych.</p></details>
+      <details><summary>Zakup na stałe czy abonament?</summary><p>StartupBoard można kupić na stałe (49 zł, z aktualizacjami w obrębie wersji 1.x) albo za 10 zł miesięcznie netto. Abonament można wypowiedzieć w dowolnym momencie, ze skutkiem na koniec opłaconego miesiąca.</p></details>
+      <details><summary>Czy mogę zamówić dodatkowe funkcje?</summary><p>Tak, wyceniamy je indywidualnie. Przy większych zmianach lepsza będzie aplikacja na miarę.</p></details>
+      <details><summary>Mam pomysł na ulepszenie. Gdzie go zgłosić?</summary><p>Użyj przycisku „Sugestie” w stopce albo napisz na kontakt@smialo.org.</p></details>
+    </div>
+  </div>
+</section>
+
+<section class="custom">
+  <div class="wrap">
+    <div class="custom-card reveal">
+      <div><span class="eyebrow">Na miarę</span><h2>Potrzebujesz własnej aplikacji?</h2><p>Opisz zadanie, a przygotuję wycenę i propozycję zakresu przed decyzją. Aplikacje na miarę od 4250 zł netto.</p></div>
+      <a class="btn btn-line btn-lg" href="https://twojastrona.smialo.org/zamow-aplikacje/" target="_blank" rel="noopener">Zamów aplikację na miarę</a>
     </div>
   </div>
 </section>
@@ -724,7 +762,7 @@ dialog .src{font-size:.82rem;margin-top:1em}
       <p>Zapisz się na listę. Gdy uzbiera się wystarczająco chętnych, dam Ci znać e-mailem.</p>
       <div class="cta-row center">
         <button type="button" class="btn btn-cta btn-lg" data-want="">Zapisz się na dostęp <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h11m-4-5 5 5-5 5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-        <a class="btn btn-ghost btn-lg" href="mailto:michus@gmail.com">michus@gmail.com</a>
+        <a class="btn btn-ghost btn-lg" href="mailto:kontakt@smialo.org">kontakt@smialo.org</a>
       </div>
     </div>
   </div>
@@ -737,9 +775,11 @@ dialog .src{font-size:.82rem;margin-top:1em}
     <div class="foot-links">
       <button type="button" data-open="dAbout">O autorze</button>
       <button type="button" data-open="dSug">Sugestie</button>
-      <a href="mailto:michus@gmail.com">michus@gmail.com</a>
+      <a href="mailto:kontakt@smialo.org">kontakt@smialo.org</a>
+      <a href="https://twojastrona.smialo.org/aplikacje/regulamin/" target="_blank" rel="noopener">Regulamin</a>
+      <a href="https://twojastrona.smialo.org/polityka-prywatnosci/" target="_blank" rel="noopener">Polityka prywatności</a>
     </div>
-    <p class="fine">© 2026 Michał Rzekiecki · v0.02 · Modele 3D w Anatomii: Z-Anatomy / BodyParts3D (CC BY-SA)</p>
+    <p class="fine">© 2026 Michał Rzekiecki · Web Elegance (Kreacja Stron Internetowych) · NIP 6222614711 · v0.03 · Modele 3D w Anatomii: Z-Anatomy / BodyParts3D (CC BY-SA)</p>
   </div>
 </footer>
 
@@ -753,7 +793,7 @@ dialog .src{font-size:.82rem;margin-top:1em}
     <label>Imię<input id="wName" name="name" type="text" autocomplete="given-name" maxlength="80" required></label>
     <label>E-mail<input id="wMail" name="email" type="email" autocomplete="email" maxlength="120" required></label>
     <input class="hp" id="wHp" name="website" type="text" tabindex="-1" autocomplete="off" aria-hidden="true">
-    <label class="chk"><input id="wOk" type="checkbox" required><span>Zgadzam się na wysłanie jednej wiadomości o premierze tej aplikacji. Dane (imię, e-mail) posłużą tylko do tego.</span></label>
+    <label class="chk"><input id="wOk" type="checkbox" required><span>Zgadzam się na wysłanie jednej wiadomości o premierze tej aplikacji. Dane (imię, e-mail) posłużą tylko do tego. <a href="https://twojastrona.smialo.org/polityka-prywatnosci/" target="_blank" rel="noopener">Polityka prywatności</a></span></label>
     <div class="msg" id="wMsg" role="status"></div>
     <div class="drow"><button class="btn btn-cta" type="submit" id="wGo">Zapisz mnie</button><button class="btn btn-line" type="button" data-close>Zamknij</button></div>
   </form>
@@ -762,9 +802,9 @@ dialog .src{font-size:.82rem;margin-top:1em}
 <dialog id="dAbout">
   <h2>O autorze</h2>
   <p><b>Aplikacje — strona główna</b></p>
-  <p>Wersja: v0.02</p>
+  <p>Wersja: v0.03</p>
   <p>Autor: Michał Rzekiecki</p>
-  <p>Kontakt: <a href="mailto:michus@gmail.com">michus@gmail.com</a></p>
+  <p>Kontakt: <a href="mailto:kontakt@smialo.org">kontakt@smialo.org</a></p>
   <div class="drow"><button class="btn btn-line" data-close>Zamknij</button></div>
 </dialog>
 
@@ -773,11 +813,11 @@ dialog .src{font-size:.82rem;margin-top:1em}
   <p>Co sprawiłoby, że ta strona i aplikacje byłyby jeszcze lepsze?</p>
   <textarea id="sugT" rows="5" placeholder="Twoja sugestia…" aria-label="Sugestia"></textarea>
   <div class="drow">
-    <a class="btn btn-cta" id="sugMail" href="mailto:michus@gmail.com?subject=Sugestia%20%E2%80%93%20strona%20aplikacji">Otwórz w poczcie</a>
+    <a class="btn btn-cta" id="sugMail" href="mailto:kontakt@smialo.org?subject=Sugestia%20%E2%80%93%20strona%20aplikacji">Otwórz w poczcie</a>
     <button class="btn btn-line" id="sugCopy" type="button">Kopiuj</button>
     <button class="btn btn-line" data-close>Zamknij</button>
   </div>
-  <p class="src">Wiadomość trafia na <b>michus@gmail.com</b>.</p>
+  <p class="src">Wiadomość trafia na <b>kontakt@smialo.org</b>.</p>
 </dialog>
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>

@@ -8,11 +8,11 @@ import html
 from pathlib import Path
 from urllib.parse import quote
 
-VERSION = "v0.02"
+VERSION = "v0.03"
 IMG = "https://twojastrona.smialo.org/img/apps/"
 SHOTS = {"nawyk": ["nawyk-1", "nawyk-2", "nawyk-3", "nawyk-4"], "esencja": ["esencja-2", "esencja-1", "esencja-3", "esencja-4"],
          "notatnik": ["notatnik-2", "notatnik-1", "notatnik-3", "notatnik-4"], "anatomia": ["anatomia-1", "anatomia-2", "anatomia-3"]}
-MAIL = "michus@gmail.com"
+MAIL = "kontakt@smialo.org"
 HERE = Path(__file__).parent
 esc = html.escape
 
@@ -154,7 +154,8 @@ APPS = [
          tag="Jedno okno na start dnia. Pliki, których potrzebujesz, czekają już otwarte.",
          problem="Każdy poranek zaczyna się od szukania tych samych plików i okien.",
          solution="Układasz 6 pól raz. Następnego dnia pracujesz od razu, bez szukania.",
-         benefits=["6 pól na pliki w jednym oknie",
+         benefits=["6 paneli na pliki z kolorową składnią (m.in. skrypty)",
+                   "Zapamiętuje układ, pliki i pozycję kursora po ponownym uruchomieniu",
                    "Edytor w każdym polu: zawijanie wierszy, stan zapisu, rozmiar pliku",
                    "Przeciągnij i upuść plik, bez przeszukiwania folderów",
                    "Lekki program na Windows: rozpakuj ZIP i uruchom"],
@@ -204,7 +205,11 @@ CHECK = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10.5 4 4 8-9" f
 ARROW = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h11m-4-5 5 5-5 5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
 
 
+EXTRA = {'startupboard': ('Użytkownicy komputerów, którzy codziennie otwierają te same pliki.', 'Windows 10 / 11 · bez instalacji · pliki nie są wysyłane do internetu', '1.1'), 'nawyk': ('Sportowcy, osoby pracujące zdalnie, mówcy i trenerzy.', 'Komputer · tablet · telefon', '0.03'), 'esencja': ('Studenci, osoby uczące się języków i zapracowani.', 'Komputer · tablet · telefon', '0.05'), 'notatnik': ('Studenci i uczestnicy szkoleń.', 'Komputer · tablet · telefon', '0.07'), 'anatomia': ('Studenci medycyny i fizjoterapii, trenerzy i masażyści.', 'Komputer · tablet · telefon', '0.05')}
+
+
 def render_app(a, i):
+    fw, dev, ver = EXTRA[a["slug"]]
     flip = " flip" if i % 2 else ""
     ben = "".join(f"<li>{CHECK}<span>{esc(b)}</span></li>" for b in a["benefits"])
     chips = "".join(f"<span>{esc(p)}</span>" for p in a["plat"])
@@ -246,6 +251,7 @@ def render_app(a, i):
       <div><span class="lbl s">Rozwiązanie</span><p>{esc(a["solution"])}</p></div>
     </div>
     <ul class="ben">{ben}</ul>
+    <dl class="meta"><div><dt>Dla kogo</dt><dd>{esc(fw)}</dd></div><div><dt>Urządzenia</dt><dd>{esc(dev)}</dd></div><div><dt>Wersja</dt><dd>{ver}</dd></div></dl>
     {road}
     {price}
     <div class="chips">{chips}</div>

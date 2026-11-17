@@ -81,6 +81,7 @@
       <h2>Każda aplikacja rozwiązuje <em>jeden konkretny problem</em></h2>
       <p>Obejrzyj screeny i film, sprawdź demo. Jeśli któraś pasuje — zapisz się na dostęp. Gdy zbierze się określona liczba chętnych, ruszy sprzedaż.</p>
     </header>
+    <img class="apps-hero reveal" src="https://twojastrona.smialo.org/img/apps/hero-apps.webp" alt="Aplikacje na komputer i do przeglądarki" loading="lazy" decoding="async">
     <nav class="pills" id="pills" aria-label="Skocz do aplikacji">{{PILLS}}</nav>
     {{APPS}}
   </div>
@@ -99,6 +100,12 @@
       <li class="reveal"><span class="n">2</span><h3>3 dni próby</h3><p>Gdy ruszy sprzedaż, dostajesz wiadomość i 3 dni na wypróbowanie aplikacji.</p></li>
       <li class="reveal"><span class="n">3</span><h3>Wybierasz plan</h3><p>Subskrypcja na 1, 6 lub 12 miesięcy (StartupBoard: 49 zł na stałe lub 10 zł/mies. netto). Bez wyboru plan zostaje wstrzymany.</p></li>
     </ol>
+    <div class="plans reveal">
+      <div class="plan"><b>1 miesiąc</b><span>Subskrypcja</span><em>Cenę ogłosimy przed startem sprzedaży</em></div>
+      <div class="plan hot"><b>6 miesięcy</b><span>Subskrypcja</span><em>Cenę ogłosimy przed startem sprzedaży</em></div>
+      <div class="plan"><b>12 miesięcy</b><span>Subskrypcja</span><em>Cenę ogłosimy przed startem sprzedaży</em></div>
+    </div>
+    <p class="plans-note">Zapisani dowiedzą się o cenach jako pierwsi. Szczegóły: <a href="https://twojastrona.smialo.org/aplikacje/regulamin/" target="_blank" rel="noopener">zasady zakupu</a>.</p>
   </div>
 </section>
 
@@ -126,11 +133,22 @@
       <h2>Najczęstsze pytania</h2>
     </header>
     <div class="qa reveal">
-      <details open><summary>Czy muszę coś instalować?</summary><p>Cztery aplikacje działają w przeglądarce — wystarczy link z demo. StartupBoard to lekki program na Windows (ZIP: rozpakuj i uruchom). Notatnik Słuchacza ma też wersję na iPhone’a.</p></details>
-      <details><summary>Gdzie zapisują się moje dane?</summary><p>Nawyk zapisuje dane w chmurze, a klucz synchronizacji łączy Twoje urządzenia. Pozostałe aplikacje trzymają ustawienia lokalnie, u Ciebie.</p></details>
-      <details><summary>Ile to kosztuje?</summary><p>StartupBoard: 49 zł na stałe lub 10 zł miesięcznie netto. Aplikacje webowe: subskrypcja na 1, 6 lub 12 miesięcy; ceny ogłoszę przed startem sprzedaży. Zapis do niczego nie zobowiązuje.</p></details>
-      <details><summary>Czy mogę zamówić zmiany albo własną aplikację?</summary><p>Tak. Napisz na {{MAIL}} — ocenię, czy rozwiąże go któraś z obecnych aplikacji, czy trzeba zbudować coś nowego.</p></details>
-      <details><summary>Mam pomysł na ulepszenie. Gdzie go zgłosić?</summary><p>Użyj przycisku „Sugestie” w stopce albo w menu aplikacji. Wiadomość trafia bezpośrednio do autora.</p></details>
+      <details open><summary>Kto może kupić?</summary><p>Firmy, jednoosobowe działalności i osoby prywatne. Ceny podajemy netto.</p></details>
+      <details><summary>Czym różni się program od aplikacji webowej?</summary><p>StartupBoard działa lokalnie na Windows (10 lub 11), bez instalacji i bez wysyłania plików do internetu. Aplikacje webowe działają w przeglądarce, bez instalacji.</p></details>
+      <details><summary>Jak wygląda okres próbny i abonament?</summary><p>Zapis jest bezpłatny. Po starcie sprzedaży dostajesz 3 dni pełnego dostępu, potem wybierasz subskrypcję na 1, 6 lub 12 miesięcy. Bez wyboru dostęp zostaje wstrzymany.</p></details>
+      <details><summary>Jak wygląda zakup i dostawa?</summary><p>Po opłaceniu link do pobrania przychodzi e-mailem w ciągu 2 dni roboczych.</p></details>
+      <details><summary>Zakup na stałe czy abonament?</summary><p>StartupBoard można kupić na stałe (49 zł, z aktualizacjami w obrębie wersji 1.x) albo za 10 zł miesięcznie netto. Abonament można wypowiedzieć w dowolnym momencie, ze skutkiem na koniec opłaconego miesiąca.</p></details>
+      <details><summary>Czy mogę zamówić dodatkowe funkcje?</summary><p>Tak, wyceniamy je indywidualnie. Przy większych zmianach lepsza będzie aplikacja na miarę.</p></details>
+      <details><summary>Mam pomysł na ulepszenie. Gdzie go zgłosić?</summary><p>Użyj przycisku „Sugestie” w stopce albo napisz na {{MAIL}}.</p></details>
+    </div>
+  </div>
+</section>
+
+<section class="custom">
+  <div class="wrap">
+    <div class="custom-card reveal">
+      <div><span class="eyebrow">Na miarę</span><h2>Potrzebujesz własnej aplikacji?</h2><p>Opisz zadanie, a przygotuję wycenę i propozycję zakresu przed decyzją. Aplikacje na miarę od 4250 zł netto.</p></div>
+      <a class="btn btn-line btn-lg" href="https://twojastrona.smialo.org/zamow-aplikacje/" target="_blank" rel="noopener">Zamów aplikację na miarę</a>
     </div>
   </div>
 </section>
@@ -158,8 +176,10 @@
       <button type="button" data-open="dAbout">O autorze</button>
       <button type="button" data-open="dSug">Sugestie</button>
       <a href="mailto:{{MAIL}}">{{MAIL}}</a>
+      <a href="https://twojastrona.smialo.org/aplikacje/regulamin/" target="_blank" rel="noopener">Regulamin</a>
+      <a href="https://twojastrona.smialo.org/polityka-prywatnosci/" target="_blank" rel="noopener">Polityka prywatności</a>
     </div>
-    <p class="fine">© 2026 Michał Rzekiecki · {{VERSION}} · Modele 3D w Anatomii: Z-Anatomy / BodyParts3D (CC BY-SA)</p>
+    <p class="fine">© 2026 Michał Rzekiecki · Web Elegance (Kreacja Stron Internetowych) · NIP 6222614711 · {{VERSION}} · Modele 3D w Anatomii: Z-Anatomy / BodyParts3D (CC BY-SA)</p>
   </div>
 </footer>
 
@@ -173,7 +193,7 @@
     <label>Imię<input id="wName" name="name" type="text" autocomplete="given-name" maxlength="80" required></label>
     <label>E-mail<input id="wMail" name="email" type="email" autocomplete="email" maxlength="120" required></label>
     <input class="hp" id="wHp" name="website" type="text" tabindex="-1" autocomplete="off" aria-hidden="true">
-    <label class="chk"><input id="wOk" type="checkbox" required><span>Zgadzam się na wysłanie jednej wiadomości o premierze tej aplikacji. Dane (imię, e-mail) posłużą tylko do tego.</span></label>
+    <label class="chk"><input id="wOk" type="checkbox" required><span>Zgadzam się na wysłanie jednej wiadomości o premierze tej aplikacji. Dane (imię, e-mail) posłużą tylko do tego. <a href="https://twojastrona.smialo.org/polityka-prywatnosci/" target="_blank" rel="noopener">Polityka prywatności</a></span></label>
     <div class="msg" id="wMsg" role="status"></div>
     <div class="drow"><button class="btn btn-cta" type="submit" id="wGo">Zapisz mnie</button><button class="btn btn-line" type="button" data-close>Zamknij</button></div>
   </form>
