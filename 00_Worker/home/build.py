@@ -8,7 +8,10 @@ import html
 from pathlib import Path
 from urllib.parse import quote
 
-VERSION = "v0.01"
+VERSION = "v0.02"
+IMG = "https://twojastrona.smialo.org/img/apps/"
+SHOTS = {"nawyk": ["nawyk-1", "nawyk-2", "nawyk-3", "nawyk-4"], "esencja": ["esencja-2", "esencja-1", "esencja-3", "esencja-4"],
+         "notatnik": ["notatnik-2", "notatnik-1", "notatnik-3", "notatnik-4"], "anatomia": ["anatomia-1", "anatomia-2", "anatomia-3"]}
 MAIL = "michus@gmail.com"
 HERE = Path(__file__).parent
 esc = html.escape
@@ -156,6 +159,7 @@ APPS = [
                    "Przeciągnij i upuść plik, bez przeszukiwania folderów",
                    "Lekki program na Windows: rozpakuj ZIP i uruchom"],
          roadmap="W planie: docx · xlsx · pdf · okna innych programów",
+         price="49 zł na stałe lub 10 zł miesięcznie netto",
          demo=None, mock=mock_board),
     dict(id="02", slug="nawyk", name="Nawyk", cat="Organizacja dnia", plat=["Przeglądarka", "Chmura"],
          tag="Plan dnia na jednym ekranie: zadania, krótkie ćwiczenia i podsumowanie postępów.",
@@ -209,32 +213,28 @@ def render_app(a, i):
         second = f'<a class="btn btn-line" href="{a["demo"]}">Demo online {ARROW}</a>'
     else:
         second = f'<a class="btn btn-line" href="{trial(a["name"])}">Zadaj pytanie {ARROW}</a>'
+    price = f'<p class="price"><b>Cena:</b> {esc(a["price"])}</p>' if a.get("price") else ""
     n = a["id"]
+    imgs = SHOTS.get(a["slug"], [])
+    slides, thumbs = [], []
+    if a["slug"] in ("startupboard", "notatnik"):   # animowana makieta zostaje jako pierwszy ekran
+        slides.append(f'<div class="vslide on" data-i="0">{a["mock"]()}</div>')
+        thumbs.append('<button class="vthumb on anim" data-i="0" aria-label="Animacja"><span>▶</span><em>Na żywo</em></button>')
+    off = len(slides)
+    for k, im in enumerate(imgs if a["slug"] != "notatnik" else imgs[1:]):
+        on = " on" if off == 0 and k == 0 else ""
+        slides.append(f'<div class="vslide{on}" data-i="{off + k}"><img src="{IMG}{im}.webp" alt="{esc(a["name"])} — ekran {k + 1}" loading="lazy" decoding="async"></div>')
+        thumbs.append(f'<button class="vthumb{on}" data-i="{off + k}" aria-label="Ekran {k + 1}" style="background-image:url({IMG}{im}-t.webp)"></button>')
+    slides = "".join(slides)
+    thumbs = f'<div class="vthumbs" style="--n:{len(thumbs)}">{"".join(thumbs)}</div>' if len(thumbs) > 1 else ""
     return f'''
 <article class="app reveal{flip}" id="{a["slug"]}" data-spot>
   <div class="media">
-    <div class="viewer" data-app="{n}" data-shots="media/{n}-1.jpg,media/{n}-2.jpg,media/{n}-3.jpg" data-video="media/{n}.mp4">
-      <div class="vtabs" role="tablist" aria-label="Materiały: {esc(a["name"])}">
-        <button class="vtab on" role="tab" data-tab="shots" aria-selected="true">Screeny</button>
-        <button class="vtab" role="tab" data-tab="video" aria-selected="false"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 4v12l10-6z" fill="currentColor"/></svg> Wideo</button>
-        <span class="vtag">wizualizacja interfejsu</span>
-      </div>
+    <div class="viewer">
       <div class="vstage">
-        <div class="vpane on" data-pane="shots">
-          <div class="vslide on" data-i="0">{a["mock"]()}</div>
-          <div class="vslide" data-i="1">{placeholder(2)}</div>
-          <div class="vslide" data-i="2">{placeholder(3)}</div>
-        </div>
-        <div class="vpane" data-pane="video">
-          <div class="vposter"><b>{esc(a["name"])}</b><span>Jak to działa — krótki film</span></div>
-          <button class="play" type="button" aria-label="Odtwórz film: {esc(a["name"])}"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 4v12l10-6z" fill="currentColor"/></svg></button>
-        </div>
+        {slides}
       </div>
-      <div class="vthumbs">
-        <button class="vthumb on" data-i="0" aria-label="Screen 1"><span>1</span><em>Ekran główny</em></button>
-        <button class="vthumb" data-i="1" aria-label="Screen 2"><span>2</span><em>Szczegóły</em></button>
-        <button class="vthumb" data-i="2" aria-label="Screen 3"><span>3</span><em>Ustawienia</em></button>
-      </div>
+      {thumbs}
     </div>
   </div>
   <div class="copy">
@@ -247,9 +247,10 @@ def render_app(a, i):
     </div>
     <ul class="ben">{ben}</ul>
     {road}
+    {price}
     <div class="chips">{chips}</div>
     <div class="cta-row">
-      <button type="button" class="btn btn-cta" data-want="{esc(a["name"])}">Chcę tę aplikację {ARROW}</button>
+      <button type="button" class="btn btn-cta" data-want="{esc(a["name"])}">Zapisz się na dostęp {ARROW}</button>
       {second}
     </div>
   </div>
@@ -276,7 +277,7 @@ def main():
     apps = "\n".join(render_app(a, i) for i, a in enumerate(APPS))
     marquee = "".join(f"<span>{esc(t)}</span>" for t in
                       ["Start dnia", "Nawyki", "Streszczenia wideo", "Notatki z wykładów", "Anatomia 3D",
-                       "Po polsku", "Demo w przeglądarce", "Kontakt z autorem"])
+                       "Po polsku", "Demo w przeglądarce", "3 dni próby"])
     out = (tpl.replace("{{CSS}}", css).replace("{{JS}}", js).replace("{{PILLS}}", pills)
            .replace("{{APPS}}", apps).replace("{{MARQUEE}}", marquee * 2)
            .replace("{{HERO_MOCK}}", mock_board()).replace("{{MINI_RING}}", mini_ring())

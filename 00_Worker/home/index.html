@@ -9,6 +9,7 @@
 <meta property="og:title" content="Aplikacje, które oszczędzają Twój czas">
 <meta property="og:description" content="Gotowe narzędzia po polsku. Demo online, zapis na listę chętnych.">
 <meta property="og:type" content="website">
+<meta property="og:image" content="https://twojastrona.smialo.org/img/og.jpg">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='12' fill='%2314b8a6'/%3E%3Cpath d='M7 24c4-7 7-7 10 0s6 7 10 0c1.4-3 3-4 6-3' fill='none' stroke='%23fff' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
 <script>document.documentElement.classList.add('js')</script>
 <style>
@@ -446,6 +447,14 @@ dialog .src{font-size:.82rem;margin-top:1em}
 .msg{min-height:1.3em;font-size:.9rem;font-weight:600}
 .msg.err{color:#b3412c}.msg.ok{color:var(--sea-700)}
 
+.vthumbs{grid-template-columns:repeat(var(--n,3),1fr)}
+.vthumb{aspect-ratio:16/10;padding:0;background-size:cover;background-position:center}
+.vthumb.anim{background:linear-gradient(135deg,var(--sea-800),var(--gr-800));align-items:center;justify-content:center;gap:.2em}
+.vthumb.anim span{font-size:1.2rem}
+.vslide img{object-fit:contain;background:#0b1a1f}
+.price{font-size:.95rem;margin:-.4em 0 1.1em;padding:.5em .9em;border-radius:12px;background:rgba(255,193,90,.16);color:#6a3d00;font-weight:600}
+.vthumb em{display:block}
+
 </style>
 </head>
 <body>
@@ -472,14 +481,14 @@ dialog .src{font-size:.82rem;margin-top:1em}
     <div class="hero-copy">
       <span class="chip"><i class="live"></i>5 gotowych aplikacji · po polsku</span>
       <h1>Aplikacje, które <em>robią porządek</em> w Twojej pracy</h1>
-      <p class="sub">Od startu dnia po notatki z wykładu. Sprawdź demo w przeglądarce i zapisz się na tę, która Cię interesuje. Gdy zbierze się wystarczająco chętnych, aplikacja trafi do sprzedaży.</p>
+      <p class="sub">Od startu dnia po notatki z wykładu. To aplikacje płatne. Sprzedaż ruszy, gdy zbierze się określona liczba chętnych. Zapis jest bezpłatny i do niczego nie zobowiązuje — zapisani dostaną dostęp jako pierwsi.</p>
       <div class="cta-row">
-        <button type="button" class="btn btn-cta btn-lg" data-want="">Chcę dostęp <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h11m-4-5 5 5-5 5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <button type="button" class="btn btn-cta btn-lg" data-want="">Zapisz się na dostęp <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h11m-4-5 5 5-5 5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
         <a class="btn btn-ghost btn-lg" href="#apps">Zobacz aplikacje</a>
       </div>
       <ul class="trust">
         <li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10.5 4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Demo w przeglądarce, bez instalacji</li>
-        <li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10.5 4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Pierwszeństwo dla zapisanych</li>
+        <li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10.5 4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Zapis bezpłatny i niezobowiązujący</li>
       </ul>
       <dl class="stats">
         <div><dt data-count="5">5</dt><dd>gotowych aplikacji</dd></div>
@@ -503,7 +512,7 @@ dialog .src{font-size:.82rem;margin-top:1em}
 </section>
 
 <!-- ═══════════ PASEK ═══════════ -->
-<div class="ticker" aria-hidden="true"><div class="track"><span>Start dnia</span><span>Nawyki</span><span>Streszczenia wideo</span><span>Notatki z wykładów</span><span>Anatomia 3D</span><span>Po polsku</span><span>Demo w przeglądarce</span><span>Kontakt z autorem</span><span>Start dnia</span><span>Nawyki</span><span>Streszczenia wideo</span><span>Notatki z wykładów</span><span>Anatomia 3D</span><span>Po polsku</span><span>Demo w przeglądarce</span><span>Kontakt z autorem</span></div></div>
+<div class="ticker" aria-hidden="true"><div class="track"><span>Start dnia</span><span>Nawyki</span><span>Streszczenia wideo</span><span>Notatki z wykładów</span><span>Anatomia 3D</span><span>Po polsku</span><span>Demo w przeglądarce</span><span>3 dni próby</span><span>Start dnia</span><span>Nawyki</span><span>Streszczenia wideo</span><span>Notatki z wykładów</span><span>Anatomia 3D</span><span>Po polsku</span><span>Demo w przeglądarce</span><span>3 dni próby</span></div></div>
 
 <!-- ═══════════ APLIKACJE ═══════════ -->
 <section class="apps" id="apps">
@@ -511,34 +520,17 @@ dialog .src{font-size:.82rem;margin-top:1em}
     <header class="sec-head reveal">
       <span class="eyebrow">Katalog</span>
       <h2>Każda aplikacja rozwiązuje <em>jeden konkretny problem</em></h2>
-      <p>Obejrzyj screeny i film, sprawdź demo. Jeśli któraś pasuje — kliknij „Chcę tę aplikację”. Gdy uzbiera się wystarczająco chętnych, wypuszczę ją do sprzedaży.</p>
+      <p>Obejrzyj screeny i film, sprawdź demo. Jeśli któraś pasuje — zapisz się na dostęp. Gdy zbierze się określona liczba chętnych, ruszy sprzedaż.</p>
     </header>
     <nav class="pills" id="pills" aria-label="Skocz do aplikacji"><a href="#startupboard" data-p="startupboard"><b>01</b>StartupBoard</a><a href="#nawyk" data-p="nawyk"><b>02</b>Nawyk</a><a href="#esencja" data-p="esencja"><b>03</b>Esencja</a><a href="#notatnik" data-p="notatnik"><b>04</b>Notatnik Słuchacza</a><a href="#anatomia" data-p="anatomia"><b>05</b>Anatomia 3D</a></nav>
     
 <article class="app reveal" id="startupboard" data-spot>
   <div class="media">
-    <div class="viewer" data-app="01" data-shots="media/01-1.jpg,media/01-2.jpg,media/01-3.jpg" data-video="media/01.mp4">
-      <div class="vtabs" role="tablist" aria-label="Materiały: StartupBoard">
-        <button class="vtab on" role="tab" data-tab="shots" aria-selected="true">Screeny</button>
-        <button class="vtab" role="tab" data-tab="video" aria-selected="false"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 4v12l10-6z" fill="currentColor"/></svg> Wideo</button>
-        <span class="vtag">wizualizacja interfejsu</span>
-      </div>
+    <div class="viewer">
       <div class="vstage">
-        <div class="vpane on" data-pane="shots">
-          <div class="vslide on" data-i="0"><div class="mock"><div class="win"><div class="bar"><i></i><i></i><i></i><span>StartupBoard</span></div><div class="board"><div class="tl act"><div class="th"><b>plan_dnia.txt</b><em>● zapisany · 1,8 KB</em></div><div class="tb"><s class="" style="width:92%"></s><s class="" style="width:78%"></s><s class="" style="width:85%"></s><s class="" style="width:60%"></s><s class="" style="width:88%"></s><s class="" style="width:70%"></s><s class="" style="width:45%"></s></div></div><div class="tl "><div class="th"><b>kontakty.txt</b><em>● zapisany · 0,9 KB</em></div><div class="tb"><s class="" style="width:70%"></s><s class="" style="width:88%"></s><s class="" style="width:55%"></s><s class="" style="width:80%"></s><s class="" style="width:64%"></s></div></div><div class="tl dirty"><div class="th"><b>oferta_v3.txt</b><em>◐ zmieniony · 4,2 KB</em></div><div class="tb"><s class="" style="width:90%"></s><s class="" style="width:82%"></s><s class="" style="width:86%"></s><s class="" style="width:74%"></s><s class="" style="width:92%"></s><s class="" style="width:58%"></s><s class="" style="width:80%"></s><s class="" style="width:66%"></s></div></div><div class="tl empty"><div class="th"><b>— pusty —</b><em></em></div><div class="tb"><div class="ph2">przeciągnij tu plik</div></div></div><div class="tl "><div class="th"><b>notatki.txt</b><em>● zapisany · 2,6 KB</em></div><div class="tb"><s class="" style="width:84%"></s><s class="" style="width:60%"></s><s class="" style="width:90%"></s><s class="" style="width:72%"></s><s class="" style="width:50%"></s><s class="" style="width:78%"></s></div></div><div class="tl "><div class="th"><b>todo.txt</b><em>● zapisany · 0,4 KB</em></div><div class="tb"><s class="" style="width:60%"></s><s class="" style="width:74%"></s><s class="" style="width:48%"></s><s class="" style="width:66%"></s></div></div></div></div></div></div>
-          <div class="vslide" data-i="1"><div class="mock ph"><div class="skh"></div><div class="skg"><i></i><i></i><i></i><i></i></div><span class="phl">Podgląd 2</span></div></div>
-          <div class="vslide" data-i="2"><div class="mock ph"><div class="skh"></div><div class="skg"><i></i><i></i><i></i><i></i></div><span class="phl">Podgląd 3</span></div></div>
-        </div>
-        <div class="vpane" data-pane="video">
-          <div class="vposter"><b>StartupBoard</b><span>Jak to działa — krótki film</span></div>
-          <button class="play" type="button" aria-label="Odtwórz film: StartupBoard"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 4v12l10-6z" fill="currentColor"/></svg></button>
-        </div>
+        <div class="vslide on" data-i="0"><div class="mock"><div class="win"><div class="bar"><i></i><i></i><i></i><span>StartupBoard</span></div><div class="board"><div class="tl act"><div class="th"><b>plan_dnia.txt</b><em>● zapisany · 1,8 KB</em></div><div class="tb"><s class="" style="width:92%"></s><s class="" style="width:78%"></s><s class="" style="width:85%"></s><s class="" style="width:60%"></s><s class="" style="width:88%"></s><s class="" style="width:70%"></s><s class="" style="width:45%"></s></div></div><div class="tl "><div class="th"><b>kontakty.txt</b><em>● zapisany · 0,9 KB</em></div><div class="tb"><s class="" style="width:70%"></s><s class="" style="width:88%"></s><s class="" style="width:55%"></s><s class="" style="width:80%"></s><s class="" style="width:64%"></s></div></div><div class="tl dirty"><div class="th"><b>oferta_v3.txt</b><em>◐ zmieniony · 4,2 KB</em></div><div class="tb"><s class="" style="width:90%"></s><s class="" style="width:82%"></s><s class="" style="width:86%"></s><s class="" style="width:74%"></s><s class="" style="width:92%"></s><s class="" style="width:58%"></s><s class="" style="width:80%"></s><s class="" style="width:66%"></s></div></div><div class="tl empty"><div class="th"><b>— pusty —</b><em></em></div><div class="tb"><div class="ph2">przeciągnij tu plik</div></div></div><div class="tl "><div class="th"><b>notatki.txt</b><em>● zapisany · 2,6 KB</em></div><div class="tb"><s class="" style="width:84%"></s><s class="" style="width:60%"></s><s class="" style="width:90%"></s><s class="" style="width:72%"></s><s class="" style="width:50%"></s><s class="" style="width:78%"></s></div></div><div class="tl "><div class="th"><b>todo.txt</b><em>● zapisany · 0,4 KB</em></div><div class="tb"><s class="" style="width:60%"></s><s class="" style="width:74%"></s><s class="" style="width:48%"></s><s class="" style="width:66%"></s></div></div></div></div></div></div>
       </div>
-      <div class="vthumbs">
-        <button class="vthumb on" data-i="0" aria-label="Screen 1"><span>1</span><em>Ekran główny</em></button>
-        <button class="vthumb" data-i="1" aria-label="Screen 2"><span>2</span><em>Szczegóły</em></button>
-        <button class="vthumb" data-i="2" aria-label="Screen 3"><span>3</span><em>Ustawienia</em></button>
-      </div>
+      
     </div>
   </div>
   <div class="copy">
@@ -551,9 +543,10 @@ dialog .src{font-size:.82rem;margin-top:1em}
     </div>
     <ul class="ben"><li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10.5 4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>6 pól na pliki w jednym oknie</span></li><li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10.5 4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Edytor w każdym polu: zawijanie wierszy, stan zapisu, rozmiar pliku</span></li><li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10.5 4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Przeciągnij i upuść plik, bez przeszukiwania folderów</span></li><li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10.5 4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Lekki program na Windows: rozpakuj ZIP i uruchom</span></li></ul>
     <p class="road"><b>W planie:</b> docx · xlsx · pdf · okna innych programów</p>
+    <p class="price"><b>Cena:</b> 49 zł na stałe lub 10 zł miesięcznie netto</p>
     <div class="chips"><span>Windows</span><span>Program offline</span></div>
     <div class="cta-row">
-      <button type="button" class="btn btn-cta" data-want="StartupBoard">Chcę tę aplikację <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h11m-4-5 5 5-5 5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <button type="button" class="btn btn-cta" data-want="StartupBoard">Zapisz się na dostęp <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h11m-4-5 5 5-5 5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
       <a class="btn btn-line" href="mailto:michus@gmail.com?subject=Pytanie%20%E2%80%93%20StartupBoard&body=Dzie%C5%84%20dobry%2C%0A%0Amam%20pytanie%20o%3A%20StartupBoard.%0A%0APozdrawiam">Zadaj pytanie <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h11m-4-5 5 5-5 5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
     </div>
   </div>
@@ -561,28 +554,11 @@ dialog .src{font-size:.82rem;margin-top:1em}
 
 <article class="app reveal flip" id="nawyk" data-spot>
   <div class="media">
-    <div class="viewer" data-app="02" data-shots="media/02-1.jpg,media/02-2.jpg,media/02-3.jpg" data-video="media/02.mp4">
-      <div class="vtabs" role="tablist" aria-label="Materiały: Nawyk">
-        <button class="vtab on" role="tab" data-tab="shots" aria-selected="true">Screeny</button>
-        <button class="vtab" role="tab" data-tab="video" aria-selected="false"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 4v12l10-6z" fill="currentColor"/></svg> Wideo</button>
-        <span class="vtag">wizualizacja interfejsu</span>
-      </div>
+    <div class="viewer">
       <div class="vstage">
-        <div class="vpane on" data-pane="shots">
-          <div class="vslide on" data-i="0"><div class="mock"><div class="win"><div class="bar"><i></i><i></i><i></i><span>Nawyk — menedżer dnia</span></div><div class="nb"><div class="nh"><div><small>Dzień dobry</small><b>Wtorek, 17 listopada</b></div><div class="ring" style="--p:60"><span>60%</span></div></div><div class="nstrip"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i></div><div class="task done"><i></i><span>Szklanka wody i okno</span><em>2 min</em></div><div class="task done"><i></i><span>Plan pierwszych 25 minut</span><em>3 min</em></div><div class="task done"><i></i><span>Rozgrzewka głosu</span><em>6 min</em></div><div class="task "><i></i><span>Jedna karta, jedno zadanie</span><em>5 min</em></div><div class="task "><i></i><span>Domknięcie dnia</span><em>5 min</em></div><div class="ex"><div><small>Ćwiczenie dnia</small><b>Poranna mobilność</b></div><div class="tm">02:00</div></div></div></div></div></div>
-          <div class="vslide" data-i="1"><div class="mock ph"><div class="skh"></div><div class="skg"><i></i><i></i><i></i><i></i></div><span class="phl">Podgląd 2</span></div></div>
-          <div class="vslide" data-i="2"><div class="mock ph"><div class="skh"></div><div class="skg"><i></i><i></i><i></i><i></i></div><span class="phl">Podgląd 3</span></div></div>
-        </div>
-        <div class="vpane" data-pane="video">
-          <div class="vposter"><b>Nawyk</b><span>Jak to działa — krótki film</span></div>
-          <button class="play" type="button" aria-label="Odtwórz film: Nawyk"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 4v12l10-6z" fill="currentColor"/></svg></button>
-        </div>
+        <div class="vslide on" data-i="0"><img src="https://twojastrona.smialo.org/img/apps/nawyk-1.webp" alt="Nawyk — ekran 1" loading="lazy" decoding="async"></div><div class="vslide" data-i="1"><img src="https://twojastrona.smialo.org/img/apps/nawyk-2.webp" alt="Nawyk — ekran 2" loading="lazy" decoding="async"></div><div class="vslide" data-i="2"><img src="https://twojastrona.smialo.org/img/apps/nawyk-3.webp" alt="Nawyk — ekran 3" loading="lazy" decoding="async"></div><div class="vslide" data-i="3"><img src="https://twojastrona.smialo.org/img/apps/nawyk-4.webp" alt="Nawyk — ekran 4" loading="lazy" decoding="async"></div>
       </div>
-      <div class="vthumbs">
-        <button class="vthumb on" data-i="0" aria-label="Screen 1"><span>1</span><em>Ekran główny</em></button>
-        <button class="vthumb" data-i="1" aria-label="Screen 2"><span>2</span><em>Szczegóły</em></button>
-        <button class="vthumb" data-i="2" aria-label="Screen 3"><span>3</span><em>Ustawienia</em></button>
-      </div>
+      <div class="vthumbs" style="--n:4"><button class="vthumb on" data-i="0" aria-label="Ekran 1" style="background-image:url(https://twojastrona.smialo.org/img/apps/nawyk-1-t.webp)"></button><button class="vthumb" data-i="1" aria-label="Ekran 2" style="background-image:url(https://twojastrona.smialo.org/img/apps/nawyk-2-t.webp)"></button><button class="vthumb" data-i="2" aria-label="Ekran 3" style="background-image:url(https://twojastrona.smialo.org/img/apps/nawyk-3-t.webp)"></button><button class="vthumb" data-i="3" aria-label="Ekran 4" style="background-image:url(https://twojastrona.smialo.org/img/apps/nawyk-4-t.webp)"></button></div>
     </div>
   </div>
   <div class="copy">
@@ -595,9 +571,10 @@ dialog .src{font-size:.82rem;margin-top:1em}
     </div>
     <ul class="ben"><li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10.5 4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>100+ gotowych ćwiczeń: charyzma, głos, rozciąganie, skupienie</span></li><li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10.5 4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Sesje z timerem: rozgrzewka głosu, poranna mobilność</span></li><li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10.5 4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Dwa pytania na start dnia i podsumowanie z wykresami</span></li><li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10.5 4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Dane w chmurze: klucz synchronizacji łączy telefon i komputer</span></li></ul>
     
+    
     <div class="chips"><span>Przeglądarka</span><span>Chmura</span></div>
     <div class="cta-row">
-      <button type="button" class="btn btn-cta" data-want="Nawyk">Chcę tę aplikację <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h11m-4-5 5 5-5 5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <button type="button" class="btn btn-cta" data-want="Nawyk">Zapisz się na dostęp <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h11m-4-5 5 5-5 5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
       <a class="btn btn-line" href="/02/">Demo online <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h11m-4-5 5 5-5 5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
     </div>
   </div>
@@ -605,28 +582,11 @@ dialog .src{font-size:.82rem;margin-top:1em}
 
 <article class="app reveal" id="esencja" data-spot>
   <div class="media">
-    <div class="viewer" data-app="03" data-shots="media/03-1.jpg,media/03-2.jpg,media/03-3.jpg" data-video="media/03.mp4">
-      <div class="vtabs" role="tablist" aria-label="Materiały: Esencja">
-        <button class="vtab on" role="tab" data-tab="shots" aria-selected="true">Screeny</button>
-        <button class="vtab" role="tab" data-tab="video" aria-selected="false"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 4v12l10-6z" fill="currentColor"/></svg> Wideo</button>
-        <span class="vtag">wizualizacja interfejsu</span>
-      </div>
+    <div class="viewer">
       <div class="vstage">
-        <div class="vpane on" data-pane="shots">
-          <div class="vslide on" data-i="0"><div class="mock"><div class="win"><div class="bar"><i></i><i></i><i></i><span>Esencja</span></div><div class="eb"><div class="inp"><span>youtube.com/watch?v=…</span><b>Streść</b></div><div class="vid"><div class="thumb"><i></i></div><div><b>Jak zbudować nawyk w 30 dni</b><small>24:10 min → czytasz w 1:30</small></div></div><div class="quote"><b>Esencja:</b> małe kroki wygrywają z wielkimi planami.</div><div class="pt"><i></i><span>Zacznij od <mark>2 minut</mark> dziennie</span></div><div class="pt"><i></i><span>Dopisz nawyk do <mark>istniejącej rutyny</mark></span></div><div class="pt"><i></i><span>Mierz <mark>serię dni</mark>, nie perfekcję</span></div><div class="pt"><i></i><span>Zaplanuj <mark>pierwszy krok</mark> na jutro</span></div><div class="tg"><b>Mini</b><b class="on">Barwny</b><b>Lektor</b></div><div class="pl"><b>▶</b><span class="pg"><u></u></span><em>1,3×</em></div></div></div></div></div>
-          <div class="vslide" data-i="1"><div class="mock ph"><div class="skh"></div><div class="skg"><i></i><i></i><i></i><i></i></div><span class="phl">Podgląd 2</span></div></div>
-          <div class="vslide" data-i="2"><div class="mock ph"><div class="skh"></div><div class="skg"><i></i><i></i><i></i><i></i></div><span class="phl">Podgląd 3</span></div></div>
-        </div>
-        <div class="vpane" data-pane="video">
-          <div class="vposter"><b>Esencja</b><span>Jak to działa — krótki film</span></div>
-          <button class="play" type="button" aria-label="Odtwórz film: Esencja"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 4v12l10-6z" fill="currentColor"/></svg></button>
-        </div>
+        <div class="vslide on" data-i="0"><img src="https://twojastrona.smialo.org/img/apps/esencja-2.webp" alt="Esencja — ekran 1" loading="lazy" decoding="async"></div><div class="vslide" data-i="1"><img src="https://twojastrona.smialo.org/img/apps/esencja-1.webp" alt="Esencja — ekran 2" loading="lazy" decoding="async"></div><div class="vslide" data-i="2"><img src="https://twojastrona.smialo.org/img/apps/esencja-3.webp" alt="Esencja — ekran 3" loading="lazy" decoding="async"></div><div class="vslide" data-i="3"><img src="https://twojastrona.smialo.org/img/apps/esencja-4.webp" alt="Esencja — ekran 4" loading="lazy" decoding="async"></div>
       </div>
-      <div class="vthumbs">
-        <button class="vthumb on" data-i="0" aria-label="Screen 1"><span>1</span><em>Ekran główny</em></button>
-        <button class="vthumb" data-i="1" aria-label="Screen 2"><span>2</span><em>Szczegóły</em></button>
-        <button class="vthumb" data-i="2" aria-label="Screen 3"><span>3</span><em>Ustawienia</em></button>
-      </div>
+      <div class="vthumbs" style="--n:4"><button class="vthumb on" data-i="0" aria-label="Ekran 1" style="background-image:url(https://twojastrona.smialo.org/img/apps/esencja-2-t.webp)"></button><button class="vthumb" data-i="1" aria-label="Ekran 2" style="background-image:url(https://twojastrona.smialo.org/img/apps/esencja-1-t.webp)"></button><button class="vthumb" data-i="2" aria-label="Ekran 3" style="background-image:url(https://twojastrona.smialo.org/img/apps/esencja-3-t.webp)"></button><button class="vthumb" data-i="3" aria-label="Ekran 4" style="background-image:url(https://twojastrona.smialo.org/img/apps/esencja-4-t.webp)"></button></div>
     </div>
   </div>
   <div class="copy">
@@ -639,9 +599,10 @@ dialog .src{font-size:.82rem;margin-top:1em}
     </div>
     <ul class="ben"><li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10.5 4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Ctrl+V i gotowe: streszczenie po polsku</span></li><li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10.5 4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Wersja krótka oraz barwna z wyróżnionymi konkretami</span></li><li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10.5 4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Lektor czyta na głos: tempo 0,5–4×, przewijanie co 5 s</span></li><li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10.5 4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Długie filmy dzielone na części automatycznie</span></li></ul>
     
+    
     <div class="chips"><span>Przeglądarka</span><span>Wersja próbna</span></div>
     <div class="cta-row">
-      <button type="button" class="btn btn-cta" data-want="Esencja">Chcę tę aplikację <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h11m-4-5 5 5-5 5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <button type="button" class="btn btn-cta" data-want="Esencja">Zapisz się na dostęp <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h11m-4-5 5 5-5 5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
       <a class="btn btn-line" href="/03/">Demo online <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h11m-4-5 5 5-5 5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
     </div>
   </div>
@@ -649,28 +610,11 @@ dialog .src{font-size:.82rem;margin-top:1em}
 
 <article class="app reveal flip" id="notatnik" data-spot>
   <div class="media">
-    <div class="viewer" data-app="04" data-shots="media/04-1.jpg,media/04-2.jpg,media/04-3.jpg" data-video="media/04.mp4">
-      <div class="vtabs" role="tablist" aria-label="Materiały: Notatnik Słuchacza">
-        <button class="vtab on" role="tab" data-tab="shots" aria-selected="true">Screeny</button>
-        <button class="vtab" role="tab" data-tab="video" aria-selected="false"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 4v12l10-6z" fill="currentColor"/></svg> Wideo</button>
-        <span class="vtag">wizualizacja interfejsu</span>
-      </div>
+    <div class="viewer">
       <div class="vstage">
-        <div class="vpane on" data-pane="shots">
-          <div class="vslide on" data-i="0"><div class="mock"><div class="win dk"><div class="bar"><i></i><i></i><i></i><span>Notatnik Słuchacza</span></div><div class="rb"><div class="rec"><span class="dot"></span>REC <b>00:42:10</b></div><div class="wv"><i style="--d:0.0s"></i><i style="--d:0.7s"></i><i style="--d:0.3s"></i><i style="--d:1.0s"></i><i style="--d:0.6s"></i><i style="--d:0.2s"></i><i style="--d:0.9s"></i><i style="--d:0.5s"></i><i style="--d:0.1s"></i><i style="--d:0.8s"></i><i style="--d:0.4s"></i><i style="--d:0.0s"></i><i style="--d:0.7s"></i><i style="--d:0.3s"></i><i style="--d:1.0s"></i><i style="--d:0.6s"></i><i style="--d:0.2s"></i><i style="--d:0.9s"></i><i style="--d:0.5s"></i><i style="--d:0.1s"></i><i style="--d:0.8s"></i><i style="--d:0.4s"></i><i style="--d:0.0s"></i><i style="--d:0.7s"></i><i style="--d:0.3s"></i><i style="--d:1.0s"></i><i style="--d:0.6s"></i><i style="--d:0.2s"></i><i style="--d:0.9s"></i><i style="--d:0.5s"></i></div><div class="ln"><span class="sp a">Wykładowca</span>Kluczem jest regularność, nie intensywność.</div><div class="ln q"><span class="sp b">❓ Pytanie</span>Ile czasu dziennie wystarczy?</div><div class="ln"><span class="sp c">✔ Odpowiedź</span>Dwie minuty, ale każdego dnia.</div><div class="nt"><small>Notatka · temat 1</small><b>Regularność wygrywa z intensywnością</b><span>• krótkie, codzienne sesje</span><span>• serie dni jako miara postępu</span></div><div class="acts"><b>Notatki</b><b>Autorzy</b><b>Zweryfikuj</b></div></div></div></div></div>
-          <div class="vslide" data-i="1"><div class="mock ph"><div class="skh"></div><div class="skg"><i></i><i></i><i></i><i></i></div><span class="phl">Podgląd 2</span></div></div>
-          <div class="vslide" data-i="2"><div class="mock ph"><div class="skh"></div><div class="skg"><i></i><i></i><i></i><i></i></div><span class="phl">Podgląd 3</span></div></div>
-        </div>
-        <div class="vpane" data-pane="video">
-          <div class="vposter"><b>Notatnik Słuchacza</b><span>Jak to działa — krótki film</span></div>
-          <button class="play" type="button" aria-label="Odtwórz film: Notatnik Słuchacza"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 4v12l10-6z" fill="currentColor"/></svg></button>
-        </div>
+        <div class="vslide on" data-i="0"><div class="mock"><div class="win dk"><div class="bar"><i></i><i></i><i></i><span>Notatnik Słuchacza</span></div><div class="rb"><div class="rec"><span class="dot"></span>REC <b>00:42:10</b></div><div class="wv"><i style="--d:0.0s"></i><i style="--d:0.7s"></i><i style="--d:0.3s"></i><i style="--d:1.0s"></i><i style="--d:0.6s"></i><i style="--d:0.2s"></i><i style="--d:0.9s"></i><i style="--d:0.5s"></i><i style="--d:0.1s"></i><i style="--d:0.8s"></i><i style="--d:0.4s"></i><i style="--d:0.0s"></i><i style="--d:0.7s"></i><i style="--d:0.3s"></i><i style="--d:1.0s"></i><i style="--d:0.6s"></i><i style="--d:0.2s"></i><i style="--d:0.9s"></i><i style="--d:0.5s"></i><i style="--d:0.1s"></i><i style="--d:0.8s"></i><i style="--d:0.4s"></i><i style="--d:0.0s"></i><i style="--d:0.7s"></i><i style="--d:0.3s"></i><i style="--d:1.0s"></i><i style="--d:0.6s"></i><i style="--d:0.2s"></i><i style="--d:0.9s"></i><i style="--d:0.5s"></i></div><div class="ln"><span class="sp a">Wykładowca</span>Kluczem jest regularność, nie intensywność.</div><div class="ln q"><span class="sp b">❓ Pytanie</span>Ile czasu dziennie wystarczy?</div><div class="ln"><span class="sp c">✔ Odpowiedź</span>Dwie minuty, ale każdego dnia.</div><div class="nt"><small>Notatka · temat 1</small><b>Regularność wygrywa z intensywnością</b><span>• krótkie, codzienne sesje</span><span>• serie dni jako miara postępu</span></div><div class="acts"><b>Notatki</b><b>Autorzy</b><b>Zweryfikuj</b></div></div></div></div></div><div class="vslide" data-i="1"><img src="https://twojastrona.smialo.org/img/apps/notatnik-1.webp" alt="Notatnik Słuchacza — ekran 1" loading="lazy" decoding="async"></div><div class="vslide" data-i="2"><img src="https://twojastrona.smialo.org/img/apps/notatnik-3.webp" alt="Notatnik Słuchacza — ekran 2" loading="lazy" decoding="async"></div><div class="vslide" data-i="3"><img src="https://twojastrona.smialo.org/img/apps/notatnik-4.webp" alt="Notatnik Słuchacza — ekran 3" loading="lazy" decoding="async"></div>
       </div>
-      <div class="vthumbs">
-        <button class="vthumb on" data-i="0" aria-label="Screen 1"><span>1</span><em>Ekran główny</em></button>
-        <button class="vthumb" data-i="1" aria-label="Screen 2"><span>2</span><em>Szczegóły</em></button>
-        <button class="vthumb" data-i="2" aria-label="Screen 3"><span>3</span><em>Ustawienia</em></button>
-      </div>
+      <div class="vthumbs" style="--n:4"><button class="vthumb on anim" data-i="0" aria-label="Animacja"><span>▶</span><em>Na żywo</em></button><button class="vthumb" data-i="1" aria-label="Ekran 1" style="background-image:url(https://twojastrona.smialo.org/img/apps/notatnik-1-t.webp)"></button><button class="vthumb" data-i="2" aria-label="Ekran 2" style="background-image:url(https://twojastrona.smialo.org/img/apps/notatnik-3-t.webp)"></button><button class="vthumb" data-i="3" aria-label="Ekran 3" style="background-image:url(https://twojastrona.smialo.org/img/apps/notatnik-4-t.webp)"></button></div>
     </div>
   </div>
   <div class="copy">
@@ -683,9 +627,10 @@ dialog .src{font-size:.82rem;margin-top:1em}
     </div>
     <ul class="ben"><li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10.5 4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Pytania i odpowiedzi wyłapane osobno</span></li><li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10.5 4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Notatki co ok. 5 minut, podzielone tematycznie</span></li><li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10.5 4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Przyciski „Autorzy” i „Zweryfikuj” sprawdzają źródła w sieci</span></li><li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10.5 4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Eksport do Markdown; na iPhonie działa po zgaszeniu ekranu</span></li></ul>
     
+    
     <div class="chips"><span>iPhone</span><span>Przeglądarka</span></div>
     <div class="cta-row">
-      <button type="button" class="btn btn-cta" data-want="Notatnik Słuchacza">Chcę tę aplikację <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h11m-4-5 5 5-5 5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <button type="button" class="btn btn-cta" data-want="Notatnik Słuchacza">Zapisz się na dostęp <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h11m-4-5 5 5-5 5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
       <a class="btn btn-line" href="/04/">Demo online <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h11m-4-5 5 5-5 5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
     </div>
   </div>
@@ -693,28 +638,11 @@ dialog .src{font-size:.82rem;margin-top:1em}
 
 <article class="app reveal" id="anatomia" data-spot>
   <div class="media">
-    <div class="viewer" data-app="05" data-shots="media/05-1.jpg,media/05-2.jpg,media/05-3.jpg" data-video="media/05.mp4">
-      <div class="vtabs" role="tablist" aria-label="Materiały: Anatomia 3D">
-        <button class="vtab on" role="tab" data-tab="shots" aria-selected="true">Screeny</button>
-        <button class="vtab" role="tab" data-tab="video" aria-selected="false"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 4v12l10-6z" fill="currentColor"/></svg> Wideo</button>
-        <span class="vtag">wizualizacja interfejsu</span>
-      </div>
+    <div class="viewer">
       <div class="vstage">
-        <div class="vpane on" data-pane="shots">
-          <div class="vslide on" data-i="0"><div class="mock"><div class="win dk an"><div class="bar"><i></i><i></i><i></i><span>Anatomia 3D</span></div><div class="ab"><div class="scene"><svg viewBox="0 0 300 240" aria-hidden="true"><defs><linearGradient id="mus" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5eead4"/><stop offset="1" stop-color="#0f766e"/></linearGradient></defs><ellipse cx="150" cy="222" rx="118" ry="11" fill="rgba(45,212,191,.16)"/><ellipse cx="150" cy="222" rx="78" ry="6" fill="none" stroke="rgba(94,234,212,.35)"/><g class="limb"><circle cx="88" cy="44" r="19" fill="#e9f2f0"/><path d="M88 40 C96 36 108 40 112 50 L150 132 C153 140 148 148 140 147 C132 146 128 140 125 134 L84 56 C81 50 82 44 88 40Z" fill="#dfeceb"/><path d="M104 52 C138 54 160 92 148 132 C132 124 106 96 98 62Z" fill="url(#mus)" opacity=".95"/><line x1="146" y1="148" x2="226" y2="204" stroke="#e9f2f0" stroke-width="10" stroke-linecap="round"/><line x1="136" y1="152" x2="214" y2="212" stroke="#c9dcda" stroke-width="8" stroke-linecap="round"/><circle cx="142" cy="146" r="9" fill="#f3fbfa"/></g><g class="pin"><circle cx="128" cy="92" r="5" fill="#ffb347"/><circle cx="128" cy="92" r="11" fill="none" stroke="#ffb347"/></g><path d="M133 88 L190 56" stroke="#ffb347" stroke-width="1.4" fill="none"/><rect x="190" y="38" width="104" height="38" rx="9" fill="rgba(6,42,50,.85)" stroke="rgba(94,234,212,.5)"/><text x="198" y="54" fill="#fff" font-size="10" font-weight="700">Biceps brachii</text><text x="198" y="68" fill="#99f6e4" font-size="8.5" font-style="italic">Musculus biceps brachii</text></svg></div><div class="side"><small>Warstwy</small><ul><li class="on"><i></i>Kości</li><li class="on"><i></i>Mięśnie</li><li class="on"><i></i>Stawy</li><li class=""><i></i>Więzadła</li><li class=""><i></i>Nerwy</li><li class=""><i></i>Naczynia</li></ul><div class="card"><small>Antagonista</small><b>Triceps brachii</b></div></div></div></div></div></div>
-          <div class="vslide" data-i="1"><div class="mock ph"><div class="skh"></div><div class="skg"><i></i><i></i><i></i><i></i></div><span class="phl">Podgląd 2</span></div></div>
-          <div class="vslide" data-i="2"><div class="mock ph"><div class="skh"></div><div class="skg"><i></i><i></i><i></i><i></i></div><span class="phl">Podgląd 3</span></div></div>
-        </div>
-        <div class="vpane" data-pane="video">
-          <div class="vposter"><b>Anatomia 3D</b><span>Jak to działa — krótki film</span></div>
-          <button class="play" type="button" aria-label="Odtwórz film: Anatomia 3D"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 4v12l10-6z" fill="currentColor"/></svg></button>
-        </div>
+        <div class="vslide on" data-i="0"><img src="https://twojastrona.smialo.org/img/apps/anatomia-1.webp" alt="Anatomia 3D — ekran 1" loading="lazy" decoding="async"></div><div class="vslide" data-i="1"><img src="https://twojastrona.smialo.org/img/apps/anatomia-2.webp" alt="Anatomia 3D — ekran 2" loading="lazy" decoding="async"></div><div class="vslide" data-i="2"><img src="https://twojastrona.smialo.org/img/apps/anatomia-3.webp" alt="Anatomia 3D — ekran 3" loading="lazy" decoding="async"></div>
       </div>
-      <div class="vthumbs">
-        <button class="vthumb on" data-i="0" aria-label="Screen 1"><span>1</span><em>Ekran główny</em></button>
-        <button class="vthumb" data-i="1" aria-label="Screen 2"><span>2</span><em>Szczegóły</em></button>
-        <button class="vthumb" data-i="2" aria-label="Screen 3"><span>3</span><em>Ustawienia</em></button>
-      </div>
+      <div class="vthumbs" style="--n:3"><button class="vthumb on" data-i="0" aria-label="Ekran 1" style="background-image:url(https://twojastrona.smialo.org/img/apps/anatomia-1-t.webp)"></button><button class="vthumb" data-i="1" aria-label="Ekran 2" style="background-image:url(https://twojastrona.smialo.org/img/apps/anatomia-2-t.webp)"></button><button class="vthumb" data-i="2" aria-label="Ekran 3" style="background-image:url(https://twojastrona.smialo.org/img/apps/anatomia-3-t.webp)"></button></div>
     </div>
   </div>
   <div class="copy">
@@ -727,9 +655,10 @@ dialog .src{font-size:.82rem;margin-top:1em}
     </div>
     <ul class="ben"><li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10.5 4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>6 warstw: kości, mięśnie, stawy, więzadła, nerwy, naczynia</span></li><li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10.5 4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Przy stawach: typ, osie ruchu, powierzchnie, antagoniści</span></li><li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10.5 4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Strona prawa, lewa lub obie; wybór wielu mięśni naraz</span></li><li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10.5 4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Mapa ciała do szybkiej nawigacji</span></li></ul>
     
+    
     <div class="chips"><span>Przeglądarka</span><span>WebGL</span></div>
     <div class="cta-row">
-      <button type="button" class="btn btn-cta" data-want="Anatomia 3D">Chcę tę aplikację <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h11m-4-5 5 5-5 5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <button type="button" class="btn btn-cta" data-want="Anatomia 3D">Zapisz się na dostęp <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h11m-4-5 5 5-5 5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
       <a class="btn btn-line" href="/05/">Demo online <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h11m-4-5 5 5-5 5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
     </div>
   </div>
@@ -743,12 +672,12 @@ dialog .src{font-size:.82rem;margin-top:1em}
   <div class="wrap">
     <header class="sec-head reveal light">
       <span class="eyebrow">Proces</span>
-      <h2>Od zgłoszenia do premiery <em>w trzech krokach</em></h2>
+      <h2>Od zapisu do aplikacji <em>w trzech krokach</em></h2>
     </header>
     <ol class="steps">
-      <li class="reveal"><span class="n">1</span><h3>Zgłaszasz chęć</h3><p>Klikasz „Chcę tę aplikację” i podajesz imię oraz e-mail. Zajmuje to pół minuty.</p></li>
-      <li class="reveal"><span class="n">2</span><h3>Zbieram chętnych</h3><p>Gdy zapisze się wystarczająco dużo osób, aplikacja przechodzi do sprzedaży.</p></li>
-      <li class="reveal"><span class="n">3</span><h3>Premiera</h3><p>Dostajesz wiadomość jako pierwszy. Aplikacja działa w przeglądarce, na komputerze lub telefonie.</p></li>
+      <li class="reveal"><span class="n">1</span><h3>Zapisujesz się</h3><p>Podajesz imię i e-mail. Zapis jest bezpłatny i niezobowiązujący.</p></li>
+      <li class="reveal"><span class="n">2</span><h3>3 dni próby</h3><p>Gdy ruszy sprzedaż, dostajesz wiadomość i 3 dni na wypróbowanie aplikacji.</p></li>
+      <li class="reveal"><span class="n">3</span><h3>Wybierasz plan</h3><p>Subskrypcja na 1, 6 lub 12 miesięcy (StartupBoard: 49 zł na stałe lub 10 zł/mies. netto). Bez wyboru plan zostaje wstrzymany.</p></li>
     </ol>
   </div>
 </section>
@@ -779,7 +708,7 @@ dialog .src{font-size:.82rem;margin-top:1em}
     <div class="qa reveal">
       <details open><summary>Czy muszę coś instalować?</summary><p>Cztery aplikacje działają w przeglądarce — wystarczy link z demo. StartupBoard to lekki program na Windows (ZIP: rozpakuj i uruchom). Notatnik Słuchacza ma też wersję na iPhone’a.</p></details>
       <details><summary>Gdzie zapisują się moje dane?</summary><p>Nawyk zapisuje dane w chmurze, a klucz synchronizacji łączy Twoje urządzenia. Pozostałe aplikacje trzymają ustawienia lokalnie, u Ciebie.</p></details>
-      <details><summary>Ile to kosztuje?</summary><p>Cenę podam przy premierze. Osoby z listy chętnych dowiedzą się pierwsze, a zapis do niczego nie zobowiązuje.</p></details>
+      <details><summary>Ile to kosztuje?</summary><p>StartupBoard: 49 zł na stałe lub 10 zł miesięcznie netto. Aplikacje webowe: subskrypcja na 1, 6 lub 12 miesięcy; ceny ogłoszę przed startem sprzedaży. Zapis do niczego nie zobowiązuje.</p></details>
       <details><summary>Czy mogę zamówić zmiany albo własną aplikację?</summary><p>Tak. Napisz na michus@gmail.com — ocenię, czy rozwiąże go któraś z obecnych aplikacji, czy trzeba zbudować coś nowego.</p></details>
       <details><summary>Mam pomysł na ulepszenie. Gdzie go zgłosić?</summary><p>Użyj przycisku „Sugestie” w stopce albo w menu aplikacji. Wiadomość trafia bezpośrednio do autora.</p></details>
     </div>
@@ -794,7 +723,7 @@ dialog .src{font-size:.82rem;margin-top:1em}
       <h2>Którą aplikację chcesz dostać <em>jako pierwszy?</em></h2>
       <p>Zapisz się na listę. Gdy uzbiera się wystarczająco chętnych, dam Ci znać e-mailem.</p>
       <div class="cta-row center">
-        <button type="button" class="btn btn-cta btn-lg" data-want="">Chcę dostęp <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h11m-4-5 5 5-5 5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <button type="button" class="btn btn-cta btn-lg" data-want="">Zapisz się na dostęp <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h11m-4-5 5 5-5 5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
         <a class="btn btn-ghost btn-lg" href="mailto:michus@gmail.com">michus@gmail.com</a>
       </div>
     </div>
@@ -810,15 +739,15 @@ dialog .src{font-size:.82rem;margin-top:1em}
       <button type="button" data-open="dSug">Sugestie</button>
       <a href="mailto:michus@gmail.com">michus@gmail.com</a>
     </div>
-    <p class="fine">© 2026 Michał Rzekiecki · v0.01 · Modele 3D w Anatomii: Z-Anatomy / BodyParts3D (CC BY-SA)</p>
+    <p class="fine">© 2026 Michał Rzekiecki · v0.02 · Modele 3D w Anatomii: Z-Anatomy / BodyParts3D (CC BY-SA)</p>
   </div>
 </footer>
 
-<button type="button" class="stick btn btn-cta" id="stick" data-want="">Zapisz się na listę chętnych</button>
+<button type="button" class="stick btn btn-cta" id="stick" data-want="">Zapisz się na dostęp</button>
 
 <dialog id="dWant">
-  <h2>Chcę tę aplikację</h2>
-  <p>Podaj imię i e-mail. Gdy uzbiera się wystarczająco chętnych, dam Ci znać o premierze.</p>
+  <h2>Zapisz się na dostęp</h2>
+  <p>Aplikacje będą płatne i ruszą, gdy zbierze się określona liczba chętnych. Zapis jest bezpłatny i niezobowiązujący.</p>
   <form id="wantF" novalidate>
     <label>Aplikacja<select id="wApp" name="app"><option>StartupBoard</option><option>Nawyk</option><option>Esencja</option><option>Notatnik Słuchacza</option><option>Anatomia 3D</option></select></label>
     <label>Imię<input id="wName" name="name" type="text" autocomplete="given-name" maxlength="80" required></label>
@@ -833,7 +762,7 @@ dialog .src{font-size:.82rem;margin-top:1em}
 <dialog id="dAbout">
   <h2>O autorze</h2>
   <p><b>Aplikacje — strona główna</b></p>
-  <p>Wersja: v0.01</p>
+  <p>Wersja: v0.02</p>
   <p>Autor: Michał Rzekiecki</p>
   <p>Kontakt: <a href="mailto:michus@gmail.com">michus@gmail.com</a></p>
   <div class="drow"><button class="btn btn-line" data-close>Zamknij</button></div>
@@ -931,47 +860,15 @@ dialog .src{font-size:.82rem;margin-top:1em}
   var toast = $('#toast'), tt;
   function say(m) { toast.textContent = m; toast.classList.add('show'); clearTimeout(tt); tt = setTimeout(function () { toast.classList.remove('show'); }, 4200); }
 
-  /* przeglądarka mediów: zakładki, miniatury, prawdziwe screeny/wideo gdy pliki istnieją */
+  /* galeria ekranów */
   $$('.viewer').forEach(function (v) {
-    var tabs = $$('.vtab', v), panes = $$('.vpane', v), slides = $$('.vslide', v), thumbs = $$('.vthumb', v), tag = $('.vtag', v);
-    function show(i) {
-      slides.forEach(function (s, k) { s.classList.toggle('on', k === i); });
-      thumbs.forEach(function (t, k) { t.classList.toggle('on', k === i); });
-      if (tag) tag.classList.toggle('off', slides[0].classList.contains('real') && i === 0 || slides[i].classList.contains('real'));
-    }
-    thumbs.forEach(function (t) { t.addEventListener('click', function () { show(+t.dataset.i); tabs[0].click(); }); });
-    tabs.forEach(function (b) {
-      b.addEventListener('click', function () {
-        tabs.forEach(function (x) { x.classList.toggle('on', x === b); x.setAttribute('aria-selected', x === b); });
-        panes.forEach(function (p) { p.classList.toggle('on', p.dataset.pane === b.dataset.tab); });
+    var slides = $$('.vslide', v), thumbs = $$('.vthumb', v);
+    thumbs.forEach(function (t) {
+      t.addEventListener('click', function () {
+        var i = +t.dataset.i;
+        slides.forEach(function (s, k) { s.classList.toggle('on', k === i); });
+        thumbs.forEach(function (x, k) { x.classList.toggle('on', k === i); });
       });
-    });
-    /* screeny */
-    (v.dataset.shots || '').split(',').forEach(function (src, i) {
-      var im = new Image();
-      im.onload = function () {
-        if (!im.naturalWidth) return;
-        slides[i].innerHTML = '';
-        im.alt = 'Screen ' + (i + 1); im.loading = 'lazy'; im.decoding = 'async';
-        slides[i].appendChild(im); slides[i].classList.add('real');
-        thumbs[i].style.backgroundImage = 'url(' + src + ')'; thumbs[i].classList.add('real');
-        if (i === 0 && tag) tag.classList.add('off');
-      };
-      im.src = src;
-    });
-    /* wideo */
-    var play = $('.play', v), poster = $('.vposter', v), vsrc = v.dataset.video, ready = false;
-    if (vsrc && window.fetch) {
-      fetch(vsrc, { method: 'HEAD' }).then(function (r) {
-        var ct = r.headers.get('content-type') || '';
-        if (r.ok && /^video\//.test(ct)) ready = true;
-      }).catch(function () {});
-    }
-    if (play) play.addEventListener('click', function () {
-      if (!ready) { say('Film pojawi się wkrótce. Zapisz się na listę, a dam znać o premierze.'); return; }
-      var el = document.createElement('video');
-      el.src = vsrc; el.controls = true; el.autoplay = true; el.playsInline = true; el.preload = 'metadata';
-      poster.appendChild(el); play.classList.add('gone');
     });
   });
 
@@ -980,6 +877,7 @@ dialog .src{font-size:.82rem;margin-top:1em}
   $$('[data-want]').forEach(function (b) {
     b.addEventListener('click', function () {
       if (b.dataset.want) $('#wApp').value = b.dataset.want;
+      $('#dWant h2').textContent = b.dataset.want ? 'Zapisz się na dostęp: ' + b.dataset.want : 'Zapisz się na dostęp';
       $('#wMsg').textContent = ''; $('#wMsg').className = 'msg';
       if (dW.showModal) dW.showModal();
       setTimeout(function () { $('#wName').focus(); }, 50);

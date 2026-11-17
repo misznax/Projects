@@ -431,3 +431,11 @@ dialog .src{font-size:.82rem;margin-top:1em}
 #wantF .hp{position:absolute;left:-9999px;opacity:0;height:0}
 .msg{min-height:1.3em;font-size:.9rem;font-weight:600}
 .msg.err{color:#b3412c}.msg.ok{color:var(--sea-700)}
+
+.vthumbs{grid-template-columns:repeat(var(--n,3),1fr)}
+.vthumb{aspect-ratio:16/10;padding:0;background-size:cover;background-position:center}
+.vthumb.anim{background:linear-gradient(135deg,var(--sea-800),var(--gr-800));align-items:center;justify-content:center;gap:.2em}
+.vthumb.anim span{font-size:1.2rem}
+.vslide img{object-fit:contain;background:#0b1a1f}
+.price{font-size:.95rem;margin:-.4em 0 1.1em;padding:.5em .9em;border-radius:12px;background:rgba(255,193,90,.16);color:#6a3d00;font-weight:600}
+.vthumb em{display:block}

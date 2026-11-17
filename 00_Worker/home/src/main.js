@@ -75,47 +75,15 @@
   var toast = $('#toast'), tt;
   function say(m) { toast.textContent = m; toast.classList.add('show'); clearTimeout(tt); tt = setTimeout(function () { toast.classList.remove('show'); }, 4200); }
 
-  /* przeglądarka mediów: zakładki, miniatury, prawdziwe screeny/wideo gdy pliki istnieją */
+  /* galeria ekranów */
   $$('.viewer').forEach(function (v) {
-    var tabs = $$('.vtab', v), panes = $$('.vpane', v), slides = $$('.vslide', v), thumbs = $$('.vthumb', v), tag = $('.vtag', v);
-    function show(i) {
-      slides.forEach(function (s, k) { s.classList.toggle('on', k === i); });
-      thumbs.forEach(function (t, k) { t.classList.toggle('on', k === i); });
-      if (tag) tag.classList.toggle('off', slides[0].classList.contains('real') && i === 0 || slides[i].classList.contains('real'));
-    }
-    thumbs.forEach(function (t) { t.addEventListener('click', function () { show(+t.dataset.i); tabs[0].click(); }); });
-    tabs.forEach(function (b) {
-      b.addEventListener('click', function () {
-        tabs.forEach(function (x) { x.classList.toggle('on', x === b); x.setAttribute('aria-selected', x === b); });
-        panes.forEach(function (p) { p.classList.toggle('on', p.dataset.pane === b.dataset.tab); });
+    var slides = $$('.vslide', v), thumbs = $$('.vthumb', v);
+    thumbs.forEach(function (t) {
+      t.addEventListener('click', function () {
+        var i = +t.dataset.i;
+        slides.forEach(function (s, k) { s.classList.toggle('on', k === i); });
+        thumbs.forEach(function (x, k) { x.classList.toggle('on', k === i); });
       });
-    });
-    /* screeny */
-    (v.dataset.shots || '').split(',').forEach(function (src, i) {
-      var im = new Image();
-      im.onload = function () {
-        if (!im.naturalWidth) return;
-        slides[i].innerHTML = '';
-        im.alt = 'Screen ' + (i + 1); im.loading = 'lazy'; im.decoding = 'async';
-        slides[i].appendChild(im); slides[i].classList.add('real');
-        thumbs[i].style.backgroundImage = 'url(' + src + ')'; thumbs[i].classList.add('real');
-        if (i === 0 && tag) tag.classList.add('off');
-      };
-      im.src = src;
-    });
-    /* wideo */
-    var play = $('.play', v), poster = $('.vposter', v), vsrc = v.dataset.video, ready = false;
-    if (vsrc && window.fetch) {
-      fetch(vsrc, { method: 'HEAD' }).then(function (r) {
-        var ct = r.headers.get('content-type') || '';
-        if (r.ok && /^video\//.test(ct)) ready = true;
-      }).catch(function () {});
-    }
-    if (play) play.addEventListener('click', function () {
-      if (!ready) { say('Film pojawi się wkrótce. Zapisz się na listę, a dam znać o premierze.'); return; }
-      var el = document.createElement('video');
-      el.src = vsrc; el.controls = true; el.autoplay = true; el.playsInline = true; el.preload = 'metadata';
-      poster.appendChild(el); play.classList.add('gone');
     });
   });
 
@@ -124,6 +92,7 @@
   $$('[data-want]').forEach(function (b) {
     b.addEventListener('click', function () {
       if (b.dataset.want) $('#wApp').value = b.dataset.want;
+      $('#dWant h2').textContent = b.dataset.want ? 'Zapisz się na dostęp: ' + b.dataset.want : 'Zapisz się na dostęp';
       $('#wMsg').textContent = ''; $('#wMsg').className = 'msg';
       if (dW.showModal) dW.showModal();
       setTimeout(function () { $('#wName').focus(); }, 50);
