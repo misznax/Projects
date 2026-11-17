@@ -26,7 +26,7 @@ input,textarea,select{width:100%;margin:4px 0}
 <script>
 const GID='461701670960-b0ivbr1cktr8ocfbdaffpplmr09thc6j.apps.googleusercontent.com',gcid=()=>GID; // Client ID jest publiczny z założenia; stary zapis z Ustawień usuwany (powodował 401)
 try{localStorage.removeItem('gcid')}catch(e){}
-const $=s=>document.querySelector(s),cfg=k=>localStorage.getItem(k)||'',VER='v0.19';
+const $=s=>document.querySelector(s),cfg=k=>localStorage.getItem(k)||'',VER='v0.20';
 const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 const tm=s=>{s=Math.floor(s);const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60,p=n=>String(n).padStart(2,'0');return(h?h+':':'')+p(m)+':'+p(x)};
 const SYS='Jesteś asystentem studenta na wykładzie. Odpowiadaj po polsku, zwięźle, rzeczowo.';
@@ -123,8 +123,10 @@ async function cloud(c,blob){
 // ---------- Claude: notatki, autorzy, weryfikacja
 async function claude(p,{model='claude-haiku-5-5',web=0,max=1800}={}){
  const body={model,max_tokens:max,system:SYS,messages:[{role:'user',content:p}]};if(web)body.tools=[{type:'web_search_20250305',name:'web_search',max_uses:3}];
- const r=cap.claude?await fetch('/api/n/claude',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)})
-  :await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'x-api-key':cfg('ant'),'anthropic-version':'2023-06-01','content-type':'application/json','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify(body)});
+ const go1=()=>cap.claude?fetch('/api/n/claude',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)})
+  :fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'x-api-key':cfg('ant'),'anthropic-version':'2023-06-01','content-type':'application/json','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify(body)});
+ let r=null,er='';for(let t=0;t<3;t++){try{r=await go1();er=String(r.status);if(r.status<500&&r.status!==429)break}catch(e){r=null;er=e.message}if(t<2)await new Promise(z=>setTimeout(z,t?6000:2000))}
+ if(!r)throw new Error('połączenie z AI przerwane ('+er+') – sprawdź zasięg, nie blokuj ekranu i kliknij „Sporządź notatki” ponownie; dokończę od miejsca przerwania');
  if(!r.ok)throw new Error(r.status);return((await rj(r)).content||[]).filter(b=>b.type==='text').map(b=>typeof b.text==='string'?b.text:JSON.stringify(b.text)).join('')}
 const line=(u,r)=>`[${Math.floor(u.s)}] ${r==='Pytanie'?'PYTANIE':r==='Odpowiedź'?'ODPOWIEDŹ':'WYKŁADOWCA'}: ${u.t}`;
 const fixJson=s=>{let o='',q=0,e=0;for(const ch of s){if(q){if(e){e=0;o+=ch}else if(ch==='\\'){e=1;o+=ch}else if(ch==='"'){q=0;o+=ch}else if(ch==='\n')o+='\\n';else if(ch==='\r'||ch==='\t')o+=' ';else o+=ch}else{if(ch==='"')q=1;o+=ch}}return o};
@@ -135,7 +137,8 @@ const NP='Podziel transkrypt wykładu na tematyczne notatki (każda ok. 2–6 mi
 async function notes(force){if(!canAI()||!L)return;
  const R=roles(),fresh=L.utt.map((u,i)=>[u,R[i]]).filter(([u])=>!u.tmp&&u.s>=L.notedUntil);if(!fresh.length)return;
  const last=fresh[fresh.length-1][0],span=last.e-L.notedUntil;if(span<300&&!(force&&span>20))return;
- const B=[];let cur=[],ch=0;for(const x of fresh){const n=line(x[0],x[1]).length;if(cur.length&&(x[0].e-cur[0][0].s>480||ch+n>9000)){B.push(cur);cur=[];ch=0}cur.push(x);ch+=n}if(cur.length)B.push(cur);
+ const B=[];let cur=[],ch=0;for(const x of fresh){const n=line(x[0],x[1]).length;if(cur.length&&(x[0].e-cur[0][0].s>360||ch+n>7000)){B.push(cur);cur=[];ch=0}cur.push(x);ch+=n}if(cur.length)B.push(cur);
+ let wl=null;if(!S.rec)try{wl=await navigator.wakeLock.request('screen')}catch(e){}
  try{let k=0;for(const b of B){k++;const b0=b[0][0].s,b1=b[b.length-1][0].e;if(!force&&k===B.length&&b1-b0<300)break;
    if(B.length>1){S.msg=`✨ Notatki ${k}/${B.length}…`;render()}
    let a=null;for(let t=0;t<2&&!a;t++)a=parseNotes(await claude(NP+b.map(([u,r])=>line(u,r)).join('\n'),{max:2500}));
@@ -143,7 +146,7 @@ async function notes(force){if(!canAI()||!L)return;
    a.forEach(n=>{const cl=v=>Math.min(Math.max(v,b0),b1),x=+n.start_s,y=+n.end_s,st=Number.isFinite(x)?cl(x):b0,en=Number.isFinite(y)?cl(y):b1;
     L.notes.push({title:String(n.title),start:st,end:Math.max(en,st+1),summary:Array.isArray(n.summary)?n.summary.join('\n'):String(n.summary||'')})});
    L.notedUntil=b1;await saveL();render()}
-  if(/^✨/.test(S.msg||'')){S.msg='';render()}}catch(e){S.msg='Notatki: '+e.message;render()}}
+  if(/^✨/.test(S.msg||'')){S.msg='';render()}}catch(e){S.msg='Notatki: '+e.message;render()}finally{try{wl&&wl.release()}catch(e){}}}
 function delNote(i){const t=i<0?`wszystkie notatki (${L.notes.length})`:`notatkę „${esc(L.notes[i].title)}”`;dlg(`<h3>Usunąć ${t}?</h3><p class=mut>Tej operacji nie można cofnąć. Transkrypcja i nagrania zostają.</p><button class=r onclick="doDelNote(${i})">Tak, usuń</button> <button onclick="dlg()">Anuluj</button>`)}
 async function doDelNote(i){if(i<0){L.notes=[];L.notedUntil=0}else L.notes.splice(i,1);await saveL();dlg();render()}
 function delMenu(){dlg(`<h3>Usuń</h3>${L.notes.length?`<button class=r onclick="delNote(-1)">🗑 Wszystkie notatki (${L.notes.length})</button><br><br>`:''}<button class=r onclick="delLec(['${L.id}'])">🗑 Cały wykład (nagrania + tekst + notatki)</button><p class=mut>Pojedynczą notatkę usuniesz przyciskiem 🗑 pod nią.</p><button onclick="dlg()">Zamknij</button>`)}
@@ -244,7 +247,7 @@ function denoise(x,alpha=1.3,floor=0.12){const n=x.length,nf=Math.ceil(n/FH)+1,S
  return out}
 
 async function toMp3(l,prog,o={}){await loadJS(LAME);const ctx=new(window.AudioContext||window.webkitAudioContext)(),sr=ctx.sampleRate,out=[],enc=new lamejs.Mp3Encoder(1,sr,64),z=new Int16Array(1152),W=Math.round(sr*0.05),proc=o.cut||o.boost,yl=()=>new Promise(r=>setTimeout(r,0));
- let ok=0,skip=0,total=0,pend=[],long=false,gs=1,thr=0.003;
+ let ok=0,skip=0,total=0,pend=[],long=false,gs=1,thr=0.003;const CH=l.chunks.filter(c=>!o.rng||(c.start+c.dur>o.rng[0]&&c.start<o.rng[1]));if(!CH.length)throw new Error('w tym zakresie nie ma nagrania');
  const emit=pcm=>{for(let i=0;i<pcm.length;i+=1152){const m=enc.encodeBuffer(pcm.subarray(i,i+1152));if(m.length)out.push(m)}total+=pcm.length};
  const sil=sec=>{for(let n=Math.round(sec*sr);n>0;n-=1152)emit(z.subarray(0,Math.min(1152,n)))};
  const dec=async c=>{const b=await tx('chunk','readonly',s=>s.get(l.id+':'+c.i));if(!b)return null;try{const ab=await b.arrayBuffer();return await new Promise((res,rej)=>{const p=ctx.decodeAudioData(ab,res,rej);p&&p.catch&&p.catch(rej)})}catch(e){return null}};
@@ -252,25 +255,34 @@ async function toMp3(l,prog,o={}){await loadJS(LAME);const ctx=new(window.AudioC
  const rms=(f,i,e)=>{let s=0;for(let j=i;j<e;j++)s+=f[j]*f[j];return Math.sqrt(s/(e-i))};
  const flush=()=>{if(long)for(let i=0;i<5;i++)emit(pend[i]);else for(const p of pend)emit(p);pend=[];long=false};
  try{
-  if(proc){const R=[];for(const[k,c]of l.chunks.entries()){prog(k+1,l.chunks.length,'Analiza');const buf=await dec(c);if(buf){const f=mono(buf);for(let i=0;i<f.length;i+=W)R.push(rms(f,i,Math.min(f.length,i+W)))}await yl()}
+  if(proc){const R=[];for(const[k,c]of CH.entries()){prog(k+1,CH.length,'Analiza');const buf=await dec(c);if(buf){const f=mono(buf);for(let i=0;i<f.length;i+=W)R.push(rms(f,i,Math.min(f.length,i+W)))}await yl()}
    const q=R.filter(x=>x>1e-5).sort((a,b)=>a-b);if(q.length){const p10=q[Math.floor(q.length*0.1)],p90=q[Math.floor(q.length*0.9)];thr=Math.max(0.0015,Math.min(p10*1.6,p90*0.4))}}
-  for(const[k,c]of l.chunks.entries()){prog(k+1,l.chunks.length,o.denoise?'Czyszczenie + MP3':'MP3');const buf=await dec(c);
-   if(!buf){skip++;if(!o.cut)sil(c.dur);continue}
-   const fo=mono(buf),n=fo.length,f=o.denoise?denoise(fo):fo;
+  for(const[k,c]of CH.entries()){prog(k+1,CH.length,o.denoise?'Czyszczenie + MP3':'MP3');const buf=await dec(c);
+   if(!buf){skip++;if(!o.cut)sil(o.rng?Math.max(0,Math.min(c.start+c.dur,o.rng[1])-Math.max(c.start,o.rng[0])):c.dur);continue}
+   const fm=mono(buf);let a0=0,a1=fm.length,part=false;if(o.rng){a0=Math.max(0,Math.round((o.rng[0]-c.start)*sr));a1=Math.min(fm.length,Math.round((o.rng[1]-c.start)*sr));part=a0>0||a1<fm.length;if(a1-a0<W)continue}
+   const fo=part?fm.subarray(a0,a1):fm,n=fo.length,f=o.denoise?denoise(fo):fo;
    for(let i=0;i<n;i+=W){const e=Math.min(n,i+W),m=e-i,r=rms(f,i,e),loud=(o.denoise?rms(fo,i,e):r)>=thr;let g=1;if(o.boost&&loud)g=Math.max(1,Math.min(8,0.08/Math.max(r,1e-4)));
     const g0=gs;gs=g<gs?gs+(g-gs)*0.5:gs+(g-gs)*0.12;const w=new Int16Array(m);
     for(let j=0;j<m;j++){let v=f[i+j]*(g0+(gs-g0)*j/m);if(o.boost){if(v>0.8)v=0.8+0.2*Math.tanh((v-0.8)/0.2);else if(v<-0.8)v=-0.8-0.2*Math.tanh((-v-0.8)/0.2)}w[j]=Math.max(-1,Math.min(1,v))*32767}
     if(o.cut&&!loud){if(pend.length<14)pend.push(w);if(pend.length>=14)long=true}else{if(pend.length)flush();emit(w)}}
-   if(!o.cut){const gap=c.dur-n/sr;if(gap>0.2)sil(gap)}ok++;await yl()}
+   if(!o.cut&&!part){const gap=c.dur-n/sr;if(gap>0.2)sil(gap)}ok++;await yl()}
   if(pend.length)flush();
   if(!ok)throw new Error('ta przeglądarka nie odczytuje tych nagrań (webm) – użyj ZIP z surowymi plikami');
   out.push(enc.flush());return{blob:new Blob(out,{type:'audio/mpeg'}),skip,secs:total/sr}}finally{try{ctx.close()}catch(e){}}}
-function mp3Dlg(one){dlg(`<h3>🧹 Oczyść dźwięk i eksportuj MP3</h3><label style="display:flex;gap:8px;align-items:center"><input type=checkbox style="width:auto" ${S.dn===false?'':'checked'} onchange="S.dn=this.checked"> 🧹 Usuń szum tła (szum sali, buczenie, szum nagrania)</label><br><label style="display:flex;gap:8px;align-items:center"><input type=checkbox style="width:auto" ${S.cut===false?'':'checked'} onchange="S.cut=this.checked"> ✂ Usuń ciszę (pauzy dłuższe niż 0,7 s skracam do 0,25 s)</label><br><label style="display:flex;gap:8px;align-items:center"><input type=checkbox style="width:auto" ${S.boost===false?'':'checked'} onchange="S.boost=this.checked"> 🔊 Wzmocnij ciche fragmenty (do ×8, szumu w pauzach nie podbijam)</label><p class=mut>Po usunięciu ciszy czas w pliku nie zgadza się z godzinami w transkrypcji. Przy kilku godzinach nagrania obróbka potrwa kilka minut (odszumianie najdłużej), nie zamykaj strony i nie blokuj ekranu.</p><button class=p onclick="dlg();mp3Go(${one?1:0})">🎧 Eksportuj MP3</button> <button onclick="dlg()">Anuluj</button>`)}
-async function mp3Go(one){const ls=one?[L]:picked();if(!ls.length)return;const o={cut:S.cut!==false,boost:S.boost!==false,denoise:S.dn!==false};try{let z=null,sk=0,secs=0,orig=0;if(ls.length>1){await loadJS('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');z=new JSZip()}
- for(const[k,l]of ls.entries()){const{blob,skip,secs:sc}=await toMp3(l,(a,b,ph)=>{S.msg=`${ph||'MP3'}${ls.length>1?` (wykład ${k+1}/${ls.length})`:''}: ${a}/${b}`;render()},o);sk+=skip;secs+=sc;orig+=dur(l);const name=safe(l.title)+'_'+new Date(l.date).toISOString().slice(0,10)+'.mp3';
+const pt=v=>{const a=String(v).trim().split(':').map(x=>x.trim()===''?NaN:Number(x.replace(',','.')));return a.length>3||a.some(x=>!Number.isFinite(x)||x<0)?NaN:a.reduce((q,x)=>q*60+x,0)};
+function zrPick(v){if(v==='c')return;const d=dur(L),[a,b]=v?v.split(',').map(Number):[0,d];S.zf=tm(a);S.zt=tm(Math.min(b,d));$('#zf').value=S.zf;$('#zt').value=S.zt}
+function zrNow(w){const v=tm(A.t||0);S[w]=v;$('#'+w).value=v;$('#zs').value='c'}
+function mp3Dlg(one){let zr='';if(one&&L){const d=dur(L);if(S.zl!==L.id){S.zl=L.id;S.zf='0:00';S.zt=tm(d)}const ps=P();
+  zr=`<div style="margin-top:12px"><b>Zakres do eksportu</b><select id=zs onchange="zrPick(this.value)" style="width:100%;margin:6px 0"><option value="">Cały wykład (${tm(d)})</option><option value=c>Własny fragment (wpisz poniżej)</option>${ps.length>1?ps.map((x,i)=>`<option value="${x.start},${i+1<ps.length?ps[i+1].start:d}">📌 ${esc(x.name)} (${tm(x.start)}–${tm(i+1<ps.length?ps[i+1].start:d)})</option>`).join(''):''}${L.notes.map(n=>`<option value="${n.start},${n.end}">📝 ${esc(n.title).slice(0,40)} (${tm(n.start)}–${tm(n.end)})</option>`).join('')}</select>
+  <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">Od <input id=zf value="${S.zf}" oninput="S.zf=this.value;zs.value='c'" style="width:84px"> <button class=s onclick="zrNow('zf')">⏱ z odtwarzacza</button></div>
+  <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:6px">Do <input id=zt value="${S.zt}" oninput="S.zt=this.value;zs.value='c'" style="width:84px"> <button class=s onclick="zrNow('zt')">⏱ z odtwarzacza</button></div><p class=mut>Format 1:30 albo 1:02:03. Obróbka dotyczy tylko wybranego zakresu, więc krótki fragment liczy się w sekundach. Przycisk „z odtwarzacza” bierze pozycję, na której zatrzymałeś odtwarzacz.</p></div>`}
+ dlg(`<h3>🧹 Oczyść dźwięk i eksportuj MP3</h3>${zr}<br><label style="display:flex;gap:8px;align-items:center"><input type=checkbox style="width:auto" ${S.dn===false?'':'checked'} onchange="S.dn=this.checked"> 🧹 Usuń szum tła (szum sali, buczenie, szum nagrania)</label><br><label style="display:flex;gap:8px;align-items:center"><input type=checkbox style="width:auto" ${S.cut===false?'':'checked'} onchange="S.cut=this.checked"> ✂ Usuń ciszę (pauzy dłuższe niż 0,7 s skracam do 0,25 s)</label><br><label style="display:flex;gap:8px;align-items:center"><input type=checkbox style="width:auto" ${S.boost===false?'':'checked'} onchange="S.boost=this.checked"> 🔊 Wzmocnij ciche fragmenty (do ×8, szumu w pauzach nie podbijam)</label><p class=mut>Po usunięciu ciszy czas w pliku nie zgadza się z godzinami w transkrypcji. Przy kilku godzinach nagrania obróbka potrwa kilka minut (odszumianie najdłużej), nie zamykaj strony i nie blokuj ekranu.</p><button class=p onclick="dlg();mp3Go(${one?1:0})">🎧 Eksportuj MP3</button> <button onclick="dlg()">Anuluj</button>`)}
+async function mp3Go(one){const ls=one?[L]:picked();if(!ls.length)return;const o={cut:S.cut!==false,boost:S.boost!==false,denoise:S.dn!==false};let sfx='',span=0;try{if(one){const d=dur(L),a=pt(S.zf??'0:00'),b=pt(S.zt??tm(d));if(!(a>=0&&b>a))throw new Error('zły zakres – wpisz Od i Do w formacie 1:30');const a2=Math.min(a,d),b2=Math.min(b,d);if(b2-a2<1)throw new Error('zakres poza nagraniem (wykład trwa '+tm(d)+')');if(a2>0.5||b2<d-0.5){o.rng=[a2,b2];span=b2-a2;sfx='_'+tm(a2).replace(/:/g,'-')+'_'+tm(b2).replace(/:/g,'-')}}
+ let z=null,sk=0,secs=0,orig=0;if(ls.length>1){await loadJS('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');z=new JSZip()}
+ for(const[k,l]of ls.entries()){const{blob,skip,secs:sc}=await toMp3(l,(a,b,ph)=>{S.msg=`${ph||'MP3'}${ls.length>1?` (wykład ${k+1}/${ls.length})`:''}: ${a}/${b}`;render()},o);sk+=skip;secs+=sc;orig+=o.rng?span:dur(l);const name=safe(l.title)+'_'+new Date(l.date).toISOString().slice(0,10)+sfx+'.mp3';
   if(z)z.file(String(k+1).padStart(2,'0')+'_'+name,blob,{compression:'STORE'});else dl(blob,name)}
  if(z)dl(await z.generateAsync({type:'blob',streamFiles:true}),'notatnik_mp3_'+stamp()+'.zip');
- S.msg='✅ MP3 gotowe (sprawdź Pobrane)'+(o.cut?` · ${tm(orig)} → ${tm(secs)} po usunięciu ciszy`:'')+(sk?` · uwaga: ${sk} kawałków 30 s było nieczytelnych`+(o.cut?'':' (zastąpione ciszą)'):'')}catch(e){S.msg='MP3: '+e.message}render()}
+ S.msg='✅ MP3 gotowe (sprawdź Pobrane)'+(o.rng?` · fragment ${tm(o.rng[0])}–${tm(o.rng[1])}`:'')+(o.cut?` · ${tm(orig)} → ${tm(secs)} po usunięciu ciszy`:'')+(sk?` · uwaga: ${sk} kawałków 30 s było nieczytelnych`+(o.cut?'':' (zastąpione ciszą)'):'')}catch(e){S.msg='MP3: '+e.message}render()}
 async function diag(){const l=L,idx=new Set(l.chunks.map(c=>c.i)),mx=Math.max(-1,...idx),miss=[],nof=[];let sz=0;for(let i=0;i<=mx;i++)if(!idx.has(i))miss.push(i+1);
  for(const c of l.chunks){const b=await tx('chunk','readonly',s=>s.get(l.id+':'+c.i));if(b)sz+=b.size;else nof.push(c.i+1)}
  const tl=dur(l),last=l.utt.length?Math.max(...l.utt.map(u=>u.e||u.s)):0,pv=l.utt.filter(u=>u.tmp),out=pv.filter(u=>!l.chunks.some(c=>u.s>=c.start-1&&u.s<c.start+c.dur+1)),W=[];
