@@ -1,0 +1,1024 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Aplikacje, które oszczędzają Twój czas — Michał Rzekiecki</title>
+<meta name="description" content="Pięć gotowych aplikacji: start dnia, nawyki, streszczenia wideo, notatki z wykładów i anatomia 3D. Sprawdź demo w przeglądarce i zapisz się na listę chętnych.">
+<meta name="theme-color" content="#031a20">
+<meta property="og:title" content="Aplikacje, które oszczędzają Twój czas">
+<meta property="og:description" content="Gotowe narzędzia po polsku. Demo online, zapis na listę chętnych.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='12' fill='%2314b8a6'/%3E%3Cpath d='M7 24c4-7 7-7 10 0s6 7 10 0c1.4-3 3-4 6-3' fill='none' stroke='%23fff' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+<script>document.documentElement.classList.add('js')</script>
+<style>
+/* ───── Zmienne: turkus (morze) + grafit + bursztyn (tylko CTA) ───── */
+:root{
+  --sea-950:#03181d;--sea-900:#062a32;--sea-800:#0a3f4a;--sea-700:#0d5a66;--sea-600:#0f766e;
+  --sea-500:#14b8a6;--sea-400:#2dd4bf;--sea-300:#5eead4;--sea-200:#99f6e4;--sea-100:#ccfbf1;
+  --foam:#f1fbfa;--ink:#0d1b20;--mute:#4a5f66;--line:#d3e7e4;
+  --gr-900:#0d1619;--gr-800:#142126;--gr-700:#1c2e35;--gr-600:#2a3f48;
+  --amber-1:#ffc15a;--amber-2:#ff8f1f;
+  --r:30px;
+  --shadow:0 40px 70px -40px rgba(6,42,50,.45),0 12px 28px -16px rgba(6,42,50,.2);
+  --font:"Inter","Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{margin:0;font-family:var(--font);color:var(--ink);background:var(--foam);line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+img,svg,video{max-width:100%;display:block}
+a{color:inherit}
+h1,h2,h3,p,ul,ol,dl,dd{margin:0}
+.wrap{width:min(1200px,calc(100% - 40px));margin-inline:auto}
+.wrap.narrow{width:min(820px,calc(100% - 40px))}
+:focus-visible{outline:3px solid var(--amber-1);outline-offset:3px;border-radius:10px}
+.skip{position:absolute;left:-999px;top:8px;background:#fff;color:#000;padding:.6em 1em;border-radius:8px;z-index:100}
+.skip:focus{left:8px}
+button{font:inherit;color:inherit}
+
+/* ───── Przyciski ───── */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:.55em;padding:.9em 1.45em;border-radius:999px;font-weight:700;font-size:1rem;line-height:1.1;text-decoration:none;border:0;cursor:pointer;transition:transform .2s,box-shadow .25s,background .2s,border-color .2s;white-space:nowrap}
+.btn svg{width:1.15em;height:1.15em;flex:none;transition:transform .2s}
+.btn:hover svg{transform:translateX(3px)}
+.btn:active{transform:scale(.97)}
+.btn-lg{padding:1.05em 1.8em;font-size:1.08rem}
+.btn-sm{padding:.7em 1.2em;font-size:.92rem}
+.btn-cta{color:#1d1204;background:linear-gradient(135deg,var(--amber-1),var(--amber-2));box-shadow:0 12px 30px -10px rgba(255,143,31,.7),inset 0 1px 0 rgba(255,255,255,.55);position:relative;overflow:hidden;isolation:isolate}
+.btn-cta::after{content:"";position:absolute;inset:0;background:linear-gradient(105deg,transparent 35%,rgba(255,255,255,.6) 50%,transparent 65%);transform:translateX(-120%);animation:shine 4.5s ease-in-out infinite;z-index:-1}
+.btn-cta:hover{transform:translateY(-2px);box-shadow:0 18px 38px -10px rgba(255,143,31,.85),inset 0 1px 0 rgba(255,255,255,.6)}
+.btn-ghost{color:#fff;background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.3);backdrop-filter:blur(8px)}
+.btn-ghost:hover{background:rgba(255,255,255,.18);transform:translateY(-2px)}
+.btn-line{color:var(--sea-700);background:transparent;border:1.6px solid var(--sea-500)}
+.btn-line:hover{background:var(--sea-500);color:#fff;transform:translateY(-2px)}
+@keyframes shine{0%,55%{transform:translateX(-120%)}100%{transform:translateX(120%)}}
+
+/* ───── Nawigacja ───── */
+.nav{position:fixed;inset:0 0 auto 0;z-index:50;padding:18px 0;transition:background .3s,box-shadow .3s,padding .3s}
+.nav.solid{background:rgba(3,26,32,.8);backdrop-filter:blur(16px) saturate(150%);box-shadow:0 1px 0 rgba(255,255,255,.08);padding:10px 0}
+.nav .wrap{display:flex;align-items:center;gap:22px}
+.brand{display:flex;align-items:center;gap:12px;text-decoration:none;color:#fff;font-weight:800;letter-spacing:-.01em;line-height:1.1}
+.brand svg{width:40px;height:40px;flex:none}
+.brand small{display:block;font-weight:500;font-size:.68rem;opacity:.7;letter-spacing:.09em;text-transform:uppercase;margin-top:2px}
+.nav ul{display:flex;gap:4px;list-style:none;padding:0;margin:0 auto 0 14px}
+.nav li a{display:block;color:rgba(255,255,255,.85);text-decoration:none;padding:.5em .95em;border-radius:99px;font-weight:600;font-size:.95rem;transition:background .2s,color .2s}
+.nav li a:hover{background:rgba(255,255,255,.12);color:#fff}
+.nav>.wrap>.btn{margin-left:auto}
+.nav ul + .btn{margin-left:0}
+
+/* ───── HERO ───── */
+.hero{position:relative;color:#fff;padding:150px 0 190px;overflow:hidden;isolation:isolate;
+  background:
+   radial-gradient(900px 520px at 88% 8%,rgba(45,212,191,.5),transparent 62%),
+   radial-gradient(700px 520px at 0% 100%,rgba(20,184,166,.32),transparent 62%),
+   linear-gradient(135deg,#021419 0%,#06343e 42%,#0a6b6d 78%,#12a79c 100%)}
+.hero::before{content:"";position:absolute;inset:0;z-index:-1;opacity:.16;mix-blend-mode:overlay;pointer-events:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+.grid-bg{position:absolute;inset:0;z-index:-1;opacity:.5;pointer-events:none;
+  background-image:linear-gradient(rgba(255,255,255,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.06) 1px,transparent 1px);
+  background-size:56px 56px;-webkit-mask-image:radial-gradient(70% 70% at 70% 30%,#000,transparent 75%);mask-image:radial-gradient(70% 70% at 70% 30%,#000,transparent 75%)}
+.blob{position:absolute;border-radius:50%;filter:blur(70px);opacity:.55;z-index:-1;pointer-events:none;animation:drift 18s ease-in-out infinite}
+.hero .b1{width:420px;height:420px;background:#2dd4bf;top:-120px;right:6%}
+.hero .b2{width:360px;height:360px;background:#0f766e;bottom:8%;left:-80px;animation-delay:-6s}
+.hero .b3{width:260px;height:260px;background:#5eead4;top:38%;left:42%;opacity:.22;animation-delay:-11s}
+@keyframes drift{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(40px,-30px) scale(1.08)}66%{transform:translate(-30px,34px) scale(.94)}}
+.hero-in{display:grid;grid-template-columns:1.02fr .98fr;gap:56px;align-items:center}
+.chip{display:inline-flex;align-items:center;gap:.6em;padding:.45em 1em;border-radius:99px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.22);backdrop-filter:blur(8px);font-size:.88rem;font-weight:600;color:#d9fbf5}
+.live{width:.6em;height:.6em;border-radius:50%;background:var(--sea-300);box-shadow:0 0 0 0 rgba(94,234,212,.7);animation:ping 2s infinite}
+@keyframes ping{70%{box-shadow:0 0 0 .7em rgba(94,234,212,0)}100%{box-shadow:0 0 0 0 rgba(94,234,212,0)}}
+.hero h1{font-size:clamp(2.5rem,5.3vw,4.7rem);line-height:1.02;letter-spacing:-.04em;font-weight:800;margin:.5em 0 .45em}
+.hero h1 em,.sec-head em,.final h2 em{font-style:normal;background:linear-gradient(95deg,var(--sea-200),#fff 55%,#ffd9a0);-webkit-background-clip:text;background-clip:text;color:transparent}
+.sub{font-size:clamp(1.05rem,1.5vw,1.25rem);color:#cdeeea;max-width:34em;line-height:1.55}
+.hero .cta-row{margin-top:2em}
+.cta-row{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.cta-row.center{justify-content:center}
+.trust{list-style:none;padding:0;margin-top:1.8em;display:flex;flex-wrap:wrap;gap:10px 26px;color:#bfe7e1;font-size:.95rem;font-weight:500}
+.trust li{display:flex;align-items:center;gap:.5em}
+.trust svg{width:1.25em;color:var(--sea-300)}
+.stats{display:flex;gap:clamp(18px,3.4vw,44px);margin-top:2.4em;padding-top:1.6em;border-top:1px solid rgba(255,255,255,.15)}
+.stats dt{font-size:clamp(1.8rem,3vw,2.6rem);font-weight:800;letter-spacing:-.03em;line-height:1;background:linear-gradient(180deg,#fff,var(--sea-200));-webkit-background-clip:text;background-clip:text;color:transparent;font-variant-numeric:tabular-nums}
+.stats dd{font-size:.85rem;color:#a6d8d2;margin-top:.4em}
+
+/* wizualizacja w hero (3D tilt) */
+.stage{perspective:1400px;position:relative}
+.stage-in{position:relative;transform-style:preserve-3d;transition:transform .25s ease-out;will-change:transform}
+.hero-mock{position:relative;aspect-ratio:16/10.4;container-type:inline-size;border-radius:22px;overflow:hidden;
+  box-shadow:0 60px 90px -30px rgba(0,0,0,.65),0 0 0 1px rgba(255,255,255,.14),0 0 80px -10px rgba(45,212,191,.35);transform:translateZ(0)}
+.float{position:absolute;z-index:3;transform:translateZ(70px)}
+.f1{top:-28px;right:-18px;animation:bob 6s ease-in-out infinite}
+.f2{bottom:-34px;left:-30px;animation:bob 7s ease-in-out -2.5s infinite}
+@keyframes bob{0%,100%{translate:0 0}50%{translate:0 -12px}}
+.mini{display:flex;align-items:center;gap:12px;padding:12px 16px;border-radius:18px;background:rgba(255,255,255,.92);color:var(--ink);box-shadow:0 24px 40px -16px rgba(0,0,0,.5);backdrop-filter:blur(12px);font-size:14px;line-height:1.25}
+.mini small{display:block;color:var(--mute);font-size:.75em}
+.mini b{font-size:1em}
+.mini.reccard{flex-direction:column;align-items:stretch;background:rgba(10,28,34,.92);color:#e6f2f1;min-width:210px;gap:8px;border:1px solid rgba(94,234,212,.3)}
+
+/* fale */
+.waves{position:absolute;left:0;bottom:-1px;width:100%;height:clamp(70px,11vw,150px);z-index:2;overflow:visible}
+.waves path{animation:wave linear infinite;transform-box:fill-box}
+.waves .w1{fill:rgba(255,255,255,.14);animation-duration:28s}
+.waves .w2{fill:rgba(241,251,250,.45);animation-duration:20s;animation-direction:reverse}
+.waves .w3{fill:var(--foam);animation-duration:34s}
+@keyframes wave{to{transform:translateX(-50%)}}
+.waves path{width:200%}
+
+/* pasek */
+.ticker{background:linear-gradient(90deg,var(--gr-900),var(--gr-700),var(--gr-900));color:#bfe7e1;overflow:hidden;white-space:nowrap;padding:13px 0;position:relative;z-index:3;margin-top:-1px}
+.ticker .track{display:inline-flex;gap:0;animation:marq 38s linear infinite}
+.ticker span{font-size:.82rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;padding:0 26px;position:relative}
+.ticker span::after{content:"";position:absolute;right:-3px;top:50%;width:6px;height:6px;border-radius:50%;background:var(--sea-400);transform:translateY(-50%)}
+@keyframes marq{to{transform:translateX(-50%)}}
+
+/* ───── Sekcje ogólne ───── */
+.sec-head{text-align:center;max-width:760px;margin:0 auto 46px}
+.eyebrow{display:inline-block;font-size:.8rem;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--sea-600);background:rgba(20,184,166,.12);padding:.4em 1em;border-radius:99px;margin-bottom:1.1em}
+.sec-head.light .eyebrow{color:var(--sea-300);background:rgba(94,234,212,.12)}
+.sec-head h2{font-size:clamp(1.9rem,3.8vw,3rem);line-height:1.1;letter-spacing:-.03em;font-weight:800}
+.sec-head em{background:linear-gradient(95deg,var(--sea-600),var(--sea-400));-webkit-background-clip:text;background-clip:text;color:transparent}
+.sec-head.light em{background:linear-gradient(95deg,var(--sea-200),#fff);-webkit-background-clip:text;background-clip:text;color:transparent}
+.sec-head p{margin-top:1em;color:var(--mute);font-size:1.1rem}
+.sec-head.light h2{color:#fff}
+
+/* reveal */
+.js .reveal{opacity:0;transform:translateY(34px);transition:opacity .8s cubic-bezier(.2,.7,.2,1),transform .8s cubic-bezier(.2,.7,.2,1)}
+.js .reveal.in{opacity:1;transform:none}
+.js .steps .reveal:nth-child(2),.js .tiles .reveal:nth-child(2){transition-delay:.1s}
+.js .steps .reveal:nth-child(3),.js .tiles .reveal:nth-child(3){transition-delay:.2s}
+.js .tiles .reveal:nth-child(4){transition-delay:.3s}
+
+/* ───── Aplikacje ───── */
+.apps{padding:70px 0 100px;position:relative;background:
+  radial-gradient(700px 420px at 100% 0,rgba(45,212,191,.14),transparent 60%),
+  radial-gradient(600px 400px at 0 55%,rgba(20,184,166,.10),transparent 60%),var(--foam)}
+.pills{position:sticky;top:78px;z-index:30;display:flex;gap:6px;overflow-x:auto;padding:7px;border-radius:99px;background:rgba(255,255,255,.82);backdrop-filter:blur(14px) saturate(160%);border:1px solid var(--line);box-shadow:0 12px 30px -18px rgba(6,42,50,.4);width:max-content;max-width:100%;margin:0 auto 46px;scrollbar-width:none}
+.pills::-webkit-scrollbar{display:none}
+.pills a{display:flex;align-items:center;gap:.55em;padding:.55em 1.05em;border-radius:99px;text-decoration:none;font-weight:700;font-size:.9rem;color:var(--mute);white-space:nowrap;transition:background .25s,color .25s}
+.pills a b{font-size:.72rem;color:var(--sea-600);background:rgba(20,184,166,.14);border-radius:99px;padding:.15em .6em}
+.pills a:hover{background:rgba(20,184,166,.1);color:var(--sea-700)}
+.pills a.on{background:linear-gradient(135deg,var(--sea-600),var(--sea-500));color:#fff}
+.pills a.on b{background:rgba(255,255,255,.22);color:#fff}
+
+.app{position:relative;display:grid;grid-template-columns:1.12fr .88fr;gap:clamp(24px,4vw,56px);align-items:center;padding:clamp(18px,3vw,36px);border-radius:38px;background:#fff;border:1px solid var(--line);box-shadow:var(--shadow);margin-bottom:34px;scroll-margin-top:150px;overflow:hidden}
+.app.flip .media{order:2}
+.app::before{content:"";position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .35s;background:radial-gradient(520px circle at var(--mx,50%) var(--my,0%),rgba(45,212,191,.16),transparent 62%)}
+.app:hover::before{opacity:1}
+.kicker{display:flex;align-items:center;gap:.7em;font-size:.82rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--sea-600)}
+.num{display:inline-grid;place-items:center;min-width:2.4em;height:2.4em;padding:0 .5em;border-radius:12px;background:linear-gradient(135deg,var(--sea-600),var(--sea-400));color:#fff;letter-spacing:.02em;font-size:.95em}
+.copy h3{font-size:clamp(1.9rem,3.4vw,2.8rem);line-height:1.05;letter-spacing:-.035em;font-weight:800;margin:.35em 0 .3em}
+.lead{font-size:1.12rem;color:var(--ink);font-weight:500;line-height:1.5}
+.pr{display:grid;gap:12px;margin:1.4em 0 1.2em}
+.pr>div{padding:.9em 1.1em;border-radius:16px;background:var(--foam);border:1px solid var(--line)}
+.pr p{color:var(--mute);font-size:.98rem;margin-top:.35em}
+.lbl{display:inline-block;font-size:.72rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase;padding:.2em .7em;border-radius:99px}
+.lbl.p{background:#fde9e5;color:#b3412c}
+.lbl.s{background:rgba(20,184,166,.16);color:var(--sea-700)}
+.ben{list-style:none;padding:0;display:grid;gap:.6em;margin-bottom:1.2em}
+.ben li{display:flex;gap:.7em;align-items:flex-start;font-size:.98rem;font-weight:500}
+.ben svg{flex:none;width:1.35em;height:1.35em;margin-top:.15em;padding:.22em;border-radius:50%;background:var(--sea-500);color:#fff}
+.road{font-size:.88rem;color:var(--mute);margin:-.4em 0 1.1em;padding:.5em .9em;border:1px dashed var(--sea-400);border-radius:12px;background:rgba(45,212,191,.07)}
+.road b{color:var(--sea-700)}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:1.5em}
+.chips span{font-size:.78rem;font-weight:700;color:var(--gr-600);background:#eef4f3;border:1px solid var(--line);padding:.3em .85em;border-radius:99px}
+
+/* przeglądarka mediów */
+.viewer{border-radius:26px;padding:14px;background:linear-gradient(150deg,var(--sea-900),var(--gr-800));box-shadow:0 30px 50px -30px rgba(3,24,29,.8),inset 0 0 0 1px rgba(255,255,255,.07)}
+.vtabs{display:flex;gap:6px;margin-bottom:12px}
+.vtab{display:inline-flex;align-items:center;gap:.4em;padding:.5em 1.1em;border-radius:99px;border:0;background:rgba(255,255,255,.07);color:#a8d4cf;font-weight:700;font-size:.85rem;cursor:pointer;transition:background .2s,color .2s}
+.vtab svg{width:.9em;height:.9em}
+.vtab:hover{background:rgba(255,255,255,.14)}
+.vtab.on{background:var(--sea-400);color:var(--sea-950)}
+.vstage{position:relative;aspect-ratio:16/10;border-radius:16px;overflow:hidden;background:#0b1a1f;container-type:inline-size}
+.vpane{position:absolute;inset:0;opacity:0;pointer-events:none;transition:opacity .35s}
+.vpane.on{opacity:1;pointer-events:auto}
+.vslide{position:absolute;inset:0;opacity:0;transition:opacity .45s;pointer-events:none}
+.vslide.on{opacity:1;pointer-events:auto}
+.vslide img,.vslide video{width:100%;height:100%;object-fit:cover}
+.vtag{margin-left:auto;align-self:center;font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.45);padding:.2em .2em;pointer-events:none}
+.vtag.off{display:none}
+.vposter{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.3em;text-align:center;color:#fff;background:radial-gradient(90% 90% at 30% 20%,rgba(45,212,191,.45),transparent 60%),linear-gradient(135deg,var(--sea-800),var(--gr-900))}
+.vposter b{font-size:clamp(1.3rem,3.6cqw,2.1rem);letter-spacing:-.02em;margin-top:2.5em}
+.vposter span{font-size:.85rem;color:#a8d4cf}
+.vposter video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#000}
+.play{position:absolute;left:50%;top:44%;translate:-50% -50%;width:74px;height:74px;border-radius:50%;border:0;cursor:pointer;color:var(--sea-950);background:linear-gradient(135deg,var(--amber-1),var(--amber-2));box-shadow:0 0 0 0 rgba(255,193,90,.6),0 14px 30px -8px rgba(255,143,31,.7);display:grid;place-items:center;transition:transform .2s;animation:ping2 2.4s infinite}
+.play svg{width:30px;height:30px;margin-left:4px}
+.play:hover{transform:scale(1.1)}
+.play.gone{display:none}
+@keyframes ping2{70%{box-shadow:0 0 0 22px rgba(255,193,90,0),0 14px 30px -8px rgba(255,143,31,.7)}100%{box-shadow:0 0 0 0 rgba(255,193,90,0),0 14px 30px -8px rgba(255,143,31,.7)}}
+.vthumbs{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px}
+.vthumb{position:relative;aspect-ratio:16/8;border:2px solid transparent;border-radius:12px;cursor:pointer;overflow:hidden;background:rgba(255,255,255,.06) center/cover;display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-end;padding:8px 10px;text-align:left;opacity:.72;transition:opacity .2s,border-color .2s,transform .2s}
+.vthumb span{font-weight:800;font-size:1.05rem;color:var(--sea-300);line-height:1}
+.vthumb em{font-style:normal;font-size:.7rem;color:#a8d4cf;font-weight:600}
+.vthumb:hover{opacity:1;transform:translateY(-2px)}
+.vthumb.on{opacity:1;border-color:var(--sea-400)}
+.vthumb.real span,.vthumb.real em{text-shadow:0 1px 6px rgba(0,0,0,.8);color:#fff}
+
+/* ───── Makiety interfejsów (em, skalowane przez cqw) ───── */
+.mock{position:absolute;inset:0;font-size:2.35cqw;line-height:1.3;color:#10242a;padding:1.4em;display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(120% 90% at 15% 0%,#14606a,#0a2229 70%)}
+.win{width:100%;height:100%;border-radius:.9em;background:#f6fbfb;box-shadow:0 1.6em 2.4em -.8em rgba(0,0,0,.55);overflow:hidden;display:flex;flex-direction:column}
+.bar{display:flex;align-items:center;gap:.45em;padding:.55em .9em;background:#e3efee;font-size:.74em;color:#3a5158;font-weight:700;flex:none}
+.bar i{width:.65em;height:.65em;border-radius:50%;background:#f1b4a8}
+.bar i:nth-child(2){background:#f4dc9c}.bar i:nth-child(3){background:#a9dfc0}
+.bar span{margin-left:.6em}
+.win.dk{background:#0d1c22;color:#e6f2f1}
+.dk .bar{background:#14272e;color:#9fc4c0}
+/* StartupBoard */
+.board{flex:1;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(2,1fr);gap:.65em;padding:.75em;min-height:0}
+.tl{background:#fff;border:1px solid #d3e4e2;border-radius:.55em;display:flex;flex-direction:column;overflow:hidden;min-height:0}
+.tl.act{border-color:var(--sea-500);box-shadow:0 0 0 .2em rgba(20,184,166,.25)}
+.th{display:flex;justify-content:space-between;gap:.4em;padding:.35em .55em;background:#eef6f5;font-size:.62em;flex:none}
+.th b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.th em{font-style:normal;color:#5b7a80;white-space:nowrap}
+.tl.dirty .th em{color:#b46a00}
+.tb{padding:.6em .7em;display:flex;flex-direction:column;gap:.42em;flex:1}
+.tb s{display:block;height:.46em;border-radius:.3em;background:#cfe3e1}
+.tl.act .tb s:nth-child(-n+2){background:var(--sea-400)}
+.ph2{margin:auto;color:#7f9ca1;font-size:.68em;border:1px dashed #b5cfcc;border-radius:.5em;padding:.5em .9em;text-align:center}
+.tl.empty{background:#f3f9f8}
+/* Nawyk */
+.nb{padding:.8em 1em;display:flex;flex-direction:column;gap:.5em;flex:1;min-height:0}
+.nh{display:flex;justify-content:space-between;align-items:center}
+.nh small{display:block;color:#5b7a80;font-size:.7em}
+.nh b{font-size:1.05em}
+.ring{width:2.9em;height:2.9em;border-radius:50%;background:conic-gradient(var(--sea-500) calc(var(--p,60)*1%),#d6e9e7 0);display:grid;place-items:center;position:relative;flex:none}
+.ring::before{content:"";position:absolute;inset:.4em;border-radius:50%;background:#f6fbfb}
+.mini .ring{width:44px;height:44px;font-size:12px}
+.mini .ring::before{inset:6px;background:#fff}
+.ring span{position:relative;font-size:.62em;font-weight:800}
+.nstrip{display:flex;gap:.28em}
+.nstrip i{flex:1;height:.5em;border-radius:.3em;background:#d6e9e7}
+.nstrip i.on{background:var(--sea-500)}
+.task{display:flex;align-items:center;gap:.6em;padding:.42em .7em;background:#fff;border:1px solid #d9eae8;border-radius:.55em;font-size:.72em}
+.task i{width:1.25em;height:1.25em;border-radius:50%;border:.17em solid #9fc4c0;flex:none;position:relative}
+.task.done i{background:var(--sea-500);border-color:var(--sea-500)}
+.task.done i::after{content:"";position:absolute;left:.33em;top:.1em;width:.32em;height:.62em;border:solid #fff;border-width:0 .15em .15em 0;transform:rotate(45deg)}
+.task span{flex:1}
+.task.done span{color:#6b8a90;text-decoration:line-through}
+.task em{font-style:normal;color:#6b8a90;font-size:.85em}
+.ex{margin-top:auto;display:flex;justify-content:space-between;align-items:center;padding:.5em .85em;border-radius:.7em;background:linear-gradient(135deg,var(--sea-700),var(--sea-500));color:#fff}
+.ex small{opacity:.85;font-size:.62em;display:block}
+.ex b{font-size:.85em}
+.tm{font-weight:800;font-size:1.3em;font-variant-numeric:tabular-nums}
+/* Esencja */
+.eb{padding:.8em 1em;display:flex;flex-direction:column;gap:.55em;flex:1;min-height:0}
+.inp{display:flex;justify-content:space-between;align-items:center;border:1px solid #c6dedb;border-radius:.6em;padding:.3em .3em .3em .8em;font-size:.7em;color:#6b8a90;background:#fff}
+.inp b{background:var(--sea-500);color:#fff;border-radius:.45em;padding:.35em 1em}
+.vid{display:flex;gap:.7em;align-items:center}
+.thumb{width:6em;aspect-ratio:16/9;border-radius:.5em;background:linear-gradient(135deg,#0e5a66,#2dd4bf);display:grid;place-items:center;flex:none}
+.thumb i{border-left:.8em solid #fff;border-top:.5em solid transparent;border-bottom:.5em solid transparent;margin-left:.2em;opacity:.92}
+.vid b{font-size:.82em;display:block;line-height:1.25}
+.vid small{display:block;color:#5b7a80;font-size:.62em}
+.quote{border-left:.25em solid var(--sea-500);padding:.35em .8em;background:#e6f5f3;border-radius:.3em;font-size:.72em}
+.pt{display:flex;gap:.6em;align-items:center;font-size:.74em}
+.pt i{width:.5em;height:.5em;border-radius:50%;background:var(--sea-400);flex:none}
+mark{background:linear-gradient(transparent 52%,#ffd36b 52%);color:inherit;padding:0 .08em}
+.pl{margin-top:auto;display:flex;align-items:center;gap:.7em;padding:.45em .8em;border-radius:99px;background:#10242a;color:#fff;font-size:.7em}
+.pg{flex:1;height:.32em;border-radius:9px;background:rgba(255,255,255,.2);position:relative}
+.pg u{position:absolute;inset:0 55% 0 0;background:var(--sea-400);border-radius:9px}
+.pl em{font-style:normal;color:var(--sea-300);font-weight:700}
+/* Notatnik */
+.rb{padding:.8em 1em;display:flex;flex-direction:column;gap:.5em;flex:1;min-height:0}
+.rec{display:flex;align-items:center;gap:.5em;font-size:.7em;color:#9fc4c0;font-weight:700;letter-spacing:.06em}
+.rec b{color:#fff;font-variant-numeric:tabular-nums}
+.dot{width:.75em;height:.75em;border-radius:50%;background:#ff5d5d;animation:blink 1.3s infinite}
+@keyframes blink{50%{opacity:.25}}
+.wv{display:flex;align-items:center;gap:.2em;height:2.6em}
+.mini .wv{height:26px;gap:3px}
+.wv i{flex:1;border-radius:.3em;background:linear-gradient(var(--sea-300),var(--sea-500));height:20%;animation:eq 1.1s ease-in-out infinite;animation-delay:var(--d,0s)}
+@keyframes eq{0%,100%{height:16%}50%{height:100%}}
+.ln{font-size:.7em;display:flex;gap:.6em;align-items:baseline;padding:.4em .65em;background:rgba(255,255,255,.06);border-radius:.6em}
+.ln.q{background:rgba(255,179,71,.14)}
+.mini .ln{font-size:12px;background:rgba(255,179,71,.14)}
+.sp{flex:none;font-size:.82em;font-weight:700;padding:.12em .6em;border-radius:99px;white-space:nowrap}
+.sp.a{background:rgba(45,212,191,.2);color:#5eead4}
+.sp.b{background:rgba(255,179,71,.22);color:#ffc15a}
+.sp.c{background:rgba(94,234,212,.2);color:#99f6e4}
+.acts{margin-top:auto;display:flex;gap:.5em}
+.acts b{font-size:.66em;padding:.35em .9em;border-radius:99px;border:1px solid rgba(255,255,255,.22)}
+/* Anatomia */
+.ab{flex:1;display:grid;grid-template-columns:1.7fr 1fr;min-height:0}
+.scene{display:grid;place-items:center;background:radial-gradient(80% 80% at 40% 40%,#12404a,#0a171c);overflow:hidden}
+.scene svg{width:100%;height:100%}
+.limb{animation:sway 7s ease-in-out infinite;transform-origin:90px 44px}
+@keyframes sway{0%,100%{transform:rotate(-2.5deg)}50%{transform:rotate(2.5deg)}}
+.pin circle:nth-child(2){transform-origin:128px 92px;animation:pinring 2s ease-out infinite}
+@keyframes pinring{from{transform:scale(.4);opacity:1}to{transform:scale(1.5);opacity:0}}
+.side{padding:.8em;display:flex;flex-direction:column;gap:.45em;border-left:1px solid rgba(255,255,255,.08)}
+.side small{font-size:.6em;letter-spacing:.1em;text-transform:uppercase;color:#7fb0aa;display:block}
+.side ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:.3em;font-size:.7em}
+.side li{display:flex;align-items:center;gap:.5em;opacity:.5}
+.side li.on{opacity:1}
+.side li i{width:.85em;height:.85em;border-radius:.25em;border:1px solid #5eead4}
+.side li.on i{background:var(--sea-400)}
+.side .card{margin-top:auto;padding:.55em .7em;border-radius:.6em;background:rgba(255,255,255,.07)}
+.side .card b{font-size:.75em;display:block}
+.tg{display:flex;gap:.4em;font-size:.66em}
+.tg b{padding:.3em .9em;border-radius:99px;background:#e3efee;color:#3a5158}
+.tg b.on{background:var(--sea-500);color:#fff}
+.nt{font-size:.7em;padding:.55em .75em;border-radius:.6em;background:rgba(45,212,191,.1);border:1px solid rgba(94,234,212,.25);display:flex;flex-direction:column;gap:.15em}
+.nt small{color:#7fb0aa;font-size:.8em;letter-spacing:.06em;text-transform:uppercase}
+.nt b{font-size:1.05em;color:#fff}
+.nt span{color:#b8d8d3}
+/* placeholder */
+.mock.ph{flex-direction:column;align-items:stretch;justify-content:flex-start;gap:1em;padding:1.3em}
+.skh{height:2.4em;border-radius:.7em;background:rgba(255,255,255,.09);flex:none}
+.skg{display:grid;grid-template-columns:1fr 1fr;gap:1em;flex:1;min-height:0}
+.skg i{border-radius:.9em;background:rgba(255,255,255,.06);position:relative;overflow:hidden}
+.skg i::after,.skh::after{content:"";position:absolute;inset:0;background:linear-gradient(100deg,transparent 30%,rgba(255,255,255,.1) 50%,transparent 70%);transform:translateX(-100%);animation:sk 2.2s infinite}
+.skh{position:relative;overflow:hidden}
+@keyframes sk{to{transform:translateX(100%)}}
+.phl{position:absolute;right:1.2em;bottom:.9em;font-size:.7em;color:rgba(255,255,255,.5);letter-spacing:.06em}
+
+/* ───── Jak to działa (grafit) ───── */
+.how{position:relative;padding:130px 0 110px;color:#e5f3f1;background:
+  radial-gradient(800px 420px at 85% 0,rgba(20,184,166,.28),transparent 60%),
+  radial-gradient(600px 400px at 0 100%,rgba(15,118,110,.25),transparent 60%),
+  linear-gradient(180deg,var(--gr-900),var(--gr-800))}
+.div-top{position:absolute;top:-1px;left:0;width:100%;height:70px;fill:var(--foam)}
+.steps{list-style:none;padding:0;display:grid;grid-template-columns:repeat(3,1fr);gap:22px;counter-reset:s;position:relative}
+.steps li{position:relative;padding:34px 30px 32px;border-radius:26px;background:linear-gradient(160deg,rgba(255,255,255,.08),rgba(255,255,255,.03));border:1px solid rgba(255,255,255,.12);backdrop-filter:blur(10px);transition:transform .3s,border-color .3s}
+.steps li:hover{transform:translateY(-6px);border-color:rgba(94,234,212,.5)}
+.steps .n{display:block;font-size:4.2rem;font-weight:800;line-height:1;letter-spacing:-.05em;background:linear-gradient(180deg,var(--sea-300),rgba(94,234,212,.08));-webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:.2em}
+.steps h3{font-size:1.4rem;color:#fff;margin-bottom:.4em}
+.steps p{color:#b6d6d1}
+.steps li:not(:last-child)::after{content:"";position:absolute;top:58px;right:-23px;width:24px;height:2px;background:linear-gradient(90deg,var(--sea-400),transparent);z-index:2}
+
+/* ───── Dlaczego ───── */
+.why{padding:100px 0 40px}
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}
+.tile{position:relative;padding:28px 24px;border-radius:24px;background:#fff;border:1px solid var(--line);box-shadow:0 20px 40px -30px rgba(6,42,50,.4);overflow:hidden;transition:transform .3s,box-shadow .3s}
+.tile::before{content:"";position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .3s;background:radial-gradient(260px circle at var(--mx,50%) var(--my,0%),rgba(45,212,191,.2),transparent 65%)}
+.tile:hover{transform:translateY(-5px);box-shadow:0 30px 50px -28px rgba(6,42,50,.5)}
+.tile:hover::before{opacity:1}
+.tile svg{width:46px;height:46px;padding:11px;border-radius:14px;color:#fff;background:linear-gradient(135deg,var(--sea-600),var(--sea-400));margin-bottom:1em;stroke:#fff}
+.tile svg *{stroke:#fff}
+.tile h3{font-size:1.15rem;margin-bottom:.35em}
+.tile p{color:var(--mute);font-size:.96rem}
+
+/* ───── FAQ ───── */
+.faq{padding:70px 0 40px}
+.qa{display:grid;gap:12px}
+.qa details{background:#fff;border:1px solid var(--line);border-radius:20px;padding:0 24px;transition:box-shadow .25s,border-color .25s}
+.qa details[open]{box-shadow:0 20px 40px -28px rgba(6,42,50,.45);border-color:var(--sea-400)}
+.qa summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:16px;padding:20px 0;font-weight:700;font-size:1.08rem}
+.qa summary::-webkit-details-marker{display:none}
+.qa summary::after{content:"";flex:none;width:30px;height:30px;border-radius:50%;background:rgba(20,184,166,.14) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M5 8l5 5 5-5' fill='none' stroke='%230f766e' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/18px no-repeat;transition:transform .3s}
+.qa details[open] summary::after{transform:rotate(180deg)}
+.qa details p{padding:0 0 22px;color:var(--mute);max-width:46em}
+
+/* ───── CTA końcowe ───── */
+.final{padding:60px 0 110px}
+.final-card{position:relative;overflow:hidden;isolation:isolate;text-align:center;color:#fff;padding:clamp(44px,7vw,84px) clamp(22px,5vw,60px);border-radius:42px;
+  background:radial-gradient(700px 360px at 85% 0,rgba(94,234,212,.5),transparent 60%),linear-gradient(135deg,#052a33 0%,#0a6b6d 55%,#14b8a6 100%);
+  box-shadow:0 50px 90px -40px rgba(6,60,66,.75)}
+.final-card .b1{width:300px;height:300px;background:#5eead4;top:-100px;left:-60px;opacity:.35}
+.final-card .b2{width:280px;height:280px;background:#0f766e;bottom:-120px;right:-40px;opacity:.5}
+.final h2{font-size:clamp(1.8rem,4.2vw,3.2rem);line-height:1.1;letter-spacing:-.035em;font-weight:800}
+.final p{margin:1.2em auto 2em;max-width:34em;color:#d3f3ee;font-size:1.12rem}
+
+/* ───── Stopka ───── */
+.foot{background:var(--gr-900);color:#9fbcb8;padding:50px 0 40px}
+.foot-in{display:grid;grid-template-columns:1fr auto;gap:22px 30px;align-items:center}
+.foot .brand{color:#fff}
+.foot-links{display:flex;flex-wrap:wrap;gap:6px 22px;align-items:center}
+.foot-links a,.foot-links button{background:none;border:0;padding:.3em 0;color:#cfe6e2;font-weight:600;text-decoration:none;cursor:pointer;font-size:.95rem}
+.foot-links a:hover,.foot-links button:hover{color:var(--sea-300)}
+.fine{grid-column:1/-1;font-size:.82rem;border-top:1px solid rgba(255,255,255,.08);padding-top:20px;color:#7d9a96}
+
+/* ───── Dialogi, toast, sticky ───── */
+dialog{border:0;border-radius:24px;padding:28px;max-width:min(480px,calc(100% - 32px));width:100%;background:#fff;color:var(--ink);box-shadow:0 50px 90px -30px rgba(0,0,0,.6)}
+dialog::backdrop{background:rgba(3,24,29,.6);backdrop-filter:blur(6px)}
+dialog h2{font-size:1.5rem;letter-spacing:-.02em;margin-bottom:.5em}
+dialog p{margin:.4em 0;color:var(--mute)}
+dialog a{color:var(--sea-600);font-weight:600}
+dialog textarea{width:100%;margin-top:.6em;padding:.8em 1em;border:1.5px solid var(--line);border-radius:14px;font:inherit;resize:vertical;min-height:120px}
+dialog textarea:focus{outline:none;border-color:var(--sea-500);box-shadow:0 0 0 4px rgba(20,184,166,.18)}
+.drow{display:flex;flex-wrap:wrap;gap:8px;margin-top:1.1em}
+dialog .btn{padding:.7em 1.2em;font-size:.92rem}
+dialog .btn-cta{color:#1d1204}
+dialog .src{font-size:.82rem;margin-top:1em}
+.toast{position:fixed;left:50%;bottom:26px;translate:-50% 30px;opacity:0;z-index:90;max-width:min(92vw,460px);padding:.9em 1.3em;border-radius:16px;background:var(--gr-900);color:#fff;font-weight:600;font-size:.95rem;box-shadow:0 20px 40px -12px rgba(0,0,0,.5);transition:opacity .3s,translate .3s;pointer-events:none;text-align:center}
+.toast.show{opacity:1;translate:-50% 0}
+.stick{display:none;position:fixed;left:14px;right:14px;bottom:14px;z-index:60;padding:1.05em;font-size:1.02rem;transform:translateY(140%);transition:transform .35s}
+.stick.show{transform:none}
+
+/* ───── Responsywność ───── */
+@media (max-width:1020px){
+  .hero{padding:128px 0 150px}
+  .hero-in{grid-template-columns:1fr;gap:70px}
+  .stage{max-width:620px;margin-inline:auto;width:100%}
+  .app,.app.flip{grid-template-columns:1fr}
+  .app.flip .media{order:0}
+  .tiles{grid-template-columns:repeat(2,1fr)}
+  .nav ul{display:none}
+  .nav>.wrap>.btn,.nav ul + .btn{margin-left:auto}
+}
+@media (max-width:760px){
+  .steps{grid-template-columns:1fr}
+  .steps li:not(:last-child)::after{display:none}
+  .stick{display:flex}
+  .nav .btn-sm{display:none}
+  .f1{right:-6px}.f2{left:-8px}
+  .foot-in{grid-template-columns:1fr}
+  .pills{top:66px}
+  body{padding-bottom:76px}
+}
+@media (max-width:520px){
+  .tiles{grid-template-columns:1fr}
+  .stats{gap:16px}
+  .hero .cta-row .btn{width:100%}
+  .app{border-radius:28px}
+  .vthumb em{display:none}
+  .mini.reccard{min-width:170px}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+  .js .reveal{opacity:1;transform:none}
+}
+
+/* formularz zapisu */
+#wantF{display:grid;gap:12px;margin-top:.8em}
+#wantF label{display:grid;gap:.35em;font-weight:700;font-size:.9rem}
+#wantF input[type=text],#wantF input[type=email],#wantF select{padding:.8em 1em;border:1.5px solid var(--line);border-radius:14px;font:inherit;font-weight:500;background:#fff}
+#wantF input:focus,#wantF select:focus{outline:none;border-color:var(--sea-500);box-shadow:0 0 0 4px rgba(20,184,166,.18)}
+#wantF .chk{display:flex;gap:.6em;align-items:flex-start;font-weight:500;font-size:.82rem;color:var(--mute)}
+#wantF .chk input{margin-top:.25em;accent-color:var(--sea-600)}
+#wantF .hp{position:absolute;left:-9999px;opacity:0;height:0}
+.msg{min-height:1.3em;font-size:.9rem;font-weight:600}
+.msg.err{color:#b3412c}.msg.ok{color:var(--sea-700)}
+
+</style>
+</head>
+<body>
+<a class="skip" href="#apps">Przejdź do aplikacji</a>
+
+<header class="nav" id="nav">
+  <div class="wrap">
+    <a class="brand" href="#top" aria-label="Aplikacje — strona główna"><svg viewBox="0 0 40 40" aria-hidden="true"><defs><linearGradient id="lg1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5eead4"/><stop offset="1" stop-color="#0f766e"/></linearGradient></defs><rect width="40" height="40" rx="12" fill="url(#lg1)"/><path d="M7 24c4-7 7-7 10 0s6 7 10 0c1.4-3 3-4 6-3" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"/></svg><span>Aplikacje<small>Michał Rzekiecki</small></span></a>
+    <ul>
+      <li><a href="#apps">Aplikacje</a></li>
+      <li><a href="#jak">Jak to działa</a></li>
+      <li><a href="#faq">FAQ</a></li>
+    </ul>
+    <button type="button" class="btn btn-cta btn-sm" data-want="">Zapisz się</button>
+  </div>
+</header>
+
+<main id="top">
+<!-- ═══════════ HERO ═══════════ -->
+<section class="hero">
+  <div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div>
+  <div class="grid-bg"></div>
+  <div class="wrap hero-in">
+    <div class="hero-copy">
+      <span class="chip"><i class="live"></i>5 gotowych aplikacji · po polsku</span>
+      <h1>Aplikacje, które <em>robią porządek</em> w Twojej pracy</h1>
+      <p class="sub">Od startu dnia po notatki z wykładu. Sprawdź demo w przeglądarce i zapisz się na tę, która Cię interesuje. Gdy zbierze się wystarczająco chętnych, aplikacja trafi do sprzedaży.</p>
+      <div class="cta-row">
+        <button type="button" class="btn btn-cta btn-lg" data-want="">Chcę dostęp <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h11m-4-5 5 5-5 5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <a class="btn btn-ghost btn-lg" href="#apps">Zobacz aplikacje</a>
+      </div>
+      <ul class="trust">
+        <li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10.5 4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Demo w przeglądarce, bez instalacji</li>
+        <li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10.5 4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Pierwszeństwo dla zapisanych</li>
+      </ul>
+      <dl class="stats">
+        <div><dt data-count="5">5</dt><dd>gotowych aplikacji</dd></div>
+        <div><dt data-count="100" data-suffix="+">100+</dt><dd>ćwiczeń w Nawyku</dd></div>
+        <div><dt data-count="6">6</dt><dd>warstw anatomii 3D</dd></div>
+      </dl>
+    </div>
+    <div class="stage" aria-hidden="true">
+      <div class="stage-in" id="tilt">
+        <div class="hero-mock"><div class="mock"><div class="win"><div class="bar"><i></i><i></i><i></i><span>StartupBoard</span></div><div class="board"><div class="tl act"><div class="th"><b>plan_dnia.txt</b><em>● zapisany · 1,8 KB</em></div><div class="tb"><s class="" style="width:92%"></s><s class="" style="width:78%"></s><s class="" style="width:85%"></s><s class="" style="width:60%"></s><s class="" style="width:88%"></s><s class="" style="width:70%"></s><s class="" style="width:45%"></s></div></div><div class="tl "><div class="th"><b>kontakty.txt</b><em>● zapisany · 0,9 KB</em></div><div class="tb"><s class="" style="width:70%"></s><s class="" style="width:88%"></s><s class="" style="width:55%"></s><s class="" style="width:80%"></s><s class="" style="width:64%"></s></div></div><div class="tl dirty"><div class="th"><b>oferta_v3.txt</b><em>◐ zmieniony · 4,2 KB</em></div><div class="tb"><s class="" style="width:90%"></s><s class="" style="width:82%"></s><s class="" style="width:86%"></s><s class="" style="width:74%"></s><s class="" style="width:92%"></s><s class="" style="width:58%"></s><s class="" style="width:80%"></s><s class="" style="width:66%"></s></div></div><div class="tl empty"><div class="th"><b>— pusty —</b><em></em></div><div class="tb"><div class="ph2">przeciągnij tu plik</div></div></div><div class="tl "><div class="th"><b>notatki.txt</b><em>● zapisany · 2,6 KB</em></div><div class="tb"><s class="" style="width:84%"></s><s class="" style="width:60%"></s><s class="" style="width:90%"></s><s class="" style="width:72%"></s><s class="" style="width:50%"></s><s class="" style="width:78%"></s></div></div><div class="tl "><div class="th"><b>todo.txt</b><em>● zapisany · 0,4 KB</em></div><div class="tb"><s class="" style="width:60%"></s><s class="" style="width:74%"></s><s class="" style="width:48%"></s><s class="" style="width:66%"></s></div></div></div></div></div></div>
+        <div class="float f1"><div class="mini ringcard"><div class="ring" style="--p:72"><span>72%</span></div><div><small>Postęp dnia</small><b>5 z 7 zadań</b></div></div></div>
+        <div class="float f2"><div class="mini reccard"><div class="rec"><span class="dot"></span>REC <b>00:42:10</b></div><div class="wv"><i style="--d:0.0s"></i><i style="--d:0.7s"></i><i style="--d:0.3s"></i><i style="--d:1.0s"></i><i style="--d:0.6s"></i><i style="--d:0.2s"></i><i style="--d:0.9s"></i><i style="--d:0.5s"></i><i style="--d:0.1s"></i><i style="--d:0.8s"></i><i style="--d:0.4s"></i><i style="--d:0.0s"></i><i style="--d:0.7s"></i><i style="--d:0.3s"></i><i style="--d:1.0s"></i><i style="--d:0.6s"></i></div><div class="ln q"><span class="sp b">❓ Pytanie</span>wyłapane automatycznie</div></div></div>
+      </div>
+    </div>
+  </div>
+  <svg class="waves" viewBox="0 0 1200 140" preserveAspectRatio="none" aria-hidden="true">
+    <path class="w1" d="M0 70c100-55 200-55 300 0s200 55 300 0 200-55 300 0 200 55 300 0 200-55 300 0 200 55 300 0 200-55 300 0 200 55 300 0V140H0Z"/>
+    <path class="w2" d="M0 85c100 50 200 50 300 0s200-50 300 0 200 50 300 0 200-50 300 0 200 50 300 0 200-50 300 0 200 50 300 0 200-50 300 0V140H0Z"/>
+    <path class="w3" d="M0 100c100-40 200-40 300 0s200 40 300 0 200-40 300 0 200 40 300 0 200-40 300 0 200 40 300 0 200-40 300 0 200 40 300 0V140H0Z"/>
+  </svg>
+</section>
+
+<!-- ═══════════ PASEK ═══════════ -->
+<div class="ticker" aria-hidden="true"><div class="track"><span>Start dnia</span><span>Nawyki</span><span>Streszczenia wideo</span><span>Notatki z wykładów</span><span>Anatomia 3D</span><span>Po polsku</span><span>Demo w przeglądarce</span><span>Kontakt z autorem</span><span>Start dnia</span><span>Nawyki</span><span>Streszczenia wideo</span><span>Notatki z wykładów</span><span>Anatomia 3D</span><span>Po polsku</span><span>Demo w przeglądarce</span><span>Kontakt z autorem</span></div></div>
+
+<!-- ═══════════ APLIKACJE ═══════════ -->
+<section class="apps" id="apps">
+  <div class="wrap">
+    <header class="sec-head reveal">
+      <span class="eyebrow">Katalog</span>
+      <h2>Każda aplikacja rozwiązuje <em>jeden konkretny problem</em></h2>
+      <p>Obejrzyj screeny i film, sprawdź demo. Jeśli któraś pasuje — kliknij „Chcę tę aplikację”. Gdy uzbiera się wystarczająco chętnych, wypuszczę ją do sprzedaży.</p>
+    </header>
+    <nav class="pills" id="pills" aria-label="Skocz do aplikacji"><a href="#startupboard" data-p="startupboard"><b>01</b>StartupBoard</a><a href="#nawyk" data-p="nawyk"><b>02</b>Nawyk</a><a href="#esencja" data-p="esencja"><b>03</b>Esencja</a><a href="#notatnik" data-p="notatnik"><b>04</b>Notatnik Słuchacza</a><a href="#anatomia" data-p="anatomia"><b>05</b>Anatomia 3D</a></nav>
+    
+<article class="app reveal" id="startupboard" data-spot>
+  <div class="media">
+    <div class="viewer" data-app="01" data-shots="media/01-1.jpg,media/01-2.jpg,media/01-3.jpg" data-video="media/01.mp4">
+      <div class="vtabs" role="tablist" aria-label="Materiały: StartupBoard">
+        <button class="vtab on" role="tab" data-tab="shots" aria-selected="true">Screeny</button>
+        <button class="vtab" role="tab" data-tab="video" aria-selected="false"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 4v12l10-6z" fill="currentColor"/></svg> Wideo</button>
+        <span class="vtag">wizualizacja interfejsu</span>
+      </div>
+      <div class="vstage">
+        <div class="vpane on" data-pane="shots">
+          <div class="vslide on" data-i="0"><div class="mock"><div class="win"><div class="bar"><i></i><i></i><i></i><span>StartupBoard</span></div><div class="board"><div class="tl act"><div class="th"><b>plan_dnia.txt</b><em>● zapisany · 1,8 KB</em></div><div class="tb"><s class="" style="width:92%"></s><s class="" style="width:78%"></s><s class="" style="width:85%"></s><s class="" style="width:60%"></s><s class="" style="width:88%"></s><s class="" style="width:70%"></s><s class="" style="width:45%"></s></div></div><div class="tl "><div class="th"><b>kontakty.txt</b><em>● zapisany · 0,9 KB</em></div><div class="tb"><s class="" style="width:70%"></s><s class="" style="width:88%"></s><s class="" style="width:55%"></s><s class="" style="width:80%"></s><s class="" style="width:64%"></s></div></div><div class="tl dirty"><div class="th"><b>oferta_v3.txt</b><em>◐ zmieniony · 4,2 KB</em></div><div class="tb"><s class="" style="width:90%"></s><s class="" style="width:82%"></s><s class="" style="width:86%"></s><s class="" style="width:74%"></s><s class="" style="width:92%"></s><s class="" style="width:58%"></s><s class="" style="width:80%"></s><s class="" style="width:66%"></s></div></div><div class="tl empty"><div class="th"><b>— pusty —</b><em></em></div><div class="tb"><div class="ph2">przeciągnij tu plik</div></div></div><div class="tl "><div class="th"><b>notatki.txt</b><em>● zapisany · 2,6 KB</em></div><div class="tb"><s class="" style="width:84%"></s><s class="" style="width:60%"></s><s class="" style="width:90%"></s><s class="" style="width:72%"></s><s class="" style="width:50%"></s><s class="" style="width:78%"></s></div></div><div class="tl "><div class="th"><b>todo.txt</b><em>● zapisany · 0,4 KB</em></div><div class="tb"><s class="" style="width:60%"></s><s class="" style="width:74%"></s><s class="" style="width:48%"></s><s class="" style="width:66%"></s></div></div></div></div></div></div>
+          <div class="vslide" data-i="1"><div class="mock ph"><div class="skh"></div><div class="skg"><i></i><i></i><i></i><i></i></div><span class="phl">Podgląd 2</span></div></div>
+          <div class="vslide" data-i="2"><div class="mock ph"><div class="skh"></div><div class="skg"><i></i><i></i><i></i><i></i></div><span class="phl">Podgląd 3</span></div></div>
+        </div>
+        <div class="vpane" data-pane="video">
+          <div class="vposter"><b>StartupBoard</b><span>Jak to działa — krótki film</span></div>
+          <button class="play" type="button" aria-label="Odtwórz film: StartupBoard"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 4v12l10-6z" fill="currentColor"/></svg></button>
+        </div>
+      </div>
+      <div class="vthumbs">
+        <button class="vthumb on" data-i="0" aria-label="Screen 1"><span>1</span><em>Ekran główny</em></button>
+        <button class="vthumb" data-i="1" aria-label="Screen 2"><span>2</span><em>Szczegóły</em></button>
+        <button class="vthumb" data-i="2" aria-label="Screen 3"><span>3</span><em>Ustawienia</em></button>
+      </div>
+    </div>
+  </div>
+  <div class="copy">
+    <div class="kicker"><span class="num">01</span>Produktywność</div>
+    <h3>StartupBoard</h3>
+    <p class="lead">Jedno okno na start dnia. Pliki, których potrzebujesz, czekają już otwarte.</p>
+    <div class="pr">
+      <div><span class="lbl p">Problem</span><p>Każdy poranek zaczyna się od szukania tych samych plików i okien.</p></div>
+      <div><span class="lbl s">Rozwiązanie</span><p>Układasz 6 pól raz. Następnego dnia pracujesz od razu, bez szukania.</p></div>
+    </div>
+    <ul class="ben"><li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10.5 4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>6 pól na pliki w jednym oknie</span></li><li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10.5 4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Edytor w każdym polu: zawijanie wierszy, stan zapisu, rozmiar pliku</span></li><li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10.5 4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Przeciągnij i upuść plik, bez przeszukiwania folderów</span></li><li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10.5 4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Lekki program na Windows: rozpakuj ZIP i uruchom</span></li></ul>
+    <p class="road"><b>W planie:</b> docx · xlsx · pdf · okna innych programów</p>
+    <div class="chips"><span>Windows</span><span>Program offline</span></div>
+    <div class="cta-row">
+      <button type="button" class="btn btn-cta" data-want="StartupBoard">Chcę tę aplikację <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h11m-4-5 5 5-5 5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <a class="btn btn-line" href="mailto:michus@gmail.com?subject=Pytanie%20%E2%80%93%20StartupBoard&body=Dzie%C5%84%20dobry%2C%0A%0Amam%20pytanie%20o%3A%20StartupBoard.%0A%0APozdrawiam">Zadaj pytanie <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h11m-4-5 5 5-5 5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+    </div>
+  </div>
+</article>
+
+<article class="app reveal flip" id="nawyk" data-spot>
+  <div class="media">
+    <div class="viewer" data-app="02" data-shots="media/02-1.jpg,media/02-2.jpg,media/02-3.jpg" data-video="media/02.mp4">
+      <div class="vtabs" role="tablist" aria-label="Materiały: Nawyk">
+        <button class="vtab on" role="tab" data-tab="shots" aria-selected="true">Screeny</button>
+        <button class="vtab" role="tab" data-tab="video" aria-selected="false"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 4v12l10-6z" fill="currentColor"/></svg> Wideo</button>
+        <span class="vtag">wizualizacja interfejsu</span>
+      </div>
+      <div class="vstage">
+        <div class="vpane on" data-pane="shots">
+          <div class="vslide on" data-i="0"><div class="mock"><div class="win"><div class="bar"><i></i><i></i><i></i><span>Nawyk — menedżer dnia</span></div><div class="nb"><div class="nh"><div><small>Dzień dobry</small><b>Wtorek, 17 listopada</b></div><div class="ring" style="--p:60"><span>60%</span></div></div><div class="nstrip"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i></div><div class="task done"><i></i><span>Szklanka wody i okno</span><em>2 min</em></div><div class="task done"><i></i><span>Plan pierwszych 25 minut</span><em>3 min</em></div><div class="task done"><i></i><span>Rozgrzewka głosu</span><em>6 min</em></div><div class="task "><i></i><span>Jedna karta, jedno zadanie</span><em>5 min</em></div><div class="task "><i></i><span>Domknięcie dnia</span><em>5 min</em></div><div class="ex"><div><small>Ćwiczenie dnia</small><b>Poranna mobilność</b></div><div class="tm">02:00</div></div></div></div></div></div>
+          <div class="vslide" data-i="1"><div class="mock ph"><div class="skh"></div><div class="skg"><i></i><i></i><i></i><i></i></div><span class="phl">Podgląd 2</span></div></div>
+          <div class="vslide" data-i="2"><div class="mock ph"><div class="skh"></div><div class="skg"><i></i><i></i><i></i><i></i></div><span class="phl">Podgląd 3</span></div></div>
+        </div>
+        <div class="vpane" data-pane="video">
+          <div class="vposter"><b>Nawyk</b><span>Jak to działa — krótki film</span></div>
+          <button class="play" type="button" aria-label="Odtwórz film: Nawyk"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 4v12l10-6z" fill="currentColor"/></svg></button>
+        </div>
+      </div>
+      <div class="vthumbs">
+        <button class="vthumb on" data-i="0" aria-label="Screen 1"><span>1</span><em>Ekran główny</em></button>
+        <button class="vthumb" data-i="1" aria-label="Screen 2"><span>2</span><em>Szczegóły</em></button>
+        <button class="vthumb" data-i="2" aria-label="Screen 3"><span>3</span><em>Ustawienia</em></button>
+      </div>
+    </div>
+  </div>
+  <div class="copy">
+    <div class="kicker"><span class="num">02</span>Organizacja dnia</div>
+    <h3>Nawyk</h3>
+    <p class="lead">Plan dnia na jednym ekranie: zadania, krótkie ćwiczenia i podsumowanie postępów.</p>
+    <div class="pr">
+      <div><span class="lbl p">Problem</span><p>Dobre intencje giną, bo nikt nie mówi, co dokładnie zrobić teraz.</p></div>
+      <div><span class="lbl s">Rozwiązanie</span><p>Dostajesz gotową listę kroków na dziś, timer prowadzący przez ćwiczenia i wykres postępu.</p></div>
+    </div>
+    <ul class="ben"><li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10.5 4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>100+ gotowych ćwiczeń: charyzma, głos, rozciąganie, skupienie</span></li><li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10.5 4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Sesje z timerem: rozgrzewka głosu, poranna mobilność</span></li><li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10.5 4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Dwa pytania na start dnia i podsumowanie z wykresami</span></li><li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10.5 4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Dane w chmurze: klucz synchronizacji łączy telefon i komputer</span></li></ul>
+    
+    <div class="chips"><span>Przeglądarka</span><span>Chmura</span></div>
+    <div class="cta-row">
+      <button type="button" class="btn btn-cta" data-want="Nawyk">Chcę tę aplikację <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h11m-4-5 5 5-5 5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <a class="btn btn-line" href="/02/">Demo online <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h11m-4-5 5 5-5 5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+    </div>
+  </div>
+</article>
+
+<article class="app reveal" id="esencja" data-spot>
+  <div class="media">
+    <div class="viewer" data-app="03" data-shots="media/03-1.jpg,media/03-2.jpg,media/03-3.jpg" data-video="media/03.mp4">
+      <div class="vtabs" role="tablist" aria-label="Materiały: Esencja">
+        <button class="vtab on" role="tab" data-tab="shots" aria-selected="true">Screeny</button>
+        <button class="vtab" role="tab" data-tab="video" aria-selected="false"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 4v12l10-6z" fill="currentColor"/></svg> Wideo</button>
+        <span class="vtag">wizualizacja interfejsu</span>
+      </div>
+      <div class="vstage">
+        <div class="vpane on" data-pane="shots">
+          <div class="vslide on" data-i="0"><div class="mock"><div class="win"><div class="bar"><i></i><i></i><i></i><span>Esencja</span></div><div class="eb"><div class="inp"><span>youtube.com/watch?v=…</span><b>Streść</b></div><div class="vid"><div class="thumb"><i></i></div><div><b>Jak zbudować nawyk w 30 dni</b><small>24:10 min → czytasz w 1:30</small></div></div><div class="quote"><b>Esencja:</b> małe kroki wygrywają z wielkimi planami.</div><div class="pt"><i></i><span>Zacznij od <mark>2 minut</mark> dziennie</span></div><div class="pt"><i></i><span>Dopisz nawyk do <mark>istniejącej rutyny</mark></span></div><div class="pt"><i></i><span>Mierz <mark>serię dni</mark>, nie perfekcję</span></div><div class="pt"><i></i><span>Zaplanuj <mark>pierwszy krok</mark> na jutro</span></div><div class="tg"><b>Mini</b><b class="on">Barwny</b><b>Lektor</b></div><div class="pl"><b>▶</b><span class="pg"><u></u></span><em>1,3×</em></div></div></div></div></div>
+          <div class="vslide" data-i="1"><div class="mock ph"><div class="skh"></div><div class="skg"><i></i><i></i><i></i><i></i></div><span class="phl">Podgląd 2</span></div></div>
+          <div class="vslide" data-i="2"><div class="mock ph"><div class="skh"></div><div class="skg"><i></i><i></i><i></i><i></i></div><span class="phl">Podgląd 3</span></div></div>
+        </div>
+        <div class="vpane" data-pane="video">
+          <div class="vposter"><b>Esencja</b><span>Jak to działa — krótki film</span></div>
+          <button class="play" type="button" aria-label="Odtwórz film: Esencja"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 4v12l10-6z" fill="currentColor"/></svg></button>
+        </div>
+      </div>
+      <div class="vthumbs">
+        <button class="vthumb on" data-i="0" aria-label="Screen 1"><span>1</span><em>Ekran główny</em></button>
+        <button class="vthumb" data-i="1" aria-label="Screen 2"><span>2</span><em>Szczegóły</em></button>
+        <button class="vthumb" data-i="2" aria-label="Screen 3"><span>3</span><em>Ustawienia</em></button>
+      </div>
+    </div>
+  </div>
+  <div class="copy">
+    <div class="kicker"><span class="num">03</span>Wiedza</div>
+    <h3>Esencja</h3>
+    <p class="lead">Wklej link do filmu z YouTube. Dostajesz esencję w minutę, nie w godzinę.</p>
+    <div class="pr">
+      <div><span class="lbl p">Problem</span><p>Godzinny film, z którego liczy się pięć minut, a nie wiesz których.</p></div>
+      <div><span class="lbl s">Rozwiązanie</span><p>Esencja pobiera transkrypcję, streszcza ją i wyróżnia konkrety. Możesz też posłuchać lektora.</p></div>
+    </div>
+    <ul class="ben"><li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10.5 4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Ctrl+V i gotowe: streszczenie po polsku</span></li><li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10.5 4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Wersja krótka oraz barwna z wyróżnionymi konkretami</span></li><li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10.5 4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Lektor czyta na głos: tempo 0,5–4×, przewijanie co 5 s</span></li><li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10.5 4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Długie filmy dzielone na części automatycznie</span></li></ul>
+    
+    <div class="chips"><span>Przeglądarka</span><span>Wersja próbna</span></div>
+    <div class="cta-row">
+      <button type="button" class="btn btn-cta" data-want="Esencja">Chcę tę aplikację <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h11m-4-5 5 5-5 5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <a class="btn btn-line" href="/03/">Demo online <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h11m-4-5 5 5-5 5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+    </div>
+  </div>
+</article>
+
+<article class="app reveal flip" id="notatnik" data-spot>
+  <div class="media">
+    <div class="viewer" data-app="04" data-shots="media/04-1.jpg,media/04-2.jpg,media/04-3.jpg" data-video="media/04.mp4">
+      <div class="vtabs" role="tablist" aria-label="Materiały: Notatnik Słuchacza">
+        <button class="vtab on" role="tab" data-tab="shots" aria-selected="true">Screeny</button>
+        <button class="vtab" role="tab" data-tab="video" aria-selected="false"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 4v12l10-6z" fill="currentColor"/></svg> Wideo</button>
+        <span class="vtag">wizualizacja interfejsu</span>
+      </div>
+      <div class="vstage">
+        <div class="vpane on" data-pane="shots">
+          <div class="vslide on" data-i="0"><div class="mock"><div class="win dk"><div class="bar"><i></i><i></i><i></i><span>Notatnik Słuchacza</span></div><div class="rb"><div class="rec"><span class="dot"></span>REC <b>00:42:10</b></div><div class="wv"><i style="--d:0.0s"></i><i style="--d:0.7s"></i><i style="--d:0.3s"></i><i style="--d:1.0s"></i><i style="--d:0.6s"></i><i style="--d:0.2s"></i><i style="--d:0.9s"></i><i style="--d:0.5s"></i><i style="--d:0.1s"></i><i style="--d:0.8s"></i><i style="--d:0.4s"></i><i style="--d:0.0s"></i><i style="--d:0.7s"></i><i style="--d:0.3s"></i><i style="--d:1.0s"></i><i style="--d:0.6s"></i><i style="--d:0.2s"></i><i style="--d:0.9s"></i><i style="--d:0.5s"></i><i style="--d:0.1s"></i><i style="--d:0.8s"></i><i style="--d:0.4s"></i><i style="--d:0.0s"></i><i style="--d:0.7s"></i><i style="--d:0.3s"></i><i style="--d:1.0s"></i><i style="--d:0.6s"></i><i style="--d:0.2s"></i><i style="--d:0.9s"></i><i style="--d:0.5s"></i></div><div class="ln"><span class="sp a">Wykładowca</span>Kluczem jest regularność, nie intensywność.</div><div class="ln q"><span class="sp b">❓ Pytanie</span>Ile czasu dziennie wystarczy?</div><div class="ln"><span class="sp c">✔ Odpowiedź</span>Dwie minuty, ale każdego dnia.</div><div class="nt"><small>Notatka · temat 1</small><b>Regularność wygrywa z intensywnością</b><span>• krótkie, codzienne sesje</span><span>• serie dni jako miara postępu</span></div><div class="acts"><b>Notatki</b><b>Autorzy</b><b>Zweryfikuj</b></div></div></div></div></div>
+          <div class="vslide" data-i="1"><div class="mock ph"><div class="skh"></div><div class="skg"><i></i><i></i><i></i><i></i></div><span class="phl">Podgląd 2</span></div></div>
+          <div class="vslide" data-i="2"><div class="mock ph"><div class="skh"></div><div class="skg"><i></i><i></i><i></i><i></i></div><span class="phl">Podgląd 3</span></div></div>
+        </div>
+        <div class="vpane" data-pane="video">
+          <div class="vposter"><b>Notatnik Słuchacza</b><span>Jak to działa — krótki film</span></div>
+          <button class="play" type="button" aria-label="Odtwórz film: Notatnik Słuchacza"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 4v12l10-6z" fill="currentColor"/></svg></button>
+        </div>
+      </div>
+      <div class="vthumbs">
+        <button class="vthumb on" data-i="0" aria-label="Screen 1"><span>1</span><em>Ekran główny</em></button>
+        <button class="vthumb" data-i="1" aria-label="Screen 2"><span>2</span><em>Szczegóły</em></button>
+        <button class="vthumb" data-i="2" aria-label="Screen 3"><span>3</span><em>Ustawienia</em></button>
+      </div>
+    </div>
+  </div>
+  <div class="copy">
+    <div class="kicker"><span class="num">04</span>Nauka i spotkania</div>
+    <h3>Notatnik Słuchacza</h3>
+    <p class="lead">Nagrywa wykład lub szkolenie i sam robi z niego uporządkowane notatki.</p>
+    <div class="pr">
+      <div><span class="lbl p">Problem</span><p>Na wykładzie albo szkoleniu nie da się jednocześnie słuchać i notować.</p></div>
+      <div><span class="lbl s">Rozwiązanie</span><p>Nagrywa w tle, transkrybuje, odróżnia wykładowcę od pytań z sali i składa notatki tematyczne.</p></div>
+    </div>
+    <ul class="ben"><li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10.5 4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Pytania i odpowiedzi wyłapane osobno</span></li><li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10.5 4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Notatki co ok. 5 minut, podzielone tematycznie</span></li><li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10.5 4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Przyciski „Autorzy” i „Zweryfikuj” sprawdzają źródła w sieci</span></li><li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10.5 4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Eksport do Markdown; na iPhonie działa po zgaszeniu ekranu</span></li></ul>
+    
+    <div class="chips"><span>iPhone</span><span>Przeglądarka</span></div>
+    <div class="cta-row">
+      <button type="button" class="btn btn-cta" data-want="Notatnik Słuchacza">Chcę tę aplikację <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h11m-4-5 5 5-5 5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <a class="btn btn-line" href="/04/">Demo online <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h11m-4-5 5 5-5 5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+    </div>
+  </div>
+</article>
+
+<article class="app reveal" id="anatomia" data-spot>
+  <div class="media">
+    <div class="viewer" data-app="05" data-shots="media/05-1.jpg,media/05-2.jpg,media/05-3.jpg" data-video="media/05.mp4">
+      <div class="vtabs" role="tablist" aria-label="Materiały: Anatomia 3D">
+        <button class="vtab on" role="tab" data-tab="shots" aria-selected="true">Screeny</button>
+        <button class="vtab" role="tab" data-tab="video" aria-selected="false"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 4v12l10-6z" fill="currentColor"/></svg> Wideo</button>
+        <span class="vtag">wizualizacja interfejsu</span>
+      </div>
+      <div class="vstage">
+        <div class="vpane on" data-pane="shots">
+          <div class="vslide on" data-i="0"><div class="mock"><div class="win dk an"><div class="bar"><i></i><i></i><i></i><span>Anatomia 3D</span></div><div class="ab"><div class="scene"><svg viewBox="0 0 300 240" aria-hidden="true"><defs><linearGradient id="mus" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5eead4"/><stop offset="1" stop-color="#0f766e"/></linearGradient></defs><ellipse cx="150" cy="222" rx="118" ry="11" fill="rgba(45,212,191,.16)"/><ellipse cx="150" cy="222" rx="78" ry="6" fill="none" stroke="rgba(94,234,212,.35)"/><g class="limb"><circle cx="88" cy="44" r="19" fill="#e9f2f0"/><path d="M88 40 C96 36 108 40 112 50 L150 132 C153 140 148 148 140 147 C132 146 128 140 125 134 L84 56 C81 50 82 44 88 40Z" fill="#dfeceb"/><path d="M104 52 C138 54 160 92 148 132 C132 124 106 96 98 62Z" fill="url(#mus)" opacity=".95"/><line x1="146" y1="148" x2="226" y2="204" stroke="#e9f2f0" stroke-width="10" stroke-linecap="round"/><line x1="136" y1="152" x2="214" y2="212" stroke="#c9dcda" stroke-width="8" stroke-linecap="round"/><circle cx="142" cy="146" r="9" fill="#f3fbfa"/></g><g class="pin"><circle cx="128" cy="92" r="5" fill="#ffb347"/><circle cx="128" cy="92" r="11" fill="none" stroke="#ffb347"/></g><path d="M133 88 L190 56" stroke="#ffb347" stroke-width="1.4" fill="none"/><rect x="190" y="38" width="104" height="38" rx="9" fill="rgba(6,42,50,.85)" stroke="rgba(94,234,212,.5)"/><text x="198" y="54" fill="#fff" font-size="10" font-weight="700">Biceps brachii</text><text x="198" y="68" fill="#99f6e4" font-size="8.5" font-style="italic">Musculus biceps brachii</text></svg></div><div class="side"><small>Warstwy</small><ul><li class="on"><i></i>Kości</li><li class="on"><i></i>Mięśnie</li><li class="on"><i></i>Stawy</li><li class=""><i></i>Więzadła</li><li class=""><i></i>Nerwy</li><li class=""><i></i>Naczynia</li></ul><div class="card"><small>Antagonista</small><b>Triceps brachii</b></div></div></div></div></div></div>
+          <div class="vslide" data-i="1"><div class="mock ph"><div class="skh"></div><div class="skg"><i></i><i></i><i></i><i></i></div><span class="phl">Podgląd 2</span></div></div>
+          <div class="vslide" data-i="2"><div class="mock ph"><div class="skh"></div><div class="skg"><i></i><i></i><i></i><i></i></div><span class="phl">Podgląd 3</span></div></div>
+        </div>
+        <div class="vpane" data-pane="video">
+          <div class="vposter"><b>Anatomia 3D</b><span>Jak to działa — krótki film</span></div>
+          <button class="play" type="button" aria-label="Odtwórz film: Anatomia 3D"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 4v12l10-6z" fill="currentColor"/></svg></button>
+        </div>
+      </div>
+      <div class="vthumbs">
+        <button class="vthumb on" data-i="0" aria-label="Screen 1"><span>1</span><em>Ekran główny</em></button>
+        <button class="vthumb" data-i="1" aria-label="Screen 2"><span>2</span><em>Szczegóły</em></button>
+        <button class="vthumb" data-i="2" aria-label="Screen 3"><span>3</span><em>Ustawienia</em></button>
+      </div>
+    </div>
+  </div>
+  <div class="copy">
+    <div class="kicker"><span class="num">05</span>Edukacja</div>
+    <h3>Anatomia 3D</h3>
+    <p class="lead">Kończyna górna, głowa i szyja w 3D. Obracasz, klikasz, rozumiesz.</p>
+    <div class="pr">
+      <div><span class="lbl p">Problem</span><p>Płaski atlas nie pokazuje, jak struktury leżą względem siebie.</p></div>
+      <div><span class="lbl s">Rozwiązanie</span><p>Interaktywny model z nazwami po polsku i łacinie. Włączasz tylko warstwy, których potrzebujesz.</p></div>
+    </div>
+    <ul class="ben"><li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10.5 4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>6 warstw: kości, mięśnie, stawy, więzadła, nerwy, naczynia</span></li><li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10.5 4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Przy stawach: typ, osie ruchu, powierzchnie, antagoniści</span></li><li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10.5 4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Strona prawa, lewa lub obie; wybór wielu mięśni naraz</span></li><li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10.5 4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Mapa ciała do szybkiej nawigacji</span></li></ul>
+    
+    <div class="chips"><span>Przeglądarka</span><span>WebGL</span></div>
+    <div class="cta-row">
+      <button type="button" class="btn btn-cta" data-want="Anatomia 3D">Chcę tę aplikację <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h11m-4-5 5 5-5 5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <a class="btn btn-line" href="/05/">Demo online <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h11m-4-5 5 5-5 5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+    </div>
+  </div>
+</article>
+  </div>
+</section>
+
+<!-- ═══════════ JAK TO DZIAŁA ═══════════ -->
+<section class="how" id="jak">
+  <svg class="div-top" viewBox="0 0 1440 80" preserveAspectRatio="none" aria-hidden="true"><path d="M0 0h1440v30c-240 60-480 60-720 20S240 10 0 40Z"/></svg>
+  <div class="wrap">
+    <header class="sec-head reveal light">
+      <span class="eyebrow">Proces</span>
+      <h2>Od zgłoszenia do premiery <em>w trzech krokach</em></h2>
+    </header>
+    <ol class="steps">
+      <li class="reveal"><span class="n">1</span><h3>Zgłaszasz chęć</h3><p>Klikasz „Chcę tę aplikację” i podajesz imię oraz e-mail. Zajmuje to pół minuty.</p></li>
+      <li class="reveal"><span class="n">2</span><h3>Zbieram chętnych</h3><p>Gdy zapisze się wystarczająco dużo osób, aplikacja przechodzi do sprzedaży.</p></li>
+      <li class="reveal"><span class="n">3</span><h3>Premiera</h3><p>Dostajesz wiadomość jako pierwszy. Aplikacja działa w przeglądarce, na komputerze lub telefonie.</p></li>
+    </ol>
+  </div>
+</section>
+
+<!-- ═══════════ DLACZEGO ═══════════ -->
+<section class="why">
+  <div class="wrap">
+    <header class="sec-head reveal">
+      <span class="eyebrow">Dlaczego warto</span>
+      <h2>Konkretnie, <em>bez pośredników</em></h2>
+    </header>
+    <div class="tiles">
+      <div class="tile reveal" data-spot><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg><h3>Szybki start</h3><p>Demo otwiera się w przeglądarce. Sprawdzasz, zanim zdecydujesz.</p></div>
+      <div class="tile reveal" data-spot><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg><h3>Rozmowa z autorem</h3><p>Piszesz bezpośrednio do osoby, która napisała kod. Bez pośredników.</p></div>
+      <div class="tile reveal" data-spot><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="m8.5 12 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><h3>Po polsku</h3><p>Interfejs, treści i obsługa w języku polskim.</p></div>
+      <div class="tile reveal" data-spot><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><h3>Rozwój z Twoich uwag</h3><p>Każda aplikacja ma przycisk „Sugestie”. Twoje uwagi czyta autor.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ FAQ ═══════════ -->
+<section class="faq" id="faq">
+  <div class="wrap narrow">
+    <header class="sec-head reveal">
+      <span class="eyebrow">FAQ</span>
+      <h2>Najczęstsze pytania</h2>
+    </header>
+    <div class="qa reveal">
+      <details open><summary>Czy muszę coś instalować?</summary><p>Cztery aplikacje działają w przeglądarce — wystarczy link z demo. StartupBoard to lekki program na Windows (ZIP: rozpakuj i uruchom). Notatnik Słuchacza ma też wersję na iPhone’a.</p></details>
+      <details><summary>Gdzie zapisują się moje dane?</summary><p>Nawyk zapisuje dane w chmurze, a klucz synchronizacji łączy Twoje urządzenia. Pozostałe aplikacje trzymają ustawienia lokalnie, u Ciebie.</p></details>
+      <details><summary>Ile to kosztuje?</summary><p>Cenę podam przy premierze. Osoby z listy chętnych dowiedzą się pierwsze, a zapis do niczego nie zobowiązuje.</p></details>
+      <details><summary>Czy mogę zamówić zmiany albo własną aplikację?</summary><p>Tak. Napisz na michus@gmail.com — ocenię, czy rozwiąże go któraś z obecnych aplikacji, czy trzeba zbudować coś nowego.</p></details>
+      <details><summary>Mam pomysł na ulepszenie. Gdzie go zgłosić?</summary><p>Użyj przycisku „Sugestie” w stopce albo w menu aplikacji. Wiadomość trafia bezpośrednio do autora.</p></details>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ CTA KOŃCOWE ═══════════ -->
+<section class="final">
+  <div class="wrap">
+    <div class="final-card reveal">
+      <div class="blob b1"></div><div class="blob b2"></div>
+      <h2>Którą aplikację chcesz dostać <em>jako pierwszy?</em></h2>
+      <p>Zapisz się na listę. Gdy uzbiera się wystarczająco chętnych, dam Ci znać e-mailem.</p>
+      <div class="cta-row center">
+        <button type="button" class="btn btn-cta btn-lg" data-want="">Chcę dostęp <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h11m-4-5 5 5-5 5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <a class="btn btn-ghost btn-lg" href="mailto:michus@gmail.com">michus@gmail.com</a>
+      </div>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer class="foot">
+  <div class="wrap foot-in">
+    <a class="brand" href="#top"><svg viewBox="0 0 40 40" aria-hidden="true"><defs><linearGradient id="lg2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5eead4"/><stop offset="1" stop-color="#0f766e"/></linearGradient></defs><rect width="40" height="40" rx="12" fill="url(#lg2)"/><path d="M7 24c4-7 7-7 10 0s6 7 10 0c1.4-3 3-4 6-3" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"/></svg><span>Aplikacje<small>Michał Rzekiecki</small></span></a>
+    <div class="foot-links">
+      <button type="button" data-open="dAbout">O autorze</button>
+      <button type="button" data-open="dSug">Sugestie</button>
+      <a href="mailto:michus@gmail.com">michus@gmail.com</a>
+    </div>
+    <p class="fine">© 2026 Michał Rzekiecki · v0.01 · Modele 3D w Anatomii: Z-Anatomy / BodyParts3D (CC BY-SA)</p>
+  </div>
+</footer>
+
+<button type="button" class="stick btn btn-cta" id="stick" data-want="">Zapisz się na listę chętnych</button>
+
+<dialog id="dWant">
+  <h2>Chcę tę aplikację</h2>
+  <p>Podaj imię i e-mail. Gdy uzbiera się wystarczająco chętnych, dam Ci znać o premierze.</p>
+  <form id="wantF" novalidate>
+    <label>Aplikacja<select id="wApp" name="app"><option>StartupBoard</option><option>Nawyk</option><option>Esencja</option><option>Notatnik Słuchacza</option><option>Anatomia 3D</option></select></label>
+    <label>Imię<input id="wName" name="name" type="text" autocomplete="given-name" maxlength="80" required></label>
+    <label>E-mail<input id="wMail" name="email" type="email" autocomplete="email" maxlength="120" required></label>
+    <input class="hp" id="wHp" name="website" type="text" tabindex="-1" autocomplete="off" aria-hidden="true">
+    <label class="chk"><input id="wOk" type="checkbox" required><span>Zgadzam się na wysłanie jednej wiadomości o premierze tej aplikacji. Dane (imię, e-mail) posłużą tylko do tego.</span></label>
+    <div class="msg" id="wMsg" role="status"></div>
+    <div class="drow"><button class="btn btn-cta" type="submit" id="wGo">Zapisz mnie</button><button class="btn btn-line" type="button" data-close>Zamknij</button></div>
+  </form>
+</dialog>
+
+<dialog id="dAbout">
+  <h2>O autorze</h2>
+  <p><b>Aplikacje — strona główna</b></p>
+  <p>Wersja: v0.01</p>
+  <p>Autor: Michał Rzekiecki</p>
+  <p>Kontakt: <a href="mailto:michus@gmail.com">michus@gmail.com</a></p>
+  <div class="drow"><button class="btn btn-line" data-close>Zamknij</button></div>
+</dialog>
+
+<dialog id="dSug">
+  <h2>Sugestie</h2>
+  <p>Co sprawiłoby, że ta strona i aplikacje byłyby jeszcze lepsze?</p>
+  <textarea id="sugT" rows="5" placeholder="Twoja sugestia…" aria-label="Sugestia"></textarea>
+  <div class="drow">
+    <a class="btn btn-cta" id="sugMail" href="mailto:michus@gmail.com?subject=Sugestia%20%E2%80%93%20strona%20aplikacji">Otwórz w poczcie</a>
+    <button class="btn btn-line" id="sugCopy" type="button">Kopiuj</button>
+    <button class="btn btn-line" data-close>Zamknij</button>
+  </div>
+  <p class="src">Wiadomość trafia na <b>michus@gmail.com</b>.</p>
+</dialog>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+  'use strict';
+  var $ = function (s, r) { return (r || document).querySelector(s); };
+  var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
+  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* nawigacja: tło po przewinięciu + przycisk na dole (mobile) */
+  var nav = $('#nav'), stick = $('#stick'), hero = $('.hero');
+  function onScroll() {
+    var y = window.scrollY || 0;
+    nav.classList.toggle('solid', y > 24);
+    if (stick) stick.classList.toggle('show', y > (hero ? hero.offsetHeight * 0.7 : 500));
+  }
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+
+  /* pojawianie się sekcji */
+  var rv = $$('.reveal');
+  if ('IntersectionObserver' in window && !reduce) {
+    var io = new IntersectionObserver(function (es) {
+      es.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
+    }, { threshold: 0.12, rootMargin: '0px 0px -6% 0px' });
+    rv.forEach(function (n) { io.observe(n); });
+  } else { rv.forEach(function (n) { n.classList.add('in'); }); }
+
+  /* liczniki */
+  $$('[data-count]').forEach(function (el) {
+    var to = +el.dataset.count, suf = el.dataset.suffix || '';
+    if (reduce) return;
+    el.textContent = '0' + suf;
+    var t0 = null;
+    function step(t) {
+      if (!t0) t0 = t;
+      var p = Math.min(1, (t - t0) / 1400), v = Math.round(to * (1 - Math.pow(1 - p, 3)));
+      el.textContent = v + suf;
+      if (p < 1) requestAnimationFrame(step);
+    }
+    setTimeout(function () { requestAnimationFrame(step); }, 500);
+  });
+
+  /* przechył 3D makiety w hero */
+  var tilt = $('#tilt');
+  if (tilt && !reduce && window.matchMedia('(hover:hover)').matches) {
+    var st = tilt.parentNode;
+    st.addEventListener('pointermove', function (e) {
+      var r = st.getBoundingClientRect(), x = (e.clientX - r.left) / r.width - 0.5, y = (e.clientY - r.top) / r.height - 0.5;
+      tilt.style.transform = 'rotateY(' + (x * 14) + 'deg) rotateX(' + (-y * 10) + 'deg)';
+    });
+    st.addEventListener('pointerleave', function () { tilt.style.transform = ''; });
+  } else if (tilt) { tilt.style.transform = 'rotateY(-6deg) rotateX(3deg)'; }
+
+  /* poświata za kursorem na kartach */
+  $$('[data-spot]').forEach(function (c) {
+    c.addEventListener('pointermove', function (e) {
+      var r = c.getBoundingClientRect();
+      c.style.setProperty('--mx', (e.clientX - r.left) + 'px');
+      c.style.setProperty('--my', (e.clientY - r.top) + 'px');
+    });
+  });
+
+  /* aktywna pigułka podczas przewijania */
+  var pills = $$('#pills a');
+  if ('IntersectionObserver' in window) {
+    var po = new IntersectionObserver(function (es) {
+      es.forEach(function (e) {
+        if (!e.isIntersecting) return;
+        pills.forEach(function (a) { a.classList.toggle('on', a.dataset.p === e.target.id); });
+        var on = $('#pills a.on'); if (on && on.scrollIntoView && $('#pills').scrollWidth > $('#pills').clientWidth) on.scrollIntoView({ inline: 'center', block: 'nearest' });
+      });
+    }, { rootMargin: '-35% 0px -55% 0px' });
+    $$('.app').forEach(function (a) { po.observe(a); });
+  }
+
+  /* toast */
+  var toast = $('#toast'), tt;
+  function say(m) { toast.textContent = m; toast.classList.add('show'); clearTimeout(tt); tt = setTimeout(function () { toast.classList.remove('show'); }, 4200); }
+
+  /* przeglądarka mediów: zakładki, miniatury, prawdziwe screeny/wideo gdy pliki istnieją */
+  $$('.viewer').forEach(function (v) {
+    var tabs = $$('.vtab', v), panes = $$('.vpane', v), slides = $$('.vslide', v), thumbs = $$('.vthumb', v), tag = $('.vtag', v);
+    function show(i) {
+      slides.forEach(function (s, k) { s.classList.toggle('on', k === i); });
+      thumbs.forEach(function (t, k) { t.classList.toggle('on', k === i); });
+      if (tag) tag.classList.toggle('off', slides[0].classList.contains('real') && i === 0 || slides[i].classList.contains('real'));
+    }
+    thumbs.forEach(function (t) { t.addEventListener('click', function () { show(+t.dataset.i); tabs[0].click(); }); });
+    tabs.forEach(function (b) {
+      b.addEventListener('click', function () {
+        tabs.forEach(function (x) { x.classList.toggle('on', x === b); x.setAttribute('aria-selected', x === b); });
+        panes.forEach(function (p) { p.classList.toggle('on', p.dataset.pane === b.dataset.tab); });
+      });
+    });
+    /* screeny */
+    (v.dataset.shots || '').split(',').forEach(function (src, i) {
+      var im = new Image();
+      im.onload = function () {
+        if (!im.naturalWidth) return;
+        slides[i].innerHTML = '';
+        im.alt = 'Screen ' + (i + 1); im.loading = 'lazy'; im.decoding = 'async';
+        slides[i].appendChild(im); slides[i].classList.add('real');
+        thumbs[i].style.backgroundImage = 'url(' + src + ')'; thumbs[i].classList.add('real');
+        if (i === 0 && tag) tag.classList.add('off');
+      };
+      im.src = src;
+    });
+    /* wideo */
+    var play = $('.play', v), poster = $('.vposter', v), vsrc = v.dataset.video, ready = false;
+    if (vsrc && window.fetch) {
+      fetch(vsrc, { method: 'HEAD' }).then(function (r) {
+        var ct = r.headers.get('content-type') || '';
+        if (r.ok && /^video\//.test(ct)) ready = true;
+      }).catch(function () {});
+    }
+    if (play) play.addEventListener('click', function () {
+      if (!ready) { say('Film pojawi się wkrótce. Zapisz się na listę, a dam znać o premierze.'); return; }
+      var el = document.createElement('video');
+      el.src = vsrc; el.controls = true; el.autoplay = true; el.playsInline = true; el.preload = 'metadata';
+      poster.appendChild(el); play.classList.add('gone');
+    });
+  });
+
+  /* zapis na listę chętnych */
+  var dW = $('#dWant'), wF = $('#wantF');
+  $$('[data-want]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      if (b.dataset.want) $('#wApp').value = b.dataset.want;
+      $('#wMsg').textContent = ''; $('#wMsg').className = 'msg';
+      if (dW.showModal) dW.showModal();
+      setTimeout(function () { $('#wName').focus(); }, 50);
+    });
+  });
+  if (wF) wF.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var m = $('#wMsg'), go = $('#wGo'), name = $('#wName').value.trim(), mail = $('#wMail').value.trim();
+    function err(t) { m.textContent = t; m.className = 'msg err'; }
+    if (name.length < 2) return err('Podaj imię.');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(mail)) return err('Podaj poprawny e-mail.');
+    if (!$('#wOk').checked) return err('Zaznacz zgodę, aby się zapisać.');
+    go.disabled = true; m.textContent = 'Zapisuję…'; m.className = 'msg';
+    fetch('/api/interest', { method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ name: name, email: mail, app: $('#wApp').value, website: $('#wHp').value }) })
+      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { return { s: r.status, j: j }; }); })
+      .then(function (x) {
+        go.disabled = false;
+        if (x.j && x.j.ok) { m.textContent = 'Dziękuję! Jesteś na liście. Dam znać o premierze.'; m.className = 'msg ok'; wF.reset(); setTimeout(function () { dW.close(); say('Zapisano na listę chętnych.'); }, 1800); }
+        else err(x.j && x.j.code === 'bad_email' ? 'Podaj poprawny e-mail.' : 'Nie udało się zapisać. Spróbuj za chwilę lub napisz na michus@gmail.com.');
+      }, function () { go.disabled = false; err('Brak połączenia. Spróbuj ponownie.'); });
+  });
+
+  /* dialogi: O autorze, Sugestie */
+  $$('[data-open]').forEach(function (b) { b.addEventListener('click', function () { var d = document.getElementById(b.dataset.open); if (d && d.showModal) d.showModal(); }); });
+  $$('dialog').forEach(function (d) {
+    d.addEventListener('click', function (e) { if (e.target === d || (e.target.closest && e.target.closest('[data-close]'))) d.close(); });
+  });
+  var sugT = $('#sugT'), sugMail = $('#sugMail'), sugCopy = $('#sugCopy');
+  if (sugT) {
+    var base = sugMail.getAttribute('href').split('&body=')[0];
+    sugT.addEventListener('input', function () { sugMail.setAttribute('href', base + '&body=' + encodeURIComponent(sugT.value)); });
+    sugCopy.addEventListener('click', function () {
+      var t = sugT.value; if (!t) { say('Najpierw wpisz sugestię.'); return; }
+      (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(function () { say('Skopiowano. Wklej w wiadomości na michus@gmail.com.'); }, function () { sugT.select(); say('Zaznaczono tekst — skopiuj ręcznie (Ctrl+C).'); });
+    });
+  }
+})();
+
+</script>
+</body>
+</html>

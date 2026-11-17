@@ -210,6 +210,29 @@ async function appState(request, env, app) {
   return J({ code: 'method' }, 405);
 }
 
+
+// ── Lista chętnych (strona główna): imię + e-mail + aplikacja, D1 ──
+const WANT_APPS = ['StartupBoard', 'Nawyk', 'Esencja', 'Notatnik Słuchacza', 'Anatomia 3D'];
+let interestReady = false;
+async function interest(request, env) {
+  if (request.method !== 'POST') return J({ code: 'method' }, 405);
+  if (!env.DB) return J({ code: 'no_db' }, 501);
+  let b; try { b = await request.json(); } catch { return J({ code: 'bad' }, 400); }
+  if (b.website) return J({ ok: true }); // pułapka na boty
+  const name = String(b.name || '').trim().slice(0, 80), email = String(b.email || '').trim().toLowerCase().slice(0, 120), app = String(b.app || '');
+  if (name.length < 2) return J({ code: 'bad_name' }, 400);
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return J({ code: 'bad_email' }, 400);
+  if (!WANT_APPS.includes(app)) return J({ code: 'bad_app' }, 400);
+  if (!interestReady) {
+    await env.DB.prepare('CREATE TABLE IF NOT EXISTS interest (id INTEGER PRIMARY KEY AUTOINCREMENT, t INTEGER NOT NULL, name TEXT NOT NULL, email TEXT NOT NULL, app TEXT NOT NULL, country TEXT, UNIQUE (email, app))').run();
+    interestReady = true;
+  }
+  const c = await env.DB.prepare('SELECT COUNT(*) AS n FROM interest').first();
+  if (c && c.n >= 5000) return J({ code: 'full' }, 507);
+  await env.DB.prepare('INSERT OR IGNORE INTO interest (t, name, email, app, country) VALUES (?1, ?2, ?3, ?4, ?5)').bind(Date.now(), name, email, app, request.cf?.country || null).run();
+  return J({ ok: true });
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -221,6 +244,7 @@ export default {
         const t = await transcript(id);
         return t.code ? J(t, t.code === 'no_captions' ? 404 : 502) : J(t);
       }
+      if (url.pathname === '/api/interest') return interest(request, env);
       if (url.pathname === '/api/stats') return J(await stats(env));
       const sm = url.pathname.match(/^\/api\/state\/([a-z0-9_-]+)$/);
       if (sm) return appState(request, env, sm[1]);
