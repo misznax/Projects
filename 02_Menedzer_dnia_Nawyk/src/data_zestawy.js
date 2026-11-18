@@ -63,10 +63,11 @@ const FO=[
 
 /* Pakiety ćwiczeń dla bloku „Ćwiczenie dnia” */
 const PACKS={
-  charyzma:{n:'Charyzma (42 ćwiczenia)',items:CH},
-  glos:{n:'Niski głos (14 ćwiczeń)',items:VL},
-  roz:{n:'Rozciąganie i ruch (30 ćwiczeń)',items:ST},
-  skup:{n:'Skupienie i porządek (15 ćwiczeń)',items:FO},
+  charyzma:{n:'Charyzma ('+CH.length+' ćwiczeń)',items:CH},
+  glos:{n:'Głos: oddech i dźwięk ('+VL.length+' ćwiczeń)',items:VL},
+  uw:{n:'Podzielność uwagi ('+UW.length+' ćwiczeń, 3 poziomy)',items:UW,mv:1},
+  roz:{n:'Rozciąganie i ruch ('+ST.length+' ćwiczeń)',items:ST,mv:1},
+  skup:{n:'Skupienie i porządek ('+FO.length+' ćwiczeń)',items:FO},
   wlasne:{n:'Tylko moje ćwiczenia',items:[]},
 };
 
@@ -100,19 +101,25 @@ const GS={
     {t:'Szklanka wody',sec:10,sub:'Wstań, napij się wody.'},
   ]},
 };
+GS.nine={n:'Oddech 9D (łagodna sesja)',steps:NINE_STEPS};
 const SET_NAMES=()=>Object.keys(GS).map(k=>[k,GS[k].n]);
 
 /* Szablony układu (zestawy nawyków) */
 const LINK_Q=(t,q,len)=>({id:null,title:t,q,len:len||''});
 const J3=['Co dziś wyszło (nawet drobiazg)?','Za co jestem wdzięczny/a?','Jedna rzecz na jutro'];
 const TEMPLATES=[
- {id:'charyzma',n:'Charyzma',ic:'✨',d:'Głos (nagrania, rozgrzewka, niski głos), 42 ćwiczenia charyzmy, ruch, dziennik 3 zdań, lista.',layout:[
+ {id:'charyzma',n:'Charyzma',ic:'✨',d:'Głos (oddech i dźwięk, rozgrzewka, nagrania), oddech 9D (odblokowuje się po 4 dniach), 35 ćwiczeń charyzmy, podzielność uwagi (3 poziomy), ruch, dziennik 3 zdań, lista.',layout:[
   {id:'g',title:'Głos',ic:'🎙️',blocks:[
     {id:'g_vb',type:'daily',h:'Najpierw oddech — ćwiczenie dnia',cfg:{pack:'glos',own:[],cat:'Oddechowe'}},
     {id:'g_v',type:'daily',h:'Potem dźwięk — ćwiczenie dnia',cfg:{pack:'glos',own:[],cat:'Dźwiękowe'}},
     {id:'g_w',type:'guided',h:'Prowadzona rozgrzewka (oddech, potem dźwięk)',cfg:{set:'voice'}},
     {id:'g_m',type:'media',h:'Nagrania z YouTube',cfg:{tracks:TRK.map(t=>({id:t[0],title:t[1],len:t[2]}))}}]},
+  {id:'o9',title:'Oddech 9D',ic:'🌀',bonus:1,lock:4,blocks:[
+    {id:'o9_t',type:'text',h:'',cfg:{k:'nine'}},
+    {id:'o9_g',type:'guided',h:'Łagodna sesja 9D z timerem',cfg:{set:'nine',len:5}},
+    {id:'o9_m',type:'media',h:'Dźwięk 9D (słuchawki)',cfg:{tracks:[LINK_Q('9D breathwork — wyciszenie','9D breathwork relaxing headphones','10–15 min'),LINK_Q('Oddech 9D po polsku','oddech 9D breathwork po polsku','10–20 min')]}}]},
   {id:'c',title:'Charyzma',ic:'✨',blocks:[{id:'c_d',type:'daily',h:'',cfg:{pack:'charyzma',own:[]}}]},
+  {id:'uw',title:'Podzielność uwagi',ic:'🧠',blocks:[{id:'uw_d',type:'daily',h:'',cfg:{pack:'uw',own:[],lv:1}}]},
   {id:'r',title:'Ruch',ic:'💪',blocks:[{id:'r_w',type:'workout',h:'',cfg:{}}]},
   {id:'d',title:'Dziennik 3 zdań',ic:'📓',blocks:[{id:'b_j',type:'journal',h:'',cfg:{p:J3.slice()}}]},
   {id:'z',title:'Lista na dziś',ic:'✅',blocks:[{id:'z_t',type:'todo',h:'',cfg:{}}]}]},
@@ -126,9 +133,10 @@ const TEMPLATES=[
   {id:'rz_e',title:'Wieczorny relaks',ic:'🌙',blocks:[{id:'rz_e1',type:'guided',h:'5 minut spokojnego rozciągania',cfg:{set:'eve'}}]},
   {id:'rz_j',title:'Dziennik ciała',ic:'📓',blocks:[{id:'rz_j1',type:'journal',h:'',cfg:{p:['Gdzie dziś czuję napięcie?','Co mi dziś pomogło?','Co zrobię jutro dla ciała?']}}]},
   {id:'rz_z',title:'Lista na dziś',ic:'✅',blocks:[{id:'rz_z1',type:'todo',h:'',cfg:{}}]}]},
- {id:'skupienie',n:'Skupienie i porządek',ic:'🎯',d:'Rytuał startu dnia, ćwiczenie dnia (start, fokus, reset, porządek, wieczór), reset przy biurku, dziennik pracy.',layout:[
+ {id:'skupienie',n:'Skupienie i porządek',ic:'🎯',d:'Rytuał startu dnia, ćwiczenie dnia (start, fokus, reset, porządek, wieczór), podzielność uwagi (3 poziomy), reset przy biurku, dziennik pracy.',layout:[
   {id:'sk_s',title:'Rytuał startu',ic:'☀️',blocks:[{id:'sk_s1',type:'routine',h:'Poranna checklista',cfg:{items:[{id:'i1',x:'Szklanka wody'},{id:'i2',x:'Trzy priorytety na dziś zapisane'},{id:'i3',x:'Telefon poza zasięgiem na pierwszy blok pracy'}]}}]},
   {id:'sk_d',title:'Ćwiczenie dnia',ic:'🎯',blocks:[{id:'sk_d1',type:'daily',h:'',cfg:{pack:'skup',own:[]}}]},
+  {id:'sk_u',title:'Podzielność uwagi',ic:'🧠',blocks:[{id:'sk_u1',type:'daily',h:'',cfg:{pack:'uw',own:[],lv:1}}]},
   {id:'sk_r',title:'Reset przy biurku',ic:'🪑',blocks:[{id:'sk_r1',type:'guided',h:'5 minut resetu',cfg:{set:'desk'}}]},
   {id:'sk_j',title:'Dziennik pracy',ic:'📓',blocks:[{id:'sk_j1',type:'journal',h:'',cfg:{p:['Co dziś zrobiłem najważniejszego?','Co mnie rozproszyło?','Pierwszy krok na jutro']}}]},
   {id:'sk_z',title:'Lista na dziś',ic:'✅',blocks:[{id:'sk_z1',type:'todo',h:'',cfg:{}}]}]},

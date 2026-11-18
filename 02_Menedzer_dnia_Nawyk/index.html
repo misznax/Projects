@@ -376,6 +376,68 @@ html[data-dark="0"] .card.done .ttl b::after{color:hsl(150 70% 30%)}
 .st b{color:var(--cacc,var(--ink))}
 footer b{background:linear-gradient(100deg,var(--warm),var(--acc));-webkit-background-clip:text;background-clip:text;color:transparent;opacity:1}
 
+/* v0.07 — przeszklone karty (rozmycie tła, czytelny „talerz” pod tekstem), wymagania etapu, koniec dnia, brief, kłódka */
+details.card{--gl:color-mix(in srgb,var(--tone) 52%,transparent);
+  background:radial-gradient(240px circle at var(--mx) var(--my),color-mix(in srgb,var(--cacc) 20%,transparent),transparent 70%),linear-gradient(135deg,var(--gl),color-mix(in srgb,var(--tone) 24%,transparent));
+  -webkit-backdrop-filter:blur(18px) saturate(1.6);backdrop-filter:blur(18px) saturate(1.6);
+  border:1px solid color-mix(in srgb,var(--edge) 45%,rgba(255,255,255,.28));border-left:7px solid var(--edge);
+  box-shadow:0 8px 28px var(--shadow),inset 0 1px 0 rgba(255,255,255,.22)}
+details.card>.body{margin:0 8px 8px;padding:12px 14px 14px;border:1px solid color-mix(in srgb,var(--ink) 10%,transparent);border-radius:14px;background:color-mix(in srgb,var(--bg) 64%,transparent)}
+html[data-dark="0"] details.card>.body{background:color-mix(in srgb,#fff 72%,transparent)}
+.cibox,.remindbar{-webkit-backdrop-filter:blur(14px) saturate(1.4);backdrop-filter:blur(14px) saturate(1.4)}
+.req{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:8px 0 2px;padding:8px 10px;border-radius:12px;font-size:13px;background:color-mix(in srgb,var(--cacc) 10%,transparent);border:1px dashed color-mix(in srgb,var(--cacc) 45%,transparent)}
+.req[hidden],.bdone[hidden],.finish[hidden],.brief[hidden]{display:none}
+.req b{font-weight:600;color:var(--cacc)}
+.req i{font-style:normal;color:var(--mute)}
+.req i.or{font-weight:700;text-transform:uppercase;font-size:11px;letter-spacing:.06em}
+.rc{padding:2px 9px;border-radius:999px;border:1px solid var(--line)}
+.rc.on{border-color:hsl(150 70% 50%);background:hsl(150 70% 50% / .16)}
+.bdone{margin-top:10px;display:flex;gap:10px;align-items:center}
+.okb{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:999px;font-weight:600;font-size:14px;background:hsl(150 70% 50% / .16);border:1px solid hsl(150 70% 50% / .6);color:hsl(150 70% 72%)}
+html[data-dark="0"] .okb{color:hsl(150 70% 22%)}
+.okb.sm{padding:4px 11px;font-size:13px}
+.cdone .fin{align-items:center;margin-top:12px}
+.how[open] .sc,.how:not([open]) .so{display:none}
+.how>summary{cursor:pointer}
+.see{font-size:13px;margin:10px 0 2px;color:var(--mute)}
+.see a,.pin{color:var(--cacc)}
+.pin{font-size:12px;margin-right:8px}
+.ek{display:block;margin:10px 0 4px}
+.ekp{display:flex;gap:8px;flex-wrap:wrap}
+.ek img{width:min(46%,200px);height:auto;border-radius:12px;background:#fff;border:1px solid color-mix(in srgb,var(--ink) 14%,transparent)}
+.ek small{display:block;margin-top:4px;font-size:11px;color:var(--mute)}
+.ek small a{color:var(--cacc)}
+.alt{margin-top:14px;padding-top:10px;border-top:1px dashed color-mix(in srgb,var(--ink) 16%,transparent)}
+.okp{margin:6px 0;font-size:14px;color:hsl(150 70% 66%)}
+html[data-dark="0"] .okp{color:hsl(150 70% 24%)}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.chp{font:inherit;font-size:12px;padding:3px 10px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer}
+.chp:hover{border-color:var(--cacc,var(--acc))}
+details.card.locked{opacity:.9}
+details.card.locked .ic{filter:grayscale(.35)}
+.lockmsg{margin:10px 0;font-size:14px}
+.dots{display:flex;gap:6px}
+.dots i{flex:1;height:8px;border-radius:5px;background:var(--line)}
+.dots i.on{background:linear-gradient(90deg,var(--acc),var(--warm))}
+.infotx p{margin:8px 0;font-size:14px}
+.infotx .warnp{color:var(--warm)}
+.finish{margin:6px 0 14px;padding:16px 18px;border-radius:20px;border:1px solid color-mix(in srgb,var(--warm) 55%,transparent);background:linear-gradient(135deg,color-mix(in srgb,var(--warm) 22%,transparent),color-mix(in srgb,var(--acc) 12%,transparent));-webkit-backdrop-filter:blur(18px) saturate(1.5);backdrop-filter:blur(18px) saturate(1.5);box-shadow:0 10px 34px -8px color-mix(in srgb,var(--warm) 60%,transparent);animation:remindin .7s cubic-bezier(.2,.9,.25,1) both}
+.fh{display:flex;align-items:center;gap:10px;font:600 22px Fraunces,Georgia,serif}
+.fh .fe{font-size:30px;display:inline-block;animation:bump .9s ease 1}
+.fs{margin:6px 0 10px;color:var(--mute);font-size:14px}
+.fc{display:flex;flex-wrap:wrap;gap:6px}
+.fc span{padding:3px 10px;border-radius:999px;font-size:13px;border:1px solid hsl(150 70% 50% / .55);background:hsl(150 70% 50% / .12)}
+.win{margin:14px 0 4px;padding:12px 14px;border-left:4px solid var(--warm);border-radius:0 12px 12px 0;background:color-mix(in srgb,var(--bg) 55%,transparent)}
+.win p{margin:0;font:600 18px/1.4 Fraunces,Georgia,serif}
+.win cite{display:block;margin-top:6px;font-style:normal;color:var(--mute);font-size:13px}
+.brief{margin:18px 0 0;padding:14px 16px;border-radius:18px;border:1px solid color-mix(in srgb,var(--ink) 14%,transparent);background:color-mix(in srgb,var(--bg) 55%,transparent);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);position:relative}
+.brief h3{margin:0;font:600 15px Fraunces,Georgia,serif;color:var(--warm)}
+.brief .cyc{position:absolute;right:16px;top:15px;font-size:12px;color:var(--mute)}
+.brief ul{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:3px}
+.brief li{display:flex;gap:10px;align-items:center;font-size:14px;line-height:1.35}
+.brief li i{font-style:normal;width:22px;text-align:center;flex:none}
+.brief.end{border-color:var(--warm);box-shadow:0 0 24px -6px var(--warm)}
+
 /* wyłączanie efektów */
 body.paused *,body.paused *::before{animation-play-state:paused!important}
 body.nofx *,body.nofx *::before,body.nofx *::after{animation:none!important}
@@ -450,7 +512,7 @@ textarea.mono{font:12px/1.4 ui-monospace,Consolas,monospace;min-height:110px}
 
   <section class="prog" aria-label="Postęp dnia">
     <div class="prow"><span id="ptxt"></span><span class="sp"></span><span id="week"></span><span id="streak"></span></div>
-    <div class="hint" id="hint">Zacznij od 2 pytań na start dnia. Potem rób ćwiczenia i dotykaj kółka przy zadaniu, gdy zrobione — jedno wystarczy.</div>
+    <div class="hint" id="hint">Zacznij od 2 pytań na start dnia. Potem rób ćwiczenia — etap zaliczy się sam, gdy zrobisz wymagane ćwiczenia (lista jest w sekcji).</div>
     <div class="strip" id="strip" aria-label="Ostatnie 14 dni"></div>
   </section>
 
@@ -460,6 +522,8 @@ textarea.mono{font:12px/1.4 ui-monospace,Consolas,monospace;min-height:110px}
 
   <main id="cards"></main>
 
+  <section id="finish" class="finish" hidden aria-live="polite" aria-label="Podsumowanie dnia"></section>
+
   <section id="survey" class="cibox sv wait" aria-label="Jak poszło?"></section>
 
   <details class="card sumcard" id="sumCard">
@@ -468,6 +532,8 @@ textarea.mono{font:12px/1.4 ui-monospace,Consolas,monospace;min-height:110px}
   </details>
 
   <div id="addCard"></div>
+
+  <section id="brief" class="brief" hidden aria-label="Krótkie przypomnienie"></section>
 
   <footer><b>Done is better than perfect.</b> W kształtowaniu nawyku najbardziej liczy się wykonane zadanie, nie jak duże ono było. Miłego dnia :)</footer>
 </div>
@@ -479,8 +545,9 @@ textarea.mono{font:12px/1.4 ui-monospace,Consolas,monospace;min-height:110px}
   <p><b>Nawyk — menedżer dnia</b></p>
   <p>Wersja: <span id="verA"></span></p>
   <p>Autor: Michał Rzekiecki</p>
-  <p class="src" style="margin-top:2px"><b>Co nowego w v0.06:</b> nowa, ciepła paleta „Żar” (koral, złoto, fiolet, turkus), żywe tło, konfetti i krótkie pochwały po zadaniu, fale przy dotyku, podświetlenie karty za kursorem. Efekty można wyłączyć w „Wygląd i kolory”; nie działają przy włączonym w systemie ograniczeniu animacji.</p>
+  <p class="src" style="margin-top:2px"><b>Co nowego w v0.07:</b> etap zalicza się sam, gdy zrobisz wymagane ćwiczenia (np. oddech + dźwięk albo cała rozgrzewka); po zaliczeniu sekcja się zwija i otwiera następna; po całym dniu — podsumowanie i cytat. Nowe: podzielność uwagi (3 poziomy, 31 ćwiczeń), oddech 9D (po 4 dniach), brief na dole, instrukcje do zwinięcia (zapamiętuję wybór), „inna aktywność” w Ruchu, przeszklone karty, bez dublowania ćwiczeń.</p>
   <p>Kontakt: <a href="mailto:kontakt@smialo.org">kontakt@smialo.org</a></p>
+  <p class="src">Ilustracje ćwiczeń: <a href="https://github.com/everkinetic/data" target="_blank" rel="noopener noreferrer">Everkinetic</a>, licencja <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a> (bez zmian). Ćwiczenia podzielności uwagi: trening „dual-task” (chodzenie + mówienie), zadanie Stroopa, shadowing (tłumaczenie symultaniczne). Cytaty w podsumowaniu dnia to własne tłumaczenia znanych wypowiedzi.</p>
   <p class="src">Model charyzmy: Obecność · Moc · Ciepło (O. Fox Cabane, „The Charisma Myth”). Rozgrzewka głosu oparta na ćwiczeniach J. Treasure (TED). Ćwiczenia mają charakter ogólny — przy bólu, zawrotach głowy lub chrypce przerwij i skonsultuj się ze specjalistą.</p>
   <div class="drow"><button class="btn" data-close>Zamknij</button></div>
 </dialog>
@@ -498,6 +565,8 @@ textarea.mono{font:12px/1.4 ui-monospace,Consolas,monospace;min-height:110px}
   <h2>Wygląd i kolory</h2>
   <h4>Kolor</h4><div class="sws" id="sws"></div>
   <h4>Jasność</h4><div id="modeSeg"></div>
+  <h4>Instrukcje ćwiczeń</h4><div id="howSeg"></div>
+  <p class="src" style="margin-top:6px">Auto: rozwinięte przez pierwsze 4 dni, potem zwinięte. Każdą instrukcję możesz też zwinąć lub rozwinąć osobno — zapamiętam wybór.</p>
   <h4>Inne</h4>
   <label class="chk"><input type="checkbox" id="setQuiet"><span>Tryb cichy: zwinięte sekcje lekko przygaszone (75%)</span></label>
   <label class="chk"><input type="checkbox" id="setSnd"><span>Dźwięki timera</span></label>
@@ -765,72 +834,74 @@ const CH=[
 {c:'Obecność',t:'Palce stóp',m:2,sec:60,when:'Rano (1 minuta), a potem tuż przed jedną dzisiejszą rozmową — z kimkolwiek.',steps:['Stań lub usiądź, zamknij oczy albo patrz w jeden punkt.','Skup całą uwagę na palcach u stóp: poczuj nacisk podeszwy, ciepło, dotyk skarpetki lub buta.','Staraj się czuć wszystkie 10 palców naraz przez minutę (start timera poniżej). Gdy myśli odpłyną — wróć do palców.','Tuż przed rozmową zrób to samo przez 10 sekund. Nikt tego nie zauważy.'],ok:'zrobisz pełną minutę rano i 10 sekund przed jedną rozmową.'},
 {c:'Moc',t:'Zwolnij o 20%',read:1,m:3,when:'W każdej dzisiejszej rozmowie: praca, sklep, telefon, dom.',steps:['Mów tak, jakbyś dyktował komuś numer telefonu: wyraźnie i wolno.','Po każdym zdaniu zrób krótką pauzę (w głowie „raz”).','Przy najważniejszym słowie zdania zwolnij jeszcze bardziej.'],solo:'Przeczytaj głośno jeden akapit dowolnego tekstu w takim tempie.',ok:'przez całą jedną rozmowę mówisz wyraźnie wolniej niż zwykle.'},
 {c:'Ciepło',t:'Życzliwość w 2 minuty',m:2,sec:120,when:'Rano albo przed pierwszą dzisiejszą rozmową. Potrzebujesz 2 minut ciszy.',steps:['Usiądź, zamknij oczy, zrób 3 spokojne oddechy.','Przywołaj w myślach osobę, którą lubisz. Powtórz w głowie: „Niech będzie zdrowa. Niech będzie spokojna. Niech będzie szczęśliwa.”','To samo dla osoby neutralnej (np. sąsiad, kasjerka ze sklepu).','To samo dla kogoś, z kim jest Ci trudniej.','Otwórz oczy i wejdź w rozmowę z tym nastawieniem. Nie musisz nikomu o tym mówić.'],ok:'przejdziesz przez wszystkie trzy osoby.'},
-{c:'Głos',t:'Mruczenie w klatce',m:2,img:'chest',sec:90,when:'Teraz, przez ok. 2 minuty, w miejscu gdzie możesz mruczeć (dom, auto, spacer).',steps:['Połóż dłoń płasko na środku klatki piersiowej (mostek — kość między piersiami).','Wdech nosem na 3 sekundy.','Zamknij usta, zęby się nie dotykają. Mrucz „mmm” na niskim, wygodnym tonie, jak przy czymś bardzo smacznym, tak długo jak starcza powietrza (ok. 8 s).','Pod dłonią ma być czuć drżenie. Nie czujesz? Zmień ton odrobinę wyżej lub niżej.','Powtórz 6 razy.'],ok:'poczujesz drżenie pod dłonią przy co najmniej 3 powtórzeniach i nic Cię nie boli w gardle.'},
 {c:'Ciało',t:'Postawa „nitka”',m:1,img:'posture',when:'3 razy dziś (rano, w środku dnia, wieczorem), po 30 sekund.',steps:['Stań bokiem do lustra albo postaw telefon na półce i nagraj się z boku.','Stopy na szerokość bioder, kolana lekko luźne (nie zablokowane).','Wyobraź sobie nitkę przyczepioną do czubka głowy, która ciągnie w górę. Ucho ma być nad barkiem, bark nad biodrem.','Broda równolegle do podłogi (nie wysunięta do przodu), barki w dół i lekko do tyłu.','Weź 3 spokojne oddechy w tej pozycji.'],ok:'w lustrze lub na nagraniu widać prostą linię: ucho – bark – biodro – kostka (patrz rysunek).'},
 {c:'Rozmowa',t:'Pytania otwarte',m:3,when:'Dziś w trzech różnych krótkich rozmowach: z kimś z pracy, z kimś z rodziny i ze sprzedawcą lub sąsiadem.',steps:['Pytanie otwarte to takie, na które nie da się odpowiedzieć „tak” lub „nie”. Zaczyna się od: jak, co, dlaczego, opowiedz.','Zadaj jedno takie pytanie w każdej z trzech rozmów.','Po pytaniu zamilcz i słuchaj do końca odpowiedzi. Nie podpowiadaj i nie dopowiadaj.'],say:'„Jak poszło z …?” · „Co było w tym najtrudniejsze?” · „Opowiedz, jak to się stało.”',solo:'Wyślij znajomemu wiadomość: „Co u Ciebie ostatnio najciekawszego?”',ok:'zadasz 3 pytania otwarte i nie przerwiesz żadnej odpowiedzi.'},
 
 {c:'Obecność',t:'Telefon poza zasięgiem',m:3,when:'W pierwszej dzisiejszej rozmowie twarzą w twarz (praca, sklep, dom).',steps:['Zanim zaczniesz rozmowę, odłóż telefon ekranem w dół albo schowaj go do kieszeni lub torby.','Wycisz powiadomienia na czas rozmowy (tryb „nie przeszkadzać”).','Patrz na rozmówcę, a nie na ekran, aż skończy mówić. Zerknięcia na zegarek też się nie liczą.'],ok:'przez całą rozmowę ani razu nie sięgniesz po telefon.'},
 {c:'Moc',t:'Cisza zamiast „yyy”',m:3,when:'Dziś, w jednej dłuższej wypowiedzi (spotkanie, rozmowa telefoniczna) albo w 1-minutowym nagraniu do siebie.',steps:['Zauważ słowa-wypełniacze: „yyy”, „eee”, „no”, „jakby”, „tak naprawdę”.','Gdy poczujesz, że chcesz je powiedzieć — zamknij usta i zrób pauzę na 1 sekundę (w głowie „raz”).','Dopiero potem mów dalej. Pauza brzmi jak namysł, a nie jak błąd.'],solo:'Nagraj w telefonie 60 sekund o dowolnym temacie i odsłuchaj. Policz każde „yyy”.',ok:'przez jedną całą wypowiedź zastępujesz wypełniacze ciszą.'},
 {c:'Ciepło',t:'Imię rozmówcy',m:2,when:'W dwóch dzisiejszych rozmowach (kolega z pracy, sąsiad, sprzedawca z plakietką, ktoś z rodziny).',steps:['Zacznij od imienia: „Cześć, Marek.”','Użyj imienia jeszcze raz w środku rozmowy, naturalnie, np. przy podziękowaniu lub pytaniu: „Dzięki, Marek, to mi pomogło.”','Poznajesz kogoś nowego? Powtórz imię na głos od razu („Miło mi, Anna”), a potem dwa razy w myślach.','Nie powtarzaj imienia w każdym zdaniu. Dwa razy w rozmowie wystarczy.'],ok:'użyjesz imienia dwóch osób, każdej co najmniej raz.'},
-{c:'Głos',t:'Rejestr: nos – gardło – klatka',read:1,m:3,img:'chest',when:'Teraz, ok. 3 minuty, w miejscu gdzie możesz mówić na głos.',steps:['Wybierz jedno zdanie, np. „Dzień dobry, miło mi Cię poznać.”','Powiedz je „z nosa”: ton wysoki, nosowy, jakbyś miał katar. Zauważ, gdzie czujesz wibrację (okolice nosa, twarz).','Powiedz je „z gardła”: zwykły, codzienny głos. Wibracja w gardle.','Powiedz je „z klatki”: dłoń na mostku, ton trochę niżej, tempo wolniej, wyobraź sobie, że dźwięk wychodzi z klatki. Wibracja ma być pod dłonią.','Powtórz całą trójkę 3 razy. Potem 5 razy samo „z klatki”, bez wciskania krtani w dół.'],ok:'czujesz wibrację pod dłonią przy wersji „z klatki” i słyszysz różnicę między wszystkimi trzema.'},
 {c:'Ciało',t:'Kontakt wzrokowy 3 sekundy',m:2,img:'eyes',when:'Przy każdym powitaniu dziś (minimum 3 razy): kolega, kasjer, sąsiad, ktoś z rodziny.',steps:['Zanim cokolwiek powiesz, spójrz rozmówcy w jedno oko albo w punkt między oczami.','Powiedz „Cześć” lub „Dzień dobry” i w myślach policz „raz, dwa, trzy”. Nie odwracaj wzroku przez ten czas.','Potem możesz patrzeć naturalnie (czasem w bok, czasem na usta), ale wracaj do oczu.','Przy powitaniu delikatnie się uśmiechnij.'],ok:'zrobisz to przy 3 powitaniach.'},
 {c:'Rozmowa',t:'Nie przerywaj',m:3,when:'W jednej dłuższej rozmowie dziś (praca, dom, telefon).',steps:['Gdy rozmówca mówi, nie wchodź mu w zdanie — nawet jeśli wiesz, co powie.','Gdy skończy, policz w myślach „raz” i dopiero wtedy odpowiedz.','Jeśli przerwiesz: powiedz krótko „Przepraszam, dokończ” i pozwól mu dokończyć.'],ok:'przez całą jedną rozmowę nikomu nie przerwiesz (albo przeprosisz po wpadce).'},
 
 {c:'Obecność',t:'Trzy oddechy przed wejściem',m:2,img:'belly',when:'Minimum 3 razy dziś: przed wejściem do biura lub sklepu, przed spotkaniem, przed odebraniem ważnego telefonu.',steps:['Zatrzymaj się przed drzwiami albo zanim odbierzesz.','Wdech nosem przez 4 sekundy (brzuch wychodzi).','Wydech ustami przez 6 sekund.','Zrób tak 3 razy (ok. 30 sekund), potem wejdź lub odbierz.'],ok:'zrobisz to przed 3 różnymi „wejściami”. Rytm 4/6 przećwiczysz poniżej w sekcji Niski głos.'},
 {c:'Moc',t:'Odpowiedz po dwóch sekundach',m:3,when:'W trzech dzisiejszych rozmowach, gdy pada pytanie.',steps:['Rozmówca zadaje pytanie.','Zanim odpowiesz: spokojny wydech i w głowie „raz, dwa”.','Odpowiedz krótko (1–2 zdania).','Nie wiesz? Powiedz: „Muszę to przemyśleć, wrócę do Ciebie.” Zamiast zgadywać.'],ok:'zrobisz pauzę przed odpowiedzią w trzech rozmowach.'},
 {c:'Ciepło',t:'Konkretny komplement',m:2,when:'Dziś, do jednej osoby (współpracownik, ktoś z rodziny, sprzedawca).',steps:['Zauważ coś konkretnego, co ta osoba zrobiła — czyn, nie wygląd.','Powiedz to prosto, patrząc w oczy: co zrobiła i co to dało.','Nie dodawaj „ale” ani żartu, który to osłabi.'],say:'„Marta, super przygotowałaś tę prezentację — dzięki niej wszystko było jasne.”',ok:'powiesz jeden komplement z dwiema częściami: co zrobiła + co to dało.'},
-{c:'Głos',t:'Koniec zdania w dół',read:1,m:3,when:'Teraz (3 minuty, na głos), potem w pierwszej rozmowie dziś.',steps:['Powiedz: „Zaczynamy o dziesiątej.” Ostatnie słowo wypowiedz niższym tonem niż poprzednie — głos „schodzi w dół”, jak postawienie kropki.','Teraz z pytajnikiem: „Zaczynamy o dziesiątej?” — głos idzie w górę. Porównaj.','Powiedz „w dół” pięć zdań: „Zgadzam się.” „Zrobię to dziś.” „To dobry plan.” „Dziękuję za pomoc.” „Do zobaczenia jutro.”','W rozmowie: twierdzenia kończ „w dół”, pytania „w górę”.'],ok:'słyszysz różnicę (możesz nagrać się telefonem) i użyjesz „w dół” w jednej rozmowie.'},
 {c:'Ciało',t:'Zajmij przestrzeń',m:2,img:'stance',when:'Przez pierwsze 2 minuty każdej rozmowy, minimum 3 razy dziś.',steps:['Stopy na szerokość bioder (stojąc) albo obie stopy płasko na podłodze (siedząc).','Barki lekko do tyłu i w dół. Klatka otwarta.','Ręce po bokach lub na stole. Nie skrzyżowane, nie w kieszeniach. Dłonie widoczne.','Nie garb się i nie opieraj całym ciężarem o ścianę.'],ok:'zachowasz tę pozę przez pierwsze 2 minuty trzech rozmów.'},
 {c:'Rozmowa',t:'Odbicie słów',m:3,when:'W dwóch dzisiejszych rozmowach, gdy ktoś opowiada coś dłuższego.',steps:['Słuchaj do końca wypowiedzi.','Powiedz własnymi słowami, co zrozumiałeś: „Czyli chodzi o to, że …, dobrze rozumiem?”','Poczekaj na potwierdzenie albo poprawkę. Dopiero potem odpowiadaj od siebie.'],say:'„Czyli termin się przesunął i boisz się, że nie zdążysz — dobrze rozumiem?”',ok:'dwa razy powtórzysz sens cudzych słów i usłyszysz „tak” albo poprawkę.'},
 
 {c:'Obecność',t:'Kolor oczu',m:2,img:'eyes',when:'W dwóch rozmowach dziś, minimum po 1 minucie.',steps:['W trakcie rozmowy zauważ, jakiego koloru są oczy rozmówcy (niebieskie, zielone, brązowe, szare?).','Spójrz jeszcze raz: czy są plamki, ciemniejsza obwódka tęczówki?','Nie wpatruj się bez przerwy: patrz w oczy 3–5 sekund, krótko w bok, potem wróć.'],ok:'powiesz sobie w głowie kolor oczu dwóch osób.'},
 {c:'Moc',t:'Wolne gesty',m:3,img:'hands',when:'W jednej dzisiejszej rozmowie lub na spotkaniu (minimum 5 minut).',steps:['Zauważ, jak szybko poruszasz rękami i głową.','Każdy gest rób o 30% wolniej niż zwykle: wolno unieś dłoń, wolno ją opuść.','Zamiast machać, zrób gest i na chwilę go zatrzymaj przy najważniejszym słowie.'],ok:'przez 5 minut jednej rozmowy Twoje ruchy będą spokojne i wolne.'},
 {c:'Ciepło',t:'Wdzięczność ze szczegółem',m:3,when:'Dziś, do jednej osoby, która Ci kiedyś w czymś pomogła (nawet dawno temu).',steps:['Wybierz osobę (kolega, rodzic, znajomy, sprzedawca).','Powiedz lub napisz 3 zdania: 1) co dokładnie zrobiła, 2) co to dla Ciebie zmieniło, 3) „dziękuję”.'],say:'„Marek, dzięki, że w piątek zostałeś po godzinach i pomogłeś mi z raportem. Dzięki temu zdążyłem na pociąg. Dziękuję.”',ok:'wyślesz lub powiesz podziękowanie ze szczegółem.'},
-{c:'Głos',t:'Głośne czytanie',read:1,m:3,sec:180,when:'3 minuty na głos, teraz lub wieczorem.',steps:['Weź dowolny tekst (artykuł, książkę).','Stań prosto, dłoń na brzuchu. Wdech nosem przed każdym zdaniem.','Czytaj wolno i wyraźnie, jedno zdanie na jednym wydechu. Na kropce pauza 1 sekundy.','Co 4–5 zdań zatrzymaj się na jeden głębszy wdech.'],ok:'przeczytasz 3 minuty i głos Cię nie boli.'},
 {c:'Ciało',t:'Rozluźnij szczękę',m:2,img:'face',sec:60,when:'Rano (1 minuta) i jeszcze 2 razy w ciągu dnia przed rozmową lub spotkaniem.',steps:['Najpierw poczuj napięcie: zaciśnij zęby mocno na 3 sekundy. Mięśnie po bokach twarzy (przy kącie żuchwy) stwardnieją. Teraz puść.','Zęby górne i dolne mają się NIE dotykać: zostaw między nimi ok. 5 milimetrów (patrz rysunek: „dobrze”).','Język połóż luźno na dnie ust, czubek za dolnymi zębami. Wargi lekko zamknięte.','Kciukami zrób małe kółka na mięśniach żucia (policzki tuż przed kątem żuchwy) przez 20 sekund.','Weź 3 wolne oddechy. Przy każdym wydechu pozwól, żeby żuchwa opadła o milimetr.','Opuść też brwi i rozluźnij czoło.'],ok:'zęby się nie dotykają, a mięśnie po bokach twarzy są miękkie pod palcami. Powtórz 3 razy dziś.'},
 {c:'Rozmowa',t:'Zapamiętaj detal',m:2,when:'W jednej dzisiejszej rozmowie z kimś, kogo widujesz regularnie (kolega z pracy, sąsiad, ktoś z rodziny, trener).',steps:['Przypomnij sobie, co ta osoba ostatnio mówiła o sobie: wyjazd, egzamin, chore dziecko, nowy projekt, remont, zawody.','Zacznij rozmowę od pytania o to: „Jak poszło z …?” albo „I jak ten …?”','Wysłuchaj odpowiedzi do końca.','Nie pamiętasz niczego? Dziś zapytaj o jedną rzecz z jej życia i zapisz ją w notatniku telefonu (imię + szczegół), żeby zapytać przy następnym spotkaniu.'],say:'„Marek, i jak wypadł ten egzamin, o którym mówiłeś?”',ok:'zapytasz o szczegół z poprzedniej rozmowy albo zapiszesz nowy.'},
 
 {c:'Obecność',t:'Jedna rzecz naraz',m:5,sec:300,when:'Dziś, przy jednej zwykłej czynności przez 5 minut: pierwsza kawa lub herbata, mycie zębów albo spacer.',steps:['Odłóż telefon i wyłącz muzykę.','Zauważ po kolei: co widzisz, co słyszysz, co czujesz dotykiem, jaki jest zapach, jaki smak.','Gdy myśli uciekną — wróć do czynności.'],ok:'przez 5 minut zajmujesz się tylko tą jedną czynnością.'},
 {c:'Moc',t:'Spokojne „nie”',m:2,when:'Dziś, przy jednej małej prośbie, na którą normalnie zgodziłbyś się wbrew sobie (np. kolega prosi o przysługę, sprzedawca proponuje dodatek).',steps:['Zauważ, że wolisz odmówić.','Powiedz krótko i spokojnie, bez tłumaczeń: „Dziękuję, tym razem nie.”','Zakończ zdanie w dół, patrz w oczy. Nie dodawaj „przepraszam, bo…”.'],solo:'Nie było takiej sytuacji? Powiedz to zdanie na głos 3 razy.',ok:'odmówisz jednej rzeczy jednym zdaniem.'},
 {c:'Ciepło',t:'Uśmiech oczami',m:2,img:'face',when:'Przed trzema dzisiejszymi rozmowami.',steps:['Zanim się odezwiesz, pomyśl o jednej rzeczy, którą w tej osobie lubisz (poczucie humoru, spokój, to, że Ci kiedyś pomogła).','Poczujesz, jak lekko unoszą się policzki i marszczą kąciki oczu — to prawdziwy uśmiech.','Powiedz powitanie z tym wyrazem twarzy.'],ok:'zrobisz to przed 3 rozmowami.'},
-{c:'Głos',t:'Jedno zdanie, pięć nastrojów',read:1,m:4,when:'Teraz, ok. 4 minuty, na głos.',steps:['Zdanie: „Dobrze, zaczynamy.”','Powiedz je 5 razy: 1) spokojnie, 2) ciepło, jak do przyjaciela, 3) stanowczo, jak polecenie, 4) z ciekawością, 5) z uśmiechem.','Przy każdej wersji zmienia się tempo, wysokość i głośność. Nagraj się telefonem i posłuchaj: czy da się odróżnić wszystkie pięć?'],ok:'potrafisz odróżnić na nagraniu wszystkie 5 wersji.'},
 {c:'Ciało',t:'Otwarte dłonie',m:2,img:'hands',when:'W dwóch dzisiejszych rozmowach, minimum 5 minut każda.',steps:['Dłonie trzymaj widoczne: nie w kieszeniach, nie pod stołem, nie skrzyżowane.','Gesty rób w „strefie gestów” — między pępkiem a klatką piersiową (zielone pole na rysunku).','Dłonie lekko otwarte, wnętrzem do rozmówcy lub do góry przy wyjaśnianiu.'],ok:'w dwóch rozmowach Twoje dłonie są cały czas widoczne.'},
 {c:'Rozmowa',t:'Słuchaj 70/30',m:5,when:'W jednej rozmowie dziś, minimum 10 minut (obiad, spotkanie, telefon do rodziny).',steps:['Ustal cel: Ty mówisz ok. 30% czasu, rozmówca 70%.','Zadawaj pytania i kiwaj głową zamiast opowiadać własne historie.','Złapiesz się na monologu dłuższym niż 30 sekund? Zakończ pytaniem: „A Ty jak to widzisz?”'],ok:'przez całą rozmowę to rozmówca mówi więcej.'},
 
 {c:'Obecność',t:'Powrót do rozmowy',m:3,when:'W jednej dzisiejszej rozmowie (minimum 5 minut).',steps:['Zauważ, kiedy uciekasz myślami (co odpowiem, co zjem, co mam na jutro).','Wróć do twarzy i słów rozmówcy, bez oceniania siebie.','Za każdym razem, gdy wrócisz, dociśnij kciukiem palec w kieszeni (licznik). Po rozmowie policz.'],ok:'po rozmowie wiesz, ile razy wróciłeś.'},
 {c:'Moc',t:'Sedno na początek',m:3,when:'W jednej wiadomości lub rozmowie dziś (praca, rodzina).',steps:['Zanim zaczniesz mówić, ustal w głowie: co jest najważniejsze (jedno zdanie)?','Powiedz to jako pierwsze: „Najważniejsze: …” albo „Chcę ustalić, że …”.','Dopiero potem uzasadnienie (maksymalnie 2 zdania).'],say:'„Najważniejsze: przesuwamy termin na piątek. Powód: brakuje danych od klienta.”',ok:'zaczniesz jedną wypowiedź od sedna.'},
 {c:'Ciepło',t:'Osoba, która Cię ceni',m:2,sec:120,when:'Rano albo przed trudniejszą rozmową. 2 minuty.',steps:['Zamknij oczy, zrób 3 oddechy.','Wyobraź sobie osobę, która Cię naprawdę lubi i akceptuje (przyjaciel, babcia, ukochana osoba, ukochane zwierzę).','Zobacz jej twarz, usłysz głos, poczuj, jak na Ciebie patrzy. Zostań w tym ciepłym uczuciu przez minutę.','Otwórz oczy i wejdź z tym uczuciem w rozmowę.'],ok:'zostaniesz w obrazie przez pełne 2 minuty.'},
-{c:'Głos',t:'60 sekund bez „yyy”',m:3,sec:60,when:'Teraz, ok. 3 minuty. Przyda się telefon do nagrywania.',steps:['Wybierz temat: „co robiłem wczoraj” albo „mój ulubiony film”.','Włącz timer poniżej (60 s) i mów bez przerwy.','Zabrakło słowa? Zamknij usta i zrób pauzę — nie mów „yyy”.','Odsłuchaj nagranie i policz „yyy”. Cel: mniej niż 5.'],ok:'mówisz minutę i liczysz mniej niż 5 „yyy”.'},
 {c:'Ciało',t:'Pewny krok',m:5,img:'posture',sec:300,when:'5 minut spaceru dziś (do sklepu, z psem, w przerwie).',steps:['Głowa wysoko, wzrok na horyzoncie (nie na telefon i nie na chodnik).','Barki luźno w dół, ramiona swobodnie się kołyszą.','Krok trochę wolniejszy niż zwykle: stopa ląduje na pięcie i płynnie toczy się na palce.','Oddychaj spokojnie: wdech przez 4 kroki, wydech przez 6 kroków.'],ok:'przejdziesz 5 minut w tej postawie.'},
 {c:'Rozmowa',t:'Mini-historia w 3 zdaniach',m:3,when:'W jednej rozmowie dziś, gdy ktoś zapyta „co u Ciebie?” albo przy obiedzie.',steps:['Zdanie 1 (sytuacja): „W zeszłym tygodniu miałem…”','Zdanie 2 (problem): „…ale okazało się, że…”','Zdanie 3 (wniosek): „…i zrozumiałem, że…”','Opowiedz to komuś w mniej niż 30 sekund.'],ok:'opowiesz jedną historię w trzech zdaniach.'},
 
 {c:'Obecność',t:'Pięć minut ciszy',m:5,sec:300,when:'Dziś, 5 minut bez bodźców.',steps:['Usiądź wygodnie, plecy proste, stopy na podłodze; oczy zamknięte albo wzrok w jeden punkt.','Oddychaj normalnie i licz oddechy: wdech i wydech = 1, do 10, potem od nowa.','Zgubiłeś liczenie albo odpłynąłeś? Wróć do 1, bez złości.'],ok:'odsiedzisz 5 minut — nawet jeśli zgubisz liczenie dziesięć razy. To jest trening.'},
 {c:'Moc',t:'Prośba wprost',m:2,when:'Dziś, przy jednej małej prośbie (do kolegi, w sklepie, w domu).',steps:['Wybierz coś, czego potrzebujesz.','Powiedz prośbę jednym zdaniem, bez „przepraszam, że przeszkadzam” i bez długiego usprawiedliwienia.','Patrz w oczy, zakończ zdanie w dół i poczekaj na odpowiedź.'],say:'„Czy możesz mi wysłać raport do trzeciej?”',ok:'zgłosisz jedną prośbę jednym zdaniem.'},
 {c:'Ciepło',t:'Dobra intencja',m:1,when:'Przed dwoma dzisiejszymi spotkaniami lub rozmowami (10 sekund).',steps:['Przed rozmową, np. pod drzwiami, zapytaj siebie w myślach: „Czego ta osoba teraz potrzebuje?” (spokoju? informacji? wsparcia? decyzji?)','Ustaw się na to, by jej pomóc, a nie żeby zrobić wrażenie.','Wejdź z lekkim uśmiechem.'],ok:'zadasz sobie to pytanie przed dwoma rozmowami.'},
-{c:'Głos',t:'Łamaniec językowy',m:2,sec:120,when:'Teraz, 2 minuty.',steps:['Powiedz wolno, wyraźnie, z mocno ruchomymi ustami: „W Szczebrzeszynie chrząszcz brzmi w trzcinie.”','Powtórz szybciej, ale tak samo wyraźnie. Razem 5 razy.','Teraz drugi: „Stół z powyłamywanymi nogami.” 5 razy.'],ok:'wymówisz oba łamańce szybciej niż na początku i nadal wyraźnie.'},
 {c:'Ciało',t:'Lustro w minutę',m:2,img:'face',sec:60,when:'Dziś, 1 minuta przed lustrem (łazienka, przedpokój).',steps:['Stań przed lustrem, ramiona luźno, twarz neutralna (bez uśmiechu).','Powiedz do swojego odbicia 3 zdania o dzisiejszym planie, normalnym tonem.','Obserwuj: gdzie masz napięcie? (zaciśnięta szczęka, uniesione brwi, podniesione barki).','Rozluźnij to miejsce jednym wydechem i powiedz zdanie jeszcze raz.'],ok:'znajdziesz jedno miejsce z napięciem i je rozluźnisz.'},
 {c:'Rozmowa',t:'Podsumowanie jednym zdaniem',m:2,when:'Na końcu jednej rozmowy dziś, gdy coś ustalacie (praca, dom, plany).',steps:['Zanim rozmowa się skończy, powiedz jedno zdanie: kto, co, do kiedy.','Zapytaj: „Zgadza się?”','Poczekaj na „tak”.'],say:'„Czyli ja wyślę ofertę do środy, a Ty dasz odpowiedź do piątku — zgadza się?”',ok:'zakończysz jedną rozmowę takim zdaniem i usłyszysz „zgadza się”.'},
 ];
 
 /* ───────── NISKI GŁOS: ćwiczenie dnia ───────── */
 const VL=[
-{c:'Oddechowe',t:'Syczenie „sss” na wydechu',img:'belly',sec:60,when:'Rano albo przed rozmową. 1 minuta, bez dźwięku głosu — samo powietrze.',steps:['Stań prosto, dłoń na brzuchu nad pępkiem.','Wdech nosem przez 4 sekundy (brzuch wychodzi).','Wydychaj równo przez zęby z dźwiękiem „sssss”, jak z przekłutej opony, tak długo, jak się da bez wysiłku (ok. 10–15 s).','Powtórz 5 razy. Z dnia na dzień próbuj wydłużać wydech o sekundę.'],ok:'wydech jest równy, bez drżenia, a barki zostają nisko.'},
+{c:'Oddechowe',t:'Syczenie „sss” na wydechu',wu:1,img:'belly',sec:60,when:'Rano albo przed rozmową. 1 minuta, bez dźwięku głosu — samo powietrze.',steps:['Stań prosto, dłoń na brzuchu nad pępkiem.','Wdech nosem przez 4 sekundy (brzuch wychodzi).','Wydychaj równo przez zęby z dźwiękiem „sssss”, jak z przekłutej opony, tak długo, jak się da bez wysiłku (ok. 10–15 s).','Powtórz 5 razy. Z dnia na dzień próbuj wydłużać wydech o sekundę.'],ok:'wydech jest równy, bez drżenia, a barki zostają nisko.'},
 {c:'Oddechowe',t:'Oddech pudełkowy',sec:60,pace:[['WDECH',4,1],['ZATRZYMAJ',4,2],['WYDECH',4,0],['ZATRZYMAJ',4,3]],when:'Przed ważną rozmową albo gdy czujesz napięcie. 1 minuta.',steps:['Usiądź prosto, stopy na podłodze.','WDECH nosem 4 s, ZATRZYMAJ 4 s, WYDECH ustami 4 s, ZATRZYMAJ 4 s.','Idź za kółkiem — aplikacja podpowiada kolejny krok.'],ok:'po minucie jesteś spokojniejszy, a barki są luźne.'},
 {c:'Oddechowe',t:'Świeczka: wolny wydech',sec:45,when:'Rano, 45 sekund.',steps:['Wyobraź sobie, że przed Tobą stoi świeczka. Wdech nosem 3 sekundy.','Wydychaj cienkim strumieniem przez złożone usta, tak żeby płomień tylko się pochylił, a nie zgasł — 6–8 sekund.','Powtórz 6 razy.'],ok:'wydech trwa co najmniej 6 sekund, równo i bez szarpania.'},
-{c:'Oddechowe',t:'Oddech: wdech 4 s, wydech 6 s',img:'belly',sec:60,pace:BREATH,when:'Rano po wstaniu albo przed ważną rozmową. 1 minuta.',steps:['Stań lub usiądź prosto, ramiona luźno. Jedna dłoń na brzuchu, tuż nad pępkiem.','WDECH przez nos: przez 4 sekundy. Brzuch wysuwa się do przodu pod dłonią, barki zostają nisko.','WYDECH przez lekko otwarte usta: przez 6 sekund, cienkim strumieniem, jakbyś dmuchał na gorącą zupę. Brzuch wraca.','Powtórz 6 razy (ok. minuty). Aplikacja podpowiada, kiedy wdech, a kiedy wydech.'],ok:'brzuch rusza się pod dłonią, a barki nie unoszą się do uszu.'},
-{c:'Dźwiękowe',t:'Westchnienie „haaa”',img:'belly',sec:45,when:'Zaraz po oddechu 4–6 albo rano. 45 sekund.',steps:['Stań prosto, ramiona luźno.','Wdech przez nos, 3 sekundy.','Wydychaj przez otwarte usta z dźwiękiem „haaa”: zacznij na średnim, wygodnym tonie i pozwól mu opaść niżej, jak po zdjęciu ciężkiego plecaka. Wydech trwa ok. 5 sekund.','Szczęka luźna, usta szeroko, bez wypychania powietrza siłą.','Powtórz 5 razy.'],ok:'dźwięk jest miękki, bez chrypki, i gardło nie boli.'},
+{c:'Oddechowe',t:'Oddech: wdech 4 s, wydech 6 s',wu:1,img:'belly',sec:60,pace:BREATH,when:'Rano po wstaniu albo przed ważną rozmową. 1 minuta.',steps:['Stań lub usiądź prosto, ramiona luźno. Jedna dłoń na brzuchu, tuż nad pępkiem.','WDECH przez nos: przez 4 sekundy. Brzuch wysuwa się do przodu pod dłonią, barki zostają nisko.','WYDECH przez lekko otwarte usta: przez 6 sekund, cienkim strumieniem, jakbyś dmuchał na gorącą zupę. Brzuch wraca.','Powtórz 6 razy (ok. minuty). Aplikacja podpowiada, kiedy wdech, a kiedy wydech.'],ok:'brzuch rusza się pod dłonią, a barki nie unoszą się do uszu.'},
+{c:'Dźwiękowe',t:'Westchnienie „haaa”',wu:1,img:'belly',sec:45,when:'Zaraz po oddechu 4–6 albo rano. 45 sekund.',steps:['Stań prosto, ramiona luźno.','Wdech przez nos, 3 sekundy.','Wydychaj przez otwarte usta z dźwiękiem „haaa”: zacznij na średnim, wygodnym tonie i pozwól mu opaść niżej, jak po zdjęciu ciężkiego plecaka. Wydech trwa ok. 5 sekund.','Szczęka luźna, usta szeroko, bez wypychania powietrza siłą.','Powtórz 5 razy.'],ok:'dźwięk jest miękki, bez chrypki, i gardło nie boli.'},
 {c:'Dźwiękowe',t:'Ziewnięcie i „dobry wieczór”',sec:60,when:'Rano lub przed rozmową. 1 minuta.',steps:['Ziewnij szeroko (jeśli nie przychodzi — udawaj). Poczuj, jak tył gardła się otwiera.','Zamknij usta, ale zostaw tę przestrzeń w gardle. Wydaj dźwięk „aaa” na wygodnym tonie.','Z tą samą przestrzenią powiedz powoli: „Dobry wieczór.”','Powtórz 3 razy.'],ok:'głos brzmi pełniej i spokojniej niż zwykle, bez ściskania w gardle.'},
-{c:'Dźwiękowe',t:'Mruczenie w dół',img:'chest',sec:60,when:'Teraz, 1 minuta.',steps:['Dłoń na mostku (środek klatki).','Wdech nosem, usta zamknięte, zęby osobno.','Zacznij „mmm” na średnim tonie i powoli zjeżdżaj niżej, jak winda — tylko tak nisko, jak jest łatwo i bez trzeszczenia.','Tam, gdzie pod dłonią czujesz najmocniejsze drżenie, zatrzymaj się na 3 sekundy.','Powtórz 5 razy.'],ok:'wiesz, na jakim tonie drżenie pod dłonią jest największe.'},
+{c:'Dźwiękowe',t:'Mruczenie w dół',wu:1,img:'chest',sec:60,when:'Teraz, 1 minuta.',steps:['Dłoń na mostku (środek klatki).','Wdech nosem, usta zamknięte, zęby osobno.','Zacznij „mmm” na średnim tonie i powoli zjeżdżaj niżej, jak winda — tylko tak nisko, jak jest łatwo i bez trzeszczenia.','Tam, gdzie pod dłonią czujesz najmocniejsze drżenie, zatrzymaj się na 3 sekundy.','Powtórz 5 razy.'],ok:'wiesz, na jakim tonie drżenie pod dłonią jest największe.'},
 {c:'Dźwiękowe',t:'Słomka w wodzie',sec:90,when:'Teraz, 1,5 minuty. Potrzebujesz szklanki z wodą i słomki.',steps:['Nalej wody do połowy szklanki. Włóż słomkę ok. 2 cm pod wodę.','Wdech nosem.','Wydychaj przez słomkę, aby bąbelki szły równo, a jednocześnie wydaj dźwięk „uuu” na wygodnym, niskim tonie.','Jeden wydech trwa 5–8 sekund. Powtórz 5 razy.','Nie masz słomki? Zrób zamiast tego 5 razy „mmm” (jak w ćwiczeniu Mruczenie w dół).'],ok:'bąbelki idą równo, a dźwięk jest stały i bez łamania.'},
-{c:'Dźwiękowe',t:'Wargi „brrr”',img:'trill',sec:60,when:'Teraz, 1 minuta.',steps:['Wargi luźno złączone, szczęka luźna.','Dmuchnij tak, żeby wargi zadrżały, i jednocześnie wydaj dźwięk „brrr”.','Płynnie podnoś ton w górę i opuszczaj w dół (jak syrena), nie przerywając drżenia.','Wargi nie drżą? Dociśnij delikatnie palcami policzki po bokach ust (zielone kółka na rysunku).','Powtórz 6 razy.'],ok:'wargi drżą przez cały wydech i ton idzie w górę i w dół.'},
+{c:'Dźwiękowe',t:'Wargi „brrr”',wu:1,img:'trill',sec:60,when:'Teraz, 1 minuta.',steps:['Wargi luźno złączone, szczęka luźna.','Dmuchnij tak, żeby wargi zadrżały, i jednocześnie wydaj dźwięk „brrr”.','Płynnie podnoś ton w górę i opuszczaj w dół (jak syrena), nie przerywając drżenia.','Wargi nie drżą? Dociśnij delikatnie palcami policzki po bokach ust (zielone kółka na rysunku).','Powtórz 6 razy.'],ok:'wargi drżą przez cały wydech i ton idzie w górę i w dół.'},
 {c:'Dźwiękowe',t:'Mruczenie przechodzi w mowę',read:1,img:'chest',sec:120,when:'Teraz, 2 minuty.',steps:['Weź tekst, np. te instrukcje. Dłoń na mostku.','Zacznij każde zdanie od krótkiego „mmm” na niskim tonie (1 sekunda).','Bez przerwy przejdź w słowa, zachowując ten sam ton i drżenie pod dłonią.','Czytaj tak 2 minuty.'],ok:'pod dłonią czujesz drżenie także w trakcie słów, nie tylko przy „mmm”.'},
 {c:'Dźwiękowe',t:'Broda lekko w dół',img:'posture',sec:60,when:'Teraz, 1 minuta, przed lustrem lub nagrywając się.',steps:['Stań prosto, jak w ćwiczeniu „nitka”: ucho nad barkiem.','Wydłuż kark i delikatnie opuść brodę o 1–2 cm. Nie dociskaj do szyi.','Barki w dół.','Powiedz 5 zdań („Dzień dobry, nazywam się…”) i porównaj z zwykłą postawą. Nagraj telefonem, jeśli możesz.'],ok:'słyszysz, że głos brzmi pełniej niż przy wysuniętej brodzie.'},
 {c:'Dźwiękowe',t:'Zdanie w dół',read:1,sec:90,when:'Teraz, 1,5 minuty.',steps:['Powiedz zdanie i zakończ je niższym tonem (kropka): „Zaczynamy o dziesiątej.”','Powiedz 5 różnych zdań twierdzących, za każdym razem ostatnia sylaba niżej.','Głośność się nie zmienia, zmienia się tylko wysokość.'],ok:'ostatnia sylaba jest wyraźnie niższa od poprzednich we wszystkich zdaniach.'},
 {c:'Dźwiękowe',t:'Wolniej, z okrągłymi ustami',read:1,sec:120,when:'Teraz, 2 minuty.',steps:['Weź dowolny tekst.','Mów o 20% wolniej niż zwykle.','Wargi lekko zaokrąglone, jak przy „o”, szczęka luźna.','Nagraj telefonem fragment i porównaj z normalnym tempem.'],ok:'na nagraniu głos brzmi niżej i spokojniej niż normalnie.'},
-{c:'Dźwiękowe',t:'Syrena „uuu”',sec:60,when:'Teraz, 1 minuta.',steps:['Zacznij wysokim „iii” (jak piszczałka).','Powoli zjedź w dół do niskiego „uuu”, jak syrena karetki, która się oddala.','Zatrzymaj się tam, gdzie brzmi najpełniej.','Powtórz 5 razy.'],ok:'przejście jest płynne, bez przeskoków i bólu.'},
+{c:'Dźwiękowe',t:'Syrena „uuu”',wu:1,sec:60,when:'Teraz, 1 minuta.',steps:['Zacznij wysokim „iii” (jak piszczałka).','Powoli zjedź w dół do niskiego „uuu”, jak syrena karetki, która się oddala.','Zatrzymaj się tam, gdzie brzmi najpełniej.','Powtórz 5 razy.'],ok:'przejście jest płynne, bez przeskoków i bólu.'},
 {c:'Dźwiękowe',t:'Test „mhm”',read:1,sec:60,when:'Teraz, 1 minuta.',steps:['Powiedz leniwe, niskie „mhm” — jak przytakujesz. To Twój wygodny niski rejestr.','Powiedz „Dzień dobry” na tej samej wysokości co „mhm”.','Powiedz 3 zdania z tej wysokości, bez dociskania.'],ok:'3 zdania mówisz na wysokości „mhm”.'},
 {c:'Dźwiękowe',t:'Szept → pełny głos',read:1,sec:120,when:'Teraz, 2 minuty.',steps:['Powiedz jedno zdanie szeptem.','Powiedz je cicho, normalnym głosem, potem pełnym głosem — każdy raz z oddechu.','Pełny głos ma brzmieć jak ten sam ton, tylko większy, a nie krzyk.','Powtórz całą drabinkę 3 razy.'],ok:'pełny głos nie brzmi jak krzyk i nie boli.'},
 {c:'Dźwiękowe',t:'Dłoń na klatce',read:1,img:'chest',sec:60,when:'Teraz, 1 minuta.',steps:['Dłoń na klatce (środek mostka).','Powiedz: „Dzień dobry, miło mi.”','Poszukaj wibracji pod dłonią.','Powtórz 5 razy, za każdym razem odrobinę wolniej.'],ok:'czujesz drżenie pod dłonią przy co najmniej 3 powtórzeniach.'},
+{c:'Dźwiękowe',t:'Rejestr: nos – gardło – klatka',read:1,m:3,img:'chest',when:'Teraz, ok. 3 minuty, w miejscu gdzie możesz mówić na głos.',steps:['Wybierz jedno zdanie, np. „Dzień dobry, miło mi Cię poznać.”','Powiedz je „z nosa”: ton wysoki, nosowy, jakbyś miał katar. Zauważ, gdzie czujesz wibrację (okolice nosa, twarz).','Powiedz je „z gardła”: zwykły, codzienny głos. Wibracja w gardle.','Powiedz je „z klatki”: dłoń na mostku, ton trochę niżej, tempo wolniej, wyobraź sobie, że dźwięk wychodzi z klatki. Wibracja ma być pod dłonią.','Powtórz całą trójkę 3 razy. Potem 5 razy samo „z klatki”, bez wciskania krtani w dół.'],ok:'czujesz wibrację pod dłonią przy wersji „z klatki” i słyszysz różnicę między wszystkimi trzema.'},
+{c:'Dźwiękowe',t:'Jedno zdanie, pięć nastrojów',read:1,m:4,when:'Teraz, ok. 4 minuty, na głos.',steps:['Zdanie: „Dobrze, zaczynamy.”','Powiedz je 5 razy: 1) spokojnie, 2) ciepło, jak do przyjaciela, 3) stanowczo, jak polecenie, 4) z ciekawością, 5) z uśmiechem.','Przy każdej wersji zmienia się tempo, wysokość i głośność. Nagraj się telefonem i posłuchaj: czy da się odróżnić wszystkie pięć?'],ok:'potrafisz odróżnić na nagraniu wszystkie 5 wersji.'},
+{c:'Dźwiękowe',wu:1,t:'Łamaniec językowy',m:2,sec:120,when:'Teraz, 2 minuty.',steps:['Powiedz wolno, wyraźnie, z mocno ruchomymi ustami: „W Szczebrzeszynie chrząszcz brzmi w trzcinie.”','Powtórz szybciej, ale tak samo wyraźnie. Razem 5 razy.','Teraz drugi: „Stół z powyłamywanymi nogami.” 5 razy.'],ok:'wymówisz oba łamańce szybciej niż na początku i nadal wyraźnie.'},
+{c:'Oddechowe',t:'Oddech 5–5 (rezonansowy)',img:'belly',sec:120,pace:[['WDECH',5,1],['WYDECH',5,0]],when:'Rano lub wieczorem, 2 minuty. Siedząc lub leżąc.',steps:['Usiądź prosto albo połóż się, dłoń na brzuchu.','WDECH nosem 5 sekund, od razu WYDECH 5 sekund — płynnie, jak fala, bez zatrzymań.','To ok. 6 oddechów na minutę: spokojne tempo, w którym oddech i tętno się „zgrywają”.','Idź za kółkiem. Oddech ma być cichy i łatwy; brakuje powietrza? Skróć do 4–4.'],ok:'oddech jest cichy i płynny, a po 2 minutach czujesz spokój w ciele.'},
+{c:'Oddechowe',t:'Oddech żebrowy (na boki)',sec:60,pace:BREATH,when:'Teraz, 1 minuta.',steps:['Usiądź prosto. Dłonie połóż po bokach na dolnych żebrach.','WDECH nosem 4 sekundy: żebra rozszerzają się na boki pod dłońmi, jak parasol.','WYDECH ustami 6 sekund: żebra wracają.','Barki zostają nisko. Powtórz 6 razy.'],ok:'żebra poruszają się na boki, a barki nie unoszą się do uszu.'},
+{c:'Oddechowe',t:'Oddech 4–7–8 (wyciszenie)',sec:76,pace:[['WDECH',4,1],['ZATRZYMAJ',7,2],['WYDECH',8,0]],when:'Wieczorem albo przy napięciu. Najwyżej 4 cykle naraz (ok. 75 s).',steps:['Usiądź lub połóż się, czubek języka za górnymi zębami.','WDECH nosem 4 s, ZATRZYMAJ 7 s, WYDECH ustami 8 s.','Rób tylko 4 cykle. Zakręciło się w głowie? Skróć zatrzymanie do 4 s albo przerwij.','Nie rób tego w trakcie prowadzenia auta.'],ok:'po 4 cyklach jesteś spokojniejszy i bez zawrotów głowy.'},
+{c:'Oddechowe',t:'Książka na brzuchu',img:'belly',sec:120,when:'Wieczorem, leżąc, 2 minuty.',steps:['Połóż się na plecach, kolana ugięte. Na brzuchu połóż lekką książkę.','Wdech nosem: książka unosi się. Wydech: opada. Klatka prawie się nie rusza.','Oddychaj spokojnie (ok. 4 s wdech, 6 s wydech) przez 2 minuty.'],ok:'książka rusza się w górę i w dół, a klatka prawie wcale.'},
+{c:'Oddechowe',t:'Wydech na „fff” z liczeniem',sec:60,when:'Rano, 1 minuta.',steps:['Wdech nosem 4 sekundy.','Wydychaj cienko przez zęby i wargi „ffffff” i licz w myślach sekundy.','Zapamiętaj wynik. Następnym razem spróbuj o 1 sekundę dłużej — bez wysiłku.','Powtórz 5 razy.'],ok:'wydech trwa co najmniej 10 sekund i jest równy.'},
+{c:'Oddechowe',t:'Liczenie wydechów do 10',sec:90,when:'Dziś, 1,5 minuty, siedząc.',steps:['Usiądź prosto, oczy zamknięte lub wzrok w jeden punkt.','Oddychaj spokojnie i licz każdy WYDECH: 1, 2… do 10.','Zgubiłeś liczenie? Wróć do 1, bez złości.'],ok:'doliczysz do 10 co najmniej raz.'},
 ];
 
 /* ───────── ROZGRZEWKA PROWADZONA (5 min; 10 min = czasy ×2) ───────── */
@@ -980,6 +1051,123 @@ grip:{
 },
 };
 
+/* ───────── v0.07: podzielność uwagi, oddech 9D, brief, cytaty, ilustracje ───────── */
+
+/* PODZIELNOŚĆ UWAGI — 31 ćwiczeń, 3 poziomy (lv 1 → 3, wyższy poziom zawiera też łatwiejsze).
+   Zasada: dwa zadania naraz, z których jedno jest automatyczne (pisanie, chodzenie, rytm), a drugie wymaga uwagi (mowa, liczenie, słuch).
+   Wzorce: trening „dual-task” (chodzenie + mówienie), zadanie Stroopa, tłumaczenie symultaniczne (shadowing), proste zadania wielozadaniowe (pisanie + mówienie). */
+const UW=[
+// ── poziom 1: jedno zadanie prawie automatyczne + jedno proste
+{c:'Pisanie + głos',lv:1,t:'Imię i równe „mmm”',m:2,sec:90,when:'Dziś, 1,5 minuty. Potrzebujesz kartki i długopisu.',steps:['Weź wdech i zacznij równe „mmm” na jednej, wygodnej wysokości (jak mruczenie).','Nie przerywając dźwięku, pisz swoje imię i nazwisko raz pod drugim.','Dźwięk ma się nie zmieniać, a pismo ma być czytelne. Oddech łap bez paniki i wracaj do „mmm”.'],ok:'dźwięk jest równy, a pismo czytelne przez całe 90 sekund.'},
+{c:'Pisanie + głos',lv:1,t:'Litery na głos, imię na kartce',m:2,sec:120,when:'Dziś, 2 minuty.',steps:['Wybierz słowo, np. „koncentracja”.','Mów na głos jego litery po kolei (k-o-n-c-e-n-t-r-a-c-j-a), a jednocześnie pisz na kartce swoje imię.','Zmierz, ile to trwa. Powtórz 3 razy i spróbuj być szybszy bez błędów.'],ok:'zrobisz 3 podejścia bez pomyłek w literach i w piśmie.'},
+{c:'Liczenie + ruch',lv:1,t:'Marsz i liczenie parzystych',m:2,sec:90,when:'Dziś, 1,5 minuty, w pokoju lub na spacerze.',steps:['Maszeruj równo w miejscu albo po pokoju.','Na każdy krok licz na głos co drugą liczbę: 2, 4, 6, 8… do 60.','Zgubisz się? Zacznij od dwóch. Tempo kroków się nie zmienia.'],ok:'dojdziesz do 60 bez zatrzymania marszu.'},
+{c:'Liczenie + ruch',lv:1,t:'Przekładanie i odliczanie wstecz',m:2,sec:90,when:'Dziś, 1,5 minuty. Potrzebujesz 30 drobnych rzeczy (spinacze, monety) i dwóch pudełek.',steps:['Postaw dwa pudełka obok siebie.','Przekładaj jedną ręką po jednym przedmiocie z pudełka do pudełka.','Jednocześnie odliczaj głośno wstecz od 30 do 0.','Pomyliłeś się? Odłóż i zacznij liczyć od liczby, na której jesteś.'],ok:'przełożysz wszystkie przedmioty i skończysz na zerze równocześnie.'},
+{c:'Rytm i ręce',lv:1,t:'Brzuch i głowa',m:1,sec:60,when:'Dziś, 1 minuta. Klasyk na rozgrzewkę mózgu.',steps:['Jedną ręką głaszcz się kółkami po brzuchu.','Drugą ręką jednocześnie klep się lekko po głowie, w równym rytmie.','Po 30 sekundach zamień ręce.'],ok:'oba ruchy idą równo przez 30 sekund na każdą stronę.'},
+{c:'Rytm i ręce',lv:1,t:'Klaskanie i dni tygodnia',m:1,sec:60,when:'Dziś, 1 minuta.',steps:['Klaszcz równo, raz na sekundę (jak metronom).','Na każde klaśnięcie wymawiaj jeden dzień tygodnia po kolei: poniedziałek, wtorek…','Po tygodniu idź dalej w kółko. Rytm klaskania się nie zmienia.'],ok:'przez minutę nie gubisz rytmu ani kolejności.'},
+{c:'Słowa i ruch',lv:1,t:'Spacer i opowieść',m:3,sec:180,when:'Dziś, 3 minuty. Dobre w domu lub na spacerze.',steps:['Chodź po pokoju albo po okolicy.','Opowiadaj na głos, co dziś robiłeś, pełnymi zdaniami, spokojnym tempem.','Nie zatrzymuj się i nie mów „yyy”: gdy brakuje słowa, zrób pauzę i idź dalej.'],ok:'mówisz i idziesz przez 3 minuty bez zatrzymania.'},
+{c:'Słowa i ruch',lv:1,t:'Zmywanie z opowieścią',m:5,sec:300,when:'Dziś, przy zwykłej czynności: zmywanie, składanie prania, gotowanie.',steps:['Wybierz czynność, którą robisz bez zastanowienia.','Opowiadaj na głos plan jutrzejszego dnia (sam do siebie lub do kogoś).','Mów wolno, kończąc zdania w dół. Ręce robią swoje.'],ok:'opowiesz plan jutra w pełnych zdaniach i skończysz czynność.'},
+{c:'Słuch + mowa',lv:1,t:'Nucenie i przepisywanie',m:2,sec:120,when:'Dziś, 2 minuty. Potrzebujesz kartki i krótkiego tekstu do przepisania.',steps:['Wybierz prostą melodię (np. „Sto lat”).','Nucąc ją równo, przepisuj krótki akapit.','Melodia ma się nie urwać i nie zmieniać tempa.'],ok:'melodia płynie bez przerwy, a tekst jest przepisany bez błędów.'},
+{c:'Słuch + mowa',lv:1,t:'Nazywanie przedmiotów w rytmie',m:1,sec:60,when:'Dziś, 1 minuta.',steps:['Stukaj palcem w stół równo, raz na sekundę.','Na każde stuknięcie nazwij jedną rzecz w pokoju, bez powtórek.','Gdy zabraknie przedmiotów, przejdź do kolejnego pomieszczenia (w myślach).'],ok:'nazwiesz 40 rzeczy bez powtórki i bez zgubienia rytmu.'},
+// ── poziom 2: dwa zadania wymagające uwagi
+{c:'Pisanie + głos',lv:2,t:'Własne zdania i stałe „aaa”',m:3,sec:150,when:'Dziś, 2,5 minuty. Twoje zadanie główne: mówić jednolity dźwięk i pisać.',steps:['Weź wdech i wydaj równe, niskie „aaa” na jednej wysokości.','Jednocześnie pisz własne zdania (np. plan na jutro). Nie przepisuj — wymyślaj na bieżąco.','Gdy musisz złapać powietrze, zrób to szybko i wróć na tę samą wysokość dźwięku.','Po 75 sekundach zamień dźwięk na „ooo” i kontynuuj.'],ok:'dźwięk nie spada i nie skacze, a zdania mają sens.'},
+{c:'Pisanie + głos',lv:2,t:'Pisz jedno, mów drugie',m:3,sec:150,when:'Dziś, 2,5 minuty.',steps:['Pisz na kartce plan na jutro.','Jednocześnie opowiadaj na głos przepis na herbatę lub jajecznicę, krok po kroku.','Gdy się pomylisz, nie przerywaj: popraw jedno słowo i jedź dalej.','Po minucie zamień: pisz przepis, mów plan.'],ok:'oba teksty są sensowne, a Ty nie zatrzymałeś żadnego z nich na dłużej niż 3 sekundy.'},
+{c:'Liczenie + ruch',lv:2,t:'Co siedem w dół i linia',m:3,sec:150,when:'Dziś, 2,5 minuty. Potrzebujesz prostej linii na podłodze (np. szwu panelu lub taśmy).',steps:['Idź stopa za stopą po linii (pięta dotyka palców).','Jednocześnie odliczaj na głos od 100 co 7: 100, 93, 86, 79…','Przy pomyłce nie zatrzymuj się: popraw liczbę i idź dalej.'],ok:'dojdziesz do liczby poniżej 30 i nie zejdziesz z linii.'},
+{c:'Liczenie + ruch',lv:2,t:'Wstecz po trzy i klaskanie',m:2,sec:120,when:'Dziś, 2 minuty.',steps:['Licz na głos od 60 w dół co 3: 60, 57, 54…','Klaszcz na każdą drugą liczbę.','Idź w miejscu w równym tempie.'],ok:'dojdziesz do zera bez pomyłki w rytmie klaskania.'},
+{c:'Rytm i ręce',lv:2,t:'Koło i kwadrat naraz',m:2,sec:90,when:'Dziś, 1,5 minuty.',steps:['Jedną ręką rysuj w powietrzu koło, drugą jednocześnie kwadrat.','Zacznij bardzo wolno. Ruchy mają być płynne, nie szarpane.','Po 40 sekundach zamień ręce.'],ok:'oba kształty są rozpoznawalne i rysujesz je równocześnie.'},
+{c:'Rytm i ręce',lv:2,t:'Rytm 2 na 3',m:2,sec:90,when:'Dziś, 1,5 minuty. Odgłosy stukania o stół.',steps:['Licz w głowie do sześciu: 1-2-3-4-5-6 i zaczynaj od nowa.','Prawa ręka stuka na 1 i 4 (dwa uderzenia).','Lewa ręka stuka na 1, 3 i 5 (trzy uderzenia).','Zacznij bardzo wolno. Gdy zadziała, przyspiesz o odrobinę.'],ok:'utrzymasz oba rytmy przez 30 sekund bez rozsypania się.'},
+{c:'Słowa i ruch',lv:2,t:'Stroop na głos',m:3,sec:120,when:'Dziś, 2 minuty. Potrzebujesz kartki i 4 flamastrów w różnych kolorach.',steps:['Napisz na kartce 12 słów: nazwy kolorów (czerwony, zielony, niebieski, żółty), każde napisane flamastrem innego koloru niż jego znaczenie (słowo „zielony” czerwonym).','Czytaj na głos kolor, jakim słowo jest napisane, a NIE samo słowo.','Idź po liście w równym tempie. Zrób dwie rundy.'],ok:'druga runda idzie szybciej i z mniejszą liczbą pomyłek niż pierwsza.'},
+{c:'Słowa i ruch',lv:2,t:'Litery i cyfry na przemian',m:2,sec:90,when:'Dziś, 1,5 minuty.',steps:['Maszeruj w miejscu równym krokiem.','Mów na przemian literę i cyfrę: A-1, B-2, C-3, D-4…','Jeśli dojdziesz do końca alfabetu, zacznij od nowa albo od drugiej strony.'],ok:'dojdziesz do końca alfabetu bez zatrzymania marszu.'},
+{c:'Słuch + mowa',lv:2,t:'Radio i trzy słowa kluczowe',m:3,sec:150,when:'Dziś, 2,5 minuty. Potrzebujesz wiadomości lub podcastu i kartki.',steps:['Włącz nagranie (wiadomości lub podcast po polsku).','Słuchając, zapisuj trzy słowa kluczowe co 30 sekund.','Nie pauzuj nagrania. Na końcu powiedz na głos jedno zdanie, o czym było.'],ok:'masz 15 słów kluczowych i potrafisz powiedzieć, o czym było nagranie.'},
+{c:'Słuch + mowa',lv:2,t:'Echo z opóźnieniem (shadowing)',m:3,sec:120,when:'Dziś, 2 minuty. Potrzebujesz nagrania z mową (podcast, wiadomości).',steps:['Włącz nagranie z wyraźną mową.','Powtarzaj półgłosem to, co słyszysz, z opóźnieniem ok. 2 sekund (jak tłumacz symultaniczny).','Nie próbuj wszystkiego — łap całe frazy. Mów spokojnie, nie przyspieszaj.'],ok:'powtarzasz fragmenty bez zgubienia rytmu przez co najmniej 60 sekund.'},
+// ── poziom 3: zadanie kontrolowane + wymagające + zmiana sytuacji
+{c:'Pisanie + głos',lv:3,t:'Dwa teksty naraz',m:3,sec:150,when:'Dziś, 2,5 minuty. Potrzebujesz kartki i czytanego tekstu (artykuł, książka).',steps:['Czytaj na głos akapit z książki lub artykułu.','Jednocześnie pisz z pamięci przepis na swoją ulubioną potrawę.','Nie wolno zatrzymać czytania. Jeśli zgubisz miejsce w tekście, odszukaj je i jedź dalej.'],ok:'przez 2,5 minuty robisz obie rzeczy i potrafisz opowiedzieć, co przeczytałeś.'},
+{c:'Pisanie + głos',lv:3,t:'Niski, wolny głos i notatki',m:3,sec:150,when:'Dziś, 2,5 minuty. Połączenie z charyzmą: głos pod kontrolą mimo rozproszenia.',steps:['Opowiadaj głośno plan tygodnia niskim, wolnym głosem, kończąc zdania w dół.','Równocześnie zapisuj trzy słowa kluczowe z tego, co mówisz.','Pilnuj tempa: jeśli zaczynasz mówić szybciej, zwolnij o 20% i zrób pauzę po zdaniu.'],ok:'tempo i wysokość głosu zostają stałe, mimo że piszesz.'},
+{c:'Liczenie + ruch',lv:3,t:'Opowieść i „co siedem” w głowie',m:3,sec:180,when:'Dziś, 3 minuty.',steps:['Opowiadaj na głos dowolną historię (np. wakacje).','W myślach odejmuj 7 od 100: 93, 86, 79…','Co 20 sekund przerwij opowieść, powiedz aktualną liczbę i wróć do historii.'],ok:'historia jest spójna, a liczby są poprawne.'},
+{c:'Liczenie + ruch',lv:3,t:'Linia, kubek i liczenie',m:3,sec:150,when:'Dziś, 2,5 minuty. Potrzebujesz kubka z wodą i linii na podłodze. Idź ostrożnie.',steps:['Weź kubek wypełniony do połowy wodą.','Idź stopa za stopą po linii, kubek trzymaj w ręce.','Jednocześnie licz wstecz od 90 co 3.','Zmień rękę z kubkiem po 75 sekundach.'],ok:'nie rozlałeś wody i nie zszedłeś z linii.'},
+{c:'Rytm i ręce',lv:3,t:'Ósemka, kółko i alfabet',m:3,sec:120,when:'Dziś, 2 minuty.',steps:['Jedną ręką rysuj w powietrzu ósemkę (leżącą), drugą kółko.','Równocześnie mów na głos alfabet.','Zacznij wolno. Po 60 sekundach zamień ręce.'],ok:'oba ruchy są płynne, a alfabet nie ma przerw.'},
+{c:'Rytm i ręce',lv:3,t:'Krok, klaśnięcie i miesiące',m:3,sec:120,when:'Dziś, 2 minuty.',steps:['Maszeruj równym krokiem w miejscu.','Klaszcz na co trzeci krok.','Wymieniaj miesiące od stycznia do grudnia, jeden na każdy krok.','Gdy skończysz rok, idź od grudnia wstecz.'],ok:'rytm klaskania i kroków jest stały, a miesiące bez pomyłek.'},
+{c:'Słowa i ruch',lv:3,t:'Kategorie na kolejne litery',m:3,sec:150,when:'Dziś, 2,5 minuty.',steps:['Idź po pokoju równym krokiem.','Na każdą kolejną literę alfabetu nazywaj na przemian: zwierzę, miasto, imię (A: Antylopa, Amsterdam, Anna; B: Bocian…).','Bez powtórzeń. Nie wiesz? Pomiń i idź dalej, nie stój.'],ok:'dojdziesz co najmniej do litery M bez zatrzymywania marszu.'},
+{c:'Słowa i ruch',lv:3,t:'Miesiące wspak z krokiem',m:2,sec:90,when:'Dziś, 1,5 minuty. Potrzebujesz linii na podłodze.',steps:['Idź po linii stopa za stopą.','Wymawiaj miesiące od grudnia do stycznia, jedna sylaba na krok.','Gdy skończysz, zacznij od nowa, ale tym razem co drugi miesiąc.'],ok:'dwie rundy bez zejścia z linii i bez pomyłki w miesiącach.'},
+{c:'Słuch + mowa',lv:3,t:'Streszczenie na żywo',m:4,sec:180,when:'Dziś, 3 minuty. Potrzebujesz podcastu lub wystąpienia (np. TED po polsku).',steps:['Włącz nagranie z przemową.','Co 20 sekund powiedz półgłosem jedno zdanie streszczenia tego, co właśnie usłyszałeś — nie pauzuj nagrania.','Mów spokojnie, niskim głosem, bez „yyy”.'],ok:'po 3 minutach masz 8–9 zdań streszczenia, które mają sens.'},
+{c:'Słuch + mowa',lv:3,t:'Rozmowa i notatka',m:5,when:'Dziś, w prawdziwej rozmowie (telefon, spotkanie, w domu), min. 5 minut.',steps:['Podczas rozmowy zapisuj trzy słowa kluczowe z tego, co mówi rozmówca.','Pilnuj swojego tempa: nie przyspieszaj, kończ zdania w dół.','Po rozmowie sprawdź notatkę: czy oddaje sedno?'],ok:'zrobiłeś notatkę i nie przyspieszyłeś mówienia mimo pisania.'},
+{c:'Przełączanie',lv:3,t:'Zmiana zadań co 20 sekund',m:3,tm:[['Pisz + równe „mmm”',20],['Licz co 3 + klaszcz',20],['Mów alfabet + stukaj rytm',20],['Pisz + licz wstecz',20],['Opowiadaj + marsz',20],['Cisza: rozluźnij się',20]],when:'Dziś, 2 minuty. Przygotuj kartkę i długopis.',steps:['Timer podaje zadanie na 20 sekund: wykonuj je od razu po zmianie.','Zadania: pisanie + dźwięk „mmm”, liczenie co 3 + klaskanie, alfabet + stukanie, pisanie + liczenie wstecz, opowieść + marsz.','Zmiana jest szybka i nieuprzedzona. To trenuje przełączanie, a nie perfekcję.'],ok:'przejdziesz wszystkie sześć zmian bez zatrzymania.'},
+];
+
+/* TEKSTY pomocnicze (blok „text”) */
+const TEXTS={
+  nine:'<p><b>Co to jest:</b> 9D to format oddechu z immersyjnym dźwiękiem (słuchawki: dźwięk „krąży” wokół głowy) i prowadzeniem głosem. To komercyjna nazwa, a dane naukowe o niej są ograniczone — oddech sam w sobie działa wyciszająco.</p><p><b>Ta wersja jest łagodna:</b> wolny, połączony oddech bez hiperwentylacji i bez wstrzymań ponad kilka sekund. Własny dźwięk 9D włącz osobno (linki poniżej), a timer poniżej poprowadzi rytm.</p><p class="warnp">⚠️ Nie rób w trakcie prowadzenia auta, kąpieli ani na stojąco. Przy ciąży, padaczce, chorobach serca lub płuc, zaburzeniach lękowych i napadach paniki skonsultuj się z lekarzem. Zawroty głowy, mrowienie, lęk lub szum w uszach: przerwij, oddychaj normalnie i usiądź.</p>',
+};
+
+/* ŁAGODNA SESJA 9D (dodawana do GS; 5 minut, ×2 przy 10 min) */
+const NINE_STEPS=[
+  {t:'Ułóż się',sec:20,sub:'Połóż się lub usiądź wygodnie, słuchawki na uszach, dłoń na brzuchu. Włącz własny dźwięk 9D (linki poniżej) na niskiej głośności. Zamknij oczy.'},
+  {t:'Spokojny oddech 4–6',sec:60,pace:BREATH,sub:'Wdech nosem 4 s, wydech ustami 6 s. Tylko tyle — bez pogłębiania na siłę.'},
+  {t:'Połączony oddech 5–5',sec:90,pace:[['WDECH',5,1],['WYDECH',5,0]],sub:'Wdech i wydech bez przerwy, jak fala. Oddech jest cichy i łatwy. Zawroty głowy lub mrowienie: wróć do zwykłego oddechu.'},
+  {t:'Fala z pauzą',sec:60,pace:[['WDECH',4,1],['ZATRZYMAJ',2,2],['WYDECH',6,0]],sub:'Wdech 4 s, krótka pauza 2 s, wydech 6 s. Poczuj, jak oddech uspokaja ciało.'},
+  {t:'Cisza i skan ciała',sec:50,sub:'Oddychaj samoistnie, bez liczenia. Przejdź uwagą od stóp po głowę i zauważ, gdzie ciało jest cięższe i spokojniejsze.'},
+  {t:'Powrót',sec:20,sub:'Poruszaj palcami rąk i stóp, weź trzy głębsze oddechy, otwórz oczy. Usiądź powoli, zanim wstaniesz.'},
+];
+
+/* BRIEF: krótkie przypomnienie na dole strony (po jednej linijce na punkt) */
+const BRIEF={
+  charyzma:{n:'Pamiętaj w rozmowie',items:[
+    ['🐢','Mów o 20% wolniej, pauza po zdaniu'],
+    ['⬇️','Kończ zdania w dół (kropka, nie pytajnik)'],
+    ['⏸️','Cisza zamiast „yyy”'],
+    ['👁️','Kontakt wzrokowy: 3 sekundy na start'],
+    ['🙌','Dłonie widoczne, gesty wolne'],
+    ['🫁','Trzy oddechy przed wejściem'],
+    ['👂','Nie przerywaj: po cudzym zdaniu „raz”'],
+    ['🎯','Sedno na początek, potem powód'],
+    ['🙂','Imię rozmówcy i uśmiech oczami'],
+  ]},
+  roz:{n:'Pamiętaj w ruchu',items:[
+    ['🫁','Oddychaj spokojnie, nie wstrzymuj powietrza'],
+    ['🐢','Wolno i płynnie, bez szarpania'],
+    ['🚫','Ból to stop; lekkie ciągnięcie jest w porządku'],
+    ['🔥','Najpierw rozruch, potem rozciąganie'],
+    ['🦶','Stopy stabilnie, kolana miękkie'],
+    ['💧','Woda po ćwiczeniu'],
+  ]},
+  skup:{n:'Pamiętaj w pracy',items:[
+    ['🎯','Jedno zadanie naraz'],
+    ['📵','Telefon poza zasięgiem na blok pracy'],
+    ['⏱️','25 minut skupienia, 5 minut przerwy'],
+    ['✍️','Rozproszyła Cię myśl? Zapisz i wróć'],
+    ['🧹','Na biurku tylko to, co potrzebne'],
+    ['🌙','Wieczorem: pierwszy krok na jutro'],
+  ]},
+};
+
+/* CYTATY po ukończeniu dnia: osoby, które coś osiągnęły (tłumaczenia własne; krótkie) */
+const WIN=[
+{a:'Thomas Edison',w:'wynalazca',x:'Geniusz to jeden procent natchnienia i dziewięćdziesiąt dziewięć procent potu.'},
+{a:'Maria Skłodowska-Curie',w:'dwukrotna laureatka Nobla',x:'Musimy wierzyć, że jesteśmy do czegoś zdolni, i że to coś musimy osiągnąć.'},
+{a:'Michael Jordan',w:'koszykarz',x:'Przegrywałem w życiu raz za razem. I właśnie dlatego odnoszę sukcesy.'},
+{a:'Nelson Mandela',w:'prezydent RPA, laureat Nobla',x:'Nauczyłem się, że odwaga to nie brak strachu, ale zwycięstwo nad nim.'},
+{a:'Muhammad Ali',w:'mistrz świata w boksie',x:'Nie rezygnuj. Pocierp teraz i żyj resztę życia jak mistrz.'},
+{a:'Wayne Gretzky',w:'hokeista',x:'Nie trafisz stu procent rzutów, których nie oddasz.'},
+{a:'Theodore Roosevelt',w:'prezydent USA',x:'Rób, co możesz, tym, co masz, tam, gdzie jesteś.'},
+{a:'J. K. Rowling',w:'pisarka, przemowa na Harvardzie, 2008',x:'Nie da się żyć bez porażek, chyba że żyjesz tak ostrożnie, że równie dobrze mogłoby Cię nie być.'},
+{a:'Steve Jobs',w:'współzałożyciel Apple, Stanford 2005',x:'Jedynym sposobem na wykonanie świetnej pracy jest kochać to, co się robi.'},
+{a:'Isaac Newton',w:'fizyk',x:'Jeśli widziałem dalej, to dlatego, że stałem na ramionach gigantów.'},
+{a:'Marek Aureliusz',w:'cesarz i filozof, „Rozmyślania”',x:'To, co stoi na drodze, staje się drogą.'},
+{a:'Seneka',w:'filozof, „Listy do Lucyliusza”',x:'Nie dlatego nie ośmielamy się, że rzeczy są trudne. Są trudne, bo się nie ośmielamy.'},
+{a:'Lao-tsy',w:'„Tao te king”',x:'Podróż tysiąca mil zaczyna się od jednego kroku.'},
+{a:'James Clear',w:'autor „Atomic Habits”',x:'Każde działanie to głos oddany na osobę, którą chcesz się stać.'},
+{a:'Will Durant',w:'historyk, o Arystotelesie',x:'Jesteśmy tym, co powtarzamy każdego dnia. Doskonałość nie jest aktem, lecz nawykiem.'},
+{a:'Neil Armstrong',w:'pierwszy człowiek na Księżycu, 1969',x:'To jeden mały krok dla człowieka, ale wielki skok dla ludzkości.'},
+{a:'Winston Churchill',w:'premier Wielkiej Brytanii, 1941',x:'Nigdy, przenigdy się nie poddawaj, w niczym, wielkim czy małym.'},
+{a:'Eliud Kipchoge',w:'maratończyk, pierwszy poniżej 2 godzin, 2019',x:'Żaden człowiek nie ma granic.'},
+{a:'Jan Paweł II',w:'homilia, 22 października 1978',x:'Nie lękajcie się!'},
+];
+
+/* Ilustracje: Everkinetic (CC BY-SA 4.0), pliki w public/ — pozycja startowa (a) i końcowa (b) */
+const EKIMG={
+  'Pompki klasyczne':'0077','Pompki z nogami na krześle':'0075','Superman':'0105','Mostek biodrowy':'0109',
+  'Wiosłowanie pod stołem':'0086','Dipy na krześle (nogi ugięte)':'0162','Dipy na krześle (nogi proste)':'0162','Wykroki chodzone':'0121','Kark w bok':'0002',
+};
+
 /* ───────── Zestawy: rozciąganie, skupienie, sesje z timerem, szablony układu ───────── */
 const BOX=[['WDECH',4,1],['ZATRZYMAJ',4,2],['WYDECH',4,0],['ZATRZYMAJ',4,3]];
 const SD=(s)=>[['Lewa strona',s],['Prawa strona',s]];   // dwie strony po s sekund
@@ -1045,10 +1233,11 @@ const FO=[
 
 /* Pakiety ćwiczeń dla bloku „Ćwiczenie dnia” */
 const PACKS={
-  charyzma:{n:'Charyzma (42 ćwiczenia)',items:CH},
-  glos:{n:'Niski głos (14 ćwiczeń)',items:VL},
-  roz:{n:'Rozciąganie i ruch (30 ćwiczeń)',items:ST},
-  skup:{n:'Skupienie i porządek (15 ćwiczeń)',items:FO},
+  charyzma:{n:'Charyzma ('+CH.length+' ćwiczeń)',items:CH},
+  glos:{n:'Głos: oddech i dźwięk ('+VL.length+' ćwiczeń)',items:VL},
+  uw:{n:'Podzielność uwagi ('+UW.length+' ćwiczeń, 3 poziomy)',items:UW,mv:1},
+  roz:{n:'Rozciąganie i ruch ('+ST.length+' ćwiczeń)',items:ST,mv:1},
+  skup:{n:'Skupienie i porządek ('+FO.length+' ćwiczeń)',items:FO},
   wlasne:{n:'Tylko moje ćwiczenia',items:[]},
 };
 
@@ -1082,19 +1271,25 @@ const GS={
     {t:'Szklanka wody',sec:10,sub:'Wstań, napij się wody.'},
   ]},
 };
+GS.nine={n:'Oddech 9D (łagodna sesja)',steps:NINE_STEPS};
 const SET_NAMES=()=>Object.keys(GS).map(k=>[k,GS[k].n]);
 
 /* Szablony układu (zestawy nawyków) */
 const LINK_Q=(t,q,len)=>({id:null,title:t,q,len:len||''});
 const J3=['Co dziś wyszło (nawet drobiazg)?','Za co jestem wdzięczny/a?','Jedna rzecz na jutro'];
 const TEMPLATES=[
- {id:'charyzma',n:'Charyzma',ic:'✨',d:'Głos (nagrania, rozgrzewka, niski głos), 42 ćwiczenia charyzmy, ruch, dziennik 3 zdań, lista.',layout:[
+ {id:'charyzma',n:'Charyzma',ic:'✨',d:'Głos (oddech i dźwięk, rozgrzewka, nagrania), oddech 9D (odblokowuje się po 4 dniach), 35 ćwiczeń charyzmy, podzielność uwagi (3 poziomy), ruch, dziennik 3 zdań, lista.',layout:[
   {id:'g',title:'Głos',ic:'🎙️',blocks:[
     {id:'g_vb',type:'daily',h:'Najpierw oddech — ćwiczenie dnia',cfg:{pack:'glos',own:[],cat:'Oddechowe'}},
     {id:'g_v',type:'daily',h:'Potem dźwięk — ćwiczenie dnia',cfg:{pack:'glos',own:[],cat:'Dźwiękowe'}},
     {id:'g_w',type:'guided',h:'Prowadzona rozgrzewka (oddech, potem dźwięk)',cfg:{set:'voice'}},
     {id:'g_m',type:'media',h:'Nagrania z YouTube',cfg:{tracks:TRK.map(t=>({id:t[0],title:t[1],len:t[2]}))}}]},
+  {id:'o9',title:'Oddech 9D',ic:'🌀',bonus:1,lock:4,blocks:[
+    {id:'o9_t',type:'text',h:'',cfg:{k:'nine'}},
+    {id:'o9_g',type:'guided',h:'Łagodna sesja 9D z timerem',cfg:{set:'nine',len:5}},
+    {id:'o9_m',type:'media',h:'Dźwięk 9D (słuchawki)',cfg:{tracks:[LINK_Q('9D breathwork — wyciszenie','9D breathwork relaxing headphones','10–15 min'),LINK_Q('Oddech 9D po polsku','oddech 9D breathwork po polsku','10–20 min')]}}]},
   {id:'c',title:'Charyzma',ic:'✨',blocks:[{id:'c_d',type:'daily',h:'',cfg:{pack:'charyzma',own:[]}}]},
+  {id:'uw',title:'Podzielność uwagi',ic:'🧠',blocks:[{id:'uw_d',type:'daily',h:'',cfg:{pack:'uw',own:[],lv:1}}]},
   {id:'r',title:'Ruch',ic:'💪',blocks:[{id:'r_w',type:'workout',h:'',cfg:{}}]},
   {id:'d',title:'Dziennik 3 zdań',ic:'📓',blocks:[{id:'b_j',type:'journal',h:'',cfg:{p:J3.slice()}}]},
   {id:'z',title:'Lista na dziś',ic:'✅',blocks:[{id:'z_t',type:'todo',h:'',cfg:{}}]}]},
@@ -1108,9 +1303,10 @@ const TEMPLATES=[
   {id:'rz_e',title:'Wieczorny relaks',ic:'🌙',blocks:[{id:'rz_e1',type:'guided',h:'5 minut spokojnego rozciągania',cfg:{set:'eve'}}]},
   {id:'rz_j',title:'Dziennik ciała',ic:'📓',blocks:[{id:'rz_j1',type:'journal',h:'',cfg:{p:['Gdzie dziś czuję napięcie?','Co mi dziś pomogło?','Co zrobię jutro dla ciała?']}}]},
   {id:'rz_z',title:'Lista na dziś',ic:'✅',blocks:[{id:'rz_z1',type:'todo',h:'',cfg:{}}]}]},
- {id:'skupienie',n:'Skupienie i porządek',ic:'🎯',d:'Rytuał startu dnia, ćwiczenie dnia (start, fokus, reset, porządek, wieczór), reset przy biurku, dziennik pracy.',layout:[
+ {id:'skupienie',n:'Skupienie i porządek',ic:'🎯',d:'Rytuał startu dnia, ćwiczenie dnia (start, fokus, reset, porządek, wieczór), podzielność uwagi (3 poziomy), reset przy biurku, dziennik pracy.',layout:[
   {id:'sk_s',title:'Rytuał startu',ic:'☀️',blocks:[{id:'sk_s1',type:'routine',h:'Poranna checklista',cfg:{items:[{id:'i1',x:'Szklanka wody'},{id:'i2',x:'Trzy priorytety na dziś zapisane'},{id:'i3',x:'Telefon poza zasięgiem na pierwszy blok pracy'}]}}]},
   {id:'sk_d',title:'Ćwiczenie dnia',ic:'🎯',blocks:[{id:'sk_d1',type:'daily',h:'',cfg:{pack:'skup',own:[]}}]},
+  {id:'sk_u',title:'Podzielność uwagi',ic:'🧠',blocks:[{id:'sk_u1',type:'daily',h:'',cfg:{pack:'uw',own:[],lv:1}}]},
   {id:'sk_r',title:'Reset przy biurku',ic:'🪑',blocks:[{id:'sk_r1',type:'guided',h:'5 minut resetu',cfg:{set:'desk'}}]},
   {id:'sk_j',title:'Dziennik pracy',ic:'📓',blocks:[{id:'sk_j1',type:'journal',h:'',cfg:{p:['Co dziś zrobiłem najważniejszego?','Co mnie rozproszyło?','Pierwszy krok na jutro']}}]},
   {id:'sk_z',title:'Lista na dziś',ic:'✅',blocks:[{id:'sk_z1',type:'todo',h:'',cfg:{}}]}]},
@@ -1217,8 +1413,8 @@ const FX=(()=>{
   return{init,setOn,celebrate,burst,toast,bump,haptic,calm};
 })();
 
-/* ───────── Nawyk v0.06 — logika aplikacji ───────── */
-const VER='v0.06', MAIL='kontakt@smialo.org', LS='nawyk.v1', APPKEY='nawyk';
+/* ───────── Nawyk v0.07 — logika aplikacji ───────── */
+const VER='v0.07', MAIL='kontakt@smialo.org', LS='nawyk.v1', APPKEY='nawyk';
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const pad=n=>String(n).padStart(2,'0');
@@ -1231,7 +1427,7 @@ const NOTES_CARD=id=>({id:'n_'+id,title:'Notatki i postępy',ic:'📝',blocks:[{
 TEMPLATES.forEach(t=>t.layout.push(NOTES_CARD(t.id)));
 
 /* ───────── STAN ───────── */
-const DEF=()=>({v:3,t:0,days:{},todos:[],journal:{},chk:{},layout:null,tpl:'charyzma',prev:null,ci:{},rt:{},notes:{},mig4:0,mig5:0,mig6:0,start:'',sm:'',sw:'',set:{quiet:1,snd:1,fx:1,hue:-1,mode:'auto'}});
+const DEF=()=>({v:3,t:0,days:{},todos:[],journal:{},chk:{},layout:null,tpl:'charyzma',prev:null,ci:{},rt:{},notes:{},mig4:0,mig5:0,mig6:0,mig7:0,bd:{},hx:{},act:{},ra:[],start:'',sm:'',sw:'',set:{quiet:1,snd:1,fx:1,hue:-1,mode:'auto',how:'auto'}});
 let S=DEF(), ref=null, cloudTimer=0, writing=Promise.resolve(), syncState='local', EDIT=false, EMBED_BLOCKED=false;
 const OFF={}, CUR={}, TIM={};
 const LAY=()=>S.layout||(S.layout=clone(TEMPLATES[0].layout));
@@ -1262,6 +1458,14 @@ const thaw=d=>{
   if(!n.mig6){if(n.set.hue===168||!n.set.hue)n.set.hue=-1;n.mig6=1}
   if(!n.start){const ks=[].concat(Object.keys(n.days||{}),Object.keys(n.ci||{}),Object.keys(n.rt||{})).sort();n.start=ks[0]||keyOf(new Date())}
   if(!n.mig4){if(!n.layout.some(c=>c.blocks.some(b=>b.type==='notes')))n.layout.push(NOTES_CARD('m'));n.mig4=1}
+  if(!n.mig7){
+    const L=n.layout,has=id=>L.some(c=>c.id===id),T=(t,id)=>TEMPLATES.find(x=>x.id===t).layout.find(c=>c.id===id);
+    const ins=(after,card)=>{const i=L.findIndex(c=>c.id===after);if(i>=0&&card&&!has(card.id))L.splice(i+1,0,clone(card))};
+    if(L.some(c=>c.blocks.some(b=>b.id==='g_w')))ins('g',T('charyzma','o9'));
+    if(L.some(c=>c.blocks.some(b=>b.id==='c_d')))ins('c',T('charyzma','uw'));
+    if(L.some(c=>c.blocks.some(b=>b.id==='sk_d1')))ins('sk_d',T('skupienie','sk_u'));
+    n.mig7=1;
+  }
   return n;
 };
 function prune(){
@@ -1270,6 +1474,10 @@ function prune(){
   const jk=Object.keys(S.journal).sort();while(jk.length>120)delete S.journal[jk.shift()];
   const ck=Object.keys(S.chk).sort();while(ck.length>40)delete S.chk[ck.shift()];
   ['ci','rt'].forEach(f=>{const k=Object.keys(S[f]).sort();while(k.length>400)delete S[f][k.shift()]});
+  const bk=Object.keys(S.bd).sort();while(bk.length>40)delete S.bd[bk.shift()];
+  const ak=Object.keys(S.act).sort();while(ak.length>60)delete S.act[ak.shift()];
+  const hk=Object.keys(S.hx);while(hk.length>200)delete S.hx[hk.shift()];
+  S.ra=(S.ra||[]).slice(0,8);
   const nk=Object.keys(S.notes).sort();while(nk.length>1&&JSON.stringify(S.notes).length>150000)delete S.notes[nk.shift()];
 }
 function persistLocal(){try{localStorage.setItem(LS,JSON.stringify(S))}catch(e){}}
@@ -1415,7 +1623,24 @@ const pk=(arr,n,seed)=>Array.from({length:n},(_,i)=>arr[(seed*n+i)%arr.length]);
 const doneKeys=()=>S.days[TODAY]||{};
 const isDone=k=>!!doneKeys()[k];
 const isInfo=c=>c.blocks.length>0&&c.blocks.every(b=>b.type==='notes');
-const TASKS=()=>LAY().filter(c=>!isInfo(c));
+const isBonus=c=>!!c.bonus;
+const activePast=()=>Object.keys(S.days).filter(k=>k<TODAY&&Object.keys(S.days[k]).length>0).length;
+const activeAll=()=>Object.keys(S.days).filter(k=>Object.keys(S.days[k]).length>0).length;
+const isLocked=c=>!!c.lock&&!EDIT&&activePast()<c.lock;
+const TASKS=()=>LAY().filter(c=>!isInfo(c)&&!isBonus(c));
+const PAINT=()=>LAY().filter(c=>!isInfo(c)&&!isLocked(c));
+/* wymagania etapu: ile ćwiczeń trzeba zrobić, żeby etap się zaliczył */
+const isBD=id=>!!(S.bd[TODAY]||{})[id];
+const units=c=>({dl:c.blocks.filter(b=>b.type==='daily'),gd:c.blocks.filter(b=>b.type==='guided'),ot:c.blocks.filter(b=>b.type==='workout'||b.type==='journal'||b.type==='routine'||b.type==='todo')});
+const isMulti=c=>{const u=units(c);return u.dl.length+u.gd.length+u.ot.length>=2};
+function satisfied(c){
+  const u=units(c);if(!u.dl.length&&!u.gd.length&&!u.ot.length)return false;
+  const gdone=u.gd.some(b=>isBD(b.id));
+  return (!u.dl.length||u.dl.every(b=>isBD(b.id))||gdone)&&(!u.gd.length||u.dl.length>0||u.gd.every(b=>isBD(b.id)))&&u.ot.every(b=>isBD(b.id));
+}
+const SHORTC={'Oddechowe':'oddech','Dźwiękowe':'dźwięk'};
+const blabel=(b,c)=>b.type==='daily'?(SHORTC[b.cfg.cat]||b.h||c.title):b.type==='guided'?(b.cfg.set==='voice'?'cała rozgrzewka':'cała sesja z timerem'):b.type==='workout'?'trening':b.type==='journal'?'dziennik':b.type==='todo'?'lista zadań':'checklista';
+const cap=t=>t.charAt(0).toUpperCase()+t.slice(1);
 const allDone=()=>{const t=TASKS();return t.length>0&&t.every(c=>isDone(c.id))};
 let SUM_OPEN=false, CI_EDIT=false;
 const sumReady=()=>S.sm===TODAY||dd(TODAY)-dd(S.sm||S.start||TODAY)>=3;
@@ -1424,16 +1649,51 @@ const nextSumKey=()=>{const d=new Date((S.sm===TODAY?TODAY:(S.sm||S.start||TODAY
 function issueSum(){if(S.sm!==TODAY&&dd(TODAY)-dd(S.sm||S.start||TODAY)>=3){if(weekReady())S.sw=TODAY;S.sm=TODAY;save()}}
 const scrollTo=(sel,b)=>{const e=$(sel);if(e&&e.scrollIntoView)try{e.scrollIntoView({behavior:'smooth',block:b||'nearest'})}catch(x){}};
 function openSum(){SUM_OPEN=true;renderSummary();scrollTo('#sumCard','start')}
-function setDone(k,v){
+function setDone(k,v,o){
+  o=o||{};
   const was=allDone(),d=S.days[TODAY]||(S.days[TODAY]={});
   if(v)d[k]=1;else delete d[k];
   if(!Object.keys(d).length)delete S.days[TODAY];
+  const c=findC(k);
+  if(c){
+    const bd=S.bd[TODAY]||(S.bd[TODAY]={}),u=units(c);
+    if(v){if(!satisfied(c))[].concat(u.dl,u.gd,u.ot).forEach(b=>{bd[b.id]=1})}
+    else c.blocks.forEach(b=>{delete bd[b.id]});
+    if(!Object.keys(bd).length)delete S.bd[TODAY];
+  }
   save();paintDone();
   const fin=v&&!was&&allDone();
   if(fin&&sumReady())SUM_OPEN=true;
-  renderSurvey();renderSummary();
-  if(v)cheer(k,fin);
-  if(fin)scrollTo(sumReady()?'#sumCard':'#survey');
+  renderSurvey();renderSummary();renderFinish();renderBrief();
+  if(v){cheer(k,fin);if(!EDIT)afterDone(k,fin,o)}
+}
+/* ćwiczenie (blok) zrobione; etap zalicza się sam, gdy spełnione są wszystkie wymagania */
+function markBlock(bid,v,o){
+  const f=findB(bid);if(!f)return;
+  const d=S.bd[TODAY]||(S.bd[TODAY]={});
+  if(v)d[bid]=1;else delete d[bid];
+  if(!Object.keys(d).length)delete S.bd[TODAY];
+  const c=f.c;
+  if(v&&!isDone(c.id)){
+    if(satisfied(c)){setDone(c.id,true,o);return}
+    save();paintDone();
+    const u=units(c),gd=u.gd.some(b=>isBD(b.id));
+    const miss=[].concat(gd?[]:u.dl.filter(b=>!isBD(b.id)),u.ot.filter(b=>!isBD(b.id))).map(b=>blabel(b,c));
+    FX.toast('✓ '+cap(blabel(f.b,c))+(miss.length?' — jeszcze: '+miss.join(' + '):''));
+    return;
+  }
+  save();paintDone();
+}
+/* po zaliczeniu: zwiń sekcję, otwórz następną; po całym dniu zwiń wszystko i pokaż podsumowanie */
+function afterDone(k,fin,o){
+  const run=()=>{
+    if(o.keep)return;
+    const el=$('#card-'+k);if(el&&el.open)el.open=false;
+    if(fin){$$('#cards details.card').forEach(d=>{d.open=false});scrollTo('#finish','center');return}
+    const nx=TASKS().find(c=>!isDone(c.id));
+    if(nx){const e=$('#card-'+nx.id);if(e&&!e.open)e.open=true;scrollTo('#card-'+nx.id,'start')}
+  };
+  FX.calm()?run():setTimeout(run,650);
 }
 const CHEER=['Dobra robota! Tak buduje się nawyk.','Jest! Kolejny krok za Tobą.','Świetnie — małe kroki wygrywają.','Brawo! Tak trzymać.','Zrobione — to się liczy najbardziej.'];
 const MILES=[3,7,14,21,30,50,100];
@@ -1456,17 +1716,25 @@ const hueOf=c=>{let h=0;for(const ch of String(c||'x'))h=(h*31+ch.charCodeAt(0))
 const learning=()=>Object.keys(S.days).length<4;
 const deadline=e=>{const w=e.when||'';return /wieczor|przed snem/i.test(w)?'dziś, najlepiej wieczorem — najpóźniej przed snem':/rano/i.test(w)?'najlepiej rano; najpóźniej do końca dnia':'dziś, do końca dnia'};
 const quoteHTML=bid=>{const q=QUOTES[(QI[bid]||0)%QUOTES.length];return `<h5>Przeczytaj na głos</h5><blockquote class="qt"><p>${esc(q.x).replace(/\n/g,'<br>')}</p><cite>— ${esc(q.a)}, ${esc(q.w)}</cite></blockquote><button class="btn sm" type="button" data-a="nq">Pokaż następny ›</button>`};
-function exHTML(e,label,bid){
+const hk=t=>String(t).slice(0,60);
+const howDef=()=>S.set.how==='open'?true:S.set.how==='closed'?false:learning();
+const howOpen=k=>S.hx[k]===1?true:S.hx[k]===0?false:howDef();
+const HOWSUM='<small><span class="so"> — zwiń, jeśli znasz</span><span class="sc"> — rozwiń, gdy potrzebujesz</span></small>';
+const IMGON=()=>/^\/02\//.test(location.pathname);
+const encq=t=>encodeURIComponent(t);
+const seeLinks=t=>`<p class="see">Zobacz ruch na zdjęciach: <a href="https://pl.pinterest.com/search/pins/?q=${encq(t+' ćwiczenie')}" target="_blank" rel="noopener noreferrer">Pinterest ↗</a> · <a href="https://www.google.com/search?tbm=isch&q=${encq(t+' ćwiczenie jak wykonać')}" target="_blank" rel="noopener noreferrer">Google Grafika ↗</a> · <a href="https://www.youtube.com/results?search_query=${encq(t+' ćwiczenie')}" target="_blank" rel="noopener noreferrer">YouTube ↗</a></p>`;
+const ekImg=t=>{const id=EKIMG[t];return id&&IMGON()?`<span class="ek"><span class="ekp"><img loading="lazy" src="ek-${id}-a.svg" alt="${esc(t)}: pozycja startowa"><img loading="lazy" src="ek-${id}-b.svg" alt="${esc(t)}: pozycja końcowa"></span><small>start → koniec · <a href="https://github.com/everkinetic/data" target="_blank" rel="noopener noreferrer">Everkinetic</a>, <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a></small></span>`:''};
+function exHTML(e,label,bid,mv){
   const fig=e.img&&FIGS[e.img]?`<figure class="fig">${FIGS[e.img]}</figure>`:'';
-  const L=learning();
+  const k=hk(e.t);
   return `<div class="task"><span class="pill" style="--ch:${hueOf(e.c||label)}">${esc(label)}</span><h4>${esc(e.t)}</h4>
   <dl class="what">${e.when?`<dt>Kiedy</dt><dd>${esc(e.when)}</dd>`:''}<dt>Zrobione, gdy</dt><dd>${esc(e.ok||'wykonasz ćwiczenie do końca, bez bólu.')}</dd><dt>Do kiedy</dt><dd>${esc(deadline(e))}</dd></dl></div>
   ${e.read?`<div class="read">${quoteHTML(bid)}</div>`:''}
-  <details class="how"${L?' open':''}><summary>Instrukcja krok po kroku<small>${L?'':' — rozwiń, gdy potrzebujesz przypomnienia'}</small></summary>
+  <details class="how" data-hk="${esc(k)}"${howOpen(k)?' open':''}><summary>Instrukcja krok po kroku${HOWSUM}</summary>
   <ol class="exsteps">${(e.steps||[]).map(s=>`<li>${esc(s)}</li>`).join('')}</ol>
-  ${fig}
+  ${ekImg(e.t)}${fig}
   ${e.say?`<h5>Powiedz np.</h5><p class="say">${esc(e.say)}</p>`:''}
-  ${e.solo?`<h5>Nie masz dziś z kim?</h5><p>${esc(e.solo)}</p>`:''}</details>`;
+  ${e.solo?`<h5>Nie masz dziś z kim?</h5><p>${esc(e.solo)}</p>`:''}${mv?seeLinks(e.t):''}</details>`;
 }
 const exTimer=e=>{
   if(e.tm&&e.tm.length)return e.tm.map(x=>({label:x[0],sub:x[2]||'Według instrukcji powyżej.',tag:e.t,sec:x[1],kind:'work',pace:e.pace}));
@@ -1557,7 +1825,7 @@ const BT={
       const custom=b.cfg.set==='custom',k=custom?1:(b.cfg.len||5)/5,base=gSteps(b);
       const scale=s=>Math.max(5,Math.round(s*k));
       el.innerHTML=(custom?'':'<div class="rowline"><span>Czas sesji</span><span class="lenSeg"></span></div>')+
-        (base.length?`<ul class="steps gl">${(()=>{let g='',n=0;return base.map(s=>{const h=s.grp&&s.grp!==g?(g=s.grp,`<li class="gh">${s.grp==='Oddechowe'?'Część 1 — ćwiczenia oddechowe':'Część 2 — ćwiczenia dźwiękowe'}</li>`):'';n++;return h+`<li><b>${n}. ${esc(s.t)}</b> · ${s.sides?'2 × ':''}${scale(s.sec)} s<br><span class="sb">${esc(s.sub||'')}</span></li>`}).join('')})()}</ul><div class="tmr"></div>`:'<p class="note">Brak kroków. Włącz „Edytuj układ” (menu ⋯) i wpisz kroki sesji.</p>');
+        (base.length?`<ul class="steps gl">${(()=>{let g='',n=0;return base.map(s=>{const h=s.grp&&s.grp!==g?(g=s.grp,`<li class="gh">${s.grp==='Oddechowe'?'Część 1 — ćwiczenia oddechowe':'Część 2 — ćwiczenia dźwiękowe'}</li>`):'';n++;return h+`<li><b>${n}. ${esc(s.t)}</b> · ${s.sides?'2 × ':''}${scale(s.sec)} s<br><span class="sb">${esc(s.sub||'')}</span></li>`}).join('')})()}</ul><div class="tmr"></div><div class="bdone" data-bdw="${b.id}" hidden></div>`:'<p class="note">Brak kroków. Włącz „Edytuj układ” (menu ⋯) i wpisz kroki sesji.</p>');
       if(!custom)seg($('.lenSeg',el),[[5,'5 min'],[10,'10 min']],b.cfg.len||5,v=>{b.cfg.len=+v;save();mountBlock(b.id)});
       if(!base.length)return;
       TIM[b.id]=makeTimer($('.tmr',el),()=>{
@@ -1568,7 +1836,7 @@ const BT={
           else out.push({label:s.t,tag:s.grp,sub:s.sub,sec,kind:'work',pace:s.pace});
         });
         return out;
-      },()=>setDone(c.id,true));
+      },()=>markBlock(b.id,true));
     }},
 
   daily:{ic:'🎯',n:'Ćwiczenie dnia',sp:1,
@@ -1585,27 +1853,34 @@ const BT={
       const cats=[...new Set(all.map(e=>e.c).filter(Boolean))];
       const cat=cats.includes(b.cfg.cat)?b.cfg.cat:'',list=cat?all.filter(e=>e.c===cat):all;
       if(!list.length){CUR[b.id]=null;el.innerHTML='<p class="note">Brak ćwiczeń w tym zestawie. Włącz „Edytuj układ” (menu ⋯) i dodaj własne albo zmień zestaw.</p>';return}
-      const ex=list[(DN+(OFF[b.id]||0))%list.length];CUR[b.id]=ex;
+      /* bez dubli: pomijamy to, co jest w dzisiejszej rozgrzewce tej sekcji i to, co wybrał inny blok */
+      let pool=list;
+      if(c.blocks.some(x=>x.type==='guided')){const p2=pool.filter(e=>!e.wu);if(p2.length>=3)pool=p2}
+      const taken=new Set(Object.keys(PICKED).filter(k=>k!==b.id).map(k=>PICKED[k])),p3=pool.filter(e=>!taken.has(e.t));
+      if(p3.length)pool=p3;
+      const ex=pool[(DN+(OFF[b.id]||0))%pool.length];CUR[b.id]=ex;PICKED[b.id]=ex.t;
+      const pk0=PACKS[b.cfg.pack];
       if(QI[b.id]==null)QI[b.id]=DN%QUOTES.length;
-      el.innerHTML=(hasLv?'<div class="rowline"><span>Poziom</span><span class="lvSeg"></span></div>':'')+(cats.length>1?'<div class="rowline"><span>Rodzaj ćwiczenia</span><span class="catSeg"></span></div>':'')+`<div class="ex">${exHTML(ex,exLabel(ex),b.id)}</div><div class="tmr"></div><div class="fin"><button class="btn ghost" data-a="next" type="button">Inne ćwiczenie ↻</button></div>`;
+      el.innerHTML=(hasLv?'<div class="rowline"><span>Poziom</span><span class="lvSeg"></span></div>':'')+(cats.length>1?'<div class="rowline"><span>Rodzaj ćwiczenia</span><span class="catSeg"></span></div>':'')+`<div class="ex">${exHTML(ex,exLabel(ex),b.id,pk0&&pk0.mv)}</div><div class="tmr"></div><div class="bdone" data-bdw="${b.id}" hidden></div><div class="fin"><button class="btn ghost" data-a="next" type="button">Inne ćwiczenie ↻</button></div>`;
       if(hasLv)seg($('.lvSeg',el),LVN,LV,v=>{b.cfg.lv=+v;OFF[b.id]=0;save();mountBlock(b.id);paintSums()});
       if(cats.length>1)seg($('.catSeg',el),[['','Wszystkie']].concat(cats.map(x=>[x,x])),cat,v=>{b.cfg.cat=v;OFF[b.id]=0;save();mountBlock(b.id);paintSums()});
       const steps=exTimer(ex);
-      if(steps.length)TIM[b.id]=makeTimer($('.tmr',el),()=>steps,()=>setDone(c.id,true));else $('.tmr',el).remove();
+      if(steps.length)TIM[b.id]=makeTimer($('.tmr',el),()=>steps,()=>markBlock(b.id,true));else $('.tmr',el).remove();
       $('[data-a=next]',el).onclick=()=>{OFF[b.id]=(OFF[b.id]||0)+1;QI[b.id]=(QI[b.id]||0)+1;mountBlock(b.id);paintSums()};
       el.onclick=e=>{const q=e.target.closest('[data-a=nq]');if(q){QI[b.id]=(QI[b.id]||0)+1;const r=$('.read',el);if(r)r.innerHTML=quoteHTML(b.id)}};
     }},
 
   workout:{ic:'💪',n:'Trening (losowy zestaw, 3 poziomy)',sp:3,
     def:()=>({h:'Trening',cfg:{train:'mix',len:5,lv:1}}),
-    sum:b=>TRAIN[b.cfg.train||'mix']+' · '+(LVN.find(x=>x[0]===(b.cfg.lv||1))||LVN[0])[1].toLowerCase()+' · '+(b.cfg.len||5)+' min',
+    sum:b=>(S.act[TODAY]?'Dziś: '+shortT(S.act[TODAY],22)+' · ':'')+TRAIN[b.cfg.train||'mix']+' · '+(LVN.find(x=>x[0]===(b.cfg.lv||1))||LVN[0])[1].toLowerCase()+' · '+(b.cfg.len||5)+' min',
     mount(el,b,c){
       const cfg=b.cfg,LV=cfg.lv||1,list=moveList(cfg.train||'mix',LV,DN+(OFF[b.id]||0)),rounds=(cfg.len||5)>=10?2:1;
       const lvNote={1:'Wersja łagodna: z oparciem lub ścianą, bez schodzenia na podłogę. Przerwij przy bólu lub zawrotach głowy.',2:'Wymaga trochę siły i ruchomości stawów. Rób wolno, bez bólu.',3:'Dla osób z dobrą sprawnością. Przy bólu stawów wróć do poziomu niżej.'}[LV];
       el.innerHTML=`<div class="rowline"><span>Poziom</span><span class="lvSeg"></span></div><p class="note" style="margin-top:0">${lvNote}</p><div class="rowline"><span>Jaki trening</span><span class="trSeg"></span></div><div class="rowline"><span>Czas</span><span class="lenSeg"></span></div>
       <div class="task"><span class="pill" style="--ch:${hueOf('trening'+LV)}">${esc(LVN[LV-1][1])} · ${cfg.len||5} min</span><h4>Dziś: ${list.length} ćwiczeń po 40 s</h4><dl class="what"><dt>Kiedy</dt><dd>Teraz albo w wolnej chwili, 5–10 minut.</dd><dt>Zrobione, gdy</dt><dd>przejdziesz całą serię w swoim tempie (liczy się ruch, nie liczba powtórzeń).</dd><dt>Do kiedy</dt><dd>dziś, do końca dnia</dd></dl><ol class="steps wl">${list.map(e=>`<li><b>${esc(e[0])}</b> — ${esc(e[1])}</li>`).join('')}</ol></div>
-      <details class="how"${learning()?' open':''}><summary>Jak wykonać — pozycja startowa i końcowa<small>${learning()?'':' — rozwiń, gdy potrzebujesz przypomnienia'}</small></summary><ol class="exsteps">${list.map(e=>`<li><b>${esc(e[0])}</b><br><span class="ps">▶ Start:</span> ${esc(e[2])}<br><span class="pe">■ Koniec:</span> ${esc(e[3])}</li>`).join('')}</ol></details>
-      <div class="tmr"></div><div class="fin"><button class="btn ghost" data-a="next" type="button">Inne ćwiczenia ↻</button></div><p class="note">Lekko, byle zrobić. 40 s pracy, 20 s przerwy.</p>`;
+      <details class="how" data-hk="trening"${howOpen('trening')?' open':''}><summary>Jak wykonać — pozycja startowa i końcowa${HOWSUM}</summary><ol class="exsteps">${list.map(e=>`<li><b>${esc(e[0])}</b><br><span class="ps">▶ Start:</span> ${esc(e[2])}<br><span class="pe">■ Koniec:</span> ${esc(e[3])}${ekImg(e[0])}<br><a class="pin" href="https://pl.pinterest.com/search/pins/?q=${encq(e[0]+' ćwiczenie')}" target="_blank" rel="noopener noreferrer">📷 Pinterest ↗</a> <a class="pin" href="https://www.google.com/search?tbm=isch&q=${encq(e[0]+' ćwiczenie jak wykonać')}" target="_blank" rel="noopener noreferrer">Google Grafika ↗</a></li>`).join('')}</ol></details>
+      <div class="tmr"></div><div class="bdone" data-bdw="${b.id}" hidden></div><div class="fin"><button class="btn ghost" data-a="next" type="button">Inne ćwiczenia ↻</button></div><p class="note">Lekko, byle zrobić. 40 s pracy, 20 s przerwy.</p>
+      <div class="alt"><label class="jl" for="alt-${b.id}">Zrobiłeś/aś dziś coś innego? To też zalicza tę sekcję</label>${S.act[TODAY]?`<p class="okp">✓ Zapisano: <b>${esc(S.act[TODAY])}</b></p>`:''}<div class="addrow"><input id="alt-${b.id}" class="altIn" type="text" maxlength="80" placeholder="np. spacer 40 min, rower, basen, siłownia" aria-label="Inna aktywność"><button class="btn" data-a="alt" type="button">Zapisz i zalicz</button></div>${(S.ra||[]).length?`<div class="chips">${S.ra.slice(0,6).map(x=>`<button class="chp" type="button" data-alt="${esc(x)}">${esc(x)}</button>`).join('')}</div>`:''}</div>`;
       seg($('.lvSeg',el),LVN,LV,v=>{cfg.lv=+v;OFF[b.id]=0;save();mountBlock(b.id);paintSums()});
       seg($('.trSeg',el),Object.entries(TRAIN),cfg.train||'mix',v=>{cfg.train=v;OFF[b.id]=0;save();mountBlock(b.id);paintSums()});
       seg($('.lenSeg',el),[[5,'5 min'],[10,'10 min']],cfg.len||5,v=>{cfg.len=+v;save();mountBlock(b.id);paintSums()});
@@ -1616,8 +1891,19 @@ const BT={
           if(!(r===rounds-1&&i===list.length-1))out.push({label:'Odpoczynek',sub:'Następne: '+list[(i+1)%list.length][0],sec:20,kind:'rest'});
         });
         return out;
-      },()=>setDone(c.id,true));
+      },()=>markBlock(b.id,true));
       $('[data-a=next]',el).onclick=()=>{OFF[b.id]=(OFF[b.id]||0)+1;mountBlock(b.id)};
+      const saveAlt=x=>{
+        x=String(x||'').trim().slice(0,80);const i=$('.altIn',el);
+        if(!x){if(i)i.focus();return}
+        S.act[TODAY]=x;S.ra=[x].concat((S.ra||[]).filter(y=>y!==x)).slice(0,8);save();
+        mountBlock(b.id);paintSums();markBlock(b.id,true);
+      };
+      el.addEventListener('click',e=>{
+        const a=e.target.closest('[data-a=alt]'),c2=e.target.closest('[data-alt]');
+        if(a)saveAlt($('.altIn',el).value);else if(c2)saveAlt(c2.dataset.alt);
+      });
+      el.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.classList.contains('altIn')){e.preventDefault();saveAlt(e.target.value)}});
     }},
 
   journal:{ic:'📓',n:'Dziennik (pytania)',sp:6,
@@ -1635,7 +1921,7 @@ const BT={
         const v=$$('textarea',el).map(t=>t.value.trim()),day=S.journal[TODAY]||(S.journal[TODAY]={});
         if(v.some(Boolean))day[b.id]=v;else delete day[b.id];
         if(!Object.keys(day).length)delete S.journal[TODAY];
-        if(v.some(Boolean)&&!isDone(c.id))setDone(c.id,true);else save();
+        if(v.some(Boolean)&&!isBD(b.id))markBlock(b.id,true,{keep:1});else save();
       };
       el.oninput=()=>{clearTimeout(jt);jt=setTimeout(flush,700)};
       el.onchange=flush;
@@ -1662,9 +1948,14 @@ const BT={
         const ch=e.target.closest('input[data-t]');if(!ch)return;
         const t=S.todos.find(t=>t.id===ch.dataset.t);if(!t)return;
         t.done=ch.checked?TODAY:0;save();mountAll('todo');paintSums();
-        if(S.todos.some(t=>t.done===TODAY))setDone(c.id,true);
+        if(S.todos.some(t=>t.done===TODAY)&&!isBD(b.id))markBlock(b.id,true,{keep:1});
       };
     }},
+
+  text:{ic:'ℹ️',n:'Tekst informacyjny',sp:0,hid:1,
+    def:()=>({h:'',cfg:{k:'nine'}}),
+    sum:()=>'',
+    mount(el,b){el.innerHTML='<div class="infotx">'+(TEXTS[b.cfg.k]||'')+'</div>'}},
 
   notes:{ic:'📝',n:'Notatki i postępy',sp:8,
     def:()=>({h:'Notatki',cfg:{}}),
@@ -1697,7 +1988,7 @@ const BT={
         const day=S.chk[TODAY]||(S.chk[TODAY]={});
         if(t.checked)day[t.dataset.i]=1;else delete day[t.dataset.i];
         t.closest('li').classList.toggle('on',t.checked);
-        if(it.length&&it.every(i=>day[i.id]))setDone(c.id,true);else save();
+        if(it.length&&it.every(i=>day[i.id]))markBlock(b.id,true);else save();
         paintSums();
       };
     }},
@@ -1710,24 +2001,32 @@ function blockHTML(c,b){
   return `<section class="blk" data-b="${b.id}">${ed}${b.h?`<h3 class="bh">${esc(b.h)}</h3>`:''}<div class="bb"></div></section>`;
 }
 const SC=(k,v)=>`<div class="scale" role="group" aria-label="${k==='q'?'Ocena wykonania':'Samopoczucie po ćwiczeniach'}, skala 1 do 5">${[1,2,3,4,5].map(n=>`<button type="button" data-sc="${k}" data-v="${n}" aria-pressed="${v===n}">${n}</button>`).join('')}</div>`;
+function lockedHTML(c){
+  const n=activePast();
+  return `<details class="card locked" id="card-${c.id}" data-card="${c.id}"><summary><span class="ic">🔒</span><span class="ttl"><b>${esc(c.title)}</b><small>Odblokuje się po ${c.lock} dniach ćwiczeń (masz ${Math.min(n,c.lock)}/${c.lock})</small></span><span class="chev"></span></summary><div class="body"><p class="lockmsg">🔒 Najpierw przejdź ćwiczenia przygotowujące: <b>oddech 4–6, wydech „sss”, oddech pudełkowy</b> (sekcja Głos). Ta sekcja otworzy się po ${c.lock} dniach ćwiczeń.</p><div class="dots" aria-hidden="true">${Array.from({length:c.lock},(_,j)=>`<i class="${j<n?'on':''}"></i>`).join('')}</div></div></details>`;
+}
 function cardHTML(c,i,n){
+  if(isLocked(c))return lockedHTML(c);
   const ed=EDIT?`<div class="edcard"><input class="et" type="text" data-f="ctitle" data-c="${c.id}" value="${esc(c.title)}" maxlength="40" aria-label="Nazwa sekcji"><input class="et" type="text" style="flex:0 0 64px;width:64px;text-align:center" data-f="cicon" data-c="${c.id}" value="${esc(c.ic||'')}" maxlength="4" aria-label="Ikona sekcji"><button class="btn sm" type="button" data-act="cup" data-c="${c.id}" ${i?'':'disabled'} aria-label="Sekcja wyżej">↑</button><button class="btn sm" type="button" data-act="cdn" data-c="${c.id}" ${i<n-1?'':'disabled'} aria-label="Sekcja niżej">↓</button><button class="btn sm danger" type="button" data-act="cdel" data-c="${c.id}">Usuń sekcję</button></div>`:'';
-  const add=EDIT?`<div class="adder"><select class="addType" aria-label="Typ nowego bloku">${Object.entries(BT).map(([k,t])=>`<option value="${k}">${t.ic} ${esc(t.n)}</option>`).join('')}</select><button class="btn sm" type="button" data-act="badd" data-c="${c.id}">+ Dodaj blok</button></div>`:'';
+  const add=EDIT?`<div class="adder"><select class="addType" aria-label="Typ nowego bloku">${Object.entries(BT).filter(([k,t])=>!t.hid).map(([k,t])=>`<option value="${k}">${t.ic} ${esc(t.n)}</option>`).join('')}</select><button class="btn sm" type="button" data-act="badd" data-c="${c.id}">+ Dodaj blok</button></div>`:'';
   const info=isInfo(c);
-  return `<details class="card" id="card-${c.id}" data-card="${c.id}"><summary>${info?'':`<button class="tick" type="button" data-tick="${c.id}" aria-pressed="false" aria-label="Oznacz: ${esc(c.title)}"></button>`}<span class="ic">${esc(c.ic||'•')}</span><span class="ttl"><b>${esc(c.title)}</b><small id="sum-${c.id}"></small></span><span class="chev"></span></summary><div class="body">${ed}${c.blocks.map(b=>blockHTML(c,b)).join('')}${add}${info?'':`<div class="fin"><button class="btn pri" data-done="${c.id}" type="button"></button></div><p class="tiny donehint">Dotknij, gdy wykonasz tę sekcję — zaliczy się do dzisiejszego postępu (kółko u góry).</p>`}</div></details>`;
+  return `<details class="card" id="card-${c.id}" data-card="${c.id}"><summary>${info?'':`<button class="tick" type="button" data-tick="${c.id}" aria-pressed="false" aria-label="Oznacz: ${esc(c.title)}"></button>`}<span class="ic">${esc(c.ic||'•')}</span><span class="ttl"><b>${esc(c.title)}</b><small id="sum-${c.id}"></small></span><span class="chev"></span></summary><div class="body">${ed}${info?'':'<div class="req" hidden></div>'}${c.blocks.map(b=>blockHTML(c,b)).join('')}${add}${info?'':'<div class="cdone"></div>'}</div></details>`;
 }
 function renderCards(){
-  const open=new Set($$('#cards details[open]').map(d=>d.dataset.card));
+  const open=new Set($$('#cards details.card[open]').map(d=>d.dataset.card));
   Object.values(TIM).forEach(t=>t.destroy());for(const k in TIM)delete TIM[k];
+  for(const k in PICKED)delete PICKED[k];
   const L=LAY();
   $('#cards').innerHTML=L.length?L.map((c,i)=>cardHTML(c,i,L.length)).join(''):'<p class="note">Brak sekcji. Menu ⋯ → „Zestawy nawyków” albo „Edytuj układ”.</p>';
   $$('#cards details.card').forEach(d=>{if(EDIT||open.has(d.dataset.card))d.open=true});
   L.forEach(c=>c.blocks.forEach(b=>mountBlock(b.id)));
+  if(!FIRSTOPEN){FIRSTOPEN=true;if(!EDIT&&!open.size){const nx=TASKS().find(c=>!isDone(c.id)),e=nx&&$('#card-'+nx.id);if(e)e.open=true}}
   $('#addCard').innerHTML=EDIT?'<button class="btn" data-act="cadd" type="button">+ Nowa sekcja</button>':'';
   if(!POPPED&&!FX.calm()){$$('#cards details.card').forEach((d,i)=>{d.style.setProperty('--i',i);d.classList.add('pop')});POPPED=true}
   applyTones();paintDone();paintSums();
 }
-let POPPED=false;
+let POPPED=false, FIRSTOPEN=false;
+const PICKED={};
 function paintSums(){
   LAY().forEach(c=>{
     const e=$('#sum-'+c.id);if(!e)return;
@@ -1743,14 +2042,39 @@ function streak(){
 }
 const RC=2*Math.PI*22;
 let LASTCNT=-1;
+function paintReq(c,e){
+  const mu=isMulti(c),u=units(c),on=isDone(c.id),rq=$('.req',e);
+  const gd=u.gd.some(b=>isBD(b.id));
+  if(rq){
+    if(!mu||on)rq.hidden=true;
+    else{
+      rq.hidden=false;
+      const chip=(b,cov)=>{const d=isBD(b.id)||cov;return `<span class="rc${d?' on':''}">${d?'✓':'○'} ${esc(blabel(b,c))}</span>`};
+      const main=[].concat(u.dl.map(b=>chip(b,gd)),u.ot.map(b=>chip(b,false))).join('<i>+</i>');
+      const g=u.gd.map(b=>chip(b,false)).join('<i>+</i>');
+      rq.innerHTML='<b>Etap zaliczy się, gdy zrobisz:</b> '+(main&&g?main+' <i class="or">albo</i> '+g:main||g);
+    }
+  }
+  $$('.bdone',e).forEach(w=>{
+    const f=findB(w.dataset.bdw);if(!f)return;
+    const b=f.b,d=isBD(b.id),cov=!d&&b.type==='daily'&&gd,st=(mu&&!on?(d?'1':cov?'c':'0'):'h');
+    if(w.dataset.st===st)return;w.dataset.st=st;
+    w.hidden=st==='h';
+    w.innerHTML=st==='1'?`<span class="okb sm">✓ Zrobione</span><button class="lnk" type="button" data-bu="${b.id}">cofnij</button>`:st==='c'?'<span class="okb sm">✓ Objęte rozgrzewką</span>':st==='0'?`<button class="btn sm" type="button" data-bd="${b.id}">✓ Zrobione: ${esc(blabel(b,c))}</button>`:'';
+  });
+}
 function paintDone(){
   const L=TASKS(),dk=doneKeys(),total=L.length,cnt=L.filter(c=>dk[c.id]).length;
-  L.forEach(c=>{
+  PAINT().forEach(c=>{
     const on=!!dk[c.id],e=$('#card-'+c.id);if(!e)return;
     e.classList.toggle('done',on);
-    $('[data-tick]',e).setAttribute('aria-pressed',on);
-    const b=$('[data-done]',e);b.textContent=on?'✓ Zaliczone na dziś — kliknij, aby odznaczyć':'✓ Zrobione — zalicz na dziś';b.setAttribute('aria-label',on?'Odznacz sekcję jako niezrobioną':'Zalicz sekcję na dziś');b.classList.toggle('pri',!on);b.classList.toggle('ghost',on);
-    const dh=$('.donehint',e);if(dh)dh.hidden=on;
+    const tk=$('[data-tick]',e);if(tk)tk.setAttribute('aria-pressed',on);
+    const cd=$('.cdone',e);
+    if(cd){
+      const st=(on?'1':'0')+(isMulti(c)?'m':'s');
+      if(cd.dataset.st!==st){cd.dataset.st=st;cd.innerHTML=on?`<div class="fin"><span class="okb">✓ Zaliczone na dziś</span><button class="lnk" type="button" data-undo="${c.id}">cofnij zaliczenie</button></div>`:`<div class="fin"><button class="btn pri" type="button" data-done="${c.id}">${isMulti(c)?'✓ Zalicz cały etap ręcznie':'✓ Zrobione — zalicz na dziś'}</button></div><p class="tiny donehint">Dotknij, gdy wykonasz tę sekcję — zaliczy się do dzisiejszego postępu (kółko u góry).</p>`}
+    }
+    if(!isInfo(c))paintReq(c,e);
   });
   const r=$('#ring');
   if(!$('svg',r))r.innerHTML=`<svg viewBox="0 0 52 52" aria-hidden="true"><defs><linearGradient id="rg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:var(--acc)"/><stop offset="1" style="stop-color:var(--warm)"/></linearGradient></defs><circle class="rt" cx="26" cy="26" r="22"/><circle class="rp" cx="26" cy="26" r="22" stroke="url(#rg)" stroke-dasharray="${RC.toFixed(1)}" stroke-dashoffset="${RC.toFixed(1)}"/></svg><b></b>`;
@@ -1799,6 +2123,7 @@ function applyLook(){
 function renderLook(){
   $('#sws').innerHTML=HUES.map(([h,n])=>`<button class="sw" type="button" data-h="${h}" aria-pressed="${h<0?zar():+S.set.hue===h}"><i style="background:${h<0?'conic-gradient(#ff7a45,#ffc43d,#ff4d8d,#8b5cf6,#2dd4bf,#ff7a45)':`hsl(${h} 50% 55%)`}"></i>${esc(n)}</button>`).join('');
   seg($('#modeSeg'),[['auto','Auto'],['dark','Ciemny'],['light','Jasny']],S.set.mode,v=>{S.set.mode=v;save();applyLook()});
+  seg($('#howSeg'),[['auto','Auto'],['open','Rozwinięte'],['closed','Zwinięte']],S.set.how||'auto',v=>{S.set.how=v;S.hx={};save();renderCards()});
   $('#setQuiet').checked=!!S.set.quiet;$('#setSnd').checked=!!S.set.snd;$('#setFx').checked=S.set.fx!==0;
 }
 function greet(){const h=new Date().getHours();return h<12?'Dzień dobry':h<18?'Miłego dnia':'Dobry wieczór'}
@@ -1944,11 +2269,29 @@ function renderSummary(){
   bd.innerHTML=o;
   applyTones();
 }
+/* ───────── KONIEC DNIA: podsumowanie i cytat ───────── */
+let WI=0;
+function renderFinish(){
+  const el=$('#finish');if(!el)return;
+  if(!allDone()||EDIT){el.hidden=true;el.innerHTML='';return}
+  const tk=TASKS(),n=tk.length,st=streak(),q=WIN[(DN+WI)%WIN.length];
+  const dn=x=>x+' '+(x===1?'dzień':'dni');
+  el.hidden=false;
+  el.innerHTML=`<div class="fh"><span class="fe">🏆</span><b>Dzień zaliczony</b></div><p class="fs">${n}/${n} etapów · seria ${dn(st)} · ${dn(activeAll())} ćwiczeń${S.act[TODAY]?' · '+esc(shortT(S.act[TODAY],40)):''}</p><div class="fc">${tk.map(c=>`<span>${esc(c.ic||'•')} ${esc(c.title)}</span>`).join('')}</div><blockquote class="win"><p>„${esc(q.x)}”</p><cite>— ${esc(q.a)}${q.w?', '+esc(q.w):''}</cite></blockquote><div class="drow" style="margin-top:8px"><button class="btn sm" type="button" data-fq>Inny cytat ›</button></div><p class="tiny">Jesteś w dobrym towarzystwie: każda z tych osób zaczynała od małych, powtarzanych kroków. Do zobaczenia jutro.</p>`;
+}
+const briefKey=()=>{const L=LAY();return ['charyzma','roz','skup'].find(k=>L.some(c=>c.blocks.some(b=>b.type==='daily'&&b.cfg.pack===k)))||null};
+function renderBrief(){
+  const el=$('#brief');if(!el)return;
+  const k=briefKey();if(!k||EDIT){el.hidden=true;return}
+  const B=BRIEF[k],len=PACKS[k].items.length,d=activeAll(),end=d>=len;
+  el.hidden=false;el.classList.toggle('end',end);
+  el.innerHTML=`<h3>${end?'🏁 Koniec cyklu — to już wiesz:':esc(B.n)}</h3><span class="cyc">cykl: ${Math.min(d,len)}/${len}</span><ul>${B.items.map(([i,t])=>`<li><i aria-hidden="true">${i}</i>${esc(t)}</li>`).join('')}</ul>`;
+}
 function renderAll(){
   {const nd=keyOf(new Date());if(nd!==TODAY)SUM_OPEN=false;TODAY=nd}DN=dnum(new Date());
   $('#greet').textContent=greet();
   $('#date').textContent=new Date().toLocaleDateString('pl-PL',{weekday:'long',day:'numeric',month:'long'});
-  applyLook();renderCards();renderCheckin();renderRemind();renderSurvey();renderSummary();setSync(syncState);
+  applyLook();renderCards();renderCheckin();renderRemind();renderSurvey();renderSummary();renderFinish();renderBrief();setSync(syncState);
 }
 
 /* ───────── EDYCJA UKŁADU ───────── */
@@ -1982,7 +2325,7 @@ function act(a){
 }
 function toggleEdit(on){
   EDIT=on;$('#miEditT').textContent=on?'Zakończ edycję':'Edytuj układ';$('#editBar').hidden=!on;
-  renderCards();
+  renderCards();renderFinish();renderBrief();
 }
 function renderTpl(){
   $('#tplList').innerHTML=TEMPLATES.map(t=>`<div class="tpl"><b>${t.ic} ${esc(t.n)}</b><p>${esc(t.d)}</p><button class="btn sm pri" type="button" data-tpl="${t.id}">${S.tpl===t.id?'Wczytaj ponownie':'Wczytaj'}</button></div>`).join('')+(S.prev?'<div class="tpl"><b>↩ Poprzedni układ</b><p>Przywróć układ sprzed ostatniego wczytania zestawu.</p><button class="btn sm" type="button" data-tpl="__prev">Przywróć</button></div>':'');
@@ -2001,11 +2344,30 @@ function wire(){
   const cards=$('#cards');
   cards.addEventListener('click',e=>{
     const t=e.target.closest('[data-tick]');
-    if(t){e.preventDefault();e.stopPropagation();setDone(t.dataset.tick,!isDone(t.dataset.tick));return}
+    if(t){
+      e.preventDefault();e.stopPropagation();const id=t.dataset.tick;
+      if(isDone(id)){FX.toast('✓ Już zaliczone. Cofniesz to w środku sekcji.');const d=$('#card-'+id);if(d)d.open=true}
+      else setDone(id,true);
+      return;
+    }
     const a=e.target.closest('[data-act]');if(a){act(a);return}
+    const bd=e.target.closest('[data-bd]');if(bd){markBlock(bd.dataset.bd,true);return}
+    const bu=e.target.closest('[data-bu]');if(bu){markBlock(bu.dataset.bu,false);return}
+    const un=e.target.closest('[data-undo]');if(un){armed(un,()=>setDone(un.dataset.undo,false));return}
     const b=e.target.closest('[data-done]');
-    if(b)setDone(b.dataset.done,!isDone(b.dataset.done));
+    if(b)setDone(b.dataset.done,true);
   });
+  /* instrukcje: pamiętam, które użytkownik zwinął lub rozwinął */
+  cards.addEventListener('toggle',e=>{
+    const d=e.target;if(!d.classList||!d.classList.contains('how'))return;
+    const k=d.dataset.hk;if(!k)return;
+    const nv=d.open===howDef()?undefined:(d.open?1:0);
+    if(S.hx[k]===nv)return;
+    if(nv===undefined)delete S.hx[k];else S.hx[k]=nv;
+    save();
+  },true);
+  $('#finish').addEventListener('click',e=>{if(e.target.closest('[data-fq]')){WI++;renderFinish()}});
+  document.addEventListener('error',e=>{const t=e.target;if(t&&t.tagName==='IMG'){const k=t.closest&&t.closest('.ek');if(k)k.remove()}},true);
   $('#checkin').addEventListener('click',e=>{
     const b=e.target.closest('[data-ck]'),x=e.target.closest('[data-cie]');
     if(b){
