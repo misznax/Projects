@@ -114,3 +114,5 @@ const EKIMG={
   'Pompki klasyczne':'0077','Pompki z nogami na krześle':'0075','Superman':'0105','Mostek biodrowy':'0109',
   'Wiosłowanie pod stołem':'0086','Dipy na krześle (nogi ugięte)':'0162','Dipy na krześle (nogi proste)':'0162','Wykroki chodzone':'0121','Kark w bok':'0002',
 };
+/* v1.0: rysunki do całej bazy Ruchu (WL) — 5. element każdego wpisu to id Everkinetic */
+Object.values(WL).forEach(g=>Object.values(g).forEach(a=>a.forEach(e=>{if(e[4])EKIMG[e[0]]=e[4]})));

@@ -250,10 +250,24 @@ blockquote.qt cite{display:block;font-style:normal;margin-top:6px;font-size:13px
 .dl{margin:10px 0 6px;font-size:13px;color:var(--warm)}
 .why{margin:0 0 6px;font-size:13px;color:var(--mute)}
 .remind{margin:6px 0 10px;padding:10px 12px;border-radius:12px;background:color-mix(in srgb,var(--warm) 12%,transparent);border-left:4px solid var(--warm);white-space:pre-wrap;overflow-wrap:anywhere;font-size:15px}
-.remindbar{margin:0 0 14px;padding:10px 14px;border-radius:14px;cursor:pointer;background:linear-gradient(135deg,color-mix(in srgb,var(--warm) 14%,transparent),transparent);border:1px solid color-mix(in srgb,var(--warm) 40%,transparent)}
+.remindbar{margin:0 0 14px;padding:4px 12px;border-radius:14px;background:linear-gradient(135deg,color-mix(in srgb,var(--warm) 14%,transparent),transparent);border:1px solid color-mix(in srgb,var(--warm) 40%,transparent)}
 .remindbar[hidden]{display:none}
-.remindbar b{color:var(--warm);font-size:13px}
-.remindbar p{margin:4px 0 0;font-size:15px;overflow-wrap:anywhere}
+.rm{display:flex;align-items:center;gap:10px;padding:7px 0;font-size:14px;line-height:1.35}
+.rm+.rm{border-top:1px dashed color-mix(in srgb,var(--warm) 32%,transparent)}
+.rm .rt{flex:1;min-width:0;overflow-wrap:anywhere}
+.rm .rt b{display:block;color:var(--warm);font-size:12px;font-weight:600;letter-spacing:.02em}
+.rm.lk,.rm.nt{cursor:pointer}
+.rm.nt .rt{color:var(--mute);font-size:13px}
+.rm.dn .rt{opacity:.6;text-decoration:line-through}
+.rm.dn .rt b{text-decoration:none}
+.rb{flex:0 0 auto;font:600 13px/1 system-ui,sans-serif;padding:8px 12px;border-radius:999px;border:1px solid color-mix(in srgb,var(--warm) 55%,transparent);background:transparent;color:var(--warm);cursor:pointer;min-height:36px}
+.rb[aria-pressed=true]{background:color-mix(in srgb,var(--warm) 22%,transparent)}
+.age{color:var(--warm);font-size:11px;margin-left:8px;white-space:nowrap}
+.hb{font:600 10px/1 system-ui,sans-serif;text-transform:uppercase;letter-spacing:.06em;padding:2px 6px;border-radius:999px;border:1px dashed var(--mute);color:var(--mute);vertical-align:middle;margin-right:4px}
+.chk.pk{align-items:flex-start;padding:7px 0}
+.chk.pk span{display:block}.chk.pk small{display:block;color:var(--mute);font-size:12px;margin-top:1px}
+#pickBtn{padding:5px 10px;font-size:12px;min-height:30px}
+#pickMsg{min-height:1.2em;margin:6px 0 0}
 #survey{margin:6px 0 18px}
 #survey.wait{opacity:.8}
 .steps.gl{list-style:none;padding-left:0}
@@ -402,6 +416,16 @@ html[data-dark="0"] .okb{color:hsl(150 70% 22%)}
 .see{font-size:13px;margin:10px 0 2px;color:var(--mute)}
 .see a,.pin{color:var(--cacc)}
 .pin{font-size:12px;margin-right:8px}
+.steps.wl{list-style:none;padding-left:0}
+.wx{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:9px 0;border-top:1px solid color-mix(in srgb,var(--ink) 10%,transparent)}
+.wx:first-child{border-top:0}
+.wx .wt{flex:1 1 150px;min-width:0}
+.wp{display:flex;gap:6px;flex:0 0 auto;background:none;border:0;padding:0;cursor:zoom-in;color:var(--mute)}
+.wp span{display:block;text-align:center}
+.wp img{width:78px;height:auto;border-radius:10px;background:#fff;border:1px solid color-mix(in srgb,var(--ink) 14%,transparent);display:block}
+.wp em{font-size:10px;font-style:normal}
+.wx.big{flex-wrap:wrap}.wx.big .wp{width:100%;cursor:zoom-out}.wx.big .wp img{width:min(44vw,210px)}
+.ekc{font-size:11px;color:var(--mute);margin:6px 0 0}.ekc a{color:var(--cacc)}
 .ek{display:block;margin:10px 0 4px}
 .ekp{display:flex;gap:8px;flex-wrap:wrap}
 .ek img{width:min(46%,200px);height:auto;border-radius:12px;background:#fff;border:1px solid color-mix(in srgb,var(--ink) 14%,transparent)}
@@ -498,6 +522,7 @@ textarea.mono{font:12px/1.4 ui-monospace,Consolas,monospace;min-height:110px}
       <button class="icon" id="menuBtn" aria-label="Menu" aria-haspopup="true" aria-expanded="false">⋯</button>
       <div class="menu" id="menu" hidden>
         <button class="mi" id="miLook"><i>🎨</i>Wygląd i kolory</button>
+        <button class="mi" id="miPick"><i>☑️</i>Wybierz sekcje</button>
         <button class="mi" id="miEdit"><i>✏️</i><span id="miEditT">Edytuj układ</span></button>
         <button class="mi" id="miSum"><i>📈</i>Podsumowanie</button>
         <button class="mi" id="miPacks"><i>🧩</i>Zestawy nawyków</button>
@@ -511,14 +536,14 @@ textarea.mono{font:12px/1.4 ui-monospace,Consolas,monospace;min-height:110px}
   </header>
 
   <section class="prog" aria-label="Postęp dnia">
-    <div class="prow"><span id="ptxt"></span><span class="sp"></span><span id="week"></span><span id="streak"></span></div>
+    <div class="prow"><span id="ptxt"></span><button class="btn sm ghost" id="pickBtn" type="button">☑ Wybierz sekcje</button><span class="sp"></span><span id="week"></span><span id="streak"></span></div>
     <div class="hint" id="hint">Zacznij od 2 pytań na start dnia. Potem rób ćwiczenia — etap zaliczy się sam, gdy zrobisz wymagane ćwiczenia (lista jest w sekcji).</div>
     <div class="strip" id="strip" aria-label="Ostatnie 14 dni"></div>
   </section>
 
-  <section id="checkin" aria-label="Pytania na start dnia"></section>
+  <section id="remind" class="remindbar" hidden aria-label="Przypomnienia: plan z wczoraj, zaległe zadania, notatka"></section>
 
-  <section id="remind" class="remindbar" hidden role="button" tabindex="0" aria-label="Przypomnienie z ostatniej notatki"></section>
+  <section id="checkin" aria-label="Pytania na start dnia"></section>
 
   <main id="cards"></main>
 
@@ -540,12 +565,21 @@ textarea.mono{font:12px/1.4 ui-monospace,Consolas,monospace;min-height:110px}
 
 <div class="editbar" id="editBar" hidden><span>Tryb edycji</span><button class="btn pri sm" id="editDone" type="button">Gotowe</button></div>
 
+<dialog id="dPick">
+  <h2 id="pickH">Wybierz sekcje</h2>
+  <p class="src" id="pickP" style="margin-top:0"></p>
+  <div id="pickList"></div>
+  <p class="src" id="pickCnt" style="margin:8px 0 0"></p>
+  <div class="msg err" id="pickMsg" role="status"></div>
+  <div class="drow"><button class="btn" id="pickAll" type="button">Zaznacz wszystkie</button><button class="btn pri" id="pickOk" data-close type="button">Gotowe</button></div>
+</dialog>
+
 <dialog id="dAbout">
   <h2>O autorze</h2>
   <p><b>Nawyk — menedżer dnia</b></p>
   <p>Wersja: <span id="verA"></span></p>
   <p>Autor: Michał Rzekiecki</p>
-  <p class="src" style="margin-top:2px"><b>Co nowego w v0.07:</b> etap zalicza się sam, gdy zrobisz wymagane ćwiczenia (np. oddech + dźwięk albo cała rozgrzewka); po zaliczeniu sekcja się zwija i otwiera następna; po całym dniu — podsumowanie i cytat. Nowe: podzielność uwagi (3 poziomy, 31 ćwiczeń), oddech 9D (po 4 dniach), brief na dole, instrukcje do zwinięcia (zapamiętuję wybór), „inna aktywność” w Ruchu, przeszklone karty, bez dublowania ćwiczeń.</p>
+  <p class="src" style="margin-top:2px"><b>Co nowego w v1.0:</b> wybór sekcji — przy pierwszym uruchomieniu zaznaczasz, czego chcesz się uczyć, a potem zmieniasz to przyciskiem „Wybierz sekcje” u góry (odznaczone nie liczą się do postępu); rysunki start → koniec przy każdym ćwiczeniu z Ruchu (43 ćwiczenia); plan z wczoraj na samej górze i na liście na dziś (z możliwością odhaczenia), zaległe zadania oznaczone, jak dawno czekają. Wcześniej (v0.07): etap zalicza się sam, podzielność uwagi, oddech 9D, brief, instrukcje do zwinięcia.</p>
   <p>Kontakt: <a href="mailto:kontakt@smialo.org">kontakt@smialo.org</a></p>
   <p class="src">Ilustracje ćwiczeń: <a href="https://github.com/everkinetic/data" target="_blank" rel="noopener noreferrer">Everkinetic</a>, licencja <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a> (bez zmian). Ćwiczenia podzielności uwagi: trening „dual-task” (chodzenie + mówienie), zadanie Stroopa, shadowing (tłumaczenie symultaniczne). Cytaty w podsumowaniu dnia to własne tłumaczenia znanych wypowiedzi.</p>
   <p class="src">Model charyzmy: Obecność · Moc · Ciepło (O. Fox Cabane, „The Charisma Myth”). Rozgrzewka głosu oparta na ćwiczeniach J. Treasure (TED). Ćwiczenia mają charakter ogólny — przy bólu, zawrotach głowy lub chrypce przerwij i skonsultuj się ze specjalistą.</p>
@@ -974,79 +1008,80 @@ const QUOTES=[
 ];
 
 /* ───────── v0.05: baza ćwiczeń ruchowych wg poziomu ─────────
-   [nazwa, opis, pozycja startowa, pozycja końcowa] */
+   [nazwa, opis, pozycja startowa, pozycja końcowa, id rysunku Everkinetic] — v1.0: każde ćwiczenie ma parę rysunków start/koniec */
 const LVN=[[1,'Podstawowy'],[2,'Średni'],[3,'Zaawansowany']];
 const WL={
 upper:{
 1:[
-['Pompki o ścianę','Najłagodniejsza wersja pompki — bez obciążania nadgarstków i barków.','Stań na wyciągnięcie ręki od ściany, dłonie na ścianie na wysokości barków, ręce proste.','Zegnij łokcie i przybliż klatkę do ściany, ciało w jednej linii; wypchnij się z powrotem.'],
-['Wyciskanie nad głowę z butelkami','W siadzie na krześle, w każdej dłoni butelka z wodą (0,5 l).','Butelki przy barkach, łokcie zgięte, plecy oparte.','Wyprostuj ręce nad głową bez wyginania pleców, potem wolno opuść do barków.'],
-['Unoszenie ramion bokiem','Stojąc lub siedząc, w dłoniach butelki. Ruch jest wolny i kontrolowany.','Ręce wzdłuż ciała, barki luźno w dół.','Unieś ręce bokiem do wysokości barków (nie wyżej), opuść w 3 sekundy.'],
-['Ściąganie łopatek na siedząco','Siedzisz prosto, ręce zgięte w łokciach. Ćwiczenie dla postawy.','Ręce przed sobą, łopatki rozsunięte.','Przyciągnij łokcie do tyłu, ściągnij łopatki do siebie na 2 sekundy i wróć.'],
-['Prostowanie ramienia z butelką','Triceps: w siadzie, butelka w jednej dłoni, drugą ręką podeprzyj łokieć. Pierwsze 8 powtórzeń jedna ręka, potem druga.','Łokieć przy głowie wskazuje w górę, butelka za głową.','Wyprostuj rękę nad głową i wolno zegnij z powrotem.'],
+['Unoszenie ramion bokiem','Stojąc lub siedząc, w dłoniach butelki. Ruch jest wolny i kontrolowany.','Ręce wzdłuż ciała, barki luźno w dół.','Unieś ręce bokiem do wysokości barków (nie wyżej), opuść w 3 sekundy.','0018'],
+['Unoszenie ramion przodem','W dłoniach butelki. Nie bujaj tułowiem.','Ręce wzdłuż ciała, dłonie zwrócone do ud.','Unieś ręce prosto przed siebie do wysokości barków i wolno opuść.','0033'],
+['Wyciskanie nad głowę z butelką','Stojąc lub w siadzie na krześle, butelka (0,5 l) w jednej dłoni; po połowie czasu zmień rękę.','Butelka przy barku, łokieć zgięty, plecy proste.','Wyprostuj rękę nad głową bez wyginania pleców, potem wolno opuść do barku.','0038'],
+['Wzruszanie barkami z butelkami','Dla karku i postawy. W dłoniach butelki lub torby.','Ręce wzdłuż ciała, barki luźno w dół.','Unieś barki do uszu, przytrzymaj sekundę i wolno opuść.','0005'],
+['Ściąganie łopatek z gumą lub ręcznikiem','Ćwiczenie dla postawy: guma lub mocno napięty ręcznik trzymany przed sobą.','Ręce wyprostowane przed sobą na wysokości barków, guma lekko napięta.','Rozciągnij gumę na boki, ściągnij łopatki do siebie na 2 sekundy i wróć.','0020'],
+['Prostowanie ramienia z butelką','Triceps: w siadzie, butelka w jednej dłoni; po połowie czasu druga ręka.','Łokieć przy głowie wskazuje w górę, butelka za głową.','Wyprostuj rękę nad głową i wolno zegnij z powrotem.','0173'],
 ],
 2:[
-['Pompki o stół lub blat','Im wyższy blat, tym łatwiej. Stabilny stół lub parapet.','Dłonie na krawędzi blatu, ciało proste jak deska, ręce wyprostowane.','Zegnij łokcie, klatka do krawędzi blatu, wypchnij w górę.'],
-['Pompki na kolanach','Kolana na miękkim podłożu, ciało prosto od kolan do głowy.','Dłonie pod barkami, ręce proste.','Opuść klatkę nisko nad podłogę i wypchnij.'],
-['Dipy na krześle (nogi ugięte)','Stabilne krzesło oparte o ścianę. Nogi ugięte = łatwiej.','Dłonie na brzegu siedziska obok bioder, pośladki przed krzesłem, ręce proste.','Zegnij łokcie do tyłu (ok. 90°) i wypchnij się w górę.'],
-['Wiosłowanie z plecakiem','Plecak z książkami. Jedną ręką oprzyj się o stół, plecy proste.','Plecak zwisa, ręka prosta.','Przyciągnij plecak do biodra, łokieć wzdłuż ciała, i opuść.'],
-['Plank na przedramionach (na kolanach)','Przytrzymaj 20–30 sekund, oddychaj spokojnie.','Przedramiona i kolana na podłodze.','Ciało w linii od kolan do głowy, brzuch napięty, biodra nie opadają.'],
-['Superman','Leżąc na brzuchu. Wzmacnia plecy.','Ręce wyprostowane przed sobą, czoło nisko.','Unieś ręce i nogi kilka centymetrów, przytrzymaj 2 sekundy i opuść.'],
+['Dipy na krześle (nogi ugięte)','Stabilne krzesło oparte o ścianę. Nogi ugięte = łatwiej.','Dłonie na brzegu siedziska obok bioder, pośladki przed krzesłem, ręce proste.','Zegnij łokcie do tyłu (ok. 90°) i wypchnij się w górę.','0162'],
+['Wiosłowanie jedną ręką','Plecak lub ciężka torba. Jedną dłonią i kolanem oprzyj się o stabilny stół lub krzesło, plecy proste.','Ręka z plecakiem zwisa prosto w dół, wzrok w podłogę.','Przyciągnij plecak do biodra, ściągnij łopatkę do kręgosłupa i wolno opuść. Po połowie czasu zmień rękę.','0024'],
+['Prostowanie ramienia w opadzie','Triceps: oprzyj się o stół jak przy wiosłowaniu, łokieć wysoko przy tułowiu.','Łokieć zgięty pod kątem 90°, butelka lub plecak przy żebrach.','Wyprostuj rękę do tyłu, przytrzymaj sekundę i wolno wróć.','0204'],
+['Wiosłowanie pionowe z butelkami','Butelki lub torby w dłoniach. Łokcie nie wyżej niż barki.','Ręce przed udami, dłonie nachwytem.','Przyciągnij ciężar wzdłuż tułowia do klatki (łokcie na zewnątrz), wolno opuść.','0016'],
+['Plank boczny','Przytrzymaj 20–30 sekund na stronę, oddychaj spokojnie.','Leżysz na boku, łokieć pod barkiem, nogi proste.','Unieś biodra tak, by ciało tworzyło linię od stóp do głowy; po czasie zmień stronę.','0113'],
+['Superman','Leżąc na brzuchu. Wzmacnia plecy.','Ręce wyprostowane przed sobą, czoło nisko.','Unieś ręce i nogi kilka centymetrów, przytrzymaj 2 sekundy i opuść.','0105'],
 ],
 3:[
-['Pompki klasyczne','Ciało proste jak deska, brzuch napięty.','Dłonie pod barkami, ręce proste, stopy złączone.','Opuść klatkę prawie do podłogi, wypchnij w górę.'],
-['Pompki z nogami na krześle','Trudniejsze, bo więcej ciężaru idzie na ramiona.','Stopy na krześle, dłonie na podłodze pod barkami.','Opuść głowę w kierunku podłogi i wypchnij.'],
-['Pike push-up','Pozycja odwróconego „V”, ciężar na barkach.','Biodra wysoko, ręce i nogi proste.','Zegnij łokcie, czubek głowy do podłogi, wypchnij w górę.'],
-['Wiosłowanie pod stołem','Bardzo stabilny, ciężki stół. Jeśli się chwieje — nie rób.','Leżysz pod stołem, ręce prosto na krawędzi, ciało w linii.','Przyciągnij klatkę do blatu, ściągnij łopatki i wolno opuść.'],
-['Dipy na krześle (nogi proste)','Stopy na podłodze, nogi proste.','Dłonie na siedzisku, ręce proste, biodra tuż przed krzesłem.','Zegnij łokcie do 90° i wypchnij w górę.'],
-['Plank pełny z dotknięciem barku','40 sekund; biodra stoją w miejscu.','Podpór na dłoniach, ciało w jednej linii.','Na zmianę dotykaj dłonią przeciwległego barku, nie kołysząc biodrami.'],
+['Pompki klasyczne','Ciało proste jak deska, brzuch napięty.','Dłonie pod barkami, ręce proste, stopy złączone.','Opuść klatkę prawie do podłogi, wypchnij w górę.','0077'],
+['Pompki z nogami na krześle','Trudniejsze, bo więcej ciężaru idzie na ramiona.','Stopy na krześle, dłonie na podłodze pod barkami.','Opuść głowę w kierunku podłogi i wypchnij.','0075'],
+['Pompki wąskie (triceps)','Dłonie blisko siebie pod klatką, łokcie wzdłuż ciała.','Podpór na wąsko ustawionych dłoniach, ciało w jednej linii.','Zegnij łokcie wzdłuż tułowia, klatka niemal do podłogi, wypchnij.','0188'],
+['Wiosłowanie pod stołem','Bardzo stabilny, ciężki stół. Jeśli się chwieje — nie rób.','Leżysz pod stołem, ręce prosto na krawędzi, ciało w linii.','Przyciągnij klatkę do blatu, ściągnij łopatki i wolno opuść.','0086'],
+['Dipy na krześle (nogi proste)','Stopy na podłodze, nogi proste.','Dłonie na siedzisku, ręce proste, biodra tuż przed krzesłem.','Zegnij łokcie do 90° i wypchnij w górę.','0162'],
+['Podciąganie podchwytem (negatywne)','Tylko z bezpiecznym drążkiem. Wejdź na krzesło, zacznij u góry.','Broda nad drążkiem, chwyt podchwytem na szerokość barków.','Opuszczaj się wolno przez 4 sekundy do pełnego zwisu.','0090'],
 ],
 },
 lower:{
 1:[
-['Wstawanie z krzesła','Najważniejsze ćwiczenie codzienne. Krzesło oparte o ścianę.','Siedzisz na brzegu krzesła, stopy na szerokość bioder.','Wstań bez pomocy rąk (lub z lekkim podparciem), wyprostuj się i usiądź wolno.'],
-['Półprzysiad przy oparciu','Trzymaj się oparcia krzesła lub blatu.','Stoisz prosto, stopy na szerokość bioder.','Zegnij kolana jak do siadania (do ok. 45°), kolana nad stopami, i wstań.'],
-['Marsz z wysokim kolanem','Przy oparciu, wolno i równo.','Stoisz prosto, ręka na oparciu.','Unieś kolano do wysokości bioder, opuść, zmień nogę.'],
-['Wspięcia na palce przy oparciu','Dla łydek i równowagi.','Stoisz przy oparciu, pięty na podłodze.','Wejdź na palce, przytrzymaj sekundę, wolno opuść.'],
-['Odwodzenie nogi w bok','Dla bioder i stabilności. Trzymaj się oparcia.','Stoisz prosto, stopy razem.','Unieś nogę bokiem na ok. 30 cm, tułów prosto, i opuść. Potem druga noga.'],
+['Wstawanie z krzesła','Najważniejsze ćwiczenie codzienne. Krzesło oparte o ścianę.','Siedzisz na brzegu krzesła, stopy na szerokość bioder.','Wstań bez pomocy rąk (lub z lekkim podparciem), wyprostuj się i usiądź wolno.','0136'],
+['Wejście na schodek','Stabilny, niski stopień lub dolny schodek; trzymaj się poręczy.','Stoisz przed stopniem, jedna stopa już na nim.','Wejdź na stopień, wyprostuj biodro i zejdź wolno; po połowie czasu zmień nogę.','0137'],
+['Odwodzenie nogi w tył','Dla pośladków i bioder. Trzymaj się oparcia lub ściany.','Stoisz prosto, ręka na ścianie.','Wyprostowaną nogę unieś w tył na ok. 30 cm, tułów prosto, i opuść. Potem druga noga.','0111'],
+['Wspięcia na palce przy oparciu','Dla łydek i równowagi. Rysunek pokazuje sztangę — Ty rób bez ciężaru.','Stoisz przy oparciu, pięty na podłodze.','Wejdź na palce, przytrzymaj sekundę, wolno opuść.','0281'],
+['Unoszenie nóg leżąc','Brzuch i biodra. Dolny odcinek pleców dociśnięty do podłogi.','Leżysz na plecach, nogi proste tuż nad podłogą, ręce pod pośladkami.','Unieś proste nogi do pionu i wolno opuść, bez wyginania pleców.','0021'],
 ],
 2:[
-['Przysiady','Stopy na szerokość barków, plecy proste.','Stoisz prosto, ręce przed sobą.','Biodra do tyłu i w dół jak do siadania, kolana nad stopami, wstań.'],
-['Wykroki w tył','Z lekkim podparciem o oparcie, jeśli trzeba.','Stoisz prosto.','Krok jedną nogą w tył, opuść tylne kolano w stronę podłogi i wróć.'],
-['Mostek biodrowy','Leżąc na plecach, stopy blisko pośladków.','Leżysz, kolana ugięte, ręce wzdłuż ciała.','Unieś biodra, aż tułów i uda tworzą linię, ściśnij pośladki, opuść.'],
-['Wspięcia na palce','Bez podparcia, jeśli czujesz się pewnie.','Stoisz prosto.','Wejdź na palce jak najwyżej, wolno opuść.'],
-['Przysiad przy ścianie','Trzymaj 20–30 sekund, oddychaj.','Plecy oparte o ścianę.','Zsuń się do kąta ok. 90° w kolanach i trzymaj.'],
+['Przysiady','Stopy na szerokość barków, plecy proste. Rysunek z ciężarkami — Ty bez albo z butelkami.','Stoisz prosto, ręce przed sobą.','Biodra do tyłu i w dół jak do siadania, kolana nad stopami, wstań.','0130'],
+['Wykroki w tył','Z lekkim podparciem o oparcie, jeśli trzeba.','Stoisz prosto.','Krok jedną nogą w tył, opuść tylne kolano w stronę podłogi i wróć.','0129'],
+['Mostek biodrowy','Leżąc na plecach, stopy blisko pośladków.','Leżysz, kolana ugięte, ręce wzdłuż ciała.','Unieś biodra, aż tułów i uda tworzą linię, ściśnij pośladki, opuść.','0109'],
+['Przysiad sumo','Stopy szeroko, palce na zewnątrz; butelka lub torba trzymana przed sobą.','Stoisz w rozkroku, ręce splecione przed sobą.','Zegnij kolana nad stopami, plecy proste, i wstań.','0152'],
+['Przysiad w bok','Szeroki rozkrok; ciężar przenosisz z nogi na nogę. Rysunek pokazuje sztangę — Ty rób bez.','Stoisz w szerokim rozkroku, stopy skierowane na zewnątrz.','Zegnij jedno kolano i przenieś na nie ciężar, druga noga prosta; wróć i zmień stronę.','0131'],
+['Wspięcia na palce','Bez podparcia, jeśli czujesz się pewnie; najlepiej na krawędzi stopnia. Rysunek pokazuje sztangę — Ty rób bez ciężaru.','Stoisz prosto.','Wejdź na palce jak najwyżej, wolno opuść.','0281'],
 ],
 3:[
-['Przysiad bułgarski','Tylna stopa na krześle. Pierwsze 20 s jedna noga, potem druga.','Przednia stopa pół kroku przed krzesłem.','Opuść tylne kolano w dół i wróć.'],
-['Martwy ciąg na jednej nodze','Dla równowagi i tyłu uda.','Stoisz na jednej nodze, lekko ugiętej.','Pochyl tułów, druga noga idzie prosto w tył do litery T; wróć.'],
-['Przysiady z wyskokiem','Tylko jeśli kolana nie bolą. Miękkie lądowanie.','Stoisz w przysiadzie.','Wyskocz do góry i miękko wróć do przysiadu.'],
-['Mostek biodrowy na jednej nodze','Trudniejsza wersja mostku.','Leżysz, jedna noga zgięta, druga prosta w górze.','Unieś biodra na jednej nodze i opuść.'],
-['Wykroki chodzone','Krok po kroku w jednym kierunku.','Stoisz prosto.','Duży krok do przodu, opuść tylne kolano i wstań na drugą nogę.'],
-['Pistolet z podparciem','Przysiad na jednej nodze z podparciem o oparcie.','Stoisz na jednej nodze, ręka na oparciu.','Zejdź w dół tak nisko, jak potrafisz, wstań.'],
+['Wykroki chodzone','Krok po kroku w jednym kierunku.','Stoisz prosto.','Duży krok do przodu, opuść tylne kolano i wstań na drugą nogę.','0121'],
+['Wykroki w przód z ciężarem','Butelki lub plecak w dłoniach; kolano przedniej nogi nad stopą.','Stoisz prosto, ciężar wzdłuż ciała.','Duży krok w przód, opuść tylne kolano w stronę podłogi i wróć do stania.','0115'],
+['Martwy ciąg z torbami','Dla pleców i tyłu uda. Torby lub butelki w dłoniach, plecy proste jak deska.','Stoisz prosto, ciężar przed udami.','Biodra do tyłu, tułów pochyla się, ciężar zsuwa się po udach; wróć do stania.','0107'],
+['Przysiad na jednej nodze','Z podparciem o oparcie; druga noga zgięta za Tobą. Rysunek pokazuje sztangę — Ty rób bez.','Stoisz na jednej nodze, ręka na oparciu.','Zejdź w dół tak nisko, jak potrafisz, kolano nad stopą, wstań. Po połowie czasu zmień nogę.','0132'],
+['Wejścia na stopień z plecakiem','Stabilne krzesło lub wysoki stopień, plecak z książkami. Rysunek pokazuje sztangę.','Stoisz przed stopniem, jedna stopa na nim.','Wejdź, wyprostuj biodro, zejdź wolno; po połowie czasu zmień nogę.','0134'],
 ],
 },
 grip:{
 1:[
-['Ściskanie ręcznika','Zwiń ręcznik lub miękką piłkę. Bez bólu w stawach.','Ręcznik w dłoni, palce rozluźnione.','Ściśnij mocno przez 3 sekundy i rozluźnij na 2.'],
-['Wyżymanie ręcznika (lekko)','Jak wyżymanie prania. Bez szarpania.','Ręcznik zwinięty, dwie ręce.','Skręć raz w jedną, raz w drugą stronę.'],
-['Rozprost palców gumką','Gumka recepturka na palce — przeciwwaga dla chwytu.','Dłoń zamknięta, gumka na palcach.','Otwórz dłoń szeroko pod oporem, zamknij.'],
-['Zginanie nadgarstków z butelką','Przedramię oparte na udzie, dłoń poza kolanem.','Dłoń z butelką zgięta w dół.','Unieś nadgarstek w górę i wolno opuść.'],
-['Chwyt szczypcowy','Kartka lub cienka książka, 15 sekund.','Chwyt kciuk – palce.','Utrzymaj przedmiot w powietrzu.'],
+['Zginanie ramion z butelkami','Biceps i chwyt. Butelki, naprzemiennie, bez bujania tułowiem.','Ręce wzdłuż ciała, dłonie do przodu.','Zegnij łokcie, butelki do barków; wolno opuść.','0223'],
+['Zginanie młotkowe','Dłonie zwrócone do siebie, „jak przy młotku” — wzmacnia przedramię.','Ręce wzdłuż ciała, kciuki skierowane do przodu.','Zegnij łokcie, butelki do barków, kciuki w górę; wolno opuść.','0213'],
+['Zginanie odwrotne (nachwytem)','Przedramiona i chwyt; lekkie butelki, nadgarstki proste.','Ręce wzdłuż ciała, dłonie skierowane w dół.','Zegnij łokcie, dłonie w dół, do wysokości barków; wolno opuść.','0257'],
+['Zginanie ramienia w siadzie','Łokieć oprzyj o wewnętrzną stronę uda; ruch tylko w łokciu.','Siedzisz, ramię z butelką zwisa między kolanami.','Zegnij łokieć do barku, przytrzymaj sekundę, opuść; po połowie czasu druga ręka.','0220'],
+['Zginanie skrośne','Butelka przechodzi w poprzek klatki; chwyt młotkowy.','Ręka wzdłuż ciała, kciuk w górę.','Przenieś butelkę w poprzek klatki do przeciwnego barku i opuść.','0221'],
 ],
 2:[
-['Zwis z podparciem stóp','Stopy na krześle, ręce na drążku. Ciężar rozłożony.','Chwyt nachwytem, ręce proste.','Utrzymaj zwis 20 sekund, łopatki lekko w dół.'],
-['Spacer farmera (lekki)','Dwie torby z zakupami lub butelki.','Torby po bokach.','Idź wolno prosto 20–30 sekund, barki w dół.'],
-['Zwis na ręczniku','Ręcznik przerzucony przez drążek.','Chwyt za oba końce ręcznika.','Zwisaj 15–20 sekund.'],
-['Zaciskanie dłoni z przytrzymaniem','Piłka lub zwinięty ręcznik.','Dłoń otwarta.','Maksymalnie zaciśnij, przytrzymaj 5 sekund.'],
-['Wyżymanie ręcznika mocno','Silniej, ale z kontrolą.','Zwinięty ręcznik.','Skręcaj z siłą w obie strony.'],
+['Zottman (zginanie z obrotem)','Podnosisz dłonią w górę, opuszczasz dłonią w dół — wzmacnia chwyt i przedramiona.','Ręce wzdłuż ciała, dłonie do przodu.','Zegnij łokcie, na górze obróć dłonie w dół i wolno opuść.','0251'],
+['Zginanie z talerzem lub książką','Gruba książka, talerz lub pełna torba trzymana oburącz za boki — chwyt szczypcowy.','Ramiona wzdłuż ciała, ciężar przed udami.','Zegnij łokcie, ciężar do klatki, wolno opuść.','0241'],
+['Zginanie z cięższymi butelkami','Butelki 1–1,5 l, wolne tempo (3 s w dół).','Ręce wzdłuż ciała, dłonie do przodu.','Zegnij łokcie z lekkim obrotem dłoni na zewnątrz; wolno opuść.','0246'],
+['Zwis z podparciem stóp','Zwis na bezpiecznym drążku, stopy mogą dotykać krzesła. Ciężar rozłożony.','Chwyt nachwytem, ręce proste.','Utrzymaj zwis 20 sekund, łopatki lekko w dół; możesz lekko się podciągnąć.','0087'],
+['Zwis podchwytem','Drążek lub poręcz; stopy na krześle, jeśli trzeba.','Chwyt podchwytem na szerokość barków.','Zwisaj 15–20 sekund, łopatki lekko w dół.','0090'],
 ],
 3:[
-['Zwis aktywny na drążku','30 sekund.','Chwyt nachwytem, ręce proste.','Przyciągnij łopatki w dół, zwisaj aktywnie.'],
-['Podciąganie negatywne','Wejdź na krzesło, zacznij u góry. Tylko z bezpiecznym drążkiem.','Broda nad drążkiem.','Opuszczaj się wolno przez 4 sekundy.'],
-['Spacer farmera (ciężki)','Dwa ciężkie ładunki.','Ładunki po bokach.','Idź 30–40 sekund, plecy proste.'],
-['Zwis na ręczniku na drążku','Trudniejszy chwyt.','Ręcznik na drążku.','Zwisaj 20–30 sekund.'],
-['Chwyt szczypcowy z książką','30 sekund, gruba książka.','Książka za grzbiet.','Utrzymaj przedmiot w powietrzu.'],
+['Zwis aktywny na drążku','30 sekund, tylko na bezpiecznym drążku.','Chwyt nachwytem, ręce proste.','Przyciągnij łopatki w dół, zwisaj aktywnie.','0087'],
+['Podciąganie negatywne','Wejdź na krzesło, zacznij u góry. Tylko z bezpiecznym drążkiem.','Broda nad drążkiem.','Opuszczaj się wolno przez 4 sekundy.','0090'],
+['Podciąganie szerokim chwytem (negatywne)','Chwyt szerzej niż barki. Tylko z bezpiecznym drążkiem.','Broda nad drążkiem, chwyt szeroki.','Opuszczaj się wolno przez 4 sekundy.','0091'],
+['Zginanie odwrotne z ciężarem','Cięższe butelki lub torby (1,5–2 l); nadgarstki proste.','Ręce wzdłuż ciała, dłonie w dół.','Zegnij łokcie, wolno 4 s w dół.','0257'],
+['Zottman z ciężkimi butelkami','Wolne tempo, 4 s w dół.','Ręce wzdłuż ciała, dłonie do przodu.','Zegnij łokcie, na górze obróć dłonie w dół i wolno opuść.','0251'],
 ],
 },
 };
@@ -1167,6 +1202,8 @@ const EKIMG={
   'Pompki klasyczne':'0077','Pompki z nogami na krześle':'0075','Superman':'0105','Mostek biodrowy':'0109',
   'Wiosłowanie pod stołem':'0086','Dipy na krześle (nogi ugięte)':'0162','Dipy na krześle (nogi proste)':'0162','Wykroki chodzone':'0121','Kark w bok':'0002',
 };
+/* v1.0: rysunki do całej bazy Ruchu (WL) — 5. element każdego wpisu to id Everkinetic */
+Object.values(WL).forEach(g=>Object.values(g).forEach(a=>a.forEach(e=>{if(e[4])EKIMG[e[0]]=e[4]})));
 
 /* ───────── Zestawy: rozciąganie, skupienie, sesje z timerem, szablony układu ───────── */
 const BOX=[['WDECH',4,1],['ZATRZYMAJ',4,2],['WYDECH',4,0],['ZATRZYMAJ',4,3]];
@@ -1413,8 +1450,8 @@ const FX=(()=>{
   return{init,setOn,celebrate,burst,toast,bump,haptic,calm};
 })();
 
-/* ───────── Nawyk v0.07 — logika aplikacji ───────── */
-const VER='v0.07', MAIL='kontakt@smialo.org', LS='nawyk.v1', APPKEY='nawyk';
+/* ───────── Nawyk v1.0 — logika aplikacji ───────── */
+const VER='v1.0', MAIL='kontakt@smialo.org', LS='nawyk.v1', APPKEY='nawyk';
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const pad=n=>String(n).padStart(2,'0');
@@ -1427,10 +1464,11 @@ const NOTES_CARD=id=>({id:'n_'+id,title:'Notatki i postępy',ic:'📝',blocks:[{
 TEMPLATES.forEach(t=>t.layout.push(NOTES_CARD(t.id)));
 
 /* ───────── STAN ───────── */
-const DEF=()=>({v:3,t:0,days:{},todos:[],journal:{},chk:{},layout:null,tpl:'charyzma',prev:null,ci:{},rt:{},notes:{},mig4:0,mig5:0,mig6:0,mig7:0,bd:{},hx:{},act:{},ra:[],start:'',sm:'',sw:'',set:{quiet:1,snd:1,fx:1,hue:-1,mode:'auto',how:'auto'}});
+const DEF=()=>({v:3,t:0,days:{},todos:[],journal:{},chk:{},layout:null,tpl:'charyzma',prev:null,ci:{},rt:{},notes:{},mig4:0,mig5:0,mig6:0,mig7:0,mig8:0,off:[],ob:0,pl:{},pd:{},bd:{},hx:{},act:{},ra:[],start:'',sm:'',sw:'',set:{quiet:1,snd:1,fx:1,hue:-1,mode:'auto',how:'auto'}});
 let S=DEF(), ref=null, cloudTimer=0, writing=Promise.resolve(), syncState='local', EDIT=false, EMBED_BLOCKED=false;
 const OFF={}, CUR={}, TIM={};
-const LAY=()=>S.layout||(S.layout=clone(TEMPLATES[0].layout));
+const RAW=()=>S.layout||(S.layout=clone(TEMPLATES[0].layout));   // wszystkie sekcje
+const LAY=()=>{const L=RAW();return EDIT||!(S.off&&S.off.length)?L:L.filter(c=>!S.off.includes(c.id))};   // sekcje wybrane przez użytkownika (v1.0)
 const okLayout=l=>Array.isArray(l)&&l.every(c=>c&&c.id&&Array.isArray(c.blocks)&&c.blocks.every(b=>b&&b.id&&BT[b.type]&&b.cfg));
 function migrate(c){
   if(!c||typeof c!=='object')return {};
@@ -1466,6 +1504,10 @@ const thaw=d=>{
     if(L.some(c=>c.blocks.some(b=>b.id==='sk_d1')))ins('sk_d',T('skupienie','sk_u'));
     n.mig7=1;
   }
+  if(!n.mig8){if(n.t>0||Object.keys(n.days).length||Object.keys(n.ci).length||n.todos.length||Object.keys(n.journal).length)n.ob=1;n.mig8=1}
+  n.off=(Array.isArray(n.off)?n.off:[]).filter(id=>typeof id==='string'&&n.layout.some(c=>c.id===id));
+  if(!n.pl||typeof n.pl!=='object')n.pl={};
+  if(!n.pd||typeof n.pd!=='object')n.pd={};
   return n;
 };
 function prune(){
@@ -1477,6 +1519,7 @@ function prune(){
   const bk=Object.keys(S.bd).sort();while(bk.length>40)delete S.bd[bk.shift()];
   const ak=Object.keys(S.act).sort();while(ak.length>60)delete S.act[ak.shift()];
   const hk=Object.keys(S.hx);while(hk.length>200)delete S.hx[hk.shift()];
+  ['pl','pd'].forEach(f=>{const k=Object.keys(S[f]||{}).sort();while(k.length>30)delete S[f][k.shift()]});
   S.ra=(S.ra||[]).slice(0,8);
   const nk=Object.keys(S.notes).sort();while(nk.length>1&&JSON.stringify(S.notes).length>150000)delete S.notes[nk.shift()];
 }
@@ -1493,6 +1536,7 @@ const anyRunning=()=>Object.values(TIM).some(t=>t.running());
 function applyRemote(d,live){
   if(anyRunning())return;
   S=thaw(d);persistLocal();renderAll();if(live)setSync('ok');
+  const dl=$('#dPick');if(dl&&dl.hasAttribute('open')){if(ONB&&S.ob){ONB=false;closePick()}else renderPick()}
 }
 async function initCloud(){      // podgląd w Claude (artefakt)
   try{
@@ -1724,6 +1768,7 @@ const IMGON=()=>/^\/02\//.test(location.pathname);
 const encq=t=>encodeURIComponent(t);
 const seeLinks=t=>`<p class="see">Zobacz ruch na zdjęciach: <a href="https://pl.pinterest.com/search/pins/?q=${encq(t+' ćwiczenie')}" target="_blank" rel="noopener noreferrer">Pinterest ↗</a> · <a href="https://www.google.com/search?tbm=isch&q=${encq(t+' ćwiczenie jak wykonać')}" target="_blank" rel="noopener noreferrer">Google Grafika ↗</a> · <a href="https://www.youtube.com/results?search_query=${encq(t+' ćwiczenie')}" target="_blank" rel="noopener noreferrer">YouTube ↗</a></p>`;
 const ekImg=t=>{const id=EKIMG[t];return id&&IMGON()?`<span class="ek"><span class="ekp"><img loading="lazy" src="ek-${id}-a.svg" alt="${esc(t)}: pozycja startowa"><img loading="lazy" src="ek-${id}-b.svg" alt="${esc(t)}: pozycja końcowa"></span><small>start → koniec · <a href="https://github.com/everkinetic/data" target="_blank" rel="noopener noreferrer">Everkinetic</a>, <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a></small></span>`:''};
+const wThumbs=e=>e[4]&&IMGON()?`<button class="wp" type="button" aria-label="Powiększ rysunki: ${esc(e[0])}"><span><img loading="lazy" decoding="async" src="ek-${e[4]}-a.svg" alt="${esc(e[0])}: pozycja startowa"><em>start</em></span><span><img loading="lazy" decoding="async" src="ek-${e[4]}-b.svg" alt="${esc(e[0])}: pozycja końcowa"><em>koniec</em></span></button>`:'';
 function exHTML(e,label,bid,mv){
   const fig=e.img&&FIGS[e.img]?`<figure class="fig">${FIGS[e.img]}</figure>`:'';
   const k=hk(e.t);
@@ -1771,6 +1816,7 @@ const PARSE={
 };
 const shortT=(t,n)=>t.length>n?t.slice(0,n-1)+'…':t;
 const lastNote=bid=>{const k=Object.keys(S.notes).filter(d=>d<TODAY&&S.notes[d][bid]).sort().pop();return k?{k,t:S.notes[k][bid]}:null};
+const todoAge=t=>{if(t.done||!t.c||t.c>=TODAY)return t.y&&!t.done?'<small class="age">↩ plan z wczoraj</small>':'';const n=dd(TODAY)-dd(t.c);return `<small class="age">↩ ${t.y?'plan z ':''}${n===1?'wczoraj':'od '+n+' dni'}</small>`};
 const lastNoteAny=()=>{const k=Object.keys(S.notes).filter(d=>d<TODAY&&Object.keys(S.notes[d]).length).sort().pop();return k?{k,t:Object.keys(S.notes[k]).map(b=>S.notes[k][b]).join(' · ')}:null};
 const dd=k=>Math.floor(Date.UTC(+k.slice(0,4),+k.slice(5,7)-1,+k.slice(8,10))/864e5);
 const dlabel=k=>new Date(k+'T12:00:00').toLocaleDateString('pl-PL',{weekday:'short',day:'numeric',month:'short'});
@@ -1877,10 +1923,11 @@ const BT={
       const cfg=b.cfg,LV=cfg.lv||1,list=moveList(cfg.train||'mix',LV,DN+(OFF[b.id]||0)),rounds=(cfg.len||5)>=10?2:1;
       const lvNote={1:'Wersja łagodna: z oparciem lub ścianą, bez schodzenia na podłogę. Przerwij przy bólu lub zawrotach głowy.',2:'Wymaga trochę siły i ruchomości stawów. Rób wolno, bez bólu.',3:'Dla osób z dobrą sprawnością. Przy bólu stawów wróć do poziomu niżej.'}[LV];
       el.innerHTML=`<div class="rowline"><span>Poziom</span><span class="lvSeg"></span></div><p class="note" style="margin-top:0">${lvNote}</p><div class="rowline"><span>Jaki trening</span><span class="trSeg"></span></div><div class="rowline"><span>Czas</span><span class="lenSeg"></span></div>
-      <div class="task"><span class="pill" style="--ch:${hueOf('trening'+LV)}">${esc(LVN[LV-1][1])} · ${cfg.len||5} min</span><h4>Dziś: ${list.length} ćwiczeń po 40 s</h4><dl class="what"><dt>Kiedy</dt><dd>Teraz albo w wolnej chwili, 5–10 minut.</dd><dt>Zrobione, gdy</dt><dd>przejdziesz całą serię w swoim tempie (liczy się ruch, nie liczba powtórzeń).</dd><dt>Do kiedy</dt><dd>dziś, do końca dnia</dd></dl><ol class="steps wl">${list.map(e=>`<li><b>${esc(e[0])}</b> — ${esc(e[1])}</li>`).join('')}</ol></div>
-      <details class="how" data-hk="trening"${howOpen('trening')?' open':''}><summary>Jak wykonać — pozycja startowa i końcowa${HOWSUM}</summary><ol class="exsteps">${list.map(e=>`<li><b>${esc(e[0])}</b><br><span class="ps">▶ Start:</span> ${esc(e[2])}<br><span class="pe">■ Koniec:</span> ${esc(e[3])}${ekImg(e[0])}<br><a class="pin" href="https://pl.pinterest.com/search/pins/?q=${encq(e[0]+' ćwiczenie')}" target="_blank" rel="noopener noreferrer">📷 Pinterest ↗</a> <a class="pin" href="https://www.google.com/search?tbm=isch&q=${encq(e[0]+' ćwiczenie jak wykonać')}" target="_blank" rel="noopener noreferrer">Google Grafika ↗</a></li>`).join('')}</ol></details>
+      <div class="task"><span class="pill" style="--ch:${hueOf('trening'+LV)}">${esc(LVN[LV-1][1])} · ${cfg.len||5} min</span><h4>Dziś: ${list.length} ćwiczeń po 40 s</h4><dl class="what"><dt>Kiedy</dt><dd>Teraz albo w wolnej chwili, 5–10 minut.</dd><dt>Zrobione, gdy</dt><dd>przejdziesz całą serię w swoim tempie (liczy się ruch, nie liczba powtórzeń).</dd><dt>Do kiedy</dt><dd>dziś, do końca dnia</dd></dl><ol class="steps wl">${list.map(e=>`<li class="wx"><div class="wt"><b>${esc(e[0])}</b> — ${esc(e[1])}</div>${wThumbs(e)}</li>`).join('')}</ol>${IMGON()?'<p class="ekc">Rysunki: start → koniec ruchu. Ciężarek lub sztangę z rysunku zastąp butelką albo zrób bez ciężaru. <a href="https://github.com/everkinetic/data" target="_blank" rel="noopener noreferrer">Everkinetic</a>, <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a>. Dotknij rysunku, by powiększyć.</p>':''}</div>
+      <details class="how" data-hk="trening"${howOpen('trening')?' open':''}><summary>Jak wykonać — pozycja startowa i końcowa${HOWSUM}</summary><ol class="exsteps">${list.map(e=>`<li><b>${esc(e[0])}</b><br><span class="ps">▶ Start:</span> ${esc(e[2])}<br><span class="pe">■ Koniec:</span> ${esc(e[3])}<br><a class="pin" href="https://pl.pinterest.com/search/pins/?q=${encq(e[0]+' ćwiczenie')}" target="_blank" rel="noopener noreferrer">📷 Pinterest ↗</a> <a class="pin" href="https://www.google.com/search?tbm=isch&q=${encq(e[0]+' ćwiczenie jak wykonać')}" target="_blank" rel="noopener noreferrer">Google Grafika ↗</a></li>`).join('')}</ol></details>
       <div class="tmr"></div><div class="bdone" data-bdw="${b.id}" hidden></div><div class="fin"><button class="btn ghost" data-a="next" type="button">Inne ćwiczenia ↻</button></div><p class="note">Lekko, byle zrobić. 40 s pracy, 20 s przerwy.</p>
       <div class="alt"><label class="jl" for="alt-${b.id}">Zrobiłeś/aś dziś coś innego? To też zalicza tę sekcję</label>${S.act[TODAY]?`<p class="okp">✓ Zapisano: <b>${esc(S.act[TODAY])}</b></p>`:''}<div class="addrow"><input id="alt-${b.id}" class="altIn" type="text" maxlength="80" placeholder="np. spacer 40 min, rower, basen, siłownia" aria-label="Inna aktywność"><button class="btn" data-a="alt" type="button">Zapisz i zalicz</button></div>${(S.ra||[]).length?`<div class="chips">${S.ra.slice(0,6).map(x=>`<button class="chp" type="button" data-alt="${esc(x)}">${esc(x)}</button>`).join('')}</div>`:''}</div>`;
+      el.addEventListener('click',ev=>{const w=ev.target.closest('.wp');if(w)w.closest('.wx').classList.toggle('big')});
       seg($('.lvSeg',el),LVN,LV,v=>{cfg.lv=+v;OFF[b.id]=0;save();mountBlock(b.id);paintSums()});
       seg($('.trSeg',el),Object.entries(TRAIN),cfg.train||'mix',v=>{cfg.train=v;OFF[b.id]=0;save();mountBlock(b.id);paintSums()});
       seg($('.lenSeg',el),[[5,'5 min'],[10,'10 min']],cfg.len||5,v=>{cfg.len=+v;save();mountBlock(b.id);paintSums()});
@@ -1912,9 +1959,7 @@ const BT={
     cfgUI:b=>`<label>Pytania — jedno w linii</label><textarea data-cf="p" data-ty="lines" data-b="${b.id}" rows="4">${esc((b.cfg.p||[]).join('\n'))}</textarea>`,
     mount(el,b,c){
       const P=b.cfg.p&&b.cfg.p.length?b.cfg.p:J3,cur=(S.journal[TODAY]||{})[b.id]||[];
-      const y=new Date();y.setDate(y.getDate()-1);
-      const prev=((S.journal[keyOf(y)]||{})[b.id]||[])[P.length-1];
-      el.innerHTML='<p class="dl">⏱ Wypełnij wieczorem, najpóźniej do końca dnia — to 3 krótkie zdania.</p>'+(prev?`<div class="prev">Wczoraj — ${esc(P[P.length-1])}: „${esc(prev)}”</div>`:'')+P.map((q,i)=>`<label class="jl" for="j-${b.id}-${i}">${esc(q)}</label><textarea id="j-${b.id}-${i}" rows="2" maxlength="600">${esc(cur[i]||'')}</textarea>`).join('');
+      el.innerHTML='<p class="dl">⏱ Wypełnij wieczorem, najpóźniej do końca dnia — to 3 krótkie zdania.</p>'+P.map((q,i)=>`<label class="jl" for="j-${b.id}-${i}">${esc(q)}</label><textarea id="j-${b.id}-${i}" rows="2" maxlength="600">${esc(cur[i]||'')}</textarea>`).join('');
       let jt=0;
       const flush=()=>{
         clearTimeout(jt);
@@ -1932,7 +1977,7 @@ const BT={
     sum:()=>{const it=S.todos.filter(t=>!t.done||t.done===TODAY),o=it.filter(t=>!t.done).length;return it.length?(o?o+' do zrobienia':'Wszystko zrobione'):'Pusta lista'},
     mount(el,b,c){
       const items=S.todos.filter(t=>!t.done||t.done===TODAY);
-      el.innerHTML=`<p class="dl">🔔 Wróć wieczorem odhaczyć listę — niezrobione przechodzą na jutro.</p><div class="addrow"><input class="tdIn" type="text" placeholder="Dodaj rzecz do zrobienia i Enter" aria-label="Nowe zadanie" maxlength="140"><button class="btn" data-a="add" type="button">Dodaj</button></div><ul class="td">${items.length?items.map(t=>`<li class="${t.done?'on':''}"><label><input type="checkbox" data-t="${esc(t.id)}" ${t.done?'checked':''}><span>${esc(t.x)}</span></label><button class="x" type="button" data-x="${esc(t.id)}" aria-label="Usuń">×</button></li>`).join(''):'<li class="empty">Pusto. Dodaj jedną małą rzecz.</li>'}</ul>`;
+      el.innerHTML=`<p class="dl">🔔 Wróć wieczorem odhaczyć listę — niezrobione przechodzą na jutro.</p><div class="addrow"><input class="tdIn" type="text" placeholder="Dodaj rzecz do zrobienia i Enter" aria-label="Nowe zadanie" maxlength="140"><button class="btn" data-a="add" type="button">Dodaj</button></div><ul class="td">${items.length?items.map(t=>`<li class="${t.done?'on':''}"><label><input type="checkbox" data-t="${esc(t.id)}" ${t.done?'checked':''}><span>${esc(t.x)}</span>${todoAge(t)}</label><button class="x" type="button" data-x="${esc(t.id)}" aria-label="Usuń">×</button></li>`).join(''):'<li class="empty">Pusto. Dodaj jedną małą rzecz.</li>'}</ul>`;
       const add=()=>{
         const i=$('.tdIn',el),x=i.value.trim();if(!x)return;
         S.todos.push({id:uid(),x:x.slice(0,140),done:0,c:TODAY});save();mountAll('todo');paintSums();
@@ -1941,13 +1986,13 @@ const BT={
       el.onclick=e=>{
         if(e.target.closest('[data-a=add]'))return add();
         const x=e.target.closest('[data-x]');
-        if(x){S.todos=S.todos.filter(t=>t.id!==x.dataset.x);save();mountAll('todo');paintSums()}
+        if(x){S.todos=S.todos.filter(t=>t.id!==x.dataset.x);save();mountAll('todo');paintSums();renderRemind()}
       };
       el.onkeydown=e=>{if(e.key==='Enter'&&e.target.classList.contains('tdIn')){e.preventDefault();add()}};
       el.onchange=e=>{
         const ch=e.target.closest('input[data-t]');if(!ch)return;
         const t=S.todos.find(t=>t.id===ch.dataset.t);if(!t)return;
-        t.done=ch.checked?TODAY:0;save();mountAll('todo');paintSums();
+        t.done=ch.checked?TODAY:0;save();mountAll('todo');paintSums();renderRemind();
         if(S.todos.some(t=>t.done===TODAY)&&!isBD(b.id))markBlock(b.id,true,{keep:1});
       };
     }},
@@ -2010,14 +2055,14 @@ function cardHTML(c,i,n){
   const ed=EDIT?`<div class="edcard"><input class="et" type="text" data-f="ctitle" data-c="${c.id}" value="${esc(c.title)}" maxlength="40" aria-label="Nazwa sekcji"><input class="et" type="text" style="flex:0 0 64px;width:64px;text-align:center" data-f="cicon" data-c="${c.id}" value="${esc(c.ic||'')}" maxlength="4" aria-label="Ikona sekcji"><button class="btn sm" type="button" data-act="cup" data-c="${c.id}" ${i?'':'disabled'} aria-label="Sekcja wyżej">↑</button><button class="btn sm" type="button" data-act="cdn" data-c="${c.id}" ${i<n-1?'':'disabled'} aria-label="Sekcja niżej">↓</button><button class="btn sm danger" type="button" data-act="cdel" data-c="${c.id}">Usuń sekcję</button></div>`:'';
   const add=EDIT?`<div class="adder"><select class="addType" aria-label="Typ nowego bloku">${Object.entries(BT).filter(([k,t])=>!t.hid).map(([k,t])=>`<option value="${k}">${t.ic} ${esc(t.n)}</option>`).join('')}</select><button class="btn sm" type="button" data-act="badd" data-c="${c.id}">+ Dodaj blok</button></div>`:'';
   const info=isInfo(c);
-  return `<details class="card" id="card-${c.id}" data-card="${c.id}"><summary>${info?'':`<button class="tick" type="button" data-tick="${c.id}" aria-pressed="false" aria-label="Oznacz: ${esc(c.title)}"></button>`}<span class="ic">${esc(c.ic||'•')}</span><span class="ttl"><b>${esc(c.title)}</b><small id="sum-${c.id}"></small></span><span class="chev"></span></summary><div class="body">${ed}${info?'':'<div class="req" hidden></div>'}${c.blocks.map(b=>blockHTML(c,b)).join('')}${add}${info?'':'<div class="cdone"></div>'}</div></details>`;
+  return `<details class="card" id="card-${c.id}" data-card="${c.id}"><summary>${info?'':`<button class="tick" type="button" data-tick="${c.id}" aria-pressed="false" aria-label="Oznacz: ${esc(c.title)}"></button>`}<span class="ic">${esc(c.ic||'•')}</span><span class="ttl"><b>${EDIT&&(S.off||[]).includes(c.id)?'<span class="hb">ukryta</span> ':''}${esc(c.title)}</b><small id="sum-${c.id}"></small></span><span class="chev"></span></summary><div class="body">${ed}${info?'':'<div class="req" hidden></div>'}${c.blocks.map(b=>blockHTML(c,b)).join('')}${add}${info?'':'<div class="cdone"></div>'}</div></details>`;
 }
 function renderCards(){
   const open=new Set($$('#cards details.card[open]').map(d=>d.dataset.card));
   Object.values(TIM).forEach(t=>t.destroy());for(const k in TIM)delete TIM[k];
   for(const k in PICKED)delete PICKED[k];
   const L=LAY();
-  $('#cards').innerHTML=L.length?L.map((c,i)=>cardHTML(c,i,L.length)).join(''):'<p class="note">Brak sekcji. Menu ⋯ → „Zestawy nawyków” albo „Edytuj układ”.</p>';
+  $('#cards').innerHTML=L.length?L.map((c,i)=>cardHTML(c,i,L.length)).join(''):(RAW().length?'<p class="note">Wszystkie sekcje są ukryte. Kliknij „☑ Wybierz sekcje” u góry, by włączyć te, w których chcesz uczestniczyć.</p>':'<p class="note">Brak sekcji. Menu ⋯ → „Zestawy nawyków” albo „Edytuj układ”.</p>');
   $$('#cards details.card').forEach(d=>{if(EDIT||open.has(d.dataset.card))d.open=true});
   L.forEach(c=>c.blocks.forEach(b=>mountBlock(b.id)));
   if(!FIRSTOPEN){FIRSTOPEN=true;if(!EDIT&&!open.size){const nx=TASKS().find(c=>!isDone(c.id)),e=nx&&$('#card-'+nx.id);if(e)e.open=true}}
@@ -2137,10 +2182,40 @@ function renderCheckin(){
   if(!CI_EDIT&&c.s&&c.w){el.innerHTML=`<div class="cirow"><span>Sen <b>${c.s}/5</b> · Chęć <b>${c.w}/5</b></span><button class="lnk" type="button" data-cie="edit">zmień</button></div>`;return}
   el.innerHTML=`<div class="cibox"><h3>Na start dnia — 2 pytania</h3><p class="why">Odpowiedz rano, przed ćwiczeniami (najpóźniej do końca dnia). To pozwoli w Podsumowaniu zobaczyć, jak sen i chęć wpływają na wynik.</p>${CIQ.map(([k,q,a,b])=>`<p class="q">${q}</p><div class="scale" role="group" aria-label="${esc(q)} Skala 1 do 5">${[1,2,3,4,5].map(v=>`<button type="button" data-ck="${k}" data-v="${v}" aria-pressed="${c[k]===v}">${v}</button>`).join('')}</div><div class="scl"><span>${a}</span><span>${b}</span></div>`).join('')}<div class="cifoot">${CI_EDIT?'<button class="btn sm pri" type="button" data-cie="done">Gotowe</button>':'<button class="lnk" type="button" data-cie="skip">Pomiń dziś</button>'}</div></div>`;
 }
+/* plan z wczoraj: ostatnie pytanie dziennika („Jedna rzecz na jutro”) z ostatnich 3 dni */
+const planY=()=>{
+  const J=LAY().flatMap(c=>c.blocks).filter(b=>b.type==='journal');
+  for(let n=1;n<=3;n++){const k=dayKey(n);for(const b of J){const P=b.cfg.p&&b.cfg.p.length?b.cfg.p:J3,v=((S.journal[k]||{})[b.id]||[])[P.length-1];if(v&&v.trim())return{k,t:v.trim()}}}
+  return null;
+};
+const todoBlk=()=>{for(const c of LAY())for(const b of c.blocks)if(b.type==='todo')return b;return null};
+function syncPlan(){
+  const p=planY();if(!p)return null;
+  if(todoBlk()&&!S.pl[p.k]){S.pl[p.k]=1;S.todos.unshift({id:uid(),x:p.t.slice(0,140),done:0,c:TODAY,y:p.k});save()}
+  return p;
+}
+function planState(p){
+  const td=S.todos.find(t=>t.y===p.k);
+  if(td)return{td,done:!!td.done};
+  if(todoBlk()&&S.pl[p.k])return null;           // zadanie usunięte z listy — nie przypominaj
+  return{td:null,done:!!S.pd[p.k]};
+}
+function togglePlan(){
+  const p=planY(),st=p&&planState(p);if(!st)return;
+  if(st.td)st.td.done=st.done?0:TODAY;else{if(st.done)delete S.pd[p.k];else S.pd[p.k]=1}
+  save();
+  const tb=todoBlk();if(tb){mountAll('todo');paintSums();if(S.todos.some(t=>t.done===TODAY)&&!isBD(tb.id))markBlock(tb.id,true,{keep:1})}
+  renderRemind();
+}
 function renderRemind(){
   const el=$('#remind');if(!el)return;
-  const p=lastNoteAny();el.hidden=!p;
-  if(p)el.innerHTML=`<b>📌 Przypomnienie z ${esc(dlabel(p.k))}</b><p>${esc(shortT(p.t,260))}</p>`;
+  const p=syncPlan(),st=p&&planState(p),rows=[];
+  if(st)rows.push(`<div class="rm pl${st.done?' dn':''}"><span class="rt"><b>↩ Plan z ${p.k===dayKey(1)?'wczoraj':esc(dlabel(p.k))}</b>${esc(shortT(p.t,160))}</span><button class="rb" type="button" data-rm="plan" aria-pressed="${st.done}">${st.done?'✓ Zrobione':'Zrobione?'}</button></div>`);
+  const old=S.todos.filter(t=>!t.done&&t.c&&t.c<TODAY&&!(st&&st.td&&t.id===st.td.id)).length;
+  if(old&&todoBlk())rows.push(`<div class="rm lk" data-rm="list" role="button" tabindex="0"><span class="rt"><b>📋 Z poprzednich dni</b>${old===1?'1 zadanie czeka':old+' zadań czeka'} na liście na dziś</span></div>`);
+  const n=lastNoteAny();
+  if(n)rows.push(`<div class="rm nt" data-rm="note" role="button" tabindex="0"><span class="rt"><b>📝 Notatka z ${esc(dlabel(n.k))}</b>${esc(shortT(n.t,110))}</span></div>`);
+  el.hidden=!rows.length;el.innerHTML=rows.join('');
 }
 function renderSurvey(){
   const el=$('#survey');if(!el)return;
@@ -2291,7 +2366,7 @@ function renderAll(){
   {const nd=keyOf(new Date());if(nd!==TODAY)SUM_OPEN=false;TODAY=nd}DN=dnum(new Date());
   $('#greet').textContent=greet();
   $('#date').textContent=new Date().toLocaleDateString('pl-PL',{weekday:'long',day:'numeric',month:'long'});
-  applyLook();renderCards();renderCheckin();renderRemind();renderSurvey();renderSummary();renderFinish();renderBrief();setSync(syncState);
+  syncPlan();applyLook();renderCards();renderCheckin();renderRemind();renderSurvey();renderSummary();renderFinish();renderBrief();pickLabel();setSync(syncState);
 }
 
 /* ───────── EDYCJA UKŁADU ───────── */
@@ -2306,7 +2381,7 @@ function act(a){
   switch(d.act){
     case'cadd':L.push({id:uid(),title:'Nowa sekcja',ic:'🌱',blocks:[]});break;
     case'cup':case'cdn':moveIn(L,L.findIndex(c=>c.id===d.c),d.act==='cup'?-1:1);break;
-    case'cdel':return armed(a,()=>{S.layout=L.filter(c=>c.id!==d.c);save();renderCards()});
+    case'cdel':return armed(a,()=>{S.layout=L.filter(c=>c.id!==d.c);S.off=(S.off||[]).filter(x=>x!==d.c);save();renderCards()});
     case'badd':{const c=findC(d.c),t=$('.addType',a.closest('.adder')).value,df=BT[t].def();c.blocks.push({id:uid(),type:t,h:df.h,cfg:df.cfg});break}
     case'bup':case'bdn':{const f=findB(d.b);moveIn(f.c.blocks,f.i,d.act==='bup'?-1:1);break}
     case'bdel':return armed(a,()=>{const f=findB(d.b);f.c.blocks.splice(f.i,1);save();renderCards()});
@@ -2331,13 +2406,35 @@ function renderTpl(){
   $('#tplList').innerHTML=TEMPLATES.map(t=>`<div class="tpl"><b>${t.ic} ${esc(t.n)}</b><p>${esc(t.d)}</p><button class="btn sm pri" type="button" data-tpl="${t.id}">${S.tpl===t.id?'Wczytaj ponownie':'Wczytaj'}</button></div>`).join('')+(S.prev?'<div class="tpl"><b>↩ Poprzedni układ</b><p>Przywróć układ sprzed ostatniego wczytania zestawu.</p><button class="btn sm" type="button" data-tpl="__prev">Przywróć</button></div>':'');
 }
 function loadTpl(id){
-  const cur={layout:clone(LAY()),tpl:S.tpl};
+  const cur={layout:clone(RAW()),tpl:S.tpl};
   if(id==='__prev'){if(!S.prev)return;S.layout=S.prev.layout;S.tpl=S.prev.tpl}
   else{const t=TEMPLATES.find(x=>x.id===id);if(!t)return;S.layout=clone(t.layout);S.tpl=t.id}
-  S.prev=cur;
+  S.prev=cur;S.off=[];
   for(const k in OFF)delete OFF[k];
   save();renderCards();renderTpl();
 }
+
+/* ───────── WYBÓR SEKCJI (v1.0) ───────── */
+const TYL={media:'nagrania',guided:'sesja z timerem',daily:'ćwiczenie dnia',workout:'trening',journal:'dziennik',todo:'lista zadań',routine:'checklista',notes:'notatki i postępy'};
+let ONB=false, openPick=()=>{}, closePick=()=>{};
+const pickDesc=c=>(c.bonus?'dodatek · ':'')+([...new Set(c.blocks.map(b=>TYL[b.type]).filter(Boolean))].join(' · ')||'pusta sekcja');
+function renderPick(){
+  const L=RAW(),off=new Set(S.off||[]),n=L.length-off.size;
+  $('#pickList').innerHTML=L.map(c=>`<label class="chk pk"><input type="checkbox" data-pc="${esc(c.id)}"${off.has(c.id)?'':' checked'}><span><b>${esc(c.ic||'•')} ${esc(c.title)}</b><small>${esc(pickDesc(c))}</small></span></label>`).join('');
+  $('#pickH').textContent=ONB?'Witaj! Czego chcesz się uczyć?':'Wybierz sekcje';
+  $('#pickP').textContent=ONB?'Zaznacz sekcje, w których chcesz uczestniczyć. Pozostałe ukryję — nie liczą się do postępu dnia. Zmienisz to w każdej chwili przyciskiem „Wybierz sekcje” u góry.':'Odznaczone sekcje znikają ze strony i nie liczą się do postępu dnia. Historia zostaje, w każdej chwili możesz je włączyć z powrotem.';
+  $('#pickOk').textContent=ONB?'Zaczynamy':'Gotowe';
+  $('#pickCnt').textContent=n+' z '+L.length+' sekcji włączonych';
+  $('#pickMsg').textContent='';
+}
+function setPick(id,on){
+  const off=new Set(S.off||[]);
+  if(on)off.delete(id);else{if(RAW().length-off.size<=1){renderPick();$('#pickMsg').textContent='Zostaw włączoną przynajmniej jedną sekcję.';return}off.add(id)}
+  S.off=RAW().filter(c=>off.has(c.id)).map(c=>c.id);
+  for(const k in OFF)delete OFF[k];
+  save();renderAll();renderPick();
+}
+const pickLabel=()=>{const e=$('#pickBtn');if(!e)return;const n=RAW().length-(S.off||[]).length;e.textContent=(S.off||[]).length?'☑ Wybierz sekcje · '+n+'/'+RAW().length:'☑ Wybierz sekcje'};
 
 /* ───────── OKNA I MENU ───────── */
 function wire(){
@@ -2393,7 +2490,14 @@ function wire(){
     if(Object.keys(o).length)S.rt[TODAY]=o;else delete S.rt[TODAY];
     save();renderSurvey();
   });
-  $('#remind').addEventListener('click',()=>{const t=$('#cards textarea[id^="nt-"]'),n=t&&t.closest('details.card');if(n){n.open=true;scrollTo('#'+n.id,'center')}});
+  const goCard=sel=>{const t=$(sel),n=t&&t.closest('details.card');if(n){n.open=true;scrollTo('#'+n.id,'center')}};
+  $('#remind').addEventListener('click',e=>{
+    const r=e.target.closest('[data-rm]');if(!r)return;
+    if(r.dataset.rm==='plan')togglePlan();
+    else if(r.dataset.rm==='list')goCard('#cards .tdIn');
+    else goCard('#cards textarea[id^="nt-"]');
+  });
+  $('#remind').addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.matches('[data-rm]:not(button)')){e.preventDefault();e.target.click()}});
   $('#addCard').addEventListener('click',e=>{const a=e.target.closest('[data-act]');if(a)act(a)});
   cards.addEventListener('change',e=>{
     const t=e.target,f=t.dataset.f,cf=t.dataset.cf;
@@ -2422,10 +2526,17 @@ function wire(){
   document.addEventListener('click',e=>{if(!menu.hidden&&!e.target.closest('#menu'))closeMenu()});
   document.addEventListener('keydown',e=>{if(e.key==='Escape')closeMenu()});
   const openD=d=>{closeMenu();typeof d.showModal==='function'?d.showModal():d.setAttribute('open','')};
-  const closeD=d=>typeof d.close==='function'?d.close():d.removeAttribute('open');
+  const closeD=d=>{if(typeof d.close==='function')d.close();else{d.removeAttribute('open');d.dispatchEvent(new Event('close'))}};
   $$('dialog [data-close]').forEach(b=>b.onclick=()=>closeD(b.closest('dialog')));
   $$('dialog').forEach(d=>d.addEventListener('click',e=>{if(e.target===d)closeD(d)}));
 
+  openPick=onb=>{ONB=!!onb;renderPick();openD($('#dPick'))};
+  closePick=()=>closeD($('#dPick'));
+  $('#dPick').addEventListener('close',()=>{ONB=false;if(!S.ob){S.ob=1;save()}});
+  $('#pickBtn').onclick=()=>openPick(false);
+  $('#miPick').onclick=()=>openPick(false);
+  $('#pickList').onchange=e=>{const c=e.target.closest('input[data-pc]');if(c)setPick(c.dataset.pc,c.checked)};
+  $('#pickAll').onclick=()=>{S.off=[];for(const k in OFF)delete OFF[k];save();renderAll();renderPick()};
   $('#miAbout').onclick=()=>{$('#verA').textContent=VER;openD($('#dAbout'))};
   $('#miSug').onclick=()=>openD($('#dSug'));
   $('#miLook').onclick=()=>{renderLook();openD($('#dLook'))};
@@ -2481,7 +2592,8 @@ try{const raw=localStorage.getItem(LS);if(raw)S=thaw(JSON.parse(raw))}catch(e){}
 FX.init();
 wire();
 renderAll();
-if(window.claude&&window.claude.use)initCloud();else if(/^https?:$/.test(location.protocol))initWorker();
+const BOOT=window.claude&&window.claude.use?initCloud():/^https?:$/.test(location.protocol)?initWorker():null;
+Promise.resolve(BOOT).catch(()=>{}).then(()=>setTimeout(()=>{if(!S.ob&&!EDIT)openPick(true)},400));
 
 })();
 </script>

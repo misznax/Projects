@@ -1,5 +1,5 @@
-/* ───────── Nawyk v0.07 — logika aplikacji ───────── */
-const VER='v0.07', MAIL='kontakt@smialo.org', LS='nawyk.v1', APPKEY='nawyk';
+/* ───────── Nawyk v1.0 — logika aplikacji ───────── */
+const VER='v1.0', MAIL='kontakt@smialo.org', LS='nawyk.v1', APPKEY='nawyk';
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const pad=n=>String(n).padStart(2,'0');
@@ -12,10 +12,11 @@ const NOTES_CARD=id=>({id:'n_'+id,title:'Notatki i postępy',ic:'📝',blocks:[{
 TEMPLATES.forEach(t=>t.layout.push(NOTES_CARD(t.id)));
 
 /* ───────── STAN ───────── */
-const DEF=()=>({v:3,t:0,days:{},todos:[],journal:{},chk:{},layout:null,tpl:'charyzma',prev:null,ci:{},rt:{},notes:{},mig4:0,mig5:0,mig6:0,mig7:0,bd:{},hx:{},act:{},ra:[],start:'',sm:'',sw:'',set:{quiet:1,snd:1,fx:1,hue:-1,mode:'auto',how:'auto'}});
+const DEF=()=>({v:3,t:0,days:{},todos:[],journal:{},chk:{},layout:null,tpl:'charyzma',prev:null,ci:{},rt:{},notes:{},mig4:0,mig5:0,mig6:0,mig7:0,mig8:0,off:[],ob:0,pl:{},pd:{},bd:{},hx:{},act:{},ra:[],start:'',sm:'',sw:'',set:{quiet:1,snd:1,fx:1,hue:-1,mode:'auto',how:'auto'}});
 let S=DEF(), ref=null, cloudTimer=0, writing=Promise.resolve(), syncState='local', EDIT=false, EMBED_BLOCKED=false;
 const OFF={}, CUR={}, TIM={};
-const LAY=()=>S.layout||(S.layout=clone(TEMPLATES[0].layout));
+const RAW=()=>S.layout||(S.layout=clone(TEMPLATES[0].layout));   // wszystkie sekcje
+const LAY=()=>{const L=RAW();return EDIT||!(S.off&&S.off.length)?L:L.filter(c=>!S.off.includes(c.id))};   // sekcje wybrane przez użytkownika (v1.0)
 const okLayout=l=>Array.isArray(l)&&l.every(c=>c&&c.id&&Array.isArray(c.blocks)&&c.blocks.every(b=>b&&b.id&&BT[b.type]&&b.cfg));
 function migrate(c){
   if(!c||typeof c!=='object')return {};
@@ -51,6 +52,10 @@ const thaw=d=>{
     if(L.some(c=>c.blocks.some(b=>b.id==='sk_d1')))ins('sk_d',T('skupienie','sk_u'));
     n.mig7=1;
   }
+  if(!n.mig8){if(n.t>0||Object.keys(n.days).length||Object.keys(n.ci).length||n.todos.length||Object.keys(n.journal).length)n.ob=1;n.mig8=1}
+  n.off=(Array.isArray(n.off)?n.off:[]).filter(id=>typeof id==='string'&&n.layout.some(c=>c.id===id));
+  if(!n.pl||typeof n.pl!=='object')n.pl={};
+  if(!n.pd||typeof n.pd!=='object')n.pd={};
   return n;
 };
 function prune(){
@@ -62,6 +67,7 @@ function prune(){
   const bk=Object.keys(S.bd).sort();while(bk.length>40)delete S.bd[bk.shift()];
   const ak=Object.keys(S.act).sort();while(ak.length>60)delete S.act[ak.shift()];
   const hk=Object.keys(S.hx);while(hk.length>200)delete S.hx[hk.shift()];
+  ['pl','pd'].forEach(f=>{const k=Object.keys(S[f]||{}).sort();while(k.length>30)delete S[f][k.shift()]});
   S.ra=(S.ra||[]).slice(0,8);
   const nk=Object.keys(S.notes).sort();while(nk.length>1&&JSON.stringify(S.notes).length>150000)delete S.notes[nk.shift()];
 }
@@ -78,6 +84,7 @@ const anyRunning=()=>Object.values(TIM).some(t=>t.running());
 function applyRemote(d,live){
   if(anyRunning())return;
   S=thaw(d);persistLocal();renderAll();if(live)setSync('ok');
+  const dl=$('#dPick');if(dl&&dl.hasAttribute('open')){if(ONB&&S.ob){ONB=false;closePick()}else renderPick()}
 }
 async function initCloud(){      // podgląd w Claude (artefakt)
   try{
@@ -309,6 +316,7 @@ const IMGON=()=>/^\/02\//.test(location.pathname);
 const encq=t=>encodeURIComponent(t);
 const seeLinks=t=>`<p class="see">Zobacz ruch na zdjęciach: <a href="https://pl.pinterest.com/search/pins/?q=${encq(t+' ćwiczenie')}" target="_blank" rel="noopener noreferrer">Pinterest ↗</a> · <a href="https://www.google.com/search?tbm=isch&q=${encq(t+' ćwiczenie jak wykonać')}" target="_blank" rel="noopener noreferrer">Google Grafika ↗</a> · <a href="https://www.youtube.com/results?search_query=${encq(t+' ćwiczenie')}" target="_blank" rel="noopener noreferrer">YouTube ↗</a></p>`;
 const ekImg=t=>{const id=EKIMG[t];return id&&IMGON()?`<span class="ek"><span class="ekp"><img loading="lazy" src="ek-${id}-a.svg" alt="${esc(t)}: pozycja startowa"><img loading="lazy" src="ek-${id}-b.svg" alt="${esc(t)}: pozycja końcowa"></span><small>start → koniec · <a href="https://github.com/everkinetic/data" target="_blank" rel="noopener noreferrer">Everkinetic</a>, <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a></small></span>`:''};
+const wThumbs=e=>e[4]&&IMGON()?`<button class="wp" type="button" aria-label="Powiększ rysunki: ${esc(e[0])}"><span><img loading="lazy" decoding="async" src="ek-${e[4]}-a.svg" alt="${esc(e[0])}: pozycja startowa"><em>start</em></span><span><img loading="lazy" decoding="async" src="ek-${e[4]}-b.svg" alt="${esc(e[0])}: pozycja końcowa"><em>koniec</em></span></button>`:'';
 function exHTML(e,label,bid,mv){
   const fig=e.img&&FIGS[e.img]?`<figure class="fig">${FIGS[e.img]}</figure>`:'';
   const k=hk(e.t);
@@ -356,6 +364,7 @@ const PARSE={
 };
 const shortT=(t,n)=>t.length>n?t.slice(0,n-1)+'…':t;
 const lastNote=bid=>{const k=Object.keys(S.notes).filter(d=>d<TODAY&&S.notes[d][bid]).sort().pop();return k?{k,t:S.notes[k][bid]}:null};
+const todoAge=t=>{if(t.done||!t.c||t.c>=TODAY)return t.y&&!t.done?'<small class="age">↩ plan z wczoraj</small>':'';const n=dd(TODAY)-dd(t.c);return `<small class="age">↩ ${t.y?'plan z ':''}${n===1?'wczoraj':'od '+n+' dni'}</small>`};
 const lastNoteAny=()=>{const k=Object.keys(S.notes).filter(d=>d<TODAY&&Object.keys(S.notes[d]).length).sort().pop();return k?{k,t:Object.keys(S.notes[k]).map(b=>S.notes[k][b]).join(' · ')}:null};
 const dd=k=>Math.floor(Date.UTC(+k.slice(0,4),+k.slice(5,7)-1,+k.slice(8,10))/864e5);
 const dlabel=k=>new Date(k+'T12:00:00').toLocaleDateString('pl-PL',{weekday:'short',day:'numeric',month:'short'});
@@ -462,10 +471,11 @@ const BT={
       const cfg=b.cfg,LV=cfg.lv||1,list=moveList(cfg.train||'mix',LV,DN+(OFF[b.id]||0)),rounds=(cfg.len||5)>=10?2:1;
       const lvNote={1:'Wersja łagodna: z oparciem lub ścianą, bez schodzenia na podłogę. Przerwij przy bólu lub zawrotach głowy.',2:'Wymaga trochę siły i ruchomości stawów. Rób wolno, bez bólu.',3:'Dla osób z dobrą sprawnością. Przy bólu stawów wróć do poziomu niżej.'}[LV];
       el.innerHTML=`<div class="rowline"><span>Poziom</span><span class="lvSeg"></span></div><p class="note" style="margin-top:0">${lvNote}</p><div class="rowline"><span>Jaki trening</span><span class="trSeg"></span></div><div class="rowline"><span>Czas</span><span class="lenSeg"></span></div>
-      <div class="task"><span class="pill" style="--ch:${hueOf('trening'+LV)}">${esc(LVN[LV-1][1])} · ${cfg.len||5} min</span><h4>Dziś: ${list.length} ćwiczeń po 40 s</h4><dl class="what"><dt>Kiedy</dt><dd>Teraz albo w wolnej chwili, 5–10 minut.</dd><dt>Zrobione, gdy</dt><dd>przejdziesz całą serię w swoim tempie (liczy się ruch, nie liczba powtórzeń).</dd><dt>Do kiedy</dt><dd>dziś, do końca dnia</dd></dl><ol class="steps wl">${list.map(e=>`<li><b>${esc(e[0])}</b> — ${esc(e[1])}</li>`).join('')}</ol></div>
-      <details class="how" data-hk="trening"${howOpen('trening')?' open':''}><summary>Jak wykonać — pozycja startowa i końcowa${HOWSUM}</summary><ol class="exsteps">${list.map(e=>`<li><b>${esc(e[0])}</b><br><span class="ps">▶ Start:</span> ${esc(e[2])}<br><span class="pe">■ Koniec:</span> ${esc(e[3])}${ekImg(e[0])}<br><a class="pin" href="https://pl.pinterest.com/search/pins/?q=${encq(e[0]+' ćwiczenie')}" target="_blank" rel="noopener noreferrer">📷 Pinterest ↗</a> <a class="pin" href="https://www.google.com/search?tbm=isch&q=${encq(e[0]+' ćwiczenie jak wykonać')}" target="_blank" rel="noopener noreferrer">Google Grafika ↗</a></li>`).join('')}</ol></details>
+      <div class="task"><span class="pill" style="--ch:${hueOf('trening'+LV)}">${esc(LVN[LV-1][1])} · ${cfg.len||5} min</span><h4>Dziś: ${list.length} ćwiczeń po 40 s</h4><dl class="what"><dt>Kiedy</dt><dd>Teraz albo w wolnej chwili, 5–10 minut.</dd><dt>Zrobione, gdy</dt><dd>przejdziesz całą serię w swoim tempie (liczy się ruch, nie liczba powtórzeń).</dd><dt>Do kiedy</dt><dd>dziś, do końca dnia</dd></dl><ol class="steps wl">${list.map(e=>`<li class="wx"><div class="wt"><b>${esc(e[0])}</b> — ${esc(e[1])}</div>${wThumbs(e)}</li>`).join('')}</ol>${IMGON()?'<p class="ekc">Rysunki: start → koniec ruchu. Ciężarek lub sztangę z rysunku zastąp butelką albo zrób bez ciężaru. <a href="https://github.com/everkinetic/data" target="_blank" rel="noopener noreferrer">Everkinetic</a>, <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a>. Dotknij rysunku, by powiększyć.</p>':''}</div>
+      <details class="how" data-hk="trening"${howOpen('trening')?' open':''}><summary>Jak wykonać — pozycja startowa i końcowa${HOWSUM}</summary><ol class="exsteps">${list.map(e=>`<li><b>${esc(e[0])}</b><br><span class="ps">▶ Start:</span> ${esc(e[2])}<br><span class="pe">■ Koniec:</span> ${esc(e[3])}<br><a class="pin" href="https://pl.pinterest.com/search/pins/?q=${encq(e[0]+' ćwiczenie')}" target="_blank" rel="noopener noreferrer">📷 Pinterest ↗</a> <a class="pin" href="https://www.google.com/search?tbm=isch&q=${encq(e[0]+' ćwiczenie jak wykonać')}" target="_blank" rel="noopener noreferrer">Google Grafika ↗</a></li>`).join('')}</ol></details>
       <div class="tmr"></div><div class="bdone" data-bdw="${b.id}" hidden></div><div class="fin"><button class="btn ghost" data-a="next" type="button">Inne ćwiczenia ↻</button></div><p class="note">Lekko, byle zrobić. 40 s pracy, 20 s przerwy.</p>
       <div class="alt"><label class="jl" for="alt-${b.id}">Zrobiłeś/aś dziś coś innego? To też zalicza tę sekcję</label>${S.act[TODAY]?`<p class="okp">✓ Zapisano: <b>${esc(S.act[TODAY])}</b></p>`:''}<div class="addrow"><input id="alt-${b.id}" class="altIn" type="text" maxlength="80" placeholder="np. spacer 40 min, rower, basen, siłownia" aria-label="Inna aktywność"><button class="btn" data-a="alt" type="button">Zapisz i zalicz</button></div>${(S.ra||[]).length?`<div class="chips">${S.ra.slice(0,6).map(x=>`<button class="chp" type="button" data-alt="${esc(x)}">${esc(x)}</button>`).join('')}</div>`:''}</div>`;
+      el.addEventListener('click',ev=>{const w=ev.target.closest('.wp');if(w)w.closest('.wx').classList.toggle('big')});
       seg($('.lvSeg',el),LVN,LV,v=>{cfg.lv=+v;OFF[b.id]=0;save();mountBlock(b.id);paintSums()});
       seg($('.trSeg',el),Object.entries(TRAIN),cfg.train||'mix',v=>{cfg.train=v;OFF[b.id]=0;save();mountBlock(b.id);paintSums()});
       seg($('.lenSeg',el),[[5,'5 min'],[10,'10 min']],cfg.len||5,v=>{cfg.len=+v;save();mountBlock(b.id);paintSums()});
@@ -497,9 +507,7 @@ const BT={
     cfgUI:b=>`<label>Pytania — jedno w linii</label><textarea data-cf="p" data-ty="lines" data-b="${b.id}" rows="4">${esc((b.cfg.p||[]).join('\n'))}</textarea>`,
     mount(el,b,c){
       const P=b.cfg.p&&b.cfg.p.length?b.cfg.p:J3,cur=(S.journal[TODAY]||{})[b.id]||[];
-      const y=new Date();y.setDate(y.getDate()-1);
-      const prev=((S.journal[keyOf(y)]||{})[b.id]||[])[P.length-1];
-      el.innerHTML='<p class="dl">⏱ Wypełnij wieczorem, najpóźniej do końca dnia — to 3 krótkie zdania.</p>'+(prev?`<div class="prev">Wczoraj — ${esc(P[P.length-1])}: „${esc(prev)}”</div>`:'')+P.map((q,i)=>`<label class="jl" for="j-${b.id}-${i}">${esc(q)}</label><textarea id="j-${b.id}-${i}" rows="2" maxlength="600">${esc(cur[i]||'')}</textarea>`).join('');
+      el.innerHTML='<p class="dl">⏱ Wypełnij wieczorem, najpóźniej do końca dnia — to 3 krótkie zdania.</p>'+P.map((q,i)=>`<label class="jl" for="j-${b.id}-${i}">${esc(q)}</label><textarea id="j-${b.id}-${i}" rows="2" maxlength="600">${esc(cur[i]||'')}</textarea>`).join('');
       let jt=0;
       const flush=()=>{
         clearTimeout(jt);
@@ -517,7 +525,7 @@ const BT={
     sum:()=>{const it=S.todos.filter(t=>!t.done||t.done===TODAY),o=it.filter(t=>!t.done).length;return it.length?(o?o+' do zrobienia':'Wszystko zrobione'):'Pusta lista'},
     mount(el,b,c){
       const items=S.todos.filter(t=>!t.done||t.done===TODAY);
-      el.innerHTML=`<p class="dl">🔔 Wróć wieczorem odhaczyć listę — niezrobione przechodzą na jutro.</p><div class="addrow"><input class="tdIn" type="text" placeholder="Dodaj rzecz do zrobienia i Enter" aria-label="Nowe zadanie" maxlength="140"><button class="btn" data-a="add" type="button">Dodaj</button></div><ul class="td">${items.length?items.map(t=>`<li class="${t.done?'on':''}"><label><input type="checkbox" data-t="${esc(t.id)}" ${t.done?'checked':''}><span>${esc(t.x)}</span></label><button class="x" type="button" data-x="${esc(t.id)}" aria-label="Usuń">×</button></li>`).join(''):'<li class="empty">Pusto. Dodaj jedną małą rzecz.</li>'}</ul>`;
+      el.innerHTML=`<p class="dl">🔔 Wróć wieczorem odhaczyć listę — niezrobione przechodzą na jutro.</p><div class="addrow"><input class="tdIn" type="text" placeholder="Dodaj rzecz do zrobienia i Enter" aria-label="Nowe zadanie" maxlength="140"><button class="btn" data-a="add" type="button">Dodaj</button></div><ul class="td">${items.length?items.map(t=>`<li class="${t.done?'on':''}"><label><input type="checkbox" data-t="${esc(t.id)}" ${t.done?'checked':''}><span>${esc(t.x)}</span>${todoAge(t)}</label><button class="x" type="button" data-x="${esc(t.id)}" aria-label="Usuń">×</button></li>`).join(''):'<li class="empty">Pusto. Dodaj jedną małą rzecz.</li>'}</ul>`;
       const add=()=>{
         const i=$('.tdIn',el),x=i.value.trim();if(!x)return;
         S.todos.push({id:uid(),x:x.slice(0,140),done:0,c:TODAY});save();mountAll('todo');paintSums();
@@ -526,13 +534,13 @@ const BT={
       el.onclick=e=>{
         if(e.target.closest('[data-a=add]'))return add();
         const x=e.target.closest('[data-x]');
-        if(x){S.todos=S.todos.filter(t=>t.id!==x.dataset.x);save();mountAll('todo');paintSums()}
+        if(x){S.todos=S.todos.filter(t=>t.id!==x.dataset.x);save();mountAll('todo');paintSums();renderRemind()}
       };
       el.onkeydown=e=>{if(e.key==='Enter'&&e.target.classList.contains('tdIn')){e.preventDefault();add()}};
       el.onchange=e=>{
         const ch=e.target.closest('input[data-t]');if(!ch)return;
         const t=S.todos.find(t=>t.id===ch.dataset.t);if(!t)return;
-        t.done=ch.checked?TODAY:0;save();mountAll('todo');paintSums();
+        t.done=ch.checked?TODAY:0;save();mountAll('todo');paintSums();renderRemind();
         if(S.todos.some(t=>t.done===TODAY)&&!isBD(b.id))markBlock(b.id,true,{keep:1});
       };
     }},
@@ -595,14 +603,14 @@ function cardHTML(c,i,n){
   const ed=EDIT?`<div class="edcard"><input class="et" type="text" data-f="ctitle" data-c="${c.id}" value="${esc(c.title)}" maxlength="40" aria-label="Nazwa sekcji"><input class="et" type="text" style="flex:0 0 64px;width:64px;text-align:center" data-f="cicon" data-c="${c.id}" value="${esc(c.ic||'')}" maxlength="4" aria-label="Ikona sekcji"><button class="btn sm" type="button" data-act="cup" data-c="${c.id}" ${i?'':'disabled'} aria-label="Sekcja wyżej">↑</button><button class="btn sm" type="button" data-act="cdn" data-c="${c.id}" ${i<n-1?'':'disabled'} aria-label="Sekcja niżej">↓</button><button class="btn sm danger" type="button" data-act="cdel" data-c="${c.id}">Usuń sekcję</button></div>`:'';
   const add=EDIT?`<div class="adder"><select class="addType" aria-label="Typ nowego bloku">${Object.entries(BT).filter(([k,t])=>!t.hid).map(([k,t])=>`<option value="${k}">${t.ic} ${esc(t.n)}</option>`).join('')}</select><button class="btn sm" type="button" data-act="badd" data-c="${c.id}">+ Dodaj blok</button></div>`:'';
   const info=isInfo(c);
-  return `<details class="card" id="card-${c.id}" data-card="${c.id}"><summary>${info?'':`<button class="tick" type="button" data-tick="${c.id}" aria-pressed="false" aria-label="Oznacz: ${esc(c.title)}"></button>`}<span class="ic">${esc(c.ic||'•')}</span><span class="ttl"><b>${esc(c.title)}</b><small id="sum-${c.id}"></small></span><span class="chev"></span></summary><div class="body">${ed}${info?'':'<div class="req" hidden></div>'}${c.blocks.map(b=>blockHTML(c,b)).join('')}${add}${info?'':'<div class="cdone"></div>'}</div></details>`;
+  return `<details class="card" id="card-${c.id}" data-card="${c.id}"><summary>${info?'':`<button class="tick" type="button" data-tick="${c.id}" aria-pressed="false" aria-label="Oznacz: ${esc(c.title)}"></button>`}<span class="ic">${esc(c.ic||'•')}</span><span class="ttl"><b>${EDIT&&(S.off||[]).includes(c.id)?'<span class="hb">ukryta</span> ':''}${esc(c.title)}</b><small id="sum-${c.id}"></small></span><span class="chev"></span></summary><div class="body">${ed}${info?'':'<div class="req" hidden></div>'}${c.blocks.map(b=>blockHTML(c,b)).join('')}${add}${info?'':'<div class="cdone"></div>'}</div></details>`;
 }
 function renderCards(){
   const open=new Set($$('#cards details.card[open]').map(d=>d.dataset.card));
   Object.values(TIM).forEach(t=>t.destroy());for(const k in TIM)delete TIM[k];
   for(const k in PICKED)delete PICKED[k];
   const L=LAY();
-  $('#cards').innerHTML=L.length?L.map((c,i)=>cardHTML(c,i,L.length)).join(''):'<p class="note">Brak sekcji. Menu ⋯ → „Zestawy nawyków” albo „Edytuj układ”.</p>';
+  $('#cards').innerHTML=L.length?L.map((c,i)=>cardHTML(c,i,L.length)).join(''):(RAW().length?'<p class="note">Wszystkie sekcje są ukryte. Kliknij „☑ Wybierz sekcje” u góry, by włączyć te, w których chcesz uczestniczyć.</p>':'<p class="note">Brak sekcji. Menu ⋯ → „Zestawy nawyków” albo „Edytuj układ”.</p>');
   $$('#cards details.card').forEach(d=>{if(EDIT||open.has(d.dataset.card))d.open=true});
   L.forEach(c=>c.blocks.forEach(b=>mountBlock(b.id)));
   if(!FIRSTOPEN){FIRSTOPEN=true;if(!EDIT&&!open.size){const nx=TASKS().find(c=>!isDone(c.id)),e=nx&&$('#card-'+nx.id);if(e)e.open=true}}
@@ -722,10 +730,40 @@ function renderCheckin(){
   if(!CI_EDIT&&c.s&&c.w){el.innerHTML=`<div class="cirow"><span>Sen <b>${c.s}/5</b> · Chęć <b>${c.w}/5</b></span><button class="lnk" type="button" data-cie="edit">zmień</button></div>`;return}
   el.innerHTML=`<div class="cibox"><h3>Na start dnia — 2 pytania</h3><p class="why">Odpowiedz rano, przed ćwiczeniami (najpóźniej do końca dnia). To pozwoli w Podsumowaniu zobaczyć, jak sen i chęć wpływają na wynik.</p>${CIQ.map(([k,q,a,b])=>`<p class="q">${q}</p><div class="scale" role="group" aria-label="${esc(q)} Skala 1 do 5">${[1,2,3,4,5].map(v=>`<button type="button" data-ck="${k}" data-v="${v}" aria-pressed="${c[k]===v}">${v}</button>`).join('')}</div><div class="scl"><span>${a}</span><span>${b}</span></div>`).join('')}<div class="cifoot">${CI_EDIT?'<button class="btn sm pri" type="button" data-cie="done">Gotowe</button>':'<button class="lnk" type="button" data-cie="skip">Pomiń dziś</button>'}</div></div>`;
 }
+/* plan z wczoraj: ostatnie pytanie dziennika („Jedna rzecz na jutro”) z ostatnich 3 dni */
+const planY=()=>{
+  const J=LAY().flatMap(c=>c.blocks).filter(b=>b.type==='journal');
+  for(let n=1;n<=3;n++){const k=dayKey(n);for(const b of J){const P=b.cfg.p&&b.cfg.p.length?b.cfg.p:J3,v=((S.journal[k]||{})[b.id]||[])[P.length-1];if(v&&v.trim())return{k,t:v.trim()}}}
+  return null;
+};
+const todoBlk=()=>{for(const c of LAY())for(const b of c.blocks)if(b.type==='todo')return b;return null};
+function syncPlan(){
+  const p=planY();if(!p)return null;
+  if(todoBlk()&&!S.pl[p.k]){S.pl[p.k]=1;S.todos.unshift({id:uid(),x:p.t.slice(0,140),done:0,c:TODAY,y:p.k});save()}
+  return p;
+}
+function planState(p){
+  const td=S.todos.find(t=>t.y===p.k);
+  if(td)return{td,done:!!td.done};
+  if(todoBlk()&&S.pl[p.k])return null;           // zadanie usunięte z listy — nie przypominaj
+  return{td:null,done:!!S.pd[p.k]};
+}
+function togglePlan(){
+  const p=planY(),st=p&&planState(p);if(!st)return;
+  if(st.td)st.td.done=st.done?0:TODAY;else{if(st.done)delete S.pd[p.k];else S.pd[p.k]=1}
+  save();
+  const tb=todoBlk();if(tb){mountAll('todo');paintSums();if(S.todos.some(t=>t.done===TODAY)&&!isBD(tb.id))markBlock(tb.id,true,{keep:1})}
+  renderRemind();
+}
 function renderRemind(){
   const el=$('#remind');if(!el)return;
-  const p=lastNoteAny();el.hidden=!p;
-  if(p)el.innerHTML=`<b>📌 Przypomnienie z ${esc(dlabel(p.k))}</b><p>${esc(shortT(p.t,260))}</p>`;
+  const p=syncPlan(),st=p&&planState(p),rows=[];
+  if(st)rows.push(`<div class="rm pl${st.done?' dn':''}"><span class="rt"><b>↩ Plan z ${p.k===dayKey(1)?'wczoraj':esc(dlabel(p.k))}</b>${esc(shortT(p.t,160))}</span><button class="rb" type="button" data-rm="plan" aria-pressed="${st.done}">${st.done?'✓ Zrobione':'Zrobione?'}</button></div>`);
+  const old=S.todos.filter(t=>!t.done&&t.c&&t.c<TODAY&&!(st&&st.td&&t.id===st.td.id)).length;
+  if(old&&todoBlk())rows.push(`<div class="rm lk" data-rm="list" role="button" tabindex="0"><span class="rt"><b>📋 Z poprzednich dni</b>${old===1?'1 zadanie czeka':old+' zadań czeka'} na liście na dziś</span></div>`);
+  const n=lastNoteAny();
+  if(n)rows.push(`<div class="rm nt" data-rm="note" role="button" tabindex="0"><span class="rt"><b>📝 Notatka z ${esc(dlabel(n.k))}</b>${esc(shortT(n.t,110))}</span></div>`);
+  el.hidden=!rows.length;el.innerHTML=rows.join('');
 }
 function renderSurvey(){
   const el=$('#survey');if(!el)return;
@@ -876,7 +914,7 @@ function renderAll(){
   {const nd=keyOf(new Date());if(nd!==TODAY)SUM_OPEN=false;TODAY=nd}DN=dnum(new Date());
   $('#greet').textContent=greet();
   $('#date').textContent=new Date().toLocaleDateString('pl-PL',{weekday:'long',day:'numeric',month:'long'});
-  applyLook();renderCards();renderCheckin();renderRemind();renderSurvey();renderSummary();renderFinish();renderBrief();setSync(syncState);
+  syncPlan();applyLook();renderCards();renderCheckin();renderRemind();renderSurvey();renderSummary();renderFinish();renderBrief();pickLabel();setSync(syncState);
 }
 
 /* ───────── EDYCJA UKŁADU ───────── */
@@ -891,7 +929,7 @@ function act(a){
   switch(d.act){
     case'cadd':L.push({id:uid(),title:'Nowa sekcja',ic:'🌱',blocks:[]});break;
     case'cup':case'cdn':moveIn(L,L.findIndex(c=>c.id===d.c),d.act==='cup'?-1:1);break;
-    case'cdel':return armed(a,()=>{S.layout=L.filter(c=>c.id!==d.c);save();renderCards()});
+    case'cdel':return armed(a,()=>{S.layout=L.filter(c=>c.id!==d.c);S.off=(S.off||[]).filter(x=>x!==d.c);save();renderCards()});
     case'badd':{const c=findC(d.c),t=$('.addType',a.closest('.adder')).value,df=BT[t].def();c.blocks.push({id:uid(),type:t,h:df.h,cfg:df.cfg});break}
     case'bup':case'bdn':{const f=findB(d.b);moveIn(f.c.blocks,f.i,d.act==='bup'?-1:1);break}
     case'bdel':return armed(a,()=>{const f=findB(d.b);f.c.blocks.splice(f.i,1);save();renderCards()});
@@ -916,13 +954,35 @@ function renderTpl(){
   $('#tplList').innerHTML=TEMPLATES.map(t=>`<div class="tpl"><b>${t.ic} ${esc(t.n)}</b><p>${esc(t.d)}</p><button class="btn sm pri" type="button" data-tpl="${t.id}">${S.tpl===t.id?'Wczytaj ponownie':'Wczytaj'}</button></div>`).join('')+(S.prev?'<div class="tpl"><b>↩ Poprzedni układ</b><p>Przywróć układ sprzed ostatniego wczytania zestawu.</p><button class="btn sm" type="button" data-tpl="__prev">Przywróć</button></div>':'');
 }
 function loadTpl(id){
-  const cur={layout:clone(LAY()),tpl:S.tpl};
+  const cur={layout:clone(RAW()),tpl:S.tpl};
   if(id==='__prev'){if(!S.prev)return;S.layout=S.prev.layout;S.tpl=S.prev.tpl}
   else{const t=TEMPLATES.find(x=>x.id===id);if(!t)return;S.layout=clone(t.layout);S.tpl=t.id}
-  S.prev=cur;
+  S.prev=cur;S.off=[];
   for(const k in OFF)delete OFF[k];
   save();renderCards();renderTpl();
 }
+
+/* ───────── WYBÓR SEKCJI (v1.0) ───────── */
+const TYL={media:'nagrania',guided:'sesja z timerem',daily:'ćwiczenie dnia',workout:'trening',journal:'dziennik',todo:'lista zadań',routine:'checklista',notes:'notatki i postępy'};
+let ONB=false, openPick=()=>{}, closePick=()=>{};
+const pickDesc=c=>(c.bonus?'dodatek · ':'')+([...new Set(c.blocks.map(b=>TYL[b.type]).filter(Boolean))].join(' · ')||'pusta sekcja');
+function renderPick(){
+  const L=RAW(),off=new Set(S.off||[]),n=L.length-off.size;
+  $('#pickList').innerHTML=L.map(c=>`<label class="chk pk"><input type="checkbox" data-pc="${esc(c.id)}"${off.has(c.id)?'':' checked'}><span><b>${esc(c.ic||'•')} ${esc(c.title)}</b><small>${esc(pickDesc(c))}</small></span></label>`).join('');
+  $('#pickH').textContent=ONB?'Witaj! Czego chcesz się uczyć?':'Wybierz sekcje';
+  $('#pickP').textContent=ONB?'Zaznacz sekcje, w których chcesz uczestniczyć. Pozostałe ukryję — nie liczą się do postępu dnia. Zmienisz to w każdej chwili przyciskiem „Wybierz sekcje” u góry.':'Odznaczone sekcje znikają ze strony i nie liczą się do postępu dnia. Historia zostaje, w każdej chwili możesz je włączyć z powrotem.';
+  $('#pickOk').textContent=ONB?'Zaczynamy':'Gotowe';
+  $('#pickCnt').textContent=n+' z '+L.length+' sekcji włączonych';
+  $('#pickMsg').textContent='';
+}
+function setPick(id,on){
+  const off=new Set(S.off||[]);
+  if(on)off.delete(id);else{if(RAW().length-off.size<=1){renderPick();$('#pickMsg').textContent='Zostaw włączoną przynajmniej jedną sekcję.';return}off.add(id)}
+  S.off=RAW().filter(c=>off.has(c.id)).map(c=>c.id);
+  for(const k in OFF)delete OFF[k];
+  save();renderAll();renderPick();
+}
+const pickLabel=()=>{const e=$('#pickBtn');if(!e)return;const n=RAW().length-(S.off||[]).length;e.textContent=(S.off||[]).length?'☑ Wybierz sekcje · '+n+'/'+RAW().length:'☑ Wybierz sekcje'};
 
 /* ───────── OKNA I MENU ───────── */
 function wire(){
@@ -978,7 +1038,14 @@ function wire(){
     if(Object.keys(o).length)S.rt[TODAY]=o;else delete S.rt[TODAY];
     save();renderSurvey();
   });
-  $('#remind').addEventListener('click',()=>{const t=$('#cards textarea[id^="nt-"]'),n=t&&t.closest('details.card');if(n){n.open=true;scrollTo('#'+n.id,'center')}});
+  const goCard=sel=>{const t=$(sel),n=t&&t.closest('details.card');if(n){n.open=true;scrollTo('#'+n.id,'center')}};
+  $('#remind').addEventListener('click',e=>{
+    const r=e.target.closest('[data-rm]');if(!r)return;
+    if(r.dataset.rm==='plan')togglePlan();
+    else if(r.dataset.rm==='list')goCard('#cards .tdIn');
+    else goCard('#cards textarea[id^="nt-"]');
+  });
+  $('#remind').addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.matches('[data-rm]:not(button)')){e.preventDefault();e.target.click()}});
   $('#addCard').addEventListener('click',e=>{const a=e.target.closest('[data-act]');if(a)act(a)});
   cards.addEventListener('change',e=>{
     const t=e.target,f=t.dataset.f,cf=t.dataset.cf;
@@ -1007,10 +1074,17 @@ function wire(){
   document.addEventListener('click',e=>{if(!menu.hidden&&!e.target.closest('#menu'))closeMenu()});
   document.addEventListener('keydown',e=>{if(e.key==='Escape')closeMenu()});
   const openD=d=>{closeMenu();typeof d.showModal==='function'?d.showModal():d.setAttribute('open','')};
-  const closeD=d=>typeof d.close==='function'?d.close():d.removeAttribute('open');
+  const closeD=d=>{if(typeof d.close==='function')d.close();else{d.removeAttribute('open');d.dispatchEvent(new Event('close'))}};
   $$('dialog [data-close]').forEach(b=>b.onclick=()=>closeD(b.closest('dialog')));
   $$('dialog').forEach(d=>d.addEventListener('click',e=>{if(e.target===d)closeD(d)}));
 
+  openPick=onb=>{ONB=!!onb;renderPick();openD($('#dPick'))};
+  closePick=()=>closeD($('#dPick'));
+  $('#dPick').addEventListener('close',()=>{ONB=false;if(!S.ob){S.ob=1;save()}});
+  $('#pickBtn').onclick=()=>openPick(false);
+  $('#miPick').onclick=()=>openPick(false);
+  $('#pickList').onchange=e=>{const c=e.target.closest('input[data-pc]');if(c)setPick(c.dataset.pc,c.checked)};
+  $('#pickAll').onclick=()=>{S.off=[];for(const k in OFF)delete OFF[k];save();renderAll();renderPick()};
   $('#miAbout').onclick=()=>{$('#verA').textContent=VER;openD($('#dAbout'))};
   $('#miSug').onclick=()=>openD($('#dSug'));
   $('#miLook').onclick=()=>{renderLook();openD($('#dLook'))};
@@ -1066,4 +1140,5 @@ try{const raw=localStorage.getItem(LS);if(raw)S=thaw(JSON.parse(raw))}catch(e){}
 FX.init();
 wire();
 renderAll();
-if(window.claude&&window.claude.use)initCloud();else if(/^https?:$/.test(location.protocol))initWorker();
+const BOOT=window.claude&&window.claude.use?initCloud():/^https?:$/.test(location.protocol)?initWorker():null;
+Promise.resolve(BOOT).catch(()=>{}).then(()=>setTimeout(()=>{if(!S.ob&&!EDIT)openPick(true)},400));

@@ -250,10 +250,24 @@ blockquote.qt cite{display:block;font-style:normal;margin-top:6px;font-size:13px
 .dl{margin:10px 0 6px;font-size:13px;color:var(--warm)}
 .why{margin:0 0 6px;font-size:13px;color:var(--mute)}
 .remind{margin:6px 0 10px;padding:10px 12px;border-radius:12px;background:color-mix(in srgb,var(--warm) 12%,transparent);border-left:4px solid var(--warm);white-space:pre-wrap;overflow-wrap:anywhere;font-size:15px}
-.remindbar{margin:0 0 14px;padding:10px 14px;border-radius:14px;cursor:pointer;background:linear-gradient(135deg,color-mix(in srgb,var(--warm) 14%,transparent),transparent);border:1px solid color-mix(in srgb,var(--warm) 40%,transparent)}
+.remindbar{margin:0 0 14px;padding:4px 12px;border-radius:14px;background:linear-gradient(135deg,color-mix(in srgb,var(--warm) 14%,transparent),transparent);border:1px solid color-mix(in srgb,var(--warm) 40%,transparent)}
 .remindbar[hidden]{display:none}
-.remindbar b{color:var(--warm);font-size:13px}
-.remindbar p{margin:4px 0 0;font-size:15px;overflow-wrap:anywhere}
+.rm{display:flex;align-items:center;gap:10px;padding:7px 0;font-size:14px;line-height:1.35}
+.rm+.rm{border-top:1px dashed color-mix(in srgb,var(--warm) 32%,transparent)}
+.rm .rt{flex:1;min-width:0;overflow-wrap:anywhere}
+.rm .rt b{display:block;color:var(--warm);font-size:12px;font-weight:600;letter-spacing:.02em}
+.rm.lk,.rm.nt{cursor:pointer}
+.rm.nt .rt{color:var(--mute);font-size:13px}
+.rm.dn .rt{opacity:.6;text-decoration:line-through}
+.rm.dn .rt b{text-decoration:none}
+.rb{flex:0 0 auto;font:600 13px/1 system-ui,sans-serif;padding:8px 12px;border-radius:999px;border:1px solid color-mix(in srgb,var(--warm) 55%,transparent);background:transparent;color:var(--warm);cursor:pointer;min-height:36px}
+.rb[aria-pressed=true]{background:color-mix(in srgb,var(--warm) 22%,transparent)}
+.age{color:var(--warm);font-size:11px;margin-left:8px;white-space:nowrap}
+.hb{font:600 10px/1 system-ui,sans-serif;text-transform:uppercase;letter-spacing:.06em;padding:2px 6px;border-radius:999px;border:1px dashed var(--mute);color:var(--mute);vertical-align:middle;margin-right:4px}
+.chk.pk{align-items:flex-start;padding:7px 0}
+.chk.pk span{display:block}.chk.pk small{display:block;color:var(--mute);font-size:12px;margin-top:1px}
+#pickBtn{padding:5px 10px;font-size:12px;min-height:30px}
+#pickMsg{min-height:1.2em;margin:6px 0 0}
 #survey{margin:6px 0 18px}
 #survey.wait{opacity:.8}
 .steps.gl{list-style:none;padding-left:0}
@@ -402,6 +416,16 @@ html[data-dark="0"] .okb{color:hsl(150 70% 22%)}
 .see{font-size:13px;margin:10px 0 2px;color:var(--mute)}
 .see a,.pin{color:var(--cacc)}
 .pin{font-size:12px;margin-right:8px}
+.steps.wl{list-style:none;padding-left:0}
+.wx{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:9px 0;border-top:1px solid color-mix(in srgb,var(--ink) 10%,transparent)}
+.wx:first-child{border-top:0}
+.wx .wt{flex:1 1 150px;min-width:0}
+.wp{display:flex;gap:6px;flex:0 0 auto;background:none;border:0;padding:0;cursor:zoom-in;color:var(--mute)}
+.wp span{display:block;text-align:center}
+.wp img{width:78px;height:auto;border-radius:10px;background:#fff;border:1px solid color-mix(in srgb,var(--ink) 14%,transparent);display:block}
+.wp em{font-size:10px;font-style:normal}
+.wx.big{flex-wrap:wrap}.wx.big .wp{width:100%;cursor:zoom-out}.wx.big .wp img{width:min(44vw,210px)}
+.ekc{font-size:11px;color:var(--mute);margin:6px 0 0}.ekc a{color:var(--cacc)}
 .ek{display:block;margin:10px 0 4px}
 .ekp{display:flex;gap:8px;flex-wrap:wrap}
 .ek img{width:min(46%,200px);height:auto;border-radius:12px;background:#fff;border:1px solid color-mix(in srgb,var(--ink) 14%,transparent)}
@@ -498,6 +522,7 @@ textarea.mono{font:12px/1.4 ui-monospace,Consolas,monospace;min-height:110px}
       <button class="icon" id="menuBtn" aria-label="Menu" aria-haspopup="true" aria-expanded="false">⋯</button>
       <div class="menu" id="menu" hidden>
         <button class="mi" id="miLook"><i>🎨</i>Wygląd i kolory</button>
+        <button class="mi" id="miPick"><i>☑️</i>Wybierz sekcje</button>
         <button class="mi" id="miEdit"><i>✏️</i><span id="miEditT">Edytuj układ</span></button>
         <button class="mi" id="miSum"><i>📈</i>Podsumowanie</button>
         <button class="mi" id="miPacks"><i>🧩</i>Zestawy nawyków</button>
@@ -511,14 +536,14 @@ textarea.mono{font:12px/1.4 ui-monospace,Consolas,monospace;min-height:110px}
   </header>
 
   <section class="prog" aria-label="Postęp dnia">
-    <div class="prow"><span id="ptxt"></span><span class="sp"></span><span id="week"></span><span id="streak"></span></div>
+    <div class="prow"><span id="ptxt"></span><button class="btn sm ghost" id="pickBtn" type="button">☑ Wybierz sekcje</button><span class="sp"></span><span id="week"></span><span id="streak"></span></div>
     <div class="hint" id="hint">Zacznij od 2 pytań na start dnia. Potem rób ćwiczenia — etap zaliczy się sam, gdy zrobisz wymagane ćwiczenia (lista jest w sekcji).</div>
     <div class="strip" id="strip" aria-label="Ostatnie 14 dni"></div>
   </section>
 
-  <section id="checkin" aria-label="Pytania na start dnia"></section>
+  <section id="remind" class="remindbar" hidden aria-label="Przypomnienia: plan z wczoraj, zaległe zadania, notatka"></section>
 
-  <section id="remind" class="remindbar" hidden role="button" tabindex="0" aria-label="Przypomnienie z ostatniej notatki"></section>
+  <section id="checkin" aria-label="Pytania na start dnia"></section>
 
   <main id="cards"></main>
 
@@ -540,12 +565,21 @@ textarea.mono{font:12px/1.4 ui-monospace,Consolas,monospace;min-height:110px}
 
 <div class="editbar" id="editBar" hidden><span>Tryb edycji</span><button class="btn pri sm" id="editDone" type="button">Gotowe</button></div>
 
+<dialog id="dPick">
+  <h2 id="pickH">Wybierz sekcje</h2>
+  <p class="src" id="pickP" style="margin-top:0"></p>
+  <div id="pickList"></div>
+  <p class="src" id="pickCnt" style="margin:8px 0 0"></p>
+  <div class="msg err" id="pickMsg" role="status"></div>
+  <div class="drow"><button class="btn" id="pickAll" type="button">Zaznacz wszystkie</button><button class="btn pri" id="pickOk" data-close type="button">Gotowe</button></div>
+</dialog>
+
 <dialog id="dAbout">
   <h2>O autorze</h2>
   <p><b>Nawyk — menedżer dnia</b></p>
   <p>Wersja: <span id="verA"></span></p>
   <p>Autor: Michał Rzekiecki</p>
-  <p class="src" style="margin-top:2px"><b>Co nowego w v0.07:</b> etap zalicza się sam, gdy zrobisz wymagane ćwiczenia (np. oddech + dźwięk albo cała rozgrzewka); po zaliczeniu sekcja się zwija i otwiera następna; po całym dniu — podsumowanie i cytat. Nowe: podzielność uwagi (3 poziomy, 31 ćwiczeń), oddech 9D (po 4 dniach), brief na dole, instrukcje do zwinięcia (zapamiętuję wybór), „inna aktywność” w Ruchu, przeszklone karty, bez dublowania ćwiczeń.</p>
+  <p class="src" style="margin-top:2px"><b>Co nowego w v1.0:</b> wybór sekcji — przy pierwszym uruchomieniu zaznaczasz, czego chcesz się uczyć, a potem zmieniasz to przyciskiem „Wybierz sekcje” u góry (odznaczone nie liczą się do postępu); rysunki start → koniec przy każdym ćwiczeniu z Ruchu (43 ćwiczenia); plan z wczoraj na samej górze i na liście na dziś (z możliwością odhaczenia), zaległe zadania oznaczone, jak dawno czekają. Wcześniej (v0.07): etap zalicza się sam, podzielność uwagi, oddech 9D, brief, instrukcje do zwinięcia.</p>
   <p>Kontakt: <a href="mailto:kontakt@smialo.org">kontakt@smialo.org</a></p>
   <p class="src">Ilustracje ćwiczeń: <a href="https://github.com/everkinetic/data" target="_blank" rel="noopener noreferrer">Everkinetic</a>, licencja <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a> (bez zmian). Ćwiczenia podzielności uwagi: trening „dual-task” (chodzenie + mówienie), zadanie Stroopa, shadowing (tłumaczenie symultaniczne). Cytaty w podsumowaniu dnia to własne tłumaczenia znanych wypowiedzi.</p>
   <p class="src">Model charyzmy: Obecność · Moc · Ciepło (O. Fox Cabane, „The Charisma Myth”). Rozgrzewka głosu oparta na ćwiczeniach J. Treasure (TED). Ćwiczenia mają charakter ogólny — przy bólu, zawrotach głowy lub chrypce przerwij i skonsultuj się ze specjalistą.</p>
