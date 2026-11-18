@@ -1,5 +1,5 @@
-/* ───────── Nawyk v0.04 — logika aplikacji ───────── */
-const VER='v0.04', MAIL='kontakt@smialo.org', LS='nawyk.v1', APPKEY='nawyk';
+/* ───────── Nawyk v0.05 — logika aplikacji ───────── */
+const VER='v0.05', MAIL='kontakt@smialo.org', LS='nawyk.v1', APPKEY='nawyk';
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const pad=n=>String(n).padStart(2,'0');
@@ -12,7 +12,7 @@ const NOTES_CARD=id=>({id:'n_'+id,title:'Notatki i postępy',ic:'📝',blocks:[{
 TEMPLATES.forEach(t=>t.layout.push(NOTES_CARD(t.id)));
 
 /* ───────── STAN ───────── */
-const DEF=()=>({v:3,t:0,days:{},todos:[],journal:{},chk:{},layout:null,tpl:'charyzma',prev:null,ci:{},rt:{},notes:{},mig4:0,set:{quiet:1,snd:1,hue:168,mode:'auto'}});
+const DEF=()=>({v:3,t:0,days:{},todos:[],journal:{},chk:{},layout:null,tpl:'charyzma',prev:null,ci:{},rt:{},notes:{},mig4:0,mig5:0,start:'',sm:'',sw:'',set:{quiet:1,snd:1,hue:168,mode:'auto'}});
 let S=DEF(), ref=null, cloudTimer=0, writing=Promise.resolve(), syncState='local', EDIT=false, EMBED_BLOCKED=false;
 const OFF={}, CUR={}, TIM={};
 const LAY=()=>S.layout||(S.layout=clone(TEMPLATES[0].layout));
@@ -39,6 +39,8 @@ const thaw=d=>{
   let c;try{c=migrate(clone(d))}catch(e){c={}}
   const n=Object.assign(DEF(),c);n.set=Object.assign(DEF().set,c.set||{});
   if(!okLayout(n.layout)){n.layout=clone(TEMPLATES[0].layout);n.tpl='charyzma'}
+  if(!n.mig5){n.layout.forEach(c=>{const i=c.blocks.findIndex(b=>b.id==='g_v'&&b.type==='daily'&&b.cfg.pack==='glos');if(i>=0&&!c.blocks.some(b=>b.id==='g_vb')){c.blocks[i].h='Potem dźwięk — ćwiczenie dnia';c.blocks[i].cfg.cat='Dźwiękowe';c.blocks.splice(i,0,{id:'g_vb',type:'daily',h:'Najpierw oddech — ćwiczenie dnia',cfg:{pack:'glos',own:[],cat:'Oddechowe'}})}});n.mig5=1}
+  if(!n.start){const ks=[].concat(Object.keys(n.days||{}),Object.keys(n.ci||{}),Object.keys(n.rt||{})).sort();n.start=ks[0]||keyOf(new Date())}
   if(!n.mig4){if(!n.layout.some(c=>c.blocks.some(b=>b.type==='notes')))n.layout.push(NOTES_CARD('m'));n.mig4=1}
   return n;
 };
@@ -196,31 +198,44 @@ const isInfo=c=>c.blocks.length>0&&c.blocks.every(b=>b.type==='notes');
 const TASKS=()=>LAY().filter(c=>!isInfo(c));
 const allDone=()=>{const t=TASKS();return t.length>0&&t.every(c=>isDone(c.id))};
 let SUM_OPEN=false, CI_EDIT=false;
+const sumReady=()=>S.sm===TODAY||dd(TODAY)-dd(S.sm||S.start||TODAY)>=3;
+const weekReady=()=>S.sw===TODAY||dd(TODAY)-dd(S.sw||S.start||TODAY)>=7;
+const nextSumKey=()=>{const d=new Date((S.sm===TODAY?TODAY:(S.sm||S.start||TODAY))+'T12:00:00');d.setDate(d.getDate()+3);return keyOf(d)};
+function issueSum(){if(S.sm!==TODAY&&dd(TODAY)-dd(S.sm||S.start||TODAY)>=3){if(weekReady())S.sw=TODAY;S.sm=TODAY;save()}}
+const scrollTo=(sel,b)=>{const e=$(sel);if(e&&e.scrollIntoView)try{e.scrollIntoView({behavior:'smooth',block:b||'nearest'})}catch(x){}};
+function openSum(){SUM_OPEN=true;renderSummary();scrollTo('#sumCard','start')}
 function setDone(k,v){
   const was=allDone(),d=S.days[TODAY]||(S.days[TODAY]={});
   if(v)d[k]=1;else delete d[k];
   if(!Object.keys(d).length)delete S.days[TODAY];
   save();paintDone();
-  if(v&&!was&&allDone()){
-    SUM_OPEN=true;renderSummary();
-    const e=$('#sumCard');if(e&&e.scrollIntoView)try{e.scrollIntoView({behavior:'smooth',block:'nearest'})}catch(x){}
-  }else renderSummary();
+  const fin=v&&!was&&allDone();
+  if(fin&&sumReady())SUM_OPEN=true;
+  renderSurvey();renderSummary();
+  if(fin)scrollTo(sumReady()?'#sumCard':'#survey');
 }
 const yid=u=>{const s=String(u).trim();const m=s.match(/(?:v=|youtu\.be\/|embed\/|shorts\/|live\/)([\w-]{11})/);if(m)return m[1];return /^[\w-]{11}$/.test(s)?s:null};
 const exMin=e=>e.m||Math.max(1,Math.round((e.sec||60)/60));
 const exLabel=e=>(e.c?e.c+' · ':'')+'ok. '+exMin(e)+' min';
-function exHTML(e,label){
+const QI={};
+const hueOf=c=>{let h=0;for(const ch of String(c||'x'))h=(h*31+ch.charCodeAt(0))%360;return h};
+const learning=()=>Object.keys(S.days).length<4;
+const deadline=e=>{const w=e.when||'';return /wieczor|przed snem/i.test(w)?'dziś, najlepiej wieczorem — najpóźniej przed snem':/rano/i.test(w)?'najlepiej rano; najpóźniej do końca dnia':'dziś, do końca dnia'};
+const quoteHTML=bid=>{const q=QUOTES[(QI[bid]||0)%QUOTES.length];return `<h5>Przeczytaj na głos</h5><blockquote class="qt"><p>${esc(q.x).replace(/\n/g,'<br>')}</p><cite>— ${esc(q.a)}, ${esc(q.w)}</cite></blockquote><button class="btn sm" type="button" data-a="nq">Pokaż następny ›</button>`};
+function exHTML(e,label,bid){
   const fig=e.img&&FIGS[e.img]?`<figure class="fig">${FIGS[e.img]}</figure>`:'';
-  return `<span class="pill">${esc(label)}</span><h4>${esc(e.t)}</h4>
-  ${e.when?`<h5>Kiedy</h5><p>${esc(e.when)}</p>`:''}
-  <h5>Krok po kroku</h5><ol class="exsteps">${(e.steps||[]).map(s=>`<li>${esc(s)}</li>`).join('')}</ol>
+  const L=learning();
+  return `<div class="task"><span class="pill" style="--ch:${hueOf(e.c||label)}">${esc(label)}</span><h4>${esc(e.t)}</h4>
+  <dl class="what">${e.when?`<dt>Kiedy</dt><dd>${esc(e.when)}</dd>`:''}<dt>Zrobione, gdy</dt><dd>${esc(e.ok||'wykonasz ćwiczenie do końca, bez bólu.')}</dd><dt>Do kiedy</dt><dd>${esc(deadline(e))}</dd></dl></div>
+  ${e.read?`<div class="read">${quoteHTML(bid)}</div>`:''}
+  <details class="how"${L?' open':''}><summary>Instrukcja krok po kroku<small>${L?'':' — rozwiń, gdy potrzebujesz przypomnienia'}</small></summary>
+  <ol class="exsteps">${(e.steps||[]).map(s=>`<li>${esc(s)}</li>`).join('')}</ol>
   ${fig}
   ${e.say?`<h5>Powiedz np.</h5><p class="say">${esc(e.say)}</p>`:''}
-  ${e.solo?`<h5>Nie masz dziś z kim?</h5><p>${esc(e.solo)}</p>`:''}
-  <h5>Zaliczone, gdy</h5><p>${esc(e.ok||'wykonasz ćwiczenie do końca, bez bólu.')}</p>`;
+  ${e.solo?`<h5>Nie masz dziś z kim?</h5><p>${esc(e.solo)}</p>`:''}</details>`;
 }
 const exTimer=e=>{
-  if(e.tm&&e.tm.length)return e.tm.map(x=>({label:x[0],sub:x[2]||'Według opisu powyżej.',tag:e.t,sec:x[1],kind:'work',pace:e.pace}));
+  if(e.tm&&e.tm.length)return e.tm.map(x=>({label:x[0],sub:x[2]||'Według instrukcji powyżej.',tag:e.t,sec:x[1],kind:'work',pace:e.pace}));
   if(e.sec)return[{label:e.t,sub:'Ćwicz teraz — aplikacja odmierza czas.',sec:e.sec,kind:'work',pace:e.pace}];
   return[];
 };
@@ -252,13 +267,18 @@ const PARSE={
   steps:v=>v.split('\n').map(l=>l.split('|').map(s=>s.trim())).filter(p=>p[0]).slice(0,30).map(p=>({t:p[0].slice(0,50),sec:Math.min(1800,Math.max(5,parseInt(p[1],10)||30)),sub:(p[2]||'').slice(0,200)})),
   items:(v,b)=>{const old=b.cfg.items||[];return v.split('\n').map(s=>s.trim().slice(0,100)).filter(Boolean).slice(0,30).map(x=>{const o=old.find(i=>i.x===x);return{id:o?o.id:uid(),x}})},
 };
+const shortT=(t,n)=>t.length>n?t.slice(0,n-1)+'…':t;
+const lastNote=bid=>{const k=Object.keys(S.notes).filter(d=>d<TODAY&&S.notes[d][bid]).sort().pop();return k?{k,t:S.notes[k][bid]}:null};
+const lastNoteAny=()=>{const k=Object.keys(S.notes).filter(d=>d<TODAY&&Object.keys(S.notes[d]).length).sort().pop();return k?{k,t:Object.keys(S.notes[k]).map(b=>S.notes[k][b]).join(' · ')}:null};
+const dd=k=>Math.floor(Date.UTC(+k.slice(0,4),+k.slice(5,7)-1,+k.slice(8,10))/864e5);
 const dlabel=k=>new Date(k+'T12:00:00').toLocaleDateString('pl-PL',{weekday:'short',day:'numeric',month:'short'});
 const selOpts=(arr,cur)=>arr.map(([k,n])=>`<option value="${esc(k)}" ${String(cur)===String(k)?'selected':''}>${esc(n)}</option>`).join('');
 
 /* ───────── BLOKI ───────── */
 const dItems=b=>((PACKS[b.cfg.pack]||PACKS.wlasne).items).concat(b.cfg.own||[]);
 const gSteps=b=>b.cfg.set==='custom'?(b.cfg.steps||[]):(GS[b.cfg.set]||GS.mob).steps;
-const moveList=(t,d)=>t==='upper'?pk(UP,5,d):t==='lower'?pk(LO,5,d):t==='grip'?pk(GR,5,d):[...pk(UP,2,d),...pk(LO,2,d+1),...pk(GR,1,d+2)];
+const moveList=(t,lv,d)=>{const g=k=>WL[k][lv]||WL[k][1];return t==='upper'?pk(g('upper'),5,d):t==='lower'?pk(g('lower'),5,d):t==='grip'?pk(g('grip'),5,d):[...pk(g('upper'),2,d),...pk(g('lower'),2,d+1),...pk(g('grip'),1,d+2)]};
+const moveListOld=(t,d)=>t==='upper'?pk(UP,5,d):t==='lower'?pk(LO,5,d):t==='grip'?pk(GR,5,d):[...pk(UP,2,d),...pk(LO,2,d+1),...pk(GR,1,d+2)];
 const BT={
   media:{ic:'▶️',n:'Nagrania YouTube',sp:7,
     def:()=>({h:'Nagrania',cfg:{tracks:[]}}),
@@ -303,7 +323,7 @@ const BT={
       const custom=b.cfg.set==='custom',k=custom?1:(b.cfg.len||5)/5,base=gSteps(b);
       const scale=s=>Math.max(5,Math.round(s*k));
       el.innerHTML=(custom?'':'<div class="rowline"><span>Czas sesji</span><span class="lenSeg"></span></div>')+
-        (base.length?`<ol class="steps">${base.map(s=>`<li><b>${esc(s.t)}</b> · ${s.sides?'2 × ':''}${scale(s.sec)} s — ${esc(s.sub||'')}</li>`).join('')}</ol><div class="tmr"></div>`:'<p class="note">Brak kroków. Włącz „Edytuj układ” (menu ⋯) i wpisz kroki sesji.</p>');
+        (base.length?`<ul class="steps gl">${(()=>{let g='',n=0;return base.map(s=>{const h=s.grp&&s.grp!==g?(g=s.grp,`<li class="gh">${s.grp==='Oddechowe'?'Część 1 — ćwiczenia oddechowe':'Część 2 — ćwiczenia dźwiękowe'}</li>`):'';n++;return h+`<li><b>${n}. ${esc(s.t)}</b> · ${s.sides?'2 × ':''}${scale(s.sec)} s<br><span class="sb">${esc(s.sub||'')}</span></li>`}).join('')})()}</ul><div class="tmr"></div>`:'<p class="note">Brak kroków. Włącz „Edytuj układ” (menu ⋯) i wpisz kroki sesji.</p>');
       if(!custom)seg($('.lenSeg',el),[[5,'5 min'],[10,'10 min']],b.cfg.len||5,v=>{b.cfg.len=+v;save();mountBlock(b.id)});
       if(!base.length)return;
       TIM[b.id]=makeTimer($('.tmr',el),()=>{
@@ -311,7 +331,7 @@ const BT={
         base.forEach(s=>{
           const sec=scale(s.sec);
           if(s.sides)['Lewa strona','Prawa strona'].forEach(sd=>out.push({label:s.t,tag:sd,sub:s.sub,sec,kind:'work',pace:s.pace}));
-          else out.push({label:s.t,sub:s.sub,sec,kind:'work',pace:s.pace});
+          else out.push({label:s.t,tag:s.grp,sub:s.sub,sec,kind:'work',pace:s.pace});
         });
         return out;
       },()=>setDone(c.id,true));
@@ -327,23 +347,32 @@ const BT={
       <textarea class="ow-s" rows="3" placeholder="Kroki — każdy w osobnej linii" aria-label="Kroki ćwiczenia" style="margin-top:6px"></textarea>
       <div class="drow" style="margin-top:6px"><button class="btn sm" type="button" data-act="ownadd" data-b="${b.id}">+ Dodaj ćwiczenie</button></div>`,
     mount(el,b,c){
-      const all=dItems(b),cats=[...new Set(all.map(e=>e.c).filter(Boolean))];
+      const all0=dItems(b),hasLv=all0.some(e=>e.lv),LV=b.cfg.lv||1,all=hasLv?all0.filter(e=>!e.lv||e.lv<=LV):all0;
+      const cats=[...new Set(all.map(e=>e.c).filter(Boolean))];
       const cat=cats.includes(b.cfg.cat)?b.cfg.cat:'',list=cat?all.filter(e=>e.c===cat):all;
       if(!list.length){CUR[b.id]=null;el.innerHTML='<p class="note">Brak ćwiczeń w tym zestawie. Włącz „Edytuj układ” (menu ⋯) i dodaj własne albo zmień zestaw.</p>';return}
       const ex=list[(DN+(OFF[b.id]||0))%list.length];CUR[b.id]=ex;
-      el.innerHTML=(cats.length>1?'<div class="rowline"><span>Rodzaj ćwiczenia</span><span class="catSeg"></span></div>':'')+`<div class="ex">${exHTML(ex,exLabel(ex))}</div><div class="tmr"></div><div class="fin"><button class="btn ghost" data-a="next" type="button">Inne ćwiczenie ↻</button></div>`;
+      if(QI[b.id]==null)QI[b.id]=DN%QUOTES.length;
+      el.innerHTML=(hasLv?'<div class="rowline"><span>Poziom</span><span class="lvSeg"></span></div>':'')+(cats.length>1?'<div class="rowline"><span>Rodzaj ćwiczenia</span><span class="catSeg"></span></div>':'')+`<div class="ex">${exHTML(ex,exLabel(ex),b.id)}</div><div class="tmr"></div><div class="fin"><button class="btn ghost" data-a="next" type="button">Inne ćwiczenie ↻</button></div>`;
+      if(hasLv)seg($('.lvSeg',el),LVN,LV,v=>{b.cfg.lv=+v;OFF[b.id]=0;save();mountBlock(b.id);paintSums()});
       if(cats.length>1)seg($('.catSeg',el),[['','Wszystkie']].concat(cats.map(x=>[x,x])),cat,v=>{b.cfg.cat=v;OFF[b.id]=0;save();mountBlock(b.id);paintSums()});
       const steps=exTimer(ex);
       if(steps.length)TIM[b.id]=makeTimer($('.tmr',el),()=>steps,()=>setDone(c.id,true));else $('.tmr',el).remove();
-      $('[data-a=next]',el).onclick=()=>{OFF[b.id]=(OFF[b.id]||0)+1;mountBlock(b.id);paintSums()};
+      $('[data-a=next]',el).onclick=()=>{OFF[b.id]=(OFF[b.id]||0)+1;QI[b.id]=(QI[b.id]||0)+1;mountBlock(b.id);paintSums()};
+      el.onclick=e=>{const q=e.target.closest('[data-a=nq]');if(q){QI[b.id]=(QI[b.id]||0)+1;const r=$('.read',el);if(r)r.innerHTML=quoteHTML(b.id)}};
     }},
 
-  workout:{ic:'💪',n:'Trening (losowy zestaw)',sp:3,
-    def:()=>({h:'Trening',cfg:{train:'mix',len:5}}),
-    sum:b=>TRAIN[b.cfg.train||'mix']+' · '+(b.cfg.len||5)+' min',
+  workout:{ic:'💪',n:'Trening (losowy zestaw, 3 poziomy)',sp:3,
+    def:()=>({h:'Trening',cfg:{train:'mix',len:5,lv:1}}),
+    sum:b=>TRAIN[b.cfg.train||'mix']+' · '+(LVN.find(x=>x[0]===(b.cfg.lv||1))||LVN[0])[1].toLowerCase()+' · '+(b.cfg.len||5)+' min',
     mount(el,b,c){
-      const cfg=b.cfg,list=moveList(cfg.train||'mix',DN+(OFF[b.id]||0)),rounds=(cfg.len||5)>=10?2:1;
-      el.innerHTML=`<p class="q">Jaki trening dziś?</p><span class="trSeg"></span><div class="rowline" style="margin-top:10px"><span>Czas</span><span class="lenSeg"></span></div><ol class="steps">${list.map(e=>`<li><b>${esc(e[0])}</b> — ${esc(e[1])}</li>`).join('')}</ol><div class="tmr"></div><div class="fin"><button class="btn ghost" data-a="next" type="button">Inne ćwiczenia ↻</button></div><p class="note">Lekko, byle zrobić. 40 s pracy, 20 s przerwy. Rób tyle powtórzeń, ile dasz radę bez zadyszki — liczy się, że był ruch.</p>`;
+      const cfg=b.cfg,LV=cfg.lv||1,list=moveList(cfg.train||'mix',LV,DN+(OFF[b.id]||0)),rounds=(cfg.len||5)>=10?2:1;
+      const lvNote={1:'Wersja łagodna: z oparciem lub ścianą, bez schodzenia na podłogę. Przerwij przy bólu lub zawrotach głowy.',2:'Wymaga trochę siły i ruchomości stawów. Rób wolno, bez bólu.',3:'Dla osób z dobrą sprawnością. Przy bólu stawów wróć do poziomu niżej.'}[LV];
+      el.innerHTML=`<div class="rowline"><span>Poziom</span><span class="lvSeg"></span></div><p class="note" style="margin-top:0">${lvNote}</p><div class="rowline"><span>Jaki trening</span><span class="trSeg"></span></div><div class="rowline"><span>Czas</span><span class="lenSeg"></span></div>
+      <div class="task"><span class="pill" style="--ch:${hueOf('trening'+LV)}">${esc(LVN[LV-1][1])} · ${cfg.len||5} min</span><h4>Dziś: ${list.length} ćwiczeń po 40 s</h4><dl class="what"><dt>Kiedy</dt><dd>Teraz albo w wolnej chwili, 5–10 minut.</dd><dt>Zrobione, gdy</dt><dd>przejdziesz całą serię w swoim tempie (liczy się ruch, nie liczba powtórzeń).</dd><dt>Do kiedy</dt><dd>dziś, do końca dnia</dd></dl><ol class="steps wl">${list.map(e=>`<li><b>${esc(e[0])}</b> — ${esc(e[1])}</li>`).join('')}</ol></div>
+      <details class="how"${learning()?' open':''}><summary>Jak wykonać — pozycja startowa i końcowa<small>${learning()?'':' — rozwiń, gdy potrzebujesz przypomnienia'}</small></summary><ol class="exsteps">${list.map(e=>`<li><b>${esc(e[0])}</b><br><span class="ps">▶ Start:</span> ${esc(e[2])}<br><span class="pe">■ Koniec:</span> ${esc(e[3])}</li>`).join('')}</ol></details>
+      <div class="tmr"></div><div class="fin"><button class="btn ghost" data-a="next" type="button">Inne ćwiczenia ↻</button></div><p class="note">Lekko, byle zrobić. 40 s pracy, 20 s przerwy.</p>`;
+      seg($('.lvSeg',el),LVN,LV,v=>{cfg.lv=+v;OFF[b.id]=0;save();mountBlock(b.id);paintSums()});
       seg($('.trSeg',el),Object.entries(TRAIN),cfg.train||'mix',v=>{cfg.train=v;OFF[b.id]=0;save();mountBlock(b.id);paintSums()});
       seg($('.lenSeg',el),[[5,'5 min'],[10,'10 min']],cfg.len||5,v=>{cfg.len=+v;save();mountBlock(b.id);paintSums()});
       TIM[b.id]=makeTimer($('.tmr',el),()=>{
@@ -365,7 +394,7 @@ const BT={
       const P=b.cfg.p&&b.cfg.p.length?b.cfg.p:J3,cur=(S.journal[TODAY]||{})[b.id]||[];
       const y=new Date();y.setDate(y.getDate()-1);
       const prev=((S.journal[keyOf(y)]||{})[b.id]||[])[P.length-1];
-      el.innerHTML=(prev?`<div class="prev">Wczoraj — ${esc(P[P.length-1])}: „${esc(prev)}”</div>`:'')+P.map((q,i)=>`<label class="jl" for="j-${b.id}-${i}">${esc(q)}</label><textarea id="j-${b.id}-${i}" rows="2" maxlength="600">${esc(cur[i]||'')}</textarea>`).join('');
+      el.innerHTML='<p class="dl">⏱ Wypełnij wieczorem, najpóźniej do końca dnia — to 3 krótkie zdania.</p>'+(prev?`<div class="prev">Wczoraj — ${esc(P[P.length-1])}: „${esc(prev)}”</div>`:'')+P.map((q,i)=>`<label class="jl" for="j-${b.id}-${i}">${esc(q)}</label><textarea id="j-${b.id}-${i}" rows="2" maxlength="600">${esc(cur[i]||'')}</textarea>`).join('');
       let jt=0;
       const flush=()=>{
         clearTimeout(jt);
@@ -383,7 +412,7 @@ const BT={
     sum:()=>{const it=S.todos.filter(t=>!t.done||t.done===TODAY),o=it.filter(t=>!t.done).length;return it.length?(o?o+' do zrobienia':'Wszystko zrobione'):'Pusta lista'},
     mount(el,b,c){
       const items=S.todos.filter(t=>!t.done||t.done===TODAY);
-      el.innerHTML=`<div class="addrow"><input class="tdIn" type="text" placeholder="Dodaj rzecz do zrobienia i Enter" aria-label="Nowe zadanie" maxlength="140"><button class="btn" data-a="add" type="button">Dodaj</button></div><ul class="td">${items.length?items.map(t=>`<li class="${t.done?'on':''}"><label><input type="checkbox" data-t="${esc(t.id)}" ${t.done?'checked':''}><span>${esc(t.x)}</span></label><button class="x" type="button" data-x="${esc(t.id)}" aria-label="Usuń">×</button></li>`).join(''):'<li class="empty">Pusto. Dodaj jedną małą rzecz.</li>'}</ul><p class="note">Niedokończone przechodzą na kolejny dzień.</p>`;
+      el.innerHTML=`<p class="dl">🔔 Wróć wieczorem odhaczyć listę — niezrobione przechodzą na jutro.</p><div class="addrow"><input class="tdIn" type="text" placeholder="Dodaj rzecz do zrobienia i Enter" aria-label="Nowe zadanie" maxlength="140"><button class="btn" data-a="add" type="button">Dodaj</button></div><ul class="td">${items.length?items.map(t=>`<li class="${t.done?'on':''}"><label><input type="checkbox" data-t="${esc(t.id)}" ${t.done?'checked':''}><span>${esc(t.x)}</span></label><button class="x" type="button" data-x="${esc(t.id)}" aria-label="Usuń">×</button></li>`).join(''):'<li class="empty">Pusto. Dodaj jedną małą rzecz.</li>'}</ul>`;
       const add=()=>{
         const i=$('.tdIn',el),x=i.value.trim();if(!x)return;
         S.todos.push({id:uid(),x:x.slice(0,140),done:0,c:TODAY});save();mountAll('todo');paintSums();
@@ -405,11 +434,11 @@ const BT={
 
   notes:{ic:'📝',n:'Notatki i postępy',sp:8,
     def:()=>({h:'Notatki',cfg:{}}),
-    sum:b=>(S.notes[TODAY]||{})[b.id]?'Notatka na dziś zapisana':'Zapisz spostrzeżenia',
+    sum:b=>{const t=(S.notes[TODAY]||{})[b.id];if(t)return 'Dziś: '+shortT(t,40);const p=lastNote(b.id);return p?'Ostatnio: '+shortT(p.t,40):'Zapisz spostrzeżenia'},
     mount(el,b){
-      const cur=(S.notes[TODAY]||{})[b.id]||'';
-      const hist=Object.keys(S.notes).filter(k=>k!==TODAY&&S.notes[k][b.id]).sort().reverse().slice(0,14);
-      el.innerHTML=`<label class="jl" for="nt-${b.id}" style="margin-top:0">Spostrzeżenia z ćwiczeń i postępy — dziś</label><textarea id="nt-${b.id}" rows="4" maxlength="1500" placeholder="Co zauważyłeś/aś? Co szło lepiej, co było trudne, jaki widzisz postęp (np. dłuższa pauza, niższy ton, mniej napięcia)?">${esc(cur)}</textarea>${hist.length?`<details class="nh"><summary>Wcześniejsze notatki (${hist.length})</summary><ul class="nhl">${hist.map(k=>`<li><b>${esc(dlabel(k))}</b> ${esc(S.notes[k][b.id])}</li>`).join('')}</ul></details>`:''}<p class="tiny">Notatki trafiają do podsumowania efektów.</p>`;
+      const cur=(S.notes[TODAY]||{})[b.id]||'',p=lastNote(b.id);
+      const hist=Object.keys(S.notes).filter(k=>k<TODAY&&S.notes[k][b.id]&&(!p||k!==p.k)).sort().reverse().slice(0,13);
+      el.innerHTML=`<p class="dl">⏱ Zapisz do końca dnia — jutro zobaczysz tę notatkę na górze strony jako przypomnienie.</p>${p?`<div class="remind"><b>📌 Z ${esc(dlabel(p.k))}:</b> ${esc(p.t)}</div>`:'<p class="note">Zapisz dziś jedno spostrzeżenie — jutro zobaczysz je tutaj jako przypomnienie, zamiast pustego pola.</p>'}<label class="jl" for="nt-${b.id}">Dzisiejsze spostrzeżenia i postępy</label><textarea id="nt-${b.id}" rows="4" maxlength="1500" placeholder="${p?'Co się zmieniło od ostatniej notatki? Co szło lepiej, co trudniej?':'Co zauważyłeś/aś? Co szło lepiej, co było trudne, jaki widzisz postęp?'}">${esc(cur)}</textarea>${hist.length?`<details class="nh"><summary>Starsze notatki (${hist.length})</summary><ul class="nhl">${hist.map(k=>`<li><b>${esc(dlabel(k))}</b> ${esc(S.notes[k][b.id])}</li>`).join('')}</ul></details>`:''}`;
       let jt=0;
       const flush=()=>{
         clearTimeout(jt);
@@ -428,7 +457,7 @@ const BT={
     cfgUI:b=>`<label>Pozycje — jedna w linii</label><textarea data-cf="items" data-ty="items" data-b="${b.id}" rows="4" placeholder="Szklanka wody&#10;10 minut spaceru">${esc((b.cfg.items||[]).map(i=>i.x).join('\n'))}</textarea>`,
     mount(el,b,c){
       const it=b.cfg.items||[],ck=S.chk[TODAY]||{};
-      el.innerHTML=it.length?`<ul class="td">${it.map(i=>`<li class="${ck[i.id]?'on':''}"><label><input type="checkbox" data-i="${esc(i.id)}" ${ck[i.id]?'checked':''}><span>${esc(i.x)}</span></label></li>`).join('')}</ul>`:'<p class="note">Pusto. Włącz „Edytuj układ” (menu ⋯) i dopisz pozycje.</p>';
+      el.innerHTML=it.length?`<p class="dl">⏱ Odhaczaj w ciągu dnia — rozliczasz się do wieczora.</p><ul class="td">${it.map(i=>`<li class="${ck[i.id]?'on':''}"><label><input type="checkbox" data-i="${esc(i.id)}" ${ck[i.id]?'checked':''}><span>${esc(i.x)}</span></label></li>`).join('')}</ul>`:'<p class="note">Pusto. Włącz „Edytuj układ” (menu ⋯) i dopisz pozycje.</p>';
       el.onchange=e=>{
         const t=e.target.closest('input[data-i]');if(!t)return;
         const day=S.chk[TODAY]||(S.chk[TODAY]={});
@@ -446,13 +475,12 @@ function blockHTML(c,b){
   const ed=EDIT?`<div class="edblk"><span class="chip">${T.ic} ${esc(T.n)}</span><input class="eh" type="text" data-f="bh" data-b="${b.id}" value="${esc(b.h||'')}" placeholder="Nagłówek (opcjonalny)" maxlength="60" aria-label="Nagłówek bloku"><button class="btn sm" type="button" data-act="bup" data-b="${b.id}" aria-label="Wyżej">↑</button><button class="btn sm" type="button" data-act="bdn" data-b="${b.id}" aria-label="Niżej">↓</button><button class="btn sm danger" type="button" data-act="bdel" data-b="${b.id}">Usuń blok</button></div>${T.cfgUI?`<div class="bcfg">${T.cfgUI(b)}</div>`:''}`:'';
   return `<section class="blk" data-b="${b.id}">${ed}${b.h?`<h3 class="bh">${esc(b.h)}</h3>`:''}<div class="bb"></div></section>`;
 }
-const SCL=(k,cid)=>`<div class="scale" role="group" aria-label="${k==='q'?'Ocena wykonania':'Samopoczucie po ćwiczeniu'}, skala 1 do 5">${[1,2,3,4,5].map(v=>`<button type="button" data-sc="${k}" data-card="${cid}" data-v="${v}" aria-pressed="false">${v}</button>`).join('')}</div>`;
-const rateHTML=cid=>`<div class="rate" data-rate="${cid}" hidden><h3>Jak poszło?</h3><p class="q">Czy czujesz, że wykonałeś/aś to dobrze?</p>${SCL('q',cid)}<div class="scl"><span>1 — słabo</span><span>5 — świetnie</span></div><p class="q">Czy czujesz się lepiej po ćwiczeniu?</p>${SCL('b',cid)}<div class="scl"><span>1 — nie</span><span>5 — zdecydowanie</span></div><p class="tiny">Informacja na potrzeby podsumowania efektów całego tygodnia.</p></div>`;
+const SC=(k,v)=>`<div class="scale" role="group" aria-label="${k==='q'?'Ocena wykonania':'Samopoczucie po ćwiczeniach'}, skala 1 do 5">${[1,2,3,4,5].map(n=>`<button type="button" data-sc="${k}" data-v="${n}" aria-pressed="${v===n}">${n}</button>`).join('')}</div>`;
 function cardHTML(c,i,n){
   const ed=EDIT?`<div class="edcard"><input class="et" type="text" data-f="ctitle" data-c="${c.id}" value="${esc(c.title)}" maxlength="40" aria-label="Nazwa sekcji"><input class="et" type="text" style="flex:0 0 64px;width:64px;text-align:center" data-f="cicon" data-c="${c.id}" value="${esc(c.ic||'')}" maxlength="4" aria-label="Ikona sekcji"><button class="btn sm" type="button" data-act="cup" data-c="${c.id}" ${i?'':'disabled'} aria-label="Sekcja wyżej">↑</button><button class="btn sm" type="button" data-act="cdn" data-c="${c.id}" ${i<n-1?'':'disabled'} aria-label="Sekcja niżej">↓</button><button class="btn sm danger" type="button" data-act="cdel" data-c="${c.id}">Usuń sekcję</button></div>`:'';
   const add=EDIT?`<div class="adder"><select class="addType" aria-label="Typ nowego bloku">${Object.entries(BT).map(([k,t])=>`<option value="${k}">${t.ic} ${esc(t.n)}</option>`).join('')}</select><button class="btn sm" type="button" data-act="badd" data-c="${c.id}">+ Dodaj blok</button></div>`:'';
   const info=isInfo(c);
-  return `<details class="card" id="card-${c.id}" data-card="${c.id}"><summary>${info?'':`<button class="tick" type="button" data-tick="${c.id}" aria-pressed="false" aria-label="Oznacz: ${esc(c.title)}"></button>`}<span class="ic">${esc(c.ic||'•')}</span><span class="ttl"><b>${esc(c.title)}</b><small id="sum-${c.id}"></small></span><span class="chev"></span></summary><div class="body">${ed}${c.blocks.map(b=>blockHTML(c,b)).join('')}${add}${info?'':`<div class="fin"><button class="btn pri" data-done="${c.id}" type="button"></button></div>${rateHTML(c.id)}`}</div></details>`;
+  return `<details class="card" id="card-${c.id}" data-card="${c.id}"><summary>${info?'':`<button class="tick" type="button" data-tick="${c.id}" aria-pressed="false" aria-label="Oznacz: ${esc(c.title)}"></button>`}<span class="ic">${esc(c.ic||'•')}</span><span class="ttl"><b>${esc(c.title)}</b><small id="sum-${c.id}"></small></span><span class="chev"></span></summary><div class="body">${ed}${c.blocks.map(b=>blockHTML(c,b)).join('')}${add}${info?'':`<div class="fin"><button class="btn pri" data-done="${c.id}" type="button"></button></div><p class="tiny donehint">Dotknij, gdy wykonasz tę sekcję — zaliczy się do dzisiejszego postępu (kółko u góry).</p>`}</div></details>`;
 }
 function renderCards(){
   const open=new Set($$('#cards details[open]').map(d=>d.dataset.card));
@@ -479,14 +507,13 @@ function streak(){
 }
 const RC=2*Math.PI*22;
 function paintDone(){
-  const L=TASKS(),dk=doneKeys(),total=L.length,cnt=L.filter(c=>dk[c.id]).length,rtd=S.rt[TODAY]||{};
+  const L=TASKS(),dk=doneKeys(),total=L.length,cnt=L.filter(c=>dk[c.id]).length;
   L.forEach(c=>{
     const on=!!dk[c.id],e=$('#card-'+c.id);if(!e)return;
     e.classList.toggle('done',on);
     $('[data-tick]',e).setAttribute('aria-pressed',on);
-    const b=$('[data-done]',e);b.textContent=on?'✓ Zrobione — cofnij':'Zrobione';b.classList.toggle('pri',!on);b.classList.toggle('ghost',on);
-    const rw=$('.rate',e),rv=rtd[c.id]||{};
-    if(rw){rw.hidden=!on;$$('[data-sc]',rw).forEach(x=>x.setAttribute('aria-pressed',String(rv[x.dataset.sc]===+x.dataset.v)))}
+    const b=$('[data-done]',e);b.textContent=on?'✓ Zaliczone na dziś — kliknij, aby odznaczyć':'✓ Zrobione — zalicz na dziś';b.setAttribute('aria-label',on?'Odznacz sekcję jako niezrobioną':'Zalicz sekcję na dziś');b.classList.toggle('pri',!on);b.classList.toggle('ghost',on);
+    const dh=$('.donehint',e);if(dh)dh.hidden=on;
   });
   const r=$('#ring');
   if(!$('svg',r))r.innerHTML=`<svg viewBox="0 0 52 52" aria-hidden="true"><circle class="rt" cx="26" cy="26" r="22"/><circle class="rp" cx="26" cy="26" r="22" stroke-dasharray="${RC.toFixed(1)}" stroke-dashoffset="${RC.toFixed(1)}"/></svg><b></b>`;
@@ -509,14 +536,14 @@ const HUES=[[168,'Morski'],[210,'Niebo'],[262,'Fiolet'],[328,'Róż'],[10,'Koral
 const OFFS=[0,26,-26,52,-52,78];
 function applyTones(){
   const dark=document.documentElement.dataset.dark==='1',h=+S.set.hue||168;
-  LAY().forEach((c,i)=>{
-    const e=$('#card-'+c.id);if(!e)return;
-    const ch=(h+OFFS[i%OFFS.length]+360)%360;
-    e.style.setProperty('--tone',dark?`hsl(${ch} 22% 15%)`:`hsl(${ch} 38% 92%)`);
-    e.style.setProperty('--edge',dark?`hsl(${ch} 42% 50%)`:`hsl(${ch} 40% 42%)`);
-  });
-  const sc=$('#sumCard');
-  if(sc){const ch=(h+OFFS[LAY().length%OFFS.length]+360)%360;sc.style.setProperty('--tone',dark?`hsl(${ch} 22% 15%)`:`hsl(${ch} 38% 92%)`);sc.style.setProperty('--edge',dark?`hsl(${ch} 42% 50%)`:`hsl(${ch} 40% 42%)`)}
+  const paint=(e,ch)=>{
+    e.style.setProperty('--tone',dark?`hsl(${ch} 30% 15%)`:`hsl(${ch} 55% 93%)`);
+    e.style.setProperty('--edge',dark?`hsl(${ch} 58% 52%)`:`hsl(${ch} 55% 40%)`);
+    e.style.setProperty('--cacc',dark?`hsl(${ch} 78% 74%)`:`hsl(${ch} 66% 30%)`);
+  };
+  LAY().forEach((c,i)=>{const e=$('#card-'+c.id);if(e)paint(e,(h+i*47)%360)});
+  const sc=$('#sumCard');if(sc)paint(sc,(h+LAY().length*47)%360);
+  ['#checkin .cibox','#survey','#remind'].forEach((q,i)=>{const e=$(q);if(e)paint(e,(h+200+i*40)%360)});
 }
 function applyLook(){
   const m=S.set.mode,mq=window.matchMedia?matchMedia('(prefers-color-scheme: dark)').matches:true;
@@ -539,14 +566,33 @@ function renderCheckin(){
   const c=S.ci[TODAY]||{};
   if(!CI_EDIT&&c.skip){el.innerHTML='<div class="cirow"><span>Pytania poranne pominięte.</span><button class="lnk" type="button" data-cie="edit">odpowiedz</button></div>';return}
   if(!CI_EDIT&&c.s&&c.w){el.innerHTML=`<div class="cirow"><span>Sen <b>${c.s}/5</b> · Chęć <b>${c.w}/5</b></span><button class="lnk" type="button" data-cie="edit">zmień</button></div>`;return}
-  el.innerHTML=`<div class="cibox"><h3>Na start dnia</h3>${CIQ.map(([k,q,a,b])=>`<p class="q">${q}</p><div class="scale" role="group" aria-label="${esc(q)} Skala 1 do 5">${[1,2,3,4,5].map(v=>`<button type="button" data-ck="${k}" data-v="${v}" aria-pressed="${c[k]===v}">${v}</button>`).join('')}</div><div class="scl"><span>${a}</span><span>${b}</span></div>`).join('')}<div class="cifoot">${CI_EDIT?'<button class="btn sm pri" type="button" data-cie="done">Gotowe</button>':'<button class="lnk" type="button" data-cie="skip">Pomiń dziś</button>'}</div></div>`;
+  el.innerHTML=`<div class="cibox"><h3>Na start dnia — 2 pytania</h3><p class="why">Odpowiedz rano, przed ćwiczeniami (najpóźniej do końca dnia). To pozwoli w Podsumowaniu zobaczyć, jak sen i chęć wpływają na wynik.</p>${CIQ.map(([k,q,a,b])=>`<p class="q">${q}</p><div class="scale" role="group" aria-label="${esc(q)} Skala 1 do 5">${[1,2,3,4,5].map(v=>`<button type="button" data-ck="${k}" data-v="${v}" aria-pressed="${c[k]===v}">${v}</button>`).join('')}</div><div class="scl"><span>${a}</span><span>${b}</span></div>`).join('')}<div class="cifoot">${CI_EDIT?'<button class="btn sm pri" type="button" data-cie="done">Gotowe</button>':'<button class="lnk" type="button" data-cie="skip">Pomiń dziś</button>'}</div></div>`;
+}
+function renderRemind(){
+  const el=$('#remind');if(!el)return;
+  const p=lastNoteAny();el.hidden=!p;
+  if(p)el.innerHTML=`<b>📌 Przypomnienie z ${esc(dlabel(p.k))}</b><p>${esc(shortT(p.t,260))}</p>`;
+}
+function renderSurvey(){
+  const el=$('#survey');if(!el)return;
+  const any=TASKS().some(c=>isDone(c.id)),r=normRt(TODAY);
+  el.classList.toggle('wait',!any);
+  if(!any){el.innerHTML='<h3>Jak poszło?</h3><p class="why">Po ćwiczeniach wróć tu: pojawią się 2 krótkie pytania (10 sekund).</p>';return}
+  el.innerHTML=`<h3>Jak poszło?</h3><p class="why">Informacja na potrzeby podsumowania efektów — Twoje odpowiedzi zobaczysz w Podsumowaniu (raz na 3 dni).</p><p class="q">Czy czujesz, że wykonałeś/aś to dobrze?</p>${SC('q',r.q)}<div class="scl"><span>1 — słabo</span><span>5 — świetnie</span></div><p class="q">Czy czujesz się lepiej po ćwiczeniach?</p>${SC('b',r.b)}<div class="scl"><span>1 — nie</span><span>5 — zdecydowanie</span></div><p class="tiny">⏱ Wypełnij po ćwiczeniach, najpóźniej do końca dnia. Możesz pominąć.</p>`;
 }
 
 /* ───────── PODSUMOWANIE ───────── */
 const avgOf=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:null;
 const f1=v=>v==null?'–':(Math.round(v*10)/10).toString().replace('.',',');
 const dayKey=n=>{const d=new Date();d.setDate(d.getDate()-n);return keyOf(d)};
-const dayRt=(k,f)=>{const r=S.rt[k]||{};return Object.keys(r).map(c=>r[c][f]).filter(v=>v>0)};
+function normRt(k){
+  const r=S.rt[k]||{};
+  if(typeof r.q==='number'||typeof r.b==='number'){const o={};if(r.q)o.q=r.q;if(r.b)o.b=r.b;return o}
+  const o={},cs=Object.keys(r).map(c=>r[c]||{});
+  ['q','b'].forEach(f=>{const v=cs.map(x=>x[f]).filter(n=>n>0);if(v.length)o[f]=Math.round(v.reduce((a,b)=>a+b,0)/v.length)});
+  return o;
+}
+const dayRt=(k,f)=>{const v=normRt(k)[f];return v>0?[v]:[]};
 const dayCnt=k=>Object.keys(S.days[k]||{}).length;
 const dayP=k=>{const t=TASKS().length;return t?Math.min(1,dayCnt(k)/t):0};
 const ciV=(k,f)=>{const c=S.ci[k];return c&&c[f]>0?c[f]:null};
@@ -626,36 +672,39 @@ function insights(){
 }
 function renderSummary(){
   const sc=$('#sumCard'),bd=$('#sumBody');if(!sc||!bd)return;
+  if(SUM_OPEN)issueSum();
   if(sc.open!==SUM_OPEN)sc.open=SUM_OPEN;
-  const tk=TASKS(),tot=tk.length,cnt=tk.filter(c=>isDone(c.id)).length,h=habit();
-  $('#sumSub').textContent=(tot?`dziś ${cnt}/${tot}`:'')+(h?` · siła nawyku ${Math.round(h.v[h.v.length-1]*100)}%`:'');
-  const dq=dayRt(TODAY,'q'),db=dayRt(TODAY,'b');
-  const wk=[];for(let i=0;i<7;i++)wk.push(dayKey(i));
-  const wd=wk.filter(k=>dayCnt(k)>0).length;
-  const wq=wk.flatMap(k=>dayRt(k,'q')),wb=wk.flatMap(k=>dayRt(k,'b'));
-  const ws=wk.map(k=>ciV(k,'s')).filter(Boolean),ww=wk.map(k=>ciV(k,'w')).filter(Boolean);
-  const any=Object.keys(S.days).length||Object.keys(S.ci).length||Object.keys(S.rt).length;
-  let o='';
-  if(!any)o+='<p class="note">Tu pojawi się podsumowanie, gdy odpowiesz na pytania poranne i zrobisz pierwsze zadanie.</p>';
-  else{
-    o+=stRow('Dziś',[['Sen',f1(ciV(TODAY,'s')),'/5'],['Chęć',f1(ciV(TODAY,'w')),'/5'],['Zrobione',tot?cnt+'/'+tot:'–',''],['Wykonanie',f1(avgOf(dq)),'/5'],['Lepiej po ćw.',f1(avgOf(db)),'/5']]);
-    o+=stRow('Ostatnie 7 dni',[['Dni ćwiczeń',wd+'/7',''],['Sen',f1(avgOf(ws)),'/5'],['Chęć',f1(avgOf(ww)),'/5'],['Wykonanie',f1(avgOf(wq)),'/5'],['Lepiej po ćw.',f1(avgOf(wb)),'/5']]);
-    o+=`<h4>Samopoczucie a wynik — 14 dni</h4>${chartA()}<div class="leg"><span><i class="k kb"></i>Wykonanie zadań (słupki, %)</span><span><i class="k klb"></i>Lepiej po ćwiczeniu</span><span><i class="k klw"></i>Chęć</span><span><i class="k kls"></i>Sen</span></div><p class="tiny">Linie: skala 1–5 (prawa oś), słupki: odsetek zadań dnia (lewa oś).</p>`;
+  const ready=S.sm===TODAY,due=sumReady();
+  $('#sumSub').textContent=ready?'gotowe':due?'gotowe — rozwiń':'następne: '+dlabel(nextSumKey());
+  if(!ready){
+    bd.innerHTML=due?'<p class="moti2">Podsumowanie jest gotowe. Rozwiń tę kartę, kiedy skończysz ćwiczenia.</p>':`<p class="moti2">To Twoje podsumowanie, będzie gotowe raz na 3 dni (następne: ${esc(dlabel(nextSumKey()))}), a teraz — miłych ćwiczeń :)</p>`;
+    applyTones();return;
+  }
+  const week=S.sw===TODAY,h=habit();
+  const days=n=>{const a=[];for(let i=0;i<n;i++)a.push(dayKey(i));return a};
+  const row=(t,ks)=>{
+    const q=ks.flatMap(k=>dayRt(k,'q')),b=ks.flatMap(k=>dayRt(k,'b')),sl=ks.map(k=>ciV(k,'s')).filter(Boolean),wl=ks.map(k=>ciV(k,'w')).filter(Boolean);
+    return stRow(t,[['Dni ćwiczeń',ks.filter(k=>dayCnt(k)>0).length+'/'+ks.length,''],['Sen',f1(avgOf(sl)),'/5'],['Chęć',f1(avgOf(wl)),'/5'],['Wykonanie',f1(avgOf(q)),'/5'],['Lepiej po ćw.',f1(avgOf(b)),'/5']]);
+  };
+  let o=row('Ostatnie 3 dni',days(3));
+  o+=`<h4>Samopoczucie a wynik — 14 dni</h4>${chartA()}<div class="leg"><span><i class="k kb"></i>Wykonanie zadań (słupki, %)</span><span><i class="k klb"></i>Lepiej po ćwiczeniu</span><span><i class="k klw"></i>Chęć</span><span><i class="k kls"></i>Sen</span></div><p class="tiny">Linie: skala 1–5 (prawa oś), słupki: odsetek zadań dnia (lewa oś).</p>`;
+  if(week){
+    o+=`<h3 class="wk">Podsumowanie tygodnia</h3>`+row('Ostatnie 7 dni',days(7));
     if(h)o+=`<h4>Kształtowanie nawyku</h4>${chartB(h)}<p class="note">Siła nawyku: <b>${Math.round(h.v[h.v.length-1]*100)}%</b> — wskaźnik orientacyjny (nowsze dni liczą się bardziej). Utrwalenie nawyku zajmuje średnio ok. 66 dni (Lally i in., 2009), więc pojedyncza przerwa niczego nie psuje.</p>`;
     const ins=insights();
     if(ins.length)o+=`<h4>Co widać w danych</h4><ul class="ins">${ins.map(t=>`<li>${esc(t)}</li>`).join('')}</ul>`;
     const nk=Object.keys(S.notes).sort().reverse().slice(0,3);
-    if(nk.length)o+=`<h4>Twoje spostrzeżenia</h4><ul class="nhl">${nk.map(k=>{const t=Object.keys(S.notes[k]).map(b=>S.notes[k][b]).join(' · ');return `<li><b>${esc(dlabel(k))}</b> ${esc(t.length>180?t.slice(0,177)+'…':t)}</li>`}).join('')}</ul>`;
+    if(nk.length)o+=`<h4>Twoje spostrzeżenia</h4><ul class="nhl">${nk.map(k=>{const t=Object.keys(S.notes[k]).map(b=>S.notes[k][b]).join(' · ');return `<li><b>${esc(dlabel(k))}</b> ${esc(shortT(t,180))}</li>`}).join('')}</ul>`;
   }
-  o+=`<p class="moti">${tot&&cnt===tot?'Wszystko na dziś zrobione — brawo!<br>':''}<b>Ćwicz dalej, a efekty już masz ;)</b></p><p class="tiny">Oceny po ćwiczeniach i pytania poranne służą podsumowaniu efektów całego tygodnia.</p>`;
+  o+=`<p class="moti"><b>Ćwicz dalej, a efekty już masz ;)</b></p><p class="tiny">Podsumowanie pojawia się raz na 3 dni, a podsumowanie tygodnia raz na 7 dni.</p>`;
   bd.innerHTML=o;
   applyTones();
 }
 function renderAll(){
-  TODAY=keyOf(new Date());DN=dnum(new Date());
+  {const nd=keyOf(new Date());if(nd!==TODAY)SUM_OPEN=false;TODAY=nd}DN=dnum(new Date());
   $('#greet').textContent=greet();
   $('#date').textContent=new Date().toLocaleDateString('pl-PL',{weekday:'long',day:'numeric',month:'long'});
-  applyLook();renderCards();renderCheckin();renderSummary();setSync(syncState);
+  applyLook();renderCards();renderCheckin();renderRemind();renderSurvey();renderSummary();setSync(syncState);
 }
 
 /* ───────── EDYCJA UKŁADU ───────── */
@@ -707,13 +756,6 @@ function loadTpl(id){
 function wire(){
   const cards=$('#cards');
   cards.addEventListener('click',e=>{
-    const sc=e.target.closest('[data-sc]');
-    if(sc){
-      const c=sc.dataset.card,k=sc.dataset.sc,v=+sc.dataset.v,d=S.rt[TODAY]||(S.rt[TODAY]={}),x=d[c]||(d[c]={});
-      if(x[k]===v)delete x[k];else x[k]=v;
-      if(!Object.keys(x).length)delete d[c];if(!Object.keys(d).length)delete S.rt[TODAY];
-      save();paintDone();renderSummary();return;
-    }
     const t=e.target.closest('[data-tick]');
     if(t){e.preventDefault();e.stopPropagation();setDone(t.dataset.tick,!isDone(t.dataset.tick));return}
     const a=e.target.closest('[data-act]');if(a){act(a);return}
@@ -736,8 +778,16 @@ function wire(){
       renderCheckin();renderSummary();
     }
   });
-  $('#sumCard').addEventListener('toggle',e=>{SUM_OPEN=e.target.open});
-  $('#miSum').onclick=()=>{closeMenu();SUM_OPEN=true;renderSummary();const e=$('#sumCard');if(e&&e.scrollIntoView)try{e.scrollIntoView({behavior:'smooth',block:'start'})}catch(x){}};
+  $('#sumCard').addEventListener('toggle',e=>{const o=e.target.open;if(o!==SUM_OPEN){SUM_OPEN=o;if(o)renderSummary()}});
+  $('#miSum').onclick=()=>{closeMenu();openSum()};
+  $('#survey').addEventListener('click',e=>{
+    const b=e.target.closest('[data-sc]');if(!b)return;
+    const k=b.dataset.sc,v=+b.dataset.v,o=normRt(TODAY);
+    if(o[k]===v)delete o[k];else o[k]=v;
+    if(Object.keys(o).length)S.rt[TODAY]=o;else delete S.rt[TODAY];
+    save();renderSurvey();
+  });
+  $('#remind').addEventListener('click',()=>{const t=$('#cards textarea[id^="nt-"]'),n=t&&t.closest('details.card');if(n){n.open=true;scrollTo('#'+n.id,'center')}});
   $('#addCard').addEventListener('click',e=>{const a=e.target.closest('[data-act]');if(a)act(a)});
   cards.addEventListener('change',e=>{
     const t=e.target,f=t.dataset.f,cf=t.dataset.cf;

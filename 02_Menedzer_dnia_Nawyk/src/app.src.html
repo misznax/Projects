@@ -212,6 +212,61 @@ textarea{resize:vertical;min-height:56px}
 .moti{margin:18px 0 0;font:600 18px/1.35 Fraunces,Georgia,serif;text-align:center}
 .moti b{color:var(--acc)}
 
+/* v0.05 */
+html[data-dark="1"]{--pl:76%;--ps:70%}
+html[data-dark="0"]{--pl:30%;--ps:62%}
+h1{background:linear-gradient(100deg,hsl(var(--h) 70% 70%),hsl(calc(var(--h) + 70) 80% 72%) 60%,hsl(calc(var(--h) + 140) 75% 72%));-webkit-background-clip:text;background-clip:text;color:transparent}
+html[data-dark="0"] h1{background:linear-gradient(100deg,hsl(var(--h) 70% 28%),hsl(calc(var(--h) + 70) 70% 32%) 60%,hsl(calc(var(--h) + 140) 65% 32%));-webkit-background-clip:text;background-clip:text}
+h1 span{-webkit-text-fill-color:var(--mute)}
+details.card{--cacc:var(--acc);background:linear-gradient(135deg,var(--tone),color-mix(in srgb,var(--tone) 82%,var(--edge) 18%))}
+.ttl b{color:var(--cacc)}
+.ic{background:linear-gradient(135deg,color-mix(in srgb,var(--cacc) 42%,transparent),color-mix(in srgb,var(--edge) 12%,transparent));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--cacc) 40%,transparent)}
+.chev{border-color:var(--cacc)}
+.tick{border-color:var(--cacc)}
+.tick[aria-pressed=true]{background:var(--cacc);border-color:var(--cacc)}
+.card .btn.pri{background:var(--cacc);border-color:var(--cacc);color:var(--bg)}
+.card .btn:hover{border-color:var(--cacc)}
+.blk>h3,.cibox h3,.sumcard h4{color:var(--cacc)}
+.pill{--ch:168;color:hsl(var(--ch) var(--ps) var(--pl));border-color:hsl(var(--ch) 55% 50% / .7);background:hsl(var(--ch) 60% 50% / .12);font-weight:600}
+.task{padding:12px 14px;margin:0 0 4px;border-radius:14px;border:1px solid color-mix(in srgb,var(--cacc) 35%,transparent);border-left:5px solid var(--cacc);background:color-mix(in srgb,var(--cacc) 8%,transparent)}
+.task h4{margin:4px 0 8px;font:600 21px/1.25 Fraunces,Georgia,serif;color:var(--ink)}
+.what{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:15px}
+.what dt{font:600 12px/1.9 system-ui,sans-serif;letter-spacing:.07em;text-transform:uppercase;color:var(--cacc)}
+.what dd{margin:0}
+.what dt:nth-of-type(3)+dd,.what dd:last-child{color:var(--warm)}
+.wl{margin-top:10px}
+.how{margin:10px 0 0;border:1px dashed color-mix(in srgb,var(--cacc) 45%,transparent);border-radius:12px;padding:0 12px}
+.how>summary{padding:10px 0;font-size:14px;font-weight:600;color:var(--cacc);display:block}
+.how>summary small{font-weight:400;color:var(--mute)}
+.how[open]>summary{border-bottom:1px solid color-mix(in srgb,var(--ink) 12%,transparent);margin-bottom:6px}
+.how .exsteps{padding-bottom:6px}
+.ps{color:var(--cacc);font-weight:600;font-size:13px}
+.pe{color:var(--warm);font-weight:600;font-size:13px}
+.read{margin:12px 0 0;padding:12px 14px;border-radius:14px;background:color-mix(in srgb,var(--warm) 10%,transparent);border:1px solid color-mix(in srgb,var(--warm) 35%,transparent)}
+.read h5{margin:0 0 6px;font:600 12px/1.3 system-ui,sans-serif;letter-spacing:.07em;text-transform:uppercase;color:var(--warm)}
+blockquote.qt{margin:0 0 10px}
+blockquote.qt p{margin:0;font:italic 400 18px/1.5 Fraunces,Georgia,serif}
+blockquote.qt cite{display:block;font-style:normal;margin-top:6px;font-size:13px;color:var(--mute)}
+.dl{margin:10px 0 6px;font-size:13px;color:var(--warm)}
+.why{margin:0 0 6px;font-size:13px;color:var(--mute)}
+.remind{margin:6px 0 10px;padding:10px 12px;border-radius:12px;background:color-mix(in srgb,var(--warm) 12%,transparent);border-left:4px solid var(--warm);white-space:pre-wrap;overflow-wrap:anywhere;font-size:15px}
+.remindbar{margin:0 0 14px;padding:10px 14px;border-radius:14px;cursor:pointer;background:linear-gradient(135deg,color-mix(in srgb,var(--warm) 14%,transparent),transparent);border:1px solid color-mix(in srgb,var(--warm) 40%,transparent)}
+.remindbar[hidden]{display:none}
+.remindbar b{color:var(--warm);font-size:13px}
+.remindbar p{margin:4px 0 0;font-size:15px;overflow-wrap:anywhere}
+#survey{margin:6px 0 18px}
+#survey.wait{opacity:.8}
+.steps.gl{list-style:none;padding-left:0}
+.steps li.gh{font:600 12px/1.4 system-ui,sans-serif;letter-spacing:.07em;text-transform:uppercase;color:var(--cacc);margin:12px 0 6px;padding-top:6px;border-top:1px solid color-mix(in srgb,var(--ink) 12%,transparent)}
+.steps li.gh:first-child{margin-top:4px;border:0}
+.steps .sb{color:var(--mute)}
+.moti2{margin:6px 0 0;font:italic 400 17px/1.5 Fraunces,Georgia,serif;text-align:center;color:var(--cacc)}
+h3.wk{margin:24px 0 0;padding-top:14px;border-top:1px solid color-mix(in srgb,var(--ink) 18%,transparent);font:600 18px Fraunces,Georgia,serif;color:var(--cacc)}
+.donehint{margin-top:6px}
+.donehint[hidden]{display:none}
+.tm[data-kind=work] .tm-clock,.tm[data-kind=done] .tm-clock{color:var(--cacc)}
+.bar i{background:var(--cacc)}
+
 /* tryb edycji */
 .edcard,.edblk{display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding:10px;margin:12px 0 0;border:1px dashed var(--edge,var(--line));border-radius:12px;background:color-mix(in srgb,var(--bg) 35%,transparent)}
 .edcard input.et{flex:1 1 150px;width:auto;font-weight:600}
@@ -279,13 +334,17 @@ textarea.mono{font:12px/1.4 ui-monospace,Consolas,monospace;min-height:110px}
 
   <section class="prog" aria-label="Postęp dnia">
     <div class="prow"><span id="ptxt"></span><span class="sp"></span><span id="week"></span><span id="streak"></span></div>
-    <div class="hint" id="hint">Zacznij od dwóch pytań na start dnia, potem dotknij kółka przy zadaniu, gdy zrobione. Jedno wystarczy.</div>
+    <div class="hint" id="hint">Zacznij od 2 pytań na start dnia. Potem rób ćwiczenia i dotykaj kółka przy zadaniu, gdy zrobione — jedno wystarczy.</div>
     <div class="strip" id="strip" aria-label="Ostatnie 14 dni"></div>
   </section>
 
   <section id="checkin" aria-label="Pytania na start dnia"></section>
 
+  <section id="remind" class="remindbar" hidden role="button" tabindex="0" aria-label="Przypomnienie z ostatniej notatki"></section>
+
   <main id="cards"></main>
+
+  <section id="survey" class="cibox sv wait" aria-label="Jak poszło?"></section>
 
   <details class="card sumcard" id="sumCard">
     <summary><span class="ic">📈</span><span class="ttl"><b>Podsumowanie</b><small id="sumSub"></small></span><span class="chev"></span></summary>
@@ -304,7 +363,7 @@ textarea.mono{font:12px/1.4 ui-monospace,Consolas,monospace;min-height:110px}
   <p><b>Nawyk — menedżer dnia</b></p>
   <p>Wersja: <span id="verA"></span></p>
   <p>Autor: Michał Rzekiecki</p>
-  <p class="src" style="margin-top:2px"><b>Co nowego w v0.04:</b> pytania na start dnia (sen i chęć 1–5), ocena po każdym ćwiczeniu, notatki z ćwiczeń dostępne codziennie oraz podsumowanie z wykresami samopoczucia i kształtowania nawyku.</p>
+  <p class="src" style="margin-top:2px"><b>Co nowego w v0.05:</b> ćwiczenia w 3 poziomach (podstawowy, średni, zaawansowany), zadanie oddzielone od instrukcji, oddech przed dźwiękiem, cytaty do czytania na głos, jedna ankieta „Jak poszło?” na dole, notatki jako przypomnienie na następny dzień, podsumowanie raz na 3 dni oraz nowe kolory.</p>
   <p>Kontakt: <a href="mailto:kontakt@smialo.org">kontakt@smialo.org</a></p>
   <p class="src">Model charyzmy: Obecność · Moc · Ciepło (O. Fox Cabane, „The Charisma Myth”). Rozgrzewka głosu oparta na ćwiczeniach J. Treasure (TED). Ćwiczenia mają charakter ogólny — przy bólu, zawrotach głowy lub chrypce przerwij i skonsultuj się ze specjalistą.</p>
   <div class="drow"><button class="btn" data-close>Zamknij</button></div>

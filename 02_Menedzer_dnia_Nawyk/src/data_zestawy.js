@@ -108,9 +108,10 @@ const J3=['Co dziś wyszło (nawet drobiazg)?','Za co jestem wdzięczny/a?','Jed
 const TEMPLATES=[
  {id:'charyzma',n:'Charyzma',ic:'✨',d:'Głos (nagrania, rozgrzewka, niski głos), 42 ćwiczenia charyzmy, ruch, dziennik 3 zdań, lista.',layout:[
   {id:'g',title:'Głos',ic:'🎙️',blocks:[
-    {id:'g_m',type:'media',h:'Nagrania z YouTube',cfg:{tracks:TRK.map(t=>({id:t[0],title:t[1],len:t[2]}))}},
-    {id:'g_w',type:'guided',h:'Prowadzona rozgrzewka',cfg:{set:'voice'}},
-    {id:'g_v',type:'daily',h:'Niski głos — ćwiczenie dnia',cfg:{pack:'glos',own:[]}}]},
+    {id:'g_vb',type:'daily',h:'Najpierw oddech — ćwiczenie dnia',cfg:{pack:'glos',own:[],cat:'Oddechowe'}},
+    {id:'g_v',type:'daily',h:'Potem dźwięk — ćwiczenie dnia',cfg:{pack:'glos',own:[],cat:'Dźwiękowe'}},
+    {id:'g_w',type:'guided',h:'Prowadzona rozgrzewka (oddech, potem dźwięk)',cfg:{set:'voice'}},
+    {id:'g_m',type:'media',h:'Nagrania z YouTube',cfg:{tracks:TRK.map(t=>({id:t[0],title:t[1],len:t[2]}))}}]},
   {id:'c',title:'Charyzma',ic:'✨',blocks:[{id:'c_d',type:'daily',h:'',cfg:{pack:'charyzma',own:[]}}]},
   {id:'r',title:'Ruch',ic:'💪',blocks:[{id:'r_w',type:'workout',h:'',cfg:{}}]},
   {id:'d',title:'Dziennik 3 zdań',ic:'📓',blocks:[{id:'b_j',type:'journal',h:'',cfg:{p:J3.slice()}}]},
