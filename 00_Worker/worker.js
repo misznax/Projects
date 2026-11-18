@@ -248,31 +248,54 @@ export default {
       if (url.pathname === '/api/stats') return J(await stats(env));
       const sm = url.pathname.match(/^\/api\/state\/([a-z0-9_-]+)$/);
       if (sm) return appState(request, env, sm[1]);
-      if (url.pathname === '/api/n/status') return J({ stt: !!(env.OPENAI_API_KEY || env.AI), diar: !!env.OPENAI_API_KEY, claude: !!(env.ANTHROPIC_API_KEY || env.AI), ckey: !!env.ANTHROPIC_API_KEY });
+      if (url.pathname === '/api/n/status') return J({ stt: !!(env.OPENAI_API_KEY || env.AI || env.GROQ_API_KEY), diar: !!env.OPENAI_API_KEY, claude: !!(env.ANTHROPIC_API_KEY || env.AI || env.GROQ_API_KEY), ckey: !!env.ANTHROPIC_API_KEY });
       // 04 Notatnik Słuchacza: proxy do OpenAI (transkrypcja + mówcy) i Claude (notatki, autorzy, weryfikacja); klucze tylko jako sekrety Workera
       if (url.pathname === '/api/n/stt' && request.method === 'POST') {
         if (+(request.headers.get('content-length') || 0) > 8e6) return J({ code: 'too_big' }, 413);
-        if (!env.OPENAI_API_KEY) { // bez klucza OpenAI: Whisper z Workers AI (bez rozpoznawania mówców)
-          if (!env.AI) return J({ code: 'no_key' }, 501);
+        if (!env.OPENAI_API_KEY) { // bez klucza OpenAI: Groq Whisper (jeśli jest GROQ_API_KEY), awaryjnie/inaczej Whisper z Workers AI (bez rozpoznawania mówców)
+          if (!env.AI && !env.GROQ_API_KEY) return J({ code: 'no_key' }, 501);
           const f = (await request.formData()).get('file');
           if (!f) return J({ code: 'bad' }, 400);
-          const u8 = new Uint8Array(await f.arrayBuffer()); let bin = ''; for (let i = 0; i < u8.length; i += 8192) bin += String.fromCharCode.apply(null, u8.subarray(i, i + 8192));
-          const o = await env.AI.run('@cf/openai/whisper-large-v3-turbo', { audio: btoa(bin), language: 'pl' });
-          const segs = (o.segments || []).map((s) => ({ speaker: 'A', start: s.start, end: s.end, text: s.text }));
-          return J({ segments: segs.length ? segs : [{ speaker: 'A', start: 0, end: 30, text: o.text || '' }] });
+          const errs = [];
+          const out = (o) => { const segs = (o.segments || []).map((s) => ({ speaker: 'A', start: s.start, end: s.end, text: s.text })); return J({ segments: segs.length ? segs : [{ speaker: 'A', start: 0, end: 30, text: o.text || '' }] }); };
+          if (env.GROQ_API_KEY) {
+            try {
+              const fd = new FormData(); fd.append('file', f, f.name || 'c.webm'); fd.append('model', 'whisper-large-v3-turbo'); fd.append('language', 'pl'); fd.append('response_format', 'verbose_json');
+              const r = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', { method: 'POST', headers: { Authorization: 'Bearer ' + env.GROQ_API_KEY }, body: fd });
+              if (!r.ok) throw new Error('groq ' + r.status + ' ' + (await r.text()).slice(0, 120));
+              return out(await r.json());
+            } catch (e) { errs.push(String(e.message || e).slice(0, 160)); }
+          }
+          if (env.AI) {
+            try {
+              const u8 = new Uint8Array(await f.arrayBuffer()); let bin = ''; for (let i = 0; i < u8.length; i += 8192) bin += String.fromCharCode.apply(null, u8.subarray(i, i + 8192));
+              return out(await env.AI.run('@cf/openai/whisper-large-v3-turbo', { audio: btoa(bin), language: 'pl' }));
+            } catch (e) { errs.push(String(e.message || e).slice(0, 160)); }
+          }
+          return J({ code: 'stt_error', msg: errs.join(' | ') }, 502);
         }
         const r = await fetch('https://api.openai.com/v1/audio/transcriptions', { method: 'POST', headers: { Authorization: 'Bearer ' + env.OPENAI_API_KEY, 'content-type': request.headers.get('content-type') || '' }, body: request.body });
         return new Response(r.body, { status: r.status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
       }
       if (url.pathname === '/api/n/claude' && request.method === 'POST') {
         let b; try { b = await request.json(); } catch { return J({ code: 'bad' }, 400); }
-        if (!env.ANTHROPIC_API_KEY) { // bez klucza Anthropic: tryb podstawowy na Workers AI (Llama), bez wyszukiwania w sieci
-          if (!env.AI) return J({ code: 'no_key' }, 501);
-          try {
-            const sys = String(b.system || '').slice(0, 2000) + (b.tools ? ' Tryb bez dostępu do internetu: zaznacz, że odpowiadasz z pamięci modelu i nie podawaj wymyślonych źródeł.' : '');
-            const o = await env.AI.run('@cf/meta/llama-3.3-70b-instruct-fp8-fast', { messages: [{ role: 'system', content: sys }, { role: 'user', content: String(((b.messages || [])[0] || {}).content || '').slice(0, 60000) }], max_tokens: Math.min(+b.max_tokens || 1800, 3000) });
-            return J({ content: [{ type: 'text', text: o.response || '' }] });
-          } catch (e) { return J({ code: 'ai_error', msg: String(e).slice(0, 200) }, 502); }
+        if (!env.ANTHROPIC_API_KEY) { // bez klucza Anthropic: tryb podstawowy (Llama na Workers AI, awaryjnie Groq), bez wyszukiwania w sieci
+          if (!env.AI && !env.GROQ_API_KEY) return J({ code: 'no_key' }, 501);
+          const sys = String(b.system || '').slice(0, 2000) + (b.tools ? ' Tryb bez dostępu do internetu: zaznacz, że odpowiadasz z pamięci modelu i nie podawaj wymyślonych źródeł.' : '');
+          const msgs = [{ role: 'system', content: sys }, { role: 'user', content: String(((b.messages || [])[0] || {}).content || '').slice(0, 60000) }];
+          const mt = Math.min(+b.max_tokens || 1800, 3000), errs = [];
+          if (env.AI) {
+            try { const o = await env.AI.run('@cf/meta/llama-3.3-70b-instruct-fp8-fast', { messages: msgs, max_tokens: mt }); return J({ content: [{ type: 'text', text: o.response || '' }] }); }
+            catch (e) { errs.push(String(e).slice(0, 160)); }
+          }
+          if (env.GROQ_API_KEY) {
+            try {
+              const r = await fetch('https://api.groq.com/openai/v1/chat/completions', { method: 'POST', headers: { Authorization: 'Bearer ' + env.GROQ_API_KEY, 'content-type': 'application/json' }, body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: msgs, max_tokens: mt }) });
+              if (!r.ok) throw new Error('groq ' + r.status + ' ' + (await r.text()).slice(0, 120));
+              const o = await r.json(); return J({ content: [{ type: 'text', text: (((o.choices || [])[0] || {}).message || {}).content || '' }] });
+            } catch (e) { errs.push(String(e.message || e).slice(0, 160)); }
+          }
+          return J({ code: 'ai_error', msg: errs.join(' | ').slice(0, 300) }, 502);
         }
         const models = ['claude-haiku-5-5', 'claude-sonnet-5-5'];
         const body = { model: models.includes(b.model) ? b.model : models[0], max_tokens: Math.min(+b.max_tokens || 1800, 3000), system: String(b.system || '').slice(0, 2000), messages: Array.isArray(b.messages) ? b.messages.slice(0, 1) : [] };
