@@ -15,6 +15,7 @@ pre{white-space:pre-wrap;font:inherit;margin:4px 0}
 .k0{--c:#9ca3af}.k1{--c:#60a5fa}.k2{--c:#fb923c}.k3{--c:#c084fc}.k4{--c:#4ade80}.k5{--c:#facc15}
 .bl{display:flex;gap:8px;padding:6px 9px;margin:5px 0;border-left:4px solid var(--c);background:#ffffff0d;border-radius:0 9px 9px 0;line-height:1.35}.bl.k1,.bl.k2,.bl.k3,.bl.k4,.bl.k5{background:#ffffff14}.bl i{font-style:normal;flex:none}.bl.k2 span{font-weight:600}
 .chip{display:inline-block;font-size:12px;border:1px solid var(--c);color:var(--c);border-radius:10px;padding:0 7px;margin:2px 4px 2px 0}.nt{font-weight:700;font-size:16px;margin:3px 0 5px}
+.ut{display:flex;gap:10px;padding:4px 2px;border-bottom:1px solid #262626}.ut .tm{flex:none;width:58px;font-size:12px;line-height:1.3;color:#9ca3af;cursor:pointer}.ut .tx{flex:1;line-height:1.35}
 .mi{display:block;width:100%;text-align:left;margin:4px 0;padding:11px 12px}.ck{display:flex;gap:10px;align-items:center;padding:8px 2px}.ck input{width:auto;margin:0}
 .seg{display:flex;gap:6px}.seg label{flex:1;text-align:center;padding:9px 2px;border:1px solid #444;border-radius:10px;font-size:14px}.seg label.on{background:#2563eb;border-color:#2563eb}.seg input{display:none}
 #dim{position:fixed;inset:0;background:#000;display:none;z-index:9;align-items:center;justify-content:center;color:#333}
@@ -31,7 +32,7 @@ input,textarea,select{width:100%;margin:4px 0}
 <script>
 const GID='461701670960-b0ivbr1cktr8ocfbdaffpplmr09thc6j.apps.googleusercontent.com',gcid=()=>GID; // Client ID jest publiczny z założenia; stary zapis z Ustawień usuwany (powodował 401)
 try{localStorage.removeItem('gcid')}catch(e){}
-const $=s=>document.querySelector(s),cfg=k=>localStorage.getItem(k)||'',VER='v0.26';
+const $=s=>document.querySelector(s),cfg=k=>localStorage.getItem(k)||'',VER='v0.27';
 const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 const tm=s=>{s=Math.floor(s);const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60,p=n=>String(n).padStart(2,'0');return(h?h+':':'')+p(m)+':'+p(x)};
 const SYS='Jesteś asystentem studenta na wykładzie. Odpowiadaj po polsku, zwięźle, rzeczowo.';
@@ -46,7 +47,7 @@ const canSTT=()=>navigator.onLine&&cfg('mode')!=='offline'&&(cap.stt||cfg('oai')
 const canAI=()=>navigator.onLine&&(cap.claude||cfg('ant'));
 const dur=l=>l.chunks.reduce((a,c)=>a+c.dur,0);
 // ---------- widoki
-async function go(){if(S.rec)return;L=null;S.sel=null;LS=(await tx('lec','readonly',s=>s.getAll())||[]).sort((a,b)=>b.date-a.date);render()}
+async function go(){if(S.rec)return;L=null;S.sel=null;S.msg='';S.link='';LS=(await tx('lec','readonly',s=>s.getAll())||[]).sort((a,b)=>b.date-a.date);render()}
 function render(){
  _pp=-1;
  if(!L){plSync();if(S.sel){selView();return}$('#app').innerHTML=`<div style="display:flex;gap:8px"><button class=p onclick="newL()">＋ Nowy wykład</button>${LS.length?'<button onclick="selOn()">☑ Wybierz kilka</button>':''}</div>`+LS.map(l=>`<div class=card onclick="openL('${l.id}')" style="display:flex;gap:8px;align-items:center"><div style="flex:1"><div>${esc(l.title)}</div><div class=mut>${new Date(l.date).toLocaleString('pl')} · ${tm(dur(l))}</div></div><button class=s onclick="event.stopPropagation();delLec(['${l.id}'])">🗑</button></div>`).join('')+(LS.length?'':'<p class=mut>Brak wykładów.</p>');return}
@@ -59,7 +60,7 @@ function render(){
  h+=`<div class=tabs><button class="${tab===0?'on':''}" onclick="tab=0;render()">Notatki</button><button class="${tab===1?'on':''}" onclick="tab=1;render()">Transkrypcja</button><button class="${tab===2?'on':''}" onclick="tab=2;render()">Weryfikacja${L.verify?' ('+L.verify.items.length+')':''}</button></div><div style="display:flex;gap:6px;margin:8px 0"><button class=p style="flex:1" onclick="mkNotes()">✨ Sporządź notatki</button><button onclick="exDlg(1)">⬆ Eksport</button><button onclick="moreMenu()">⋯</button></div>`;
  if(tab===0){h+=L.notes.length?'<div style="line-height:1.9">'+LEG+'</div>':'<p class=mut>Notatki powstają automatycznie po ok. 10 min nagrania (internet). Możesz je też zrobić ręcznie: ✨ Sporządź notatki.</p>';
   h+=L.notes.map((n,i)=>hdr(n.start)+`<div class=card><div style="display:flex;align-items:center;gap:6px"><b onclick="plAt(${n.start})" style="cursor:pointer">▶ ${ts(n.start)} (${tm(n.end-n.start)})</b><span style="flex:1">${badges(n.summary)}</span><button class=s onclick="delNote(${i})">🗑</button></div><div class=nt>${esc(n.title)}</div>${bhtml(n.summary)}${n.authors?`<div class=card><b>AUTORZY</b><pre>${esc(n.authors)}</pre></div>`:''}${n.ver?`<div class=card><b>WERYFIKACJA</b><pre>${esc(n.ver)}</pre></div>`:''}${n.busy?'<div class=mut>⏳</div>':''}</div>`).join('')}
- else if(tab===1){const R=roles();h+=L.utt.map((u,i)=>hdr(u.s)+`<div class=card><b class=${R[i]==='Pytanie'?'P':R[i]==='Odpowiedź'?'O':'W'} onclick="plAt(${u.s})" style="cursor:pointer">▶ ${ts(u.s)} · ${R[i]}${u.tmp?' (podgląd)':''}</b><div>${esc(u.t)}</div></div>`).join('')||'<p class=mut>Pusto.</p>'}
+ else if(tab===1){const R=roles();h+=L.utt.map((u,i)=>{const k=wallOf(u.s,L),w=`${k.approx?'~':''}${k.d.toLocaleTimeString('pl',{hour:'2-digit',minute:'2-digit'})}`,c=R[i]==='Pytanie'?'P':R[i]==='Odpowiedź'?'O':'W',lab=(c!=='W'||R[i]!==R[i-1])?`<b class=${c}>${R[i]}${u.tmp?' (podgląd)':''}:</b> `:'';return hdr(u.s)+`<div class=ut><div class=tm onclick="plAt(${u.s})">▶ ${w}<br>${tm(u.s)}</div><div class=tx>${lab}${esc(u.t)}</div></div>`}).join('')||'<p class=mut>Pusto.</p>'}
  else h+=verHtml();
  $('#app').innerHTML=h;plSync()}
 const P=()=>L.parts||(L.parts=[{start:0,name:'Część 1'}]);
@@ -70,7 +71,7 @@ function ren(){const q=esc(L.title).replace(/"/g,'&quot;');dlg(`<h3>Nazwa wykła
 function pause(){stopRec();L.pend=true;saveL();render()}
 function roles(l=L){return l.utt.map((u,i)=>u.sp==='O'?'Pytanie':(i&&l.utt[i-1].sp==='O'?'Odpowiedź':'Wykładowca'))}
 async function newL(){if(S.rec)return;L={id:crypto.randomUUID(),title:'Wykład '+new Date().toLocaleString('pl'),date:Date.now(),chunks:[],utt:[],notes:[],notedUntil:0};await saveL();render();ren()}
-async function openL(id){L=LS.find(l=>l.id===id);render();pump()}
+async function openL(id){L=LS.find(l=>l.id===id);S.msg='';S.link='';tab=0;render();pump()}
 const elapsed=()=>dur(L)+(Date.now()-S.cs)/1000;
 // ---------- nagrywanie (pliki 30 s, tylko mikrofon = mało baterii)
 async function toggle(){S.rec?stopRec():startRec()}
@@ -131,7 +132,7 @@ async function pump(final){if(!L)return;const l=L;
 const mm=s=>{const m=s/60;return s<1?'0 min':m<1?Math.round(s)+' s':m<10?(Math.round(m*10)/10).toString().replace('.',',')+' min':Math.round(m)+' min'};
 function qBar(){if(!L)return'';const box=(c,h)=>`<div style="border:2px solid ${c};background:${c}22;border-radius:12px;padding:10px 12px;margin:8px 0">${h}</div>`,bar=(p,c)=>`<div style="height:10px;background:#333;border-radius:5px;margin:6px 0"><div style="height:10px;width:${Math.max(2,Math.min(100,p))}%;background:${c};border-radius:5px"></div></div>`,r1=x=>x.toFixed(1).replace('.',',');
  let h='';const J=S.job;
- if(J){const el=(Date.now()-J.t0)/1000,eta=J.k>1?el/(J.k-1)*(J.N-J.k+1):0;h+=box('#a855f7',`<b style="font-size:15px">${J.n}</b> – część ${J.k} z ${J.N}${bar((J.k-1)/J.N*100+3,'#a855f7')}<div>${J.k>1?`Zostało ok. <b>${mm(eta)}</b>`:'Pierwsza część trwa zwykle 15–40 s'} · minęło ${mm(el)}</div><div class=mut>AI pracuje – nic nie klikaj, nie zamykaj strony.</div>`)}
+ if(J&&J.id===L.id){const el=(Date.now()-J.t0)/1000,eta=J.k>1?el/(J.k-1)*(J.N-J.k+1):0;h+=box('#a855f7',`<b style="font-size:15px">${J.n}</b> – część ${J.k} z ${J.N}${bar((J.k-1)/J.N*100+3,'#a855f7')}<div>${J.k>1?`Zostało ok. <b>${mm(eta)}</b>`:'Pierwsza część trwa zwykle 15–40 s'} · minęło ${mm(el)}</div><div class=mut>AI pracuje – nic nie klikaj, nie zamykaj strony.</div>`)}
  const all=L.chunks,pend=all.filter(c=>!c.done),sk=pend.filter(c=>qs(L,c).skip),wait=pend.filter(c=>!qs(L,c).skip),du=a=>a.reduce((x,c)=>x+(c.dur||30),0);
  if(wait.length&&canSTT()){const tot=du(all),dn=tot-du(pend),p=dn/Math.max(tot,1)*100,w=du(wait);let rate=0;const th=S.th||[];if(th.length>=3){const sp=(th[th.length-1].t-th[0].t)/1000;if(sp>0)rate=th.slice(1).reduce((x,y)=>x+y.d,0)/sp}
   if(S.fail&&S.rtAt)h+=box('#f97316',`<b style="font-size:15px">⚠ Transkrypcja: przerwa w połączeniu</b>${bar(p,'#f97316')}<div>Czeka <b>${mm(w)}</b> nagrania · ponawiam za ${Math.max(0,Math.ceil((S.rtAt-Date.now())/1000))} s (próba ${S.fail})</div><div class=mut>${esc(S.last||'')}</div><button class=s onclick="resume()">▶ Ponów teraz</button>`);
@@ -192,7 +193,7 @@ async function notes(force){if(!canAI()||!L)return;
  const B=[];let cur=[],ch=0;for(const x of fresh){const n=line(x[0],x[1]).length;if(cur.length&&(x[0].e-cur[0][0].s>720||ch+n>10000)){B.push(cur);cur=[];ch=0}cur.push(x);ch+=n}if(cur.length)B.push(cur);
  let wl=null;if(!S.rec)try{wl=await navigator.wakeLock.request('screen')}catch(e){}
  try{let k=0;for(const b of B){k++;const b0=b[0][0].s,b1=b[b.length-1][0].e;if(!force&&k===B.length&&b1-b0<600)break;
-   S.job={n:'✨ Notatki',k,N:B.length,t0:(S.job&&S.job.t0)||Date.now()};render();
+   S.job={id:L.id,n:'✨ Notatki',k,N:B.length,t0:(S.job&&S.job.t0)||Date.now()};render();
    let a=null;for(let t=0;t<2&&!a;t++)a=parseNotes(await claude(npc()+b.map(([u,r])=>line(u,r)).join('\n'),{max:2500}));
    if(!a)throw new Error('AI zwróciło odpowiedź, której nie umiem odczytać – kliknij „Sporządź notatki” jeszcze raz');
    a.forEach(n=>{const cl=v=>Math.min(Math.max(v,b0),b1),x=+n.start_s,y=+n.end_s,st=Number.isFinite(x)?cl(x):b0,en=Number.isFinite(y)?cl(y):b1;
@@ -211,7 +212,7 @@ async function verifyAll(){if(S.vp)return;if(!canAI()){S.msg='Weryfikacja wymaga
  const B=[];let cur=[],ch=0;for(const x of all){const n=line(x[0],x[1]).length;if(cur.length&&ch+n>8000){B.push(cur);cur=[];ch=0}cur.push(x);ch+=n}if(cur.length)B.push(cur);
  const web=!!(cap.ckey||cfg('ant')),items=[];let checked=0,fail=0,bad=0,okc=0,wl=null;if(!S.rec)try{wl=await navigator.wakeLock.request('screen')}catch(e){}
  S.vp={k:0,n:B.length,t0:Date.now()};S.msg='';tab=2;render();
- try{for(const b of B){S.vp.k++;S.job={n:'✅ Weryfikacja',k:S.vp.k,N:B.length,t0:S.vp.t0};render();let a=null;
+ try{for(const b of B){S.vp.k++;S.job={id:L.id,n:'✅ Weryfikacja',k:S.vp.k,N:B.length,t0:S.vp.t0};render();let a=null;
    for(let t=0;t<2&&!a;t++){try{a=parseArr(await claude(VP+b.map(([u,r])=>line(u,r)).join('\n'),{model:'claude-sonnet-5-5',web:1,max:2500}))}catch(e){}}
    if(!a){if(++bad>=3)break;continue}bad=0;okc++;
    for(const x of a){if(!x.claim){if(x.checked!==undefined)checked+=+x.checked||0;continue}
@@ -231,7 +232,7 @@ function verTxt(l,m){const v=l.verify;if(!v)return'';let o=m?`\n## Weryfikacja f
  if(!v.items.length)o+='Nic nie budzi wątpliwości.\n';return o}
 function vexp(l){const v=l.verify;if(!v)return'';const g={};v.items.forEach(x=>(g[x.v]=g[x.v]||[]).push(x));
  return `<h2>✅ Weryfikacja faktów</h2><div class=m>${new Date(v.at).toLocaleString('pl')} · ${v.web?'z wyszukiwaniem w sieci':'z pamięci modelu (bez sieci) – wskazówki, nie wyrok'} · sprawdzono ok. ${v.checked} tez</div>`
-  +(v.items.length?Object.keys(VD).filter(k=>g[k]).map(k=>`<h3 style="color:${VC[k]};margin:16px 0 4px">${VD[k][0]} ${VD[k][2]} (${g[k].length})</h3>`+g[k].map(x=>`<div class=b style="display:block;border-color:${VC[k]};background:#f9fafb"><b>[${tm(x.t)}] ${esc(x.claim)}</b><div>${esc(x.why)}</div>${x.fix?`<div style="color:#16a34a">✔ ${esc(x.fix)}</div>`:''}${x.src?`<a href="${esc(x.src).replace(/"/g,'%22')}">źródło</a>`:''}</div>`).join('')).join(''):'<div class="b k4">Nic nie budzi wątpliwości.</div>')}
+  +(v.items.length?Object.keys(VD).filter(k=>g[k]).map(k=>`<h3 style="color:${VC[k]};margin:16px 0 4px">${VD[k][0]} ${VD[k][2]} (${g[k].length})</h3>`+g[k].map(x=>`<div class=b style="display:block;border-color:${VC[k]};background:#f9fafb"><b>${l.notes.length?`<a href="#${aid(l,nIdx(l,x.t))}">[${tm(x.t)}]</a>`:`[${tm(x.t)}]`} ${esc(x.claim)}</b><div>${esc(x.why)}</div>${x.fix?`<div style="color:#16a34a">✔ ${esc(x.fix)}</div>`:''}${x.src?`<a href="${esc(x.src).replace(/"/g,'%22')}">źródło</a>`:''}</div>`).join('')).join(''):'<div class="b k4">Nic nie budzi wątpliwości.</div>')}
 async function authorsAll(){dlg();if(!canAI()){S.msg='Wymaga internetu i dostępu do AI';render();return}
  const idx=L.notes.map((n,i)=>n.authors?-1:i).filter(i=>i>=0);if(!idx.length){S.msg=L.notes.length?'Autorzy są już dopisani do wszystkich notatek':'Brak notatek';render();return}
  let k=0;for(const i of idx){S.msg=`👤 Autorzy ${++k}/${idx.length}…`;render();await enrich(i,0);if(/^(Błąd AI|Wymaga)/.test(S.msg))return}
@@ -246,7 +247,7 @@ function mp3Opts(rng){let zr='';if(rng){const d=dur(L);if(S.zl!==L.id){S.zl=L.id
   <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">Od <input id=zf value="${S.zf}" oninput="S.zf=this.value;S.zsv='c';zs.value='c'" style="width:84px"> <button class=s onclick="zrNow('zf')">⏱ z odtwarzacza</button></div>
   <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:6px">Do <input id=zt value="${S.zt}" oninput="S.zt=this.value;S.zsv='c';zs.value='c'" style="width:84px"> <button class=s onclick="zrNow('zt')">⏱ z odtwarzacza</button></div><p class=mut>Format 1:30 albo 1:02:03. Przycisk „z odtwarzacza” bierze pozycję, na której zatrzymałeś odtwarzacz.</p></div>`}
  const c=(k,d,t)=>`<label class=ck><input type=checkbox ${S[k]===false?'':'checked'} onchange="S.${k}=this.checked"> <span>${t}</span></label>`;
- return `<details ${S.exo?'open':''} ontoggle="S.exo=this.open" style="margin:2px 0 6px 30px"><summary class=mut>⚙ Ustawienia MP3: szum, cisza${rng?', zakres':''}</summary>${zr}${c('dn',0,'🧹 Usuń szum tła (sala, buczenie)')}${c('cut',0,'✂ Usuń ciszę (pauzy &gt;0,7 s → 0,25 s)')}${c('boost',0,'🔊 Wzmocnij ciche fragmenty (do ×8)')}<p class=mut>Po usunięciu ciszy czas w pliku nie zgadza się z godzinami w transkrypcji. Kilka godzin nagrania = kilka minut obróbki; nie zamykaj strony i nie blokuj ekranu.</p></details>`}
+ return `<details ${S.exo?'open':''} ontoggle="S.exo=this.open" style="margin:2px 0 6px 30px"><summary class=mut>⚙ Ustawienia MP3: jakość, szum, cisza${rng?', zakres':''}</summary><div style="margin-top:8px"><b>Jakość</b><select onchange="S.kb=+this.value" style="width:100%;margin:6px 0">${[[128,'128 kbps – wysoka (zalecana)'],[192,'192 kbps – bardzo wysoka'],[96,'96 kbps – dobra, mniejszy plik'],[64,'64 kbps – mały plik']].map(([v,t])=>`<option value="${v}" ${(S.kb||128)===v?'selected':''}>${t}</option>`).join('')}</select></div>${zr}${c('dn',0,'🧹 Usuń szum tła (sala, buczenie)')}${c('cut',0,'✂ Usuń ciszę (pauzy &gt;0,7 s → 0,25 s)')}${c('boost',0,'🔊 Wzmocnij ciche fragmenty (do ×8)')}<p class=mut>Po usunięciu ciszy czas w pliku nie zgadza się z godzinami w transkrypcji. Kilka godzin nagrania = kilka minut obróbki; nie zamykaj strony i nie blokuj ekranu.</p></details>`}
 function exDlg(one){if(one!==undefined){S.exi=one?[L.id]:[...S.sel];S.exm=''}
  const X=S.ex=S.ex||{h:1,t:0,c:0,m:0,z:0,dest:'drive'},ls=exLs();if(!ls.length)return;
  const noN=!ls.some(l=>l.notes.length),noA=!ls.some(l=>l.chunks.length),dis={h:noN,t:noN,c:false,m:noA||S.rec,z:noA||S.rec},why={h:'brak notatek',t:'brak notatek',m:S.rec?'trwa nagrywanie':'brak nagrania',z:S.rec?'trwa nagrywanie':'brak nagrania'};
@@ -273,7 +274,7 @@ function shareFiles(fs){window.XF=fs.map(f=>new File([f.blob],f.name,{type:f.blo
  dlg(`<h3>Gotowe: ${fs.length} ${fs.length===1?'plik':'pliki'}</h3><p class=mut>${fs.map(f=>esc(f.name)).join('<br>')}</p><button class=p onclick="doShare()">📤 Udostępnij</button> <button onclick="dlg()">Zamknij</button>`)}
 function doShare(){try{if(navigator.canShare&&navigator.canShare({files:XF})){navigator.share({files:XF}).then(()=>dlg()).catch(e=>{if(e.name!=='AbortError'){XF.forEach((f,i)=>setTimeout(()=>dl(f,f.name),i*600));dlg()}});return}}catch(e){}XF.forEach((f,i)=>setTimeout(()=>dl(f,f.name),i*600));dlg()}
 async function exGo(){const X=S.ex,ls=exLs();if(!ls.length)return;if(!EXI.some(([k])=>X[k]))return(S.exm='Zaznacz, co wyeksportować',exDlg());
- const dest=X.dest,st=stamp(),o={cut:S.cut!==false,boost:S.boost!==false,denoise:S.dn!==false};let sfx='',span=0;
+ const dest=X.dest,st=stamp(),o={cut:S.cut!==false,boost:S.boost!==false,denoise:S.dn!==false,kbps:S.kb||128};let sfx='',span=0;
  if(X.m&&ls.length===1&&ls[0]===L)try{const d=dur(L),a=pt(S.zf??'0:00'),b=pt(S.zt??tm(d));if(!(a>=0&&b>a))throw new Error('Zły zakres – wpisz Od i Do w formacie 1:30');const a2=Math.min(a,d),b2=Math.min(b,d);if(b2-a2<1)throw new Error('Zakres poza nagraniem (wykład trwa '+tm(d)+')');
   if(a2>0.5||b2<d-0.5){o.rng=[a2,b2];span=b2-a2;sfx='_'+tm(a2).replace(/:/g,'-')+'_'+tm(b2).replace(/:/g,'-')}}catch(e){S.exm=e.message;S.exo=true;return exDlg()}
  dlg();S.link='';const out=[],done=[],miss=[];let T=null,sk=0,secs=0,orig=0;
@@ -284,7 +285,7 @@ async function exGo(){const X=S.ex,ls=exLs();if(!ls.length)return;if(!EXI.some((
    if(X.c)files.push([nm(`rozmowa_${st}.txt`,`czat_${st}.txt`),new Blob([chat(l)],{type:'text/plain'})]);
    for(const[n,b]of files){S.msg=pre+n;render();if(dest==='drive')await gputBig(T.tok,n,b,dir);else out.push({name:n,blob:b});done.push(n)}
    if(X.m&&l.chunks.length){const{blob,skip,secs:sc}=await toMp3(l,(a,b,ph)=>{S.msg=`${ph||'MP3'}${ls.length>1?` (wykład ${k+1}/${ls.length})`:''}: ${a}/${b}`;render()},o);sk+=skip;secs+=sc;orig+=o.rng?span:dur(l);
-    const n=sn+new Date(l.date).toISOString().slice(0,10)+sfx+'.mp3';if(dest==='drive'){S.msg=pre+n+' (wysyłam)';render();await gputBig(T.tok,n,blob,dir)}else out.push({name:n,blob});done.push(n)}
+    const n=sn+new Date(l.date).toISOString().slice(0,10)+sfx+'_'+o.kbps+'kbps.mp3';if(dest==='drive'){S.msg=pre+n+' (wysyłam)';render();await gputBig(T.tok,n,blob,dir)}else out.push({name:n,blob});done.push(n)}
    if(X.z&&l.chunks.length){if(dest==='drive'){await drvRaw(T,l,dir,pre);done.push('nagrania + kopia')}else{const n=sn+`nagrania_${st}.zip`;out.push({name:n,blob:await mkZip(l)});done.push(n)}}}
   let tail=(miss.length?` · bez notatek: ${miss.map(esc).join(', ')}`:'')+(X.m&&done.length?(o.rng?` · fragment ${tm(o.rng[0])}–${tm(o.rng[1])}`:'')+(o.cut?` · ${tm(orig)} → ${tm(secs)} po usunięciu ciszy`:''):'')+(sk?` · uwaga: ${sk} kawałków 30 s było nieczytelnych`:'');
   if(!done.length){S.msg='Nic nie wyeksportowano'+tail}
@@ -352,11 +353,12 @@ function notesTxt(l=L,m=0){const d=new Date(l.date).toLocaleDateString('pl'),u=t
   if(n.authors)o+=m?`**Autorzy:**\n${u(n.authors)}\n\n`:`Autorzy:\n${n.authors}\n\n`;
   if(n.ver)o+=m?`**Weryfikacja:**\n${u(n.ver)}\n\n`:`Weryfikacja:\n${n.ver}\n\n`});
  return (o+verTxt(l,m)).trimEnd()+'\n'}
+const aid=(l,i)=>'n_'+String(l.id).replace(/\W/g,'')+'_'+i,nIdx=(l,t)=>{let k=0;l.notes.forEach((n,i)=>{if(t>=n.start-1)k=i});return k};
 function notesHtml(ls){const e=esc,C=['#6b7280','#2563eb','#ea580c','#9333ea','#16a34a','#ca8a04'],G=['#f3f4f6','#dbeafe','#ffedd5','#f3e8ff','#dcfce7','#fef9c3'];
- const css='body{font:16px/1.45 -apple-system,system-ui,Segoe UI,sans-serif;max-width:760px;margin:0 auto;padding:16px;color:#111;background:#fff}h1{font-size:22px;margin:0}h2{font-size:18px;margin:22px 0 4px}.m{color:#6b7280;font-size:13px;margin:2px 0 8px}.b{display:flex;gap:8px;margin:5px 0;padding:6px 10px;border-left:4px solid;border-radius:0 8px 8px 0}.b i{font-style:normal}.b.k2 span{font-weight:600}.c{display:inline-block;font-size:12px;border:1px solid;border-radius:10px;padding:1px 8px;margin:2px 4px 2px 0;background:#fff}.t{display:inline-block;font-size:12px;font-weight:400;background:#111;color:#fff;border-radius:10px;padding:1px 8px;margin-right:6px}pre{white-space:pre-wrap;font:inherit;margin:4px 0}.x{margin-top:6px;padding:8px 10px;background:#f9fafb;border-radius:8px;font-size:14px}footer{margin-top:28px;color:#9ca3af;font-size:12px}'+C.map((c,k)=>`.k${k}{border-color:${c};background:${G[k]}}.c.k${k}{color:${c};background:#fff}`).join('');
+ const css='body{font:16px/1.45 -apple-system,system-ui,Segoe UI,sans-serif;max-width:760px;margin:0 auto;padding:16px;color:#111;background:#fff}h1{font-size:22px;margin:0}h2{font-size:18px;margin:22px 0 4px}.m{color:#6b7280;font-size:13px;margin:2px 0 8px}.b{display:flex;gap:8px;margin:5px 0;padding:6px 10px;border-left:4px solid;border-radius:0 8px 8px 0}.b i{font-style:normal}.b.k2 span{font-weight:600}.c{display:inline-block;font-size:12px;border:1px solid;border-radius:10px;padding:1px 8px;margin:2px 4px 2px 0;background:#fff}.t{display:inline-block;font-size:12px;font-weight:400;background:#111;color:#fff;border-radius:10px;padding:1px 8px;margin-right:6px}pre{white-space:pre-wrap;font:inherit;margin:4px 0}.x{margin-top:6px;padding:8px 10px;background:#f9fafb;border-radius:8px;font-size:14px}footer{margin-top:28px;color:#9ca3af;font-size:12px}html{scroll-behavior:smooth}.toc{display:flex;flex-direction:column;gap:3px;margin:12px 0}.toc a,.b a{color:#2563eb;text-decoration:none}.toc a{font-size:14px}'+C.map((c,k)=>`.k${k}{border-color:${c};background:${G[k]}}.c.k${k}{color:${c};background:#fff}`).join('');
  const leg=SY.map(([y,k,n])=>`<span class="c k${k}">${y} ${n}</span>`).join('');
- const body=ls.map(l=>`<h1>📚 ${e(l.title)}</h1><div class=m>📅 ${new Date(l.date).toLocaleDateString('pl')} · ${tm(dur(l))}</div><div>${leg}</div>`+l.notes.map(n=>{const c={};bls(n.summary).forEach(b=>b.k&&(c[b.k]=(c[b.k]||0)+1));
-  return `<h2><span class=t>${e(nw(n,l))}</span>${e(n.title)}</h2>`+SY.filter(([y,k])=>c[k]&&k<=3).map(([y,k])=>`<span class="c k${k}">${y} ${c[k]}</span>`).join('')+bls(n.summary).map(b=>`<div class="b k${b.k}"><i>${b.sym}</i><span>${e(b.t)}</span></div>`).join('')+(n.authors?`<div class=x><b>Autorzy</b><pre>${e(n.authors)}</pre></div>`:'')+(n.ver?`<div class=x><b>Weryfikacja</b><pre>${e(n.ver)}</pre></div>`:'')}).join('')+vexp(l)).join('<hr style="margin:30px 0">');
+ const body=ls.map(l=>`<h1>📚 ${e(l.title)}</h1><div class=m>📅 ${new Date(l.date).toLocaleDateString('pl')} · ${tm(dur(l))}</div><div>${leg}</div><nav class=toc>${l.notes.map((n,ni)=>`<a href="#${aid(l,ni)}">${e(nw(n,l))} · ${e(n.title)}</a>`).join('')}</nav>`+l.notes.map((n,ni)=>{const c={};bls(n.summary).forEach(b=>b.k&&(c[b.k]=(c[b.k]||0)+1));
+  return `<h2 id="${aid(l,ni)}"><span class=t>${e(nw(n,l))}</span>${e(n.title)}</h2>`+SY.filter(([y,k])=>c[k]&&k<=3).map(([y,k])=>`<span class="c k${k}">${y} ${c[k]}</span>`).join('')+bls(n.summary).map(b=>`<div class="b k${b.k}"><i>${b.sym}</i><span>${e(b.t)}</span></div>`).join('')+(n.authors?`<div class=x><b>Autorzy</b><pre>${e(n.authors)}</pre></div>`:'')+(n.ver?`<div class=x><b>Weryfikacja</b><pre>${e(n.ver)}</pre></div>`:'')}).join('')+vexp(l)).join('<hr style="margin:30px 0">');
  return `<!doctype html><html lang=pl><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><title>${e(ls[0].title)} – notatki</title><style>${css}</style><body>${body}<footer>Notatnik Słuchacza ${VER} · Autor: Michał Rzekiecki</footer></body></html>`}
 function notesOf(one,m){const ls=(one?[L]:picked()).filter(l=>l.notes.length);return{ls,t:m===2?(ls.length?notesHtml(ls):''):ls.map(l=>notesTxt(l,m)).join('\n\n———\n\n')}}
 function noNotes(){dlg();S.msg='Brak notatek – kliknij ✨ Sporządź notatki';render()}
@@ -397,37 +399,38 @@ const FFT=(()=>{const N=FN,rev=new Uint16Array(N),cs=new Float64Array(N/2),sn=ne
  return(re,im,inv)=>{for(let i=0;i<N;i++){const j=rev[i];if(j>i){let t=re[i];re[i]=re[j];re[j]=t;t=im[i];im[i]=im[j];im[j]=t}}
   for(let len=2;len<=N;len<<=1){const h=len>>1,st=N/len;for(let i=0;i<N;i+=len)for(let k=0;k<h;k++){const wr=cs[k*st],wi=inv?-sn[k*st]:sn[k*st],a=i+k,b=a+h,xr=re[b]*wr-im[b]*wi,xi=re[b]*wi+im[b]*wr;re[b]=re[a]-xr;im[b]=im[a]-xi;re[a]+=xr;im[a]+=xi}}
   if(inv)for(let i=0;i<N;i++){re[i]/=N;im[i]/=N}}})();
-function denoise(x,alpha=1.3,floor=0.12){const n=x.length,nf=Math.ceil(n/FH)+1,SR=new Float32Array(nf*FB),SI=new Float32Array(nf*FB),M=new Float32Array(nf*FB),re=new Float64Array(FN),im=new Float64Array(FN);
+function denoise(x,alpha=1.3,floor=0.12,prof){const n=x.length,nf=Math.ceil(n/FH)+1,SR=new Float32Array(nf*FB),SI=new Float32Array(nf*FB),M=new Float32Array(nf*FB),re=new Float64Array(FN),im=new Float64Array(FN);
  for(let t=0;t<nf;t++){const st=(t-1)*FH;for(let i=0;i<FN;i++){const k=st+i;re[i]=k>=0&&k<n?x[k]*FW[i]:0;im[i]=0}FFT(re,im,0);
   for(let b=0;b<FB;b++){const o=t*FB+b;SR[o]=re[b];SI[o]=im[b];M[o]=Math.hypot(re[b],im[b])}}
  const N0=new Float32Array(FB),col=new Float32Array(nf),q=Math.max(1,Math.floor(nf*0.1));
  for(let b=0;b<FB;b++){for(let t=0;t<nf;t++)col[t]=M[t*FB+b];col.sort();let a=0;for(let t=0;t<q;t++)a+=col[t];N0[b]=a/q}
  const Ns=new Float32Array(FB);for(let b=0;b<FB;b++){let a=0,c=0;for(let d=-2;d<=2;d++){const k=b+d;if(k>=0&&k<FB){a+=N0[k];c++}}Ns[b]=3*a/c}
+ if(prof){if(prof.N)for(let b=0;b<FB;b++)Ns[b]=0.75*prof.N[b]+0.25*Ns[b];prof.N=Ns}
  const out=new Float32Array(n),Gp=new Float32Array(FB).fill(1);
  for(let t=0;t<nf;t++){for(let b=0;b<FB;b++){const o=t*FB+b;let G=b<2?0:Math.max(floor,1-alpha*Ns[b]/(M[o]+1e-12));G=G>Gp[b]?0.7*G+0.3*Gp[b]:0.35*G+0.65*Gp[b];Gp[b]=G;if(b<2)G=0;
    re[b]=SR[o]*G;im[b]=SI[o]*G;if(b>0&&b<FB-1){re[FN-b]=re[b];im[FN-b]=-im[b]}}
   FFT(re,im,1);const st=(t-1)*FH;for(let i=0;i<FN;i++){const k=st+i;if(k>=0&&k<n)out[k]+=re[i]*FW[i]}}
  return out}
 
-async function toMp3(l,prog,o={}){await loadJS(LAME);const ctx=new(window.AudioContext||window.webkitAudioContext)(),sr=ctx.sampleRate,out=[],enc=new lamejs.Mp3Encoder(1,sr,64),z=new Int16Array(1152),W=Math.round(sr*0.05),proc=o.cut||o.boost,yl=()=>new Promise(r=>setTimeout(r,0));
- let ok=0,skip=0,total=0,pend=[],long=false,gs=1,thr=0.003;const CH=l.chunks.filter(c=>!o.rng||(c.start+c.dur>o.rng[0]&&c.start<o.rng[1]));if(!CH.length)throw new Error('w tym zakresie nie ma nagrania');
+async function toMp3(l,prog,o={}){await loadJS(LAME);const ctx=new(window.AudioContext||window.webkitAudioContext)(),sr=ctx.sampleRate,out=[],enc=new lamejs.Mp3Encoder(1,sr,o.kbps||128),z=new Int16Array(1152),W=Math.round(sr*0.05),proc=o.cut||o.boost,yl=()=>new Promise(r=>setTimeout(r,0));
+ let ok=0,skip=0,total=0,pend=[],tail=[],long=false,gs=1,hold=0,thr=0.003;const np={};const CH=l.chunks.filter(c=>!o.rng||(c.start+c.dur>o.rng[0]&&c.start<o.rng[1]));if(!CH.length)throw new Error('w tym zakresie nie ma nagrania');
  const emit=pcm=>{for(let i=0;i<pcm.length;i+=1152){const m=enc.encodeBuffer(pcm.subarray(i,i+1152));if(m.length)out.push(m)}total+=pcm.length};
  const sil=sec=>{for(let n=Math.round(sec*sr);n>0;n-=1152)emit(z.subarray(0,Math.min(1152,n)))};
  const dec=async c=>{const b=await tx('chunk','readonly',s=>s.get(l.id+':'+c.i));if(!b)return null;try{const ab=await b.arrayBuffer();return await new Promise((res,rej)=>{const p=ctx.decodeAudioData(ab,res,rej);p&&p.catch&&p.catch(rej)})}catch(e){return null}};
  const mono=buf=>{const n=buf.length,a=buf.getChannelData(0),y=buf.numberOfChannels>1?buf.getChannelData(1):null;if(!y)return a;const f=new Float32Array(n);for(let i=0;i<n;i++)f[i]=(a[i]+y[i])/2;return f};
  const rms=(f,i,e)=>{let s=0;for(let j=i;j<e;j++)s+=f[j]*f[j];return Math.sqrt(s/(e-i))};
- const flush=()=>{if(long)for(let i=0;i<5;i++)emit(pend[i]);else for(const p of pend)emit(p);pend=[];long=false};
+ const flush=()=>{if(long){for(let i=0;i<5;i++)emit(pend[i]);for(const p of tail)emit(p)}else for(const p of pend)emit(p);pend=[];tail=[];long=false};
  try{
   if(proc){const R=[];for(const[k,c]of CH.entries()){prog(k+1,CH.length,'Analiza');const buf=await dec(c);if(buf){const f=mono(buf);for(let i=0;i<f.length;i+=W)R.push(rms(f,i,Math.min(f.length,i+W)))}await yl()}
    const q=R.filter(x=>x>1e-5).sort((a,b)=>a-b);if(q.length){const p10=q[Math.floor(q.length*0.1)],p90=q[Math.floor(q.length*0.9)];thr=Math.max(0.0015,Math.min(p10*1.6,p90*0.4))}}
   for(const[k,c]of CH.entries()){prog(k+1,CH.length,o.denoise?'Czyszczenie + MP3':'MP3');const buf=await dec(c);
    if(!buf){skip++;if(!o.cut)sil(o.rng?Math.max(0,Math.min(c.start+c.dur,o.rng[1])-Math.max(c.start,o.rng[0])):c.dur);continue}
    const fm=mono(buf);let a0=0,a1=fm.length,part=false;if(o.rng){a0=Math.max(0,Math.round((o.rng[0]-c.start)*sr));a1=Math.min(fm.length,Math.round((o.rng[1]-c.start)*sr));part=a0>0||a1<fm.length;if(a1-a0<W)continue}
-   const fo=part?fm.subarray(a0,a1):fm,n=fo.length,f=o.denoise?denoise(fo):fo;
-   for(let i=0;i<n;i+=W){const e=Math.min(n,i+W),m=e-i,r=rms(f,i,e),loud=(o.denoise?rms(fo,i,e):r)>=thr;let g=1;if(o.boost&&loud)g=Math.max(1,Math.min(8,0.08/Math.max(r,1e-4)));
-    const g0=gs;gs=g<gs?gs+(g-gs)*0.5:gs+(g-gs)*0.12;const w=new Int16Array(m);
+   const fo=part?fm.subarray(a0,a1):fm,n=fo.length,f=o.denoise?denoise(fo,1.15,0.2,np):fo;
+   for(let i=0;i<n;i+=W){const e=Math.min(n,i+W),m=e-i,r=rms(f,i,e),l0=(o.denoise?rms(fo,i,e):r)>=thr;if(l0)hold=5;const loud=l0||hold>0;if(!l0&&hold>0)hold--;let g=1;if(o.boost&&loud)g=Math.max(1,Math.min(6,0.08/Math.max(r,1e-4)));
+    const g0=gs;gs=g<gs?gs+(g-gs)*0.25:gs+(g-gs)*0.04;const w=new Int16Array(m);
     for(let j=0;j<m;j++){let v=f[i+j]*(g0+(gs-g0)*j/m);if(o.boost){if(v>0.8)v=0.8+0.2*Math.tanh((v-0.8)/0.2);else if(v<-0.8)v=-0.8-0.2*Math.tanh((-v-0.8)/0.2)}w[j]=Math.max(-1,Math.min(1,v))*32767}
-    if(o.cut&&!loud){if(pend.length<14)pend.push(w);if(pend.length>=14)long=true}else{if(pend.length)flush();emit(w)}}
+    if(o.cut&&!loud){if(pend.length<14)pend.push(w);else{long=true;tail.push(w);if(tail.length>3)tail.shift()}}else{if(pend.length)flush();emit(w)}}
    if(!o.cut&&!part){const gap=c.dur-n/sr;if(gap>0.2)sil(gap)}ok++;await yl()}
   if(pend.length)flush();
   if(!ok)throw new Error('ta przeglądarka nie odczytuje tych nagrań (webm) – użyj ZIP z surowymi plikami');
