@@ -1,5 +1,5 @@
 /* ───────── Nawyk v1.0 — logika aplikacji ───────── */
-const VER='v1.0', MAIL='kontakt@smialo.org', LS='nawyk.v1', APPKEY='nawyk';
+const VER='v1.01', MAIL='kontakt@smialo.org', LS='nawyk.v1', APPKEY='nawyk';
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const pad=n=>String(n).padStart(2,'0');
@@ -112,8 +112,21 @@ function syncKey(){
   }
   return k;
 }
+const KEYRE=/^[A-Za-z0-9_-]{24,64}$/;
+function takeHashKey(){          // link z kluczem: …/02/#k=KLUCZ — ustawia klucz na tym urządzeniu (jeden link = te same dane na każdym adresie i urządzeniu)
+  try{
+    const m=/[#&]k=([A-Za-z0-9_-]{24,64})(?:&|$)/.exec(location.hash||'');if(!m)return false;
+    const old=localStorage.getItem(KEYLS)||'';
+    try{history.replaceState(null,'',location.pathname+location.search)}catch(e){}
+    if(old===m[1])return false;
+    if(old){try{localStorage.setItem(KEYLS+'.old',old);const raw=localStorage.getItem(LS);if(raw)localStorage.setItem(LS+'.bak',raw)}catch(e){}}
+    localStorage.setItem(KEYLS,m[1]);
+    return true;
+  }catch(e){return false}
+}
 async function initWorker(force){  // własny hosting (workers.dev / smialo.org): D1 przez Workera; tożsamość = e-mail z Access albo tajny klucz synchronizacji
   try{
+    if(takeHashKey())force=true;
     const url='/api/state/'+APPKEY,hd={'X-Sync-Key':syncKey()};
     setSync('wait');
     const r=await fetch(url,{credentials:'same-origin',cache:'no-store',headers:hd});if(!r.ok)throw new Error('http '+r.status);
@@ -122,7 +135,19 @@ async function initWorker(force){  // własny hosting (workers.dev / smialo.org)
     const d=j&&j.data;
     if(d&&(force||(d.t||0)>S.t))applyRemote(d,true);
     else{if(S.t>0)queueCloud();setSync('ok')}
-  }catch(e){ref=null;setSync('local')}
+    return !!d;
+  }catch(e){ref=null;setSync('local');return false}
+}
+async function useKey(raw,m){     // wspólne dla okna „Kopia danych” i pierwszego uruchomienia
+  const mm=/k=([A-Za-z0-9_-]{24,64})/.exec(raw||''),k=mm?mm[1]:String(raw||'').trim();
+  m.className='msg err';
+  if(!KEYRE.test(k)){m.textContent='To nie wygląda na klucz (24–64 znaki: litery, cyfry, - _). Możesz wkleić też cały link z kluczem.';return false}
+  try{const old=localStorage.getItem(KEYLS)||'';if(old&&old!==k){localStorage.setItem(KEYLS+'.old',old);const r=localStorage.getItem(LS);if(r)localStorage.setItem(LS+'.bak',r)}localStorage.setItem(KEYLS,k)}catch(e){}
+  m.className='msg';m.textContent='Łączenie…';
+  const had=await initWorker(true);
+  if(syncState!=='ok'){m.className='msg err';m.textContent='Nie udało się połączyć z chmurą.';return false}
+  if(!had){m.className='msg err';m.textContent='Połączono, ale dla tego klucza nie ma jeszcze danych w chmurze. Sprawdź, czy skopiowałeś klucz w całości.';return false}
+  m.textContent='Połączono — dane z chmury wczytane.';return true;
 }
 
 /* ───────── DŹWIĘK ───────── */
@@ -974,6 +999,7 @@ function renderPick(){
   $('#pickOk').textContent=ONB?'Zaczynamy':'Gotowe';
   $('#pickCnt').textContent=n+' z '+L.length+' sekcji włączonych';
   $('#pickMsg').textContent='';
+  $('#pkBox').hidden=!(ONB&&/^https?:$/.test(location.protocol)&&!(window.claude&&window.claude.use));
 }
 function setPick(id,on){
   const off=new Set(S.off||[]);
@@ -1091,15 +1117,23 @@ function wire(){
   $('#miEdit').onclick=()=>{closeMenu();toggleEdit(!EDIT)};
   $('#editDone').onclick=()=>toggleEdit(false);
   $('#miPacks').onclick=()=>{renderTpl();openD($('#dPacks'))};
-  $('#miBackup').onclick=()=>{$('#bkOut').value=JSON.stringify(S);$('#bkMsg').textContent='';$('#bkIn').value='';const hosted=!(window.claude&&window.claude.use);$('#keyBox').hidden=!hosted;if(hosted){$('#keyOut').value=syncKey();$('#keyIn').value='';$('#keyMsg').textContent=''}openD($('#dBackup'))};
+  const keyLinkOf=()=>location.origin+location.pathname+'#k='+syncKey();
+  $('#miBackup').onclick=()=>{
+    $('#bkOut').value=JSON.stringify(S);$('#bkMsg').textContent='';$('#bkIn').value='';
+    const hosted=!(window.claude&&window.claude.use);$('#keyBox').hidden=!hosted;
+    $('#whereMsg').textContent=hosted
+      ?'Gdzie są moje dane? W chmurze Cloudflare, pod Twoim kluczem (poniżej) — zapis dzieje się sam. Ten sam klucz pokazuje te same dane na każdym urządzeniu i adresie; nowa przeglądarka bez klucza zaczyna od zera.'
+      :'Gdzie są moje dane? W podglądzie w Claude zapisują się na Twoim koncie Claude — nie łączą się z wersją na workers.dev. Do codziennej pracy używaj swojego linku z kluczem (otwórz Nawyk na workers.dev → Menu → Kopia danych → „Kopiuj link”).';
+    if(hosted){$('#keyOut').value=syncKey();$('#keyUrl').value=keyLinkOf();$('#keyIn').value='';$('#keyMsg').textContent=''}
+    openD($('#dBackup'));
+  };
+  $('#keyLink').onclick=async()=>{const m=$('#keyMsg');m.className='msg';try{await navigator.clipboard.writeText($('#keyUrl').value);m.textContent='Skopiowano link. Otwórz go na drugim urządzeniu i dodaj do zakładek. Kto ma link, ma dostęp do danych — nie udostępniaj.'}catch(e){$('#keyUrl').select();m.textContent='Zaznaczone — skopiuj (Ctrl/Cmd+C).'}};
   $('#keyCopy').onclick=async()=>{const m=$('#keyMsg');try{await navigator.clipboard.writeText($('#keyOut').value);m.textContent='Skopiowano klucz. Nie udostępniaj go nikomu.'}catch(e){$('#keyOut').select();m.textContent='Zaznaczone — skopiuj (Ctrl/Cmd+C).'}};
   $('#keySet').onclick=async()=>{
-    const m=$('#keyMsg'),k=$('#keyIn').value.trim();
-    if(!/^[A-Za-z0-9_-]{24,64}$/.test(k)){m.textContent='To nie wygląda na klucz synchronizacji (24–64 znaki: litery, cyfry, - _).';m.className='msg err';return}
-    try{localStorage.setItem(KEYLS,k)}catch(e){}
-    m.className='msg';m.textContent='Łączenie…';await initWorker(true);
-    $('#keyOut').value=k;$('#keyIn').value='';m.textContent=syncState==='ok'?'Połączono — dane z chmury wczytane.':'Nie udało się połączyć z chmurą.';if(syncState!=='ok')m.className='msg err';
+    const m=$('#keyMsg');
+    if(await useKey($('#keyIn').value,m)){$('#keyOut').value=syncKey();$('#keyUrl').value=keyLinkOf();$('#keyIn').value=''}
   };
+  $('#pkSet').onclick=async()=>{await useKey($('#pkIn').value,$('#pkMsg'))};
 
   $('#sws').onclick=e=>{const b=e.target.closest('[data-h]');if(!b)return;S.set.hue=+b.dataset.h;save();applyLook();renderLook()};
   $('#setQuiet').onchange=e=>{S.set.quiet=e.target.checked?1:0;save();applyLook()};
