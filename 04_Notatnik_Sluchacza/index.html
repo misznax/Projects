@@ -35,7 +35,7 @@ input,textarea,select{width:100%;margin:4px 0}
 <script>
 const GID='461701670960-b0ivbr1cktr8ocfbdaffpplmr09thc6j.apps.googleusercontent.com',gcid=()=>GID; // Client ID jest publiczny z założenia; stary zapis z Ustawień usuwany (powodował 401)
 try{localStorage.removeItem('gcid')}catch(e){}
-const $=s=>document.querySelector(s),cfg=k=>localStorage.getItem(k)||'',VER='v0.34';
+const $=s=>document.querySelector(s),cfg=k=>localStorage.getItem(k)||'',VER='v0.35';
 const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 const tm=s=>{s=Math.floor(s);const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60,p=n=>String(n).padStart(2,'0');return(h?h+':':'')+p(m)+':'+p(x)};
 const SYS='Jesteś asystentem studenta na wykładzie. Odpowiadaj po polsku, zwięźle, rzeczowo.';
@@ -245,7 +245,14 @@ async function authorsAll(){dlg();if(!canAI()){S.msg='Wymaga internetu i dostęp
 function moreMenu(){const R=(f,t)=>`<button class=mi onclick="${f}">${t}</button>`;
  dlg(`<h3>⋯ Więcej</h3><div class=mut>Notatki</div>${R('redoNotes()','🔄 Sporządź notatki od nowa (większe bloki)')}${R('mergeAll()','🔗 Scal podobne notatki')}${R('authorsAll()','👤 Dopisz autorów teorii i pojęć')}${R('copyNotes(1)','📋 Kopiuj notatki')}<div class=mut style="margin-top:10px">Wykład</div>${R('dlg();exp()','👁 Podgląd Markdown (notatki + transkrypcja)')}${R('dlg();diag()','🔍 Diagnoza nagrania')}${R('dlg();dlJson()','💾 Kopia techniczna (JSON)')}${R('delMenu()','🗑 Usuń…')}${R('dlg()','Zamknij')}`)}
 const JSZ='https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js',EXI=[['h','🎨 Notatki kolorowe (.html)'],['t','📝 Notatki tekstowe (.txt)'],['c','💬 Rozmowa jak czat (.txt)'],['m','🎵 Plik dźwiękowy MP3'],['z','🗜 Surowe nagrania + pełna kopia']];
-function ojBox(){const m=ojGet();
+function readyGet(){try{return JSON.parse(localStorage.getItem('optready')||'null')}catch(e){return null}}
+async function readySend(){const m=readyGet();if(!m||S.oj)return;const l=LS.find(x=>x.id===m.lid)||L;S.msg='Dysk: wybierz konto Google…';render();
+ try{const T=await drvLogin(),dir=await drvDir(T,l),b=await tx('chunk','readonly',st=>st.get('optready:'+m.lid));if(!b)throw new Error('brak zapisanego pliku – zoptymalizuj audio jeszcze raz');
+  await gputBig(T.tok,m.name,b,dir,(a,z)=>{S.msg=`Dysk: ${m.name} – wysyłam ${Math.round(a/z*100)}%`;render()});await tx('chunk','readwrite',st=>st.delete('optready:'+m.lid));localStorage.removeItem('optready');S.link='https://drive.google.com/drive/folders/'+l.gdir;S.msg='✅ Na Dysku: '+m.name}
+ catch(e){S.msg='Wysyłanie: '+nice(e)}render()}
+async function readyDrop(){const m=readyGet();if(m)await tx('chunk','readwrite',st=>st.delete('optready:'+m.lid));try{localStorage.removeItem('optready')}catch(e){}render()}
+function ojBox(){const m=ojGet(),rd=readyGet();
+ if(rd&&rd.lid===L.id&&!S.oj)return`<div class=card style="border:2px solid #22c55e"><b>🎵 Gotowy plik MP3 czeka na wysłanie</b><div class=mut>${esc(rd.name)}<br>Optymalizacja jest skończona – nie trzeba jej powtarzać. Wyślij plik na Dysk Google.</div><div style="display:flex;gap:8px;margin-top:8px"><button class=p style="flex:1" onclick="readySend()">📤 Wyślij na Dysk</button><button onclick="readyDrop()">🗑 Porzuć</button></div></div>`;
  if(S.oj&&S.oj.id===L.id)return`<div class=card style="border:2px solid #a855f7"><b>🎵 Optymalizacja audio</b><div class=mut>${esc(S.msg||'')}</div><div style="display:flex;gap:8px;margin-top:8px"><button style="flex:1" onclick="ojPause()">${S.pz?'▶ Wznów':'⏸ Wstrzymaj'}</button><button class=r onclick="ojStop()">✖ Przerwij</button></div><div class=mut style="margin-top:6px">Postęp zapisuje się co ok. 5 min nagrania – po przerwaniu (też po odświeżeniu strony) możesz wznowić.</div></div>`;
  if(m&&m.lid===L.id&&m.quick&&!S.oj)return`<div class=card style="border:2px solid #a855f7"><b>🎵 Przerwana optymalizacja audio</b><div class=mut>Gotowe ${m.done} z ${m.nseg} części (${m.kbps} kbps). Wznowienie kontynuuje od miejsca przerwania i wysyła MP3 na Dysk.</div><div style="display:flex;gap:8px;margin-top:8px"><button class=p style="flex:1" onclick="ojResume()">▶ Wznów i wyślij na Dysk</button><button onclick="ojDrop()">🗑 Porzuć</button></div></div>`;return''}
 function ojPause(){S.pz=!S.pz;render()}
@@ -276,10 +283,16 @@ async function drvDir(T,l){if((l.gacc||'')!==T.who){l.gdir='';l.chunks.forEach(c
 async function drvRaw(T,l,dir,pre){const todo=l.chunks.filter(c=>!c.gid);let n=0;
  for(const c of todo){const b=await tx('chunk','readonly',s=>s.get(l.id+':'+c.i));if(!b){c.gid='-';continue}c.gid=await gput(T.tok,cname(c,b,l),b,dir);await put(l);S.msg=pre+`nagrania ${++n}/${todo.length}`;render()}
  await gput(T.tok,'kopia_techniczna_'+stamp()+'.json',new Blob([JSON.stringify(l)],{type:'application/json'}),dir);await put(l)}
-async function gputBig(tok,name,blob,parent){if(blob.size<8e6)return gput(tok,name,blob,parent);
+const nice=e=>/load failed|failed to fetch|networkerror/i.test(e&&e.message||'')?'połączenie z Dyskiem przerwane (sieć, wygaszony ekran lub słaby zasięg)':(e&&e.message||String(e));
+async function gputBig(tok,name,blob,parent,prog){if(!(blob.size>=8e6))return gput(tok,name,blob,parent);
  const r=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable',{method:'POST',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/json; charset=UTF-8','X-Upload-Content-Type':blob.type||'application/octet-stream','X-Upload-Content-Length':String(blob.size)},body:JSON.stringify({name,parents:[parent]})});
  if(!r.ok)throw await gerr(r);const loc=r.headers.get('Location');if(!loc)return gput(tok,name,blob,parent);
- const u=await fetch(loc,{method:'PUT',headers:{'Content-Type':blob.type||'application/octet-stream'},body:blob});if(!u.ok)throw await gerr(u);return(await u.json()).id}
+ const CS=8*1024*1024,N=blob.size,wait=ms=>new Promise(r=>setTimeout(r,ms));let off=0;
+ while(off<N){const end=Math.min(off+CS,N);let u,tr=0;
+  for(;;){try{u=await fetch(loc,{method:'PUT',headers:{'Content-Range':`bytes ${off}-${end-1}/${N}`},body:blob.slice(off,end)});break}
+   catch(e){if(++tr>5)throw e;await wait(1500*tr);try{const q=await fetch(loc,{method:'PUT',headers:{'Content-Range':`bytes */${N}`}});if(q.status===200||q.status===201)return(await q.json()).id;const rg=q.headers.get('Range'),m=rg&&rg.match(/-(\d+)$/);if(m){off=+m[1]+1;if(off>=end){u={status:308};break}}}catch(e2){}}}
+  if(u.status===200||u.status===201)return(await u.json()).id;if(u.status!==308)throw await gerr(u);off=end;prog&&prog(off,N)}
+ throw new Error('Dysk nie potwierdził zapisu pliku')}
 async function mkZip(l,files){await loadJS(JSZ);const z=new JSZip();let n=0;
  if(l)for(const c of l.chunks){const b=await tx('chunk','readonly',s=>s.get(l.id+':'+c.i));if(b)z.file(cname(c,b,l),b,{compression:'STORE'});S.msg=`ZIP: ${++n}/${l.chunks.length}`;if(n%10==0)render()}
  if(l)z.file('transkrypcja.md',md(l));(files||[]).forEach(f=>z.file(f.name,f.blob,{compression:'STORE'}));S.msg='ZIP: pakuję…';render();return z.generateAsync({type:'blob',streamFiles:true})}
@@ -298,14 +311,14 @@ async function exGo(){const X=S.ex,ls=exLs();if(!ls.length)return;if(!EXI.some((
    if(X.c)files.push([nm(`rozmowa_${st}.txt`,`czat_${st}.txt`),new Blob([chat(l)],{type:'text/plain'})]);
    for(const[n,b]of files){S.msg=pre+n;render();if(dest==='drive')await gputBig(T.tok,n,b,dir);else out.push({name:n,blob:b});done.push(n)}
    if(X.m&&l.chunks.length){const raw=!opt;S.oj={id:l.id};S.pz=false;S.cancel=false;let R2;try{R2=await toMp3(l,(a,b,ph)=>{S.msg=`${ph||'MP3'}${ls.length>1?` (wykład ${k+1}/${ls.length})`:''}: ${a}/${b}`;render()},o)}finally{S.oj=null;S.pz=false}const{blob,skip,secs:sc}=R2;if(!raw){sk+=skip;secs+=sc;orig+=o.rng?span:dur(l)}
-    const n=sn+new Date(l.date).toISOString().slice(0,10)+sfx+'_'+o.kbps+'kbps'+(raw?'_bez_obrobki':'_opt')+'.mp3';if(dest==='drive'){S.msg=pre+n+' (wysyłam)';render();await gputBig(T.tok,n,blob,dir)}else out.push({name:n,blob});done.push(n)}
+    const n=sn+new Date(l.date).toISOString().slice(0,10)+sfx+'_'+o.kbps+'kbps'+(raw?'_bez_obrobki':'_opt')+'.mp3';if(dest==='drive'){await tx('chunk','readwrite',st=>st.put(blob,'optready:'+l.id));try{localStorage.setItem('optready',JSON.stringify({lid:l.id,name:n,t:Date.now()}))}catch(e){}S.msg=pre+n+' (wysyłam)';render();await gputBig(T.tok,n,blob,dir,(a,b)=>{S.msg=`${pre}${n} – wysyłam ${Math.round(a/b*100)}%`;render()});await tx('chunk','readwrite',st=>st.delete('optready:'+l.id));try{localStorage.removeItem('optready')}catch(e){}}else out.push({name:n,blob});done.push(n)}
    if(X.z&&l.chunks.length){if(dest==='drive'){await drvRaw(T,l,dir,pre);done.push('nagrania + kopia')}else{const n=sn+`nagrania_${st}.zip`;out.push({name:n,blob:await mkZip(l)});done.push(n)}}}
   let tail=(miss.length?` · bez notatek: ${miss.map(esc).join(', ')}`:'')+(X.m&&done.length?(o.rng?` · fragment ${tm(o.rng[0])}–${tm(o.rng[1])}`:'')+(o.cut?` · ${tm(orig)} → ${tm(secs)} po usunięciu ciszy`:''):'')+(sk?` · uwaga: ${sk} kawałków 30 s było nieczytelnych`:'');
   if(!done.length){S.msg='Nic nie wyeksportowano'+tail}
   else if(dest==='drive'){S.link='https://drive.google.com/drive/folders/'+(ls.length>1?T.root:ls[0].gdir);S.msg=`✅ Na Dysku${T.who?' ('+T.who+')':''}: ${done.join(', ')}${tail}`}
   else{let fs=out;if(fs.length>5){fs=[{name:'notatnik_eksport_'+st+'.zip',blob:await mkZip(null,out)}]}
    if(dest==='share')shareFiles(fs);else{fs.forEach((f,i)=>setTimeout(()=>dl(f.blob,f.name),i*600));S.msg=`✅ Zapisano na telefonie (Pobrane): ${fs.map(f=>f.name).join(', ')}${tail}`}}}
- catch(e){S.msg='Eksport: '+e.message}render()}
+ catch(e){S.msg='Eksport: '+nice(e)+(localStorage.getItem('optready')?' – gotowy plik MP3 zostaje zapisany, użyj „Wyślij na Dysk”':'')}render()}
 function delNote(i){const t=i<0?`wszystkie notatki (${L.notes.length})`:`notatkę „${esc(L.notes[i].title)}”`;dlg(`<h3>Usunąć ${t}?</h3><p class=mut>Tej operacji nie można cofnąć. Transkrypcja i nagrania zostają.</p><button class=r onclick="doDelNote(${i})">Tak, usuń</button> <button onclick="dlg()">Anuluj</button>`)}
 async function mergeAll(){dlg();const b=L.notes.length,r=mergeNotes(L.notes);
  if(!r.n){S.msg='Nic do scalenia (tytuły różne lub brak notatek). Dla dużych bloków użyj 🔄 Notatki od nowa';render();return}
