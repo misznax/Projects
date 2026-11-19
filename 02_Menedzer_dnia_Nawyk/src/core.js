@@ -1,5 +1,5 @@
 /* ───────── Nawyk v1.0 — logika aplikacji ───────── */
-const VER='v1.01', MAIL='kontakt@smialo.org', LS='nawyk.v1', APPKEY='nawyk';
+const VER='v1.02', MAIL='kontakt@smialo.org', LS='nawyk.v1', APPKEY='nawyk';
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const pad=n=>String(n).padStart(2,'0');

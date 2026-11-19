@@ -4,7 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="dark light">
+<meta name="theme-color" content="#0b0617">
 <title>Nawyk — menedżer dnia</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 512 512%22 width=%22512%22 height=%22512%22%3E%3Cdefs%3E%3ClinearGradient id=%22bg%22 x1=%220%22 y1=%220%22 x2=%221%22 y2=%221%22%3E%3Cstop offset=%220%22 stop-color=%22%232d1058%22/%3E%3Cstop offset=%221%22 stop-color=%22%230b0617%22/%3E%3C/linearGradient%3E%3CradialGradient id=%22gl%22 cx=%2250%25%22 cy=%2258%25%22 r=%2255%25%22%3E%3Cstop offset=%220%22 stop-color=%22%237c3aed%22 stop-opacity=%22.55%22/%3E%3Cstop offset=%221%22 stop-color=%22%237c3aed%22 stop-opacity=%220%22/%3E%3C/radialGradient%3E%3ClinearGradient id=%22rg%22 x1=%220%22 y1=%220%22 x2=%221%22 y2=%221%22%3E%3Cstop offset=%220%22 stop-color=%22%232ff0cd%22/%3E%3Cstop offset=%221%22 stop-color=%22%230fb59a%22/%3E%3C/linearGradient%3E%3ClinearGradient id=%22fl%22 x1=%220%22 y1=%221%22 x2=%220.2%22 y2=%220%22%3E%3Cstop offset=%220%22 stop-color=%22%23ff4d8d%22/%3E%3Cstop offset=%22.45%22 stop-color=%22%23ff7a45%22/%3E%3Cstop offset=%221%22 stop-color=%22%23ffd24a%22/%3E%3C/linearGradient%3E%3ClinearGradient id=%22fi%22 x1=%220%22 y1=%221%22 x2=%220%22 y2=%220%22%3E%3Cstop offset=%220%22 stop-color=%22%23ffd24a%22/%3E%3Cstop offset=%221%22 stop-color=%22%23fff3b8%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width=%22512%22 height=%22512%22 rx=%22112%22 fill=%22url(%23bg)%22/%3E%3Crect width=%22512%22 height=%22512%22 rx=%22112%22 fill=%22url(%23gl)%22/%3E%3Cg transform=%22translate(256 256) scale(1.0) translate(-256 -256)%22%3E%3Ccircle cx=%22256%22 cy=%22256%22 r=%22178%22 fill=%22none%22 stroke=%22%23fff%22 stroke-opacity=%22.12%22 stroke-width=%2234%22/%3E%3Ccircle cx=%22256%22 cy=%22256%22 r=%22178%22 fill=%22none%22 stroke=%22url(%23rg)%22 stroke-width=%2234%22 stroke-linecap=%22round%22 stroke-dasharray=%22839 280%22 transform=%22rotate(-90 256 256)%22/%3E%3Cg transform=%22translate(103.5 109.5) scale(3.05)%22%3E%3Cpath d=%22M50 6 C54 22 78 34 78 62 C78 80 65 94 50 94 C35 94 22 80 22 62 C22 48 30 40 36 30 C38 40 42 44 46 44 C44 32 44 18 50 6 Z%22 fill=%22url(%23fl)%22/%3E%3Cpath d=%22M50 52 C54 60 64 66 64 76 C64 85 58 90 50 90 C42 90 36 85 36 76 C36 68 42 64 46 58 C47 62 49 63 50 62 C49 58 49 55 50 52 Z%22 fill=%22url(%23fi)%22/%3E%3C/g%3E%3C/g%3E%3C/svg%3E">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&display=swap" rel="stylesheet">
@@ -586,6 +591,7 @@ textarea.mono{font:12px/1.4 ui-monospace,Consolas,monospace;min-height:110px}
   <p><b>Nawyk — menedżer dnia</b></p>
   <p>Wersja: <span id="verA"></span></p>
   <p>Autor: Michał Rzekiecki</p>
+  <p class="src" style="margin-top:2px"><b>Co nowego w v1.02:</b> ikona strony (płomień w pierścieniu postępu) — na karcie przeglądarki i po dodaniu do ekranu głównego telefonu.</p>
   <p class="src" style="margin-top:2px"><b>Co nowego w v1.01:</b> jeden link z kluczem (Menu → Kopia danych → „Kopiuj link”) pokazuje Twoje dane na każdym urządzeniu i adresie; pierwsze uruchomienie podpowiada, jak wczytać dotychczasowe dane; w „Kopii danych” jest opis, gdzie dane są zapisane.</p>
   <p class="src" style="margin-top:2px"><b>Co nowego w v1.0:</b> wybór sekcji — przy pierwszym uruchomieniu zaznaczasz, czego chcesz się uczyć, a potem zmieniasz to przyciskiem „Wybierz sekcje” u góry (odznaczone nie liczą się do postępu); rysunki start → koniec przy każdym ćwiczeniu z Ruchu (43 ćwiczenia); plan z wczoraj na samej górze i na liście na dziś (z możliwością odhaczenia), zaległe zadania oznaczone, jak dawno czekają. Wcześniej (v0.07): etap zalicza się sam, podzielność uwagi, oddech 9D, brief, instrukcje do zwinięcia.</p>
   <p>Kontakt: <a href="mailto:kontakt@smialo.org">kontakt@smialo.org</a></p>
@@ -1463,7 +1469,7 @@ const FX=(()=>{
 })();
 
 /* ───────── Nawyk v1.0 — logika aplikacji ───────── */
-const VER='v1.01', MAIL='kontakt@smialo.org', LS='nawyk.v1', APPKEY='nawyk';
+const VER='v1.02', MAIL='kontakt@smialo.org', LS='nawyk.v1', APPKEY='nawyk';
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const pad=n=>String(n).padStart(2,'0');
