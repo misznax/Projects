@@ -35,7 +35,7 @@ input,textarea,select{width:100%;margin:4px 0}
 <script>
 const GID='461701670960-b0ivbr1cktr8ocfbdaffpplmr09thc6j.apps.googleusercontent.com',gcid=()=>GID; // Client ID jest publiczny z założenia; stary zapis z Ustawień usuwany (powodował 401)
 try{localStorage.removeItem('gcid')}catch(e){}
-const $=s=>document.querySelector(s),cfg=k=>localStorage.getItem(k)||'',VER='v0.33';
+const $=s=>document.querySelector(s),cfg=k=>localStorage.getItem(k)||'',VER='v0.34';
 const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 const tm=s=>{s=Math.floor(s);const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60,p=n=>String(n).padStart(2,'0');return(h?h+':':'')+p(m)+':'+p(x)};
 const SYS='Jesteś asystentem studenta na wykładzie. Odpowiadaj po polsku, zwięźle, rzeczowo.';
@@ -57,7 +57,7 @@ function render(){
  const pend=L.chunks.filter(c=>!c.done).length,on=navigator.onLine;
  let h=`<div style="display:flex;gap:8px"><button onclick="go()" ${S.rec?'disabled':''}>← Wykłady</button><button class=p onclick="newL()" ${S.rec?'disabled':''}>＋ Nowy</button></div><div style="display:flex;align-items:center;gap:8px;margin:8px 0"><span style="font-weight:600">${esc(L.title)}</span><button class=s onclick="ren()">✎</button><button class=s style="margin-left:auto" onclick="moreMenu()">⋯</button></div><div class=card style="display:flex;gap:12px;align-items:center"><button class="${S.rec?'r':'p'}" onclick="toggle()" style="font-size:22px">${S.rec?'⏹ Stop':(L.pend?'⏺ Część '+(P().length+1):'⏺ Nagraj')}</button>${S.rec?'<button onclick="pause()">⏸ Przerwa</button>':''}<div><div id=el style="font-size:20px">${tm(S.rec?elapsed():dur(L))}</div><div class=mut>${on?'🌐 ☁️ chmura':'✈️ 📴 offline'}${pend?' · ⏳ '+mm(L.chunks.filter(c=>!c.done).reduce((x,c)=>x+(c.dur||30),0)):''}</div></div></div>`;
  h+=`<div id=qb>${qBar()}</div>${ojBox()}`;
- if(S.msg)h+=`<div class=mut style="color:#fbbf24">${esc(S.msg)}</div>`;
+ if(S.msg&&!(S.oj&&S.oj.id===L.id))h+=`<div class=mut style="color:#fbbf24">${esc(S.msg)}</div>`;
  if(S.link)h+=`<a href="${S.link}" target=_blank rel=noopener style="color:#60a5fa">Otwórz folder na Dysku ↗</a>`;
  if(pend&&!canSTT())h+=`<div class=mut style="color:#f87171">⏳ Audio czeka na transkrypcję: ${!on?'brak internetu':cfg('mode')==='offline'?'tryb „Tylko offline”':'brak klucza OpenAI (☰ → Ustawienia lub sekret OPENAI_API_KEY w Workerze)'}. Pierwszy tekst pojawia się ok. 30 s po starcie.</div>`;
  const noA=!L.chunks.length||S.rec,TB=[['Notatki','skrót','#3b82f6','Skrót – notatki z wykładu (skrócone, uporządkowane)'],['Transkrypcja','oryginał','#22c55e','Oryginał – pełny tekst wypowiedzi, nic nie skrócono'],['Weryfikacja','sprawdzenie','#f59e0b','Sprawdzenie notatek względem oryginału']];
@@ -438,7 +438,7 @@ async function toMp3(l,prog,o={}){await loadJS(LAME);const ctx=new(window.AudioC
  const mono=buf=>{const n=buf.length,a=buf.getChannelData(0),y=buf.numberOfChannels>1?buf.getChannelData(1):null;if(!y)return a;const f=new Float32Array(n);for(let i=0;i<n;i++)f[i]=(a[i]+y[i])/2;return f};
  const rms=(f,i,e)=>{let s=0;for(let j=i;j<e;j++)s+=f[j]*f[j];return Math.sqrt(s/(e-i))};
  const flush=()=>{if(long)for(let i=0;i<5;i++)emit(pend[i]);else for(const p of pend)emit(p);pend=[];long=false};
- const gate=async(k,txt)=>{if(S.cancel){S.cancel=false;S.pz=false;throw new Error('przerwano – postęp zapisany, możesz wznowić')}while(S.pz&&!S.cancel){prog(k,CH.length,'⏸ Wstrzymano (naciśnij Wznów)');await new Promise(r=>setTimeout(r,400))}if(S.cancel){S.cancel=false;S.pz=false;throw new Error('przerwano – postęp zapisany, możesz wznowić')}};
+ const gate=async(k,txt)=>{if(S.cancel){S.cancel=false;S.pz=false;throw new Error('przerwano – postęp zapisany, możesz wznowić')}while(S.pz&&!S.cancel){prog(k,CH.length,'⏸ Wstrzymano');await new Promise(r=>setTimeout(r,400))}if(S.cancel){S.cancel=false;S.pz=false;throw new Error('przerwano – postęp zapisany, możesz wznowić')}};
  try{
   if(proc&&M.thr==null){const R=[];for(const[k,c]of CH.entries()){await gate(k+1);prog(k+1,CH.length,'Analiza');const buf=await dec(c);if(buf){const f=mono(buf);for(let i=0;i<f.length;i+=W)R.push(rms(f,i,Math.min(f.length,i+W)))}await yl()}
    const q=R.filter(x=>x>1e-5).sort((a,b)=>a-b);if(q.length){const p10=q[Math.floor(q.length*0.1)],p90=q[Math.floor(q.length*0.9)];M.thr=Math.max(0.0015,Math.min(p10*1.6,p90*0.4));if(o.boost){const L2=q.filter(x=>x>=M.thr);if(L2.length){const md=L2[Math.floor(L2.length/2)];M.GA=Math.max(1,Math.min(3,0.1/md))}}}else M.thr=0.003;ojSet(M)}

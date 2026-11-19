@@ -9,11 +9,11 @@ import urllib.request
 from pathlib import Path
 from urllib.parse import quote
 
-VERSION = "v0.05"
+VERSION = "v0.06"
 HOSTS = ["https://stronywww.michus.workers.dev/img/", "https://twojastrona.smialo.org/img/"]
 MEDIA = Path(__file__).parent / "media" / "img"
 SHOTS = {"nawyk": ["nawyk-1", "nawyk-2", "nawyk-3", "nawyk-4"], "esencja": ["esencja-2", "esencja-1", "esencja-3", "esencja-4"],
-         "notatnik": ["notatnik-2", "notatnik-1", "notatnik-3", "notatnik-4"], "anatomia": ["anatomia-1", "anatomia-2", "anatomia-3"]}
+         "notatnik": [f"notatnik-{i}" for i in range(1, 11)], "anatomia": ["anatomia-1", "anatomia-2", "anatomia-3"]}
 MAIL = "kontakt@smialo.org"
 HERE = Path(__file__).parent
 esc = html.escape
@@ -115,8 +115,10 @@ APPS = [
          solution="Nagrywa w tle, transkrybuje, odróżnia wykładowcę od pytań z sali i składa notatki tematyczne.",
          benefits=["Pytania i odpowiedzi wyłapane osobno",
                    "Notatki co ok. 5 minut, podzielone tematycznie",
-                   "Przyciski „Autorzy” i „Zweryfikuj” sprawdzają źródła w sieci",
-                   "Eksport do Markdown; na iPhonie działa po zgaszeniu ekranu"],
+                   "Weryfikacja faktów całości jednym kliknięciem: tezy błędne, sporne, nieaktualne",
+                   "Optymalizacja audio: ucina ciszę, wyrównuje głośność, usuwa szelesty, MP3 trafia na Dysk Google",
+                   "Pauza, przerwanie i wznawianie długiej obróbki, nawet po odświeżeniu strony",
+                   "Kolorowy eksport HTML ze spisem treści; na iPhonie działa po zgaszeniu ekranu"],
          demo="/04/", mock=mock_notatnik),
     dict(id="05", slug="anatomia", name="Anatomia 3D", cat="Edukacja", plat=["Przeglądarka", "WebGL"],
          tag="Kończyna górna, głowa i szyja w 3D. Obracasz, klikasz, rozumiesz.",
@@ -133,7 +135,7 @@ CHECK = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10.5 4 4 8-9" f
 ARROW = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h11m-4-5 5 5-5 5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
 
 
-EXTRA = {'startupboard': ('Użytkownicy komputerów, którzy codziennie otwierają te same pliki.', 'Windows 10 / 11 · bez instalacji · pliki nie są wysyłane do internetu', '1.1'), 'nawyk': ('Sportowcy, osoby pracujące zdalnie, mówcy i trenerzy.', 'Komputer · tablet · telefon', '1.0'), 'esencja': ('Studenci, osoby uczące się języków i zapracowani.', 'Komputer · tablet · telefon', '0.05'), 'notatnik': ('Studenci i uczestnicy szkoleń.', 'Komputer · tablet · telefon', '0.07'), 'anatomia': ('Studenci medycyny i fizjoterapii, trenerzy i masażyści.', 'Komputer · tablet · telefon', '0.05')}
+EXTRA = {'startupboard': ('Użytkownicy komputerów, którzy codziennie otwierają te same pliki.', 'Windows 10 / 11 · bez instalacji · pliki nie są wysyłane do internetu', '1.1'), 'nawyk': ('Sportowcy, osoby pracujące zdalnie, mówcy i trenerzy.', 'Komputer · tablet · telefon', '1.0'), 'esencja': ('Studenci, osoby uczące się języków i zapracowani.', 'Komputer · tablet · telefon', '0.05'), 'notatnik': ('Studenci i uczestnicy szkoleń.', 'Komputer · tablet · telefon', '0.34'), 'anatomia': ('Studenci medycyny i fizjoterapii, trenerzy i masażyści.', 'Komputer · tablet · telefon', '0.05')}
 
 
 def render_app(a, i):
@@ -154,12 +156,12 @@ def render_app(a, i):
         slides.append(f'<div class="vslide on" data-i="0">{a["mock"]()}</div>')
         thumbs.append('<button class="vthumb on anim" data-i="0" aria-label="Animacja"><span>▶</span><em>Na żywo</em></button>')
     off = len(slides)
-    for k, im in enumerate(imgs if a["slug"] != "notatnik" else imgs[1:]):
+    for k, im in enumerate(imgs):
         on = " on" if off == 0 and k == 0 else ""
         slides.append(f'<div class="vslide{on}" data-i="{off + k}"><img src="{asset(f"apps/{im}.webp")}" alt="{esc(a["name"])} — ekran {k + 1}" loading="lazy" decoding="async"></div>')
         thumbs.append(f'<button class="vthumb{on}" data-i="{off + k}" aria-label="Ekran {k + 1}" style="background-image:url({asset(f"apps/{im}-t.webp")})"></button>')
     slides = "".join(slides)
-    thumbs = f'<div class="vthumbs" style="--n:{len(thumbs)}">{"".join(thumbs)}</div>' if len(thumbs) > 1 else ""
+    thumbs = f'<div class="vthumbs" style="--n:{min(len(thumbs), 6)}">{"".join(thumbs)}</div>' if len(thumbs) > 1 else ""
     return f'''
 <article class="app reveal{flip}" id="{a["slug"]}" data-spot>
   <div class="media">
