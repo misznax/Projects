@@ -9,7 +9,7 @@ import urllib.request
 from pathlib import Path
 from urllib.parse import quote
 
-VERSION = "v0.04"
+VERSION = "v0.05"
 HOSTS = ["https://stronywww.michus.workers.dev/img/", "https://twojastrona.smialo.org/img/"]
 MEDIA = Path(__file__).parent / "media" / "img"
 SHOTS = {"nawyk": ["nawyk-1", "nawyk-2", "nawyk-3", "nawyk-4"], "esencja": ["esencja-2", "esencja-1", "esencja-3", "esencja-4"],
@@ -22,6 +22,10 @@ esc = html.escape
 def asset(rel):
     """Obraz hostowany u nas (pobrany przy buildzie). Gdy pobranie się nie uda, link do źródła."""
     dest = MEDIA / rel
+    local = HERE / "shots" / rel   # aktualne zrzuty z aplikacji (mają pierwszeństwo)
+    if local.exists():
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_bytes(local.read_bytes())
     if not dest.exists():
         for h in HOSTS:
             try:

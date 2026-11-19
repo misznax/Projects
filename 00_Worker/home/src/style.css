@@ -562,3 +562,12 @@ mark{background-repeat:no-repeat;background-size:100% 100%;background-position:0
 .tb s.new.sh:not(.at){display:none}
 .tb s.new.at{display:block}
 .nt.on{display:flex;flex-direction:column}
+
+/* oszczędność */
+.roi{padding:clamp(48px,7vw,90px) 0}
+.roi-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin:0 0 18px}
+.roi-c{padding:26px;border-radius:22px;background:linear-gradient(160deg,#fff,#eef7f6);border:1px solid var(--line);box-shadow:0 20px 40px -28px rgba(3,24,29,.4)}
+.roi-c .big{display:block;font-size:clamp(2rem,4.5vw,2.8rem);font-weight:800;letter-spacing:-.03em;background:linear-gradient(135deg,var(--sea-600),var(--sea-400));-webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:.2em}
+.roi-c h3{font-size:1.05rem;margin:0 0 .4em}
+.roi-c p{margin:0;color:var(--mute);font-size:.94rem}
+@media(max-width:820px){.roi-grid{grid-template-columns:1fr}}
