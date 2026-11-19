@@ -36,13 +36,13 @@ input,textarea,select{width:100%;margin:4px 0}
 <script>
 const GID='461701670960-b0ivbr1cktr8ocfbdaffpplmr09thc6j.apps.googleusercontent.com',gcid=()=>GID; // Client ID jest publiczny z założenia; stary zapis z Ustawień usuwany (powodował 401)
 try{localStorage.removeItem('gcid')}catch(e){}
-const $=s=>document.querySelector(s),cfg=k=>localStorage.getItem(k)||'',VER='v0.36';
+const $=s=>document.querySelector(s),cfg=k=>localStorage.getItem(k)||'',VER='v0.37';
 const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 const tm=s=>{s=Math.floor(s);const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60,p=n=>String(n).padStart(2,'0');return(h?h+':':'')+p(m)+':'+p(x)};
 const SYS='Jesteś asystentem studenta na wykładzie. Odpowiadaj po polsku, zwięźle, rzeczowo.';
 // ---------- IndexedDB
 const dbp=new Promise((res,rej)=>{const r=indexedDB.open('ns',1);r.onupgradeneeded=()=>{r.result.createObjectStore('lec',{keyPath:'id'});r.result.createObjectStore('chunk')};r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)});
-const tx=async(st,mode,fn)=>{const d=await dbp;return new Promise((res,rej)=>{const t=d.transaction(st,mode);const r=fn(t.objectStore(st));t.oncomplete=()=>res(r&&r.result);t.onerror=()=>rej(t.error)})};
+const tx=async(st,mode,fn)=>{const d=await dbp;return new Promise((res,rej)=>{const t=d.transaction(st,mode);const r=fn(t.objectStore(st));t.oncomplete=()=>res(r&&r.result);t.onerror=ev=>rej((ev&&ev.target&&ev.target.error)||t.error||new Error('błąd zapisu w pamięci przeglądarki'));t.onabort=()=>rej(t.error||new Error('zapis w pamięci przeglądarki przerwany – prawdopodobnie brak miejsca'))})};
 const saveL=()=>tx('lec','readwrite',s=>s.put(L));
 let L=null,LS=[],tab=0;
 const S={rec:false,cursor:0,idx:0,stream:null,mr:null,to:null,wl:null,last:Date.now(),busy:false,msg:''};
@@ -290,7 +290,7 @@ async function drvRaw(T,l,dir,pre){const todo=l.chunks.filter(c=>!c.gid);let n=0
  for(const c of todo){const b=await tx('chunk','readonly',s=>s.get(l.id+':'+c.i));if(!b){c.gid='-';continue}c.gid=await gput(T.tok,cname(c,b,l),b,dir);await put(l);S.msg=pre+`nagrania ${++n}/${todo.length}`;render()}
  await gput(T.tok,'kopia_techniczna_'+stamp()+'.json',new Blob([JSON.stringify(l)],{type:'application/json'}),dir);await put(l)}
 const uaShort=()=>{const u=navigator.userAgent;return(/iPhone|iPad/.test(u)?'iOS ':/Android/.test(u)?'Android ':'PC ')+(/CriOS|Chrome/.test(u)?'Chrome':/FxiOS|Firefox/.test(u)?'Firefox':/Safari/.test(u)?'Safari':'?')};
-const nice=e=>{const m=e&&e.message||String(e);return /load failed|failed to fetch|networkerror/i.test(m)?`połączenie z Dyskiem przerwane${S.lastUp?' w trakcie wysyłania ('+S.lastUp+')':''} [${m} · ${uaShort()} · ${navigator.onLine?'online':'offline'}]`:m};
+const nice=e=>{const m=!e?'nieznany błąd (brak szczegółów)':e.name&&e.name!=='Error'&&e.message?e.name+': '+e.message:e.message||e.name||String(e);return /load failed|failed to fetch|networkerror/i.test(m)?`połączenie z Dyskiem przerwane${S.lastUp?' w trakcie wysyłania ('+S.lastUp+')':''} [${m} · ${uaShort()} · ${navigator.onLine?'online':'offline'}]`:m};
 async function gputBig(tok,name,blob,parent,prog){if(!(blob.size>=8e6))return gput(tok,name,blob,parent);
  const r=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable',{method:'POST',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/json; charset=UTF-8','X-Upload-Content-Type':blob.type||'application/octet-stream','X-Upload-Content-Length':String(blob.size)},body:JSON.stringify({name,parents:[parent]})});
  if(!r.ok)throw await gerr(r);const loc=r.headers.get('Location');if(!loc)return gput(tok,name,blob,parent);
@@ -318,7 +318,7 @@ async function exGo(){const X=S.ex,ls=exLs();if(!ls.length)return;if(!EXI.some((
    if(X.c)files.push([nm(`rozmowa_${st}.txt`,`czat_${st}.txt`),new Blob([chat(l)],{type:'text/plain'})]);
    for(const[n,b]of files){S.msg=pre+n;render();if(dest==='drive')await gputBig(T.tok,n,b,dir);else out.push({name:n,blob:b});done.push(n)}
    if(X.m&&l.chunks.length){const raw=!opt;S.oj={id:l.id};S.pz=false;S.cancel=false;let R2;try{R2=await toMp3(l,(a,b,ph)=>{S.msg=`${ph||'MP3'}${ls.length>1?` (wykład ${k+1}/${ls.length})`:''}: ${a}/${b}`;render()},o)}finally{S.oj=null;S.pz=false}const{blob,skip,secs:sc}=R2;if(!raw){sk+=skip;secs+=sc;orig+=o.rng?span:dur(l)}
-    const n=sn+new Date(l.date).toISOString().slice(0,10)+sfx+'_'+o.kbps+'kbps'+(raw?'_bez_obrobki':'_opt')+'.mp3';if(dest==='drive'){await tx('chunk','readwrite',st=>st.put(blob,'optready:'+l.id));try{localStorage.setItem('optready',JSON.stringify({lid:l.id,name:n,kbps:o.kbps,t:Date.now()}))}catch(e){}S.lastUp='start';S.msg=pre+n+' (wysyłam)';render();await gputBig(T.tok,n,blob,dir,(a,b)=>{S.lastUp=Math.round(a/b*100)+'%';S.msg=`${pre}${n} – wysyłam ${S.lastUp}`;render()});await tx('chunk','readwrite',st=>st.delete('optready:'+l.id));try{localStorage.removeItem('optready')}catch(e){}}else out.push({name:n,blob});l.opt={at:Date.now(),kbps:o.kbps,raw,dest};await put(l);done.push(n)}
+    const n=sn+new Date(l.date).toISOString().slice(0,10)+sfx+'_'+o.kbps+'kbps'+(raw?'_bez_obrobki':'_opt')+'.mp3';if(dest==='drive'){let kept=1;try{await tx('chunk','readwrite',st=>st.put(blob,'optready:'+l.id));localStorage.setItem('optready',JSON.stringify({lid:l.id,name:n,kbps:o.kbps,t:Date.now()}))}catch(e){kept=0;try{await tx('chunk','readwrite',st=>st.delete('optready:'+l.id))}catch(e2){}try{localStorage.removeItem('optready')}catch(e2){}}S.lastUp='start';S.msg=pre+n+' (wysyłam)';render();await gputBig(T.tok,n,blob,dir,(a,b)=>{S.lastUp=Math.round(a/b*100)+'%';S.msg=`${pre}${n} – wysyłam ${S.lastUp}`;render()});await tx('chunk','readwrite',st=>st.delete('optready:'+l.id));try{localStorage.removeItem('optready')}catch(e){}}else out.push({name:n,blob});l.opt={at:Date.now(),kbps:o.kbps,raw,dest};await put(l);done.push(n)}
    if(X.z&&l.chunks.length){if(dest==='drive'){await drvRaw(T,l,dir,pre);done.push('nagrania + kopia')}else{const n=sn+`nagrania_${st}.zip`;out.push({name:n,blob:await mkZip(l)});done.push(n)}}}
   let tail=(miss.length?` · bez notatek: ${miss.map(esc).join(', ')}`:'')+(X.m&&done.length?(o.rng?` · fragment ${tm(o.rng[0])}–${tm(o.rng[1])}`:'')+(o.cut?` · ${tm(orig)} → ${tm(secs)} po usunięciu ciszy`:''):'')+(sk?` · uwaga: ${sk} kawałków 30 s było nieczytelnych`:'');
   if(done.length&&(X.h||X.t||X.c||X.z))for(const l of ls){l.exp={at:Date.now(),dest};await put(l)}
@@ -326,7 +326,7 @@ async function exGo(){const X=S.ex,ls=exLs();if(!ls.length)return;if(!EXI.some((
   else if(dest==='drive'){S.link='https://drive.google.com/drive/folders/'+(ls.length>1?T.root:ls[0].gdir);S.msg=`✅ Na Dysku${T.who?' ('+T.who+')':''}: ${done.join(', ')}${tail}`}
   else{let fs=out;if(fs.length>5){fs=[{name:'notatnik_eksport_'+st+'.zip',blob:await mkZip(null,out)}]}
    if(dest==='share')shareFiles(fs);else{fs.forEach((f,i)=>setTimeout(()=>dl(f.blob,f.name),i*600));S.msg=`✅ Zapisano na telefonie (Pobrane): ${fs.map(f=>f.name).join(', ')}${tail}`}}}
- catch(e){S.msg='Eksport: '+nice(e)+(localStorage.getItem('optready')?' – gotowy plik MP3 zostaje zapisany, użyj „Wyślij na Dysk”':'')}render()}
+ catch(e){S.msg='Eksport: '+nice(e)+(localStorage.getItem('optready')?' – gotowy plik MP3 zostaje zapisany, użyj „Wyślij na Dysk”':'');try{const q=await navigator.storage.estimate();S.msg+=` [pamięć przeglądarki: ${Math.round(q.usage/1e6)} z ${Math.round(q.quota/1e6)} MB]`}catch(e2){}}render()}
 function delNote(i){const t=i<0?`wszystkie notatki (${L.notes.length})`:`notatkę „${esc(L.notes[i].title)}”`;dlg(`<h3>Usunąć ${t}?</h3><p class=mut>Tej operacji nie można cofnąć. Transkrypcja i nagrania zostają.</p><button class=r onclick="doDelNote(${i})">Tak, usuń</button> <button onclick="dlg()">Anuluj</button>`)}
 async function mergeAll(){dlg();const b=L.notes.length,r=mergeNotes(L.notes);
  if(!r.n){S.msg='Nic do scalenia (tytuły różne lub brak notatek). Dla dużych bloków użyj 🔄 Notatki od nowa';render();return}
@@ -449,7 +449,7 @@ function denoise(x,alpha=1.3,floor=0.12,prof){const n=x.length,nf=Math.ceil(n/FH
 const OJ='optjob',ojGet=()=>{try{return JSON.parse(localStorage.getItem(OJ)||'null')}catch(e){return null}},ojSet=m=>{try{m?localStorage.setItem(OJ,JSON.stringify(m)):localStorage.removeItem(OJ)}catch(e){}};
 async function ojClean(lid,n){for(let k=0;k<(n||200);k++){const key='opt:'+lid+':'+k,h=await tx('chunk','readonly',s=>s.get(key));if(!h&&k>0)break;await tx('chunk','readwrite',s=>s.delete(key))}}
 async function toMp3(l,prog,o={}){await loadJS(LAME);const ctx=new(window.AudioContext||window.webkitAudioContext)(),sr=ctx.sampleRate,z=new Int16Array(1152),W=Math.round(sr*0.05),proc=o.cut||o.boost,yl=()=>new Promise(r=>setTimeout(r,0)),SEG=10;
- let enc,out,segTot=0,skip=0,ok=0,pend=[],long=false,GA=1,thr=0.003;const np={};const CH=l.chunks.filter(c=>!o.rng||(c.start+c.dur>o.rng[0]&&c.start<o.rng[1]));if(!CH.length)throw new Error('w tym zakresie nie ma nagrania');
+ const mem={};let enc,out,segTot=0,skip=0,ok=0,pend=[],long=false,GA=1,thr=0.003;const np={};const CH=l.chunks.filter(c=>!o.rng||(c.start+c.dur>o.rng[0]&&c.start<o.rng[1]));if(!CH.length)throw new Error('w tym zakresie nie ma nagrania');
  const nseg=Math.ceil(CH.length/SEG),key=[l.id,o.kbps,o.cut?1:0,o.boost?1:0,o.denoise?1:0,o.rng?o.rng.join('-'):''].join('|');
  let M=ojGet();if(!M||M.key!==key||M.nseg!==nseg){if(M)await ojClean(M.lid,M.nseg);M={key,lid:l.id,nseg,done:0,tot:0,skip:0,ok:0,thr:null,GA:1,kbps:o.kbps,quick:!!o.quick,t:Date.now()};ojSet(M)}
  const resumed=M.done>0;
@@ -475,10 +475,10 @@ async function toMp3(l,prog,o={}){await loadJS(LAME);const ctx=new(window.AudioC
      if(o.cut&&!loud){if(pend.length<14)pend.push(w);if(pend.length>=14)long=true}else{if(pend.length)flush();emit(w)}}
     if(!o.cut&&!part){const gap=c.dur-n/sr;if(gap>0.2)sil(gap)}segOk++;await yl()}
    if(pend.length)flush();out.push(enc.flush());
-   await tx('chunk','readwrite',st=>st.put(new Blob(out,{type:'audio/mpeg'}),'opt:'+l.id+':'+sg));
+   {const sb=new Blob(out,{type:'audio/mpeg'});try{await tx('chunk','readwrite',st=>st.put(sb,'opt:'+l.id+':'+sg))}catch(e){mem[sg]=sb;M.mem=1}}
    M.done=sg+1;M.tot+=segTot;M.skip+=segSkip;M.ok+=segOk;ojSet(M)}
   if(!M.ok)throw new Error('ta przeglądarka nie odczytuje tych nagrań (webm) – użyj ZIP z surowymi plikami');
-  const parts=[];for(let sg=0;sg<nseg;sg++){parts.push(await tx('chunk','readonly',st=>st.get('opt:'+l.id+':'+sg)))}
+  const parts=[];for(let sg=0;sg<nseg;sg++){parts.push(mem[sg]||await tx('chunk','readonly',st=>st.get('opt:'+l.id+':'+sg)))}
   const res={blob:new Blob(parts,{type:'audio/mpeg'}),skip:M.skip,secs:M.tot/sr};await ojClean(l.id,nseg);ojSet(null);return res}finally{try{ctx.close()}catch(e){}}}
 const pt=v=>{const a=String(v).trim().split(':').map(x=>x.trim()===''?NaN:Number(x.replace(',','.')));return a.length>3||a.some(x=>!Number.isFinite(x)||x<0)?NaN:a.reduce((q,x)=>q*60+x,0)};
 function zrPick(v){if(v==='c')return;const d=dur(L),[a,b]=v?v.split(',').map(Number):[0,d];S.zf=tm(a);S.zt=tm(Math.min(b,d));$('#zf').value=S.zf;$('#zt').value=S.zt}
