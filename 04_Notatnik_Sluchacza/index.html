@@ -31,13 +31,13 @@ input,textarea,select{width:100%;margin:4px 0}
 </style></head><body>
 <div id="dim" onclick="touch()">● REC <span id="dt"></span></div>
 <div id="dlg"><div id="dc"></div></div>
-<header><h1 onclick="go()">🎓 Notatnik Słuchacza</h1><button onclick="menu()">☰</button></header>
+<header><h1 onclick="go()">🎓 Notatnik Słuchacza <small id=ver style="font-size:11px;opacity:.65;font-weight:400"></small></h1><button onclick="menu()">☰</button></header>
 <div id="app"></div>
 <div id=upd onclick="location.replace(location.pathname+'?v='+Date.now())" style="display:none;position:fixed;top:0;left:0;right:0;z-index:99;background:#f59e0b;color:#000;padding:10px;text-align:center;font-weight:600">🔄 Jest nowa wersja – kliknij, aby odświeżyć</div><div id="pl"><button id=pp onclick="plToggle()">▶</button><input type=range id=ps min=0 max=1 step=1 value=0 oninput="plDrag(this.value)" onchange="plSeek(this.value)"><span id=pt class=mut>0:00 / 0:00</span><button class=s id=pv onclick="plSpeed()">1×</button></div>
 <script>
 const GID='461701670960-b0ivbr1cktr8ocfbdaffpplmr09thc6j.apps.googleusercontent.com',gcid=()=>GID; // Client ID jest publiczny z założenia; stary zapis z Ustawień usuwany (powodował 401)
 try{localStorage.removeItem('gcid')}catch(e){}
-const $=s=>document.querySelector(s),cfg=k=>localStorage.getItem(k)||'',VER='v0.41';
+const $=s=>document.querySelector(s),cfg=k=>localStorage.getItem(k)||'',VER='v0.42';
 const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 const tm=s=>{s=Math.floor(s);const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60,p=n=>String(n).padStart(2,'0');return(h?h+':':'')+p(m)+':'+p(x)};
 const SYS='Jesteś asystentem studenta na wykładzie. Odpowiadaj po polsku, zwięźle, rzeczowo.';
@@ -300,7 +300,7 @@ const nice=e=>{const m=!e?'nieznany błąd (brak szczegółów)':e.name&&e.name!
 const xput=(loc,hdr,body,onp)=>new Promise((res,rej)=>{const x=new XMLHttpRequest();x.open('PUT',loc);for(const k in hdr)x.setRequestHeader(k,hdr[k]);let last=Date.now();
  const tm=setInterval(()=>{if(S.cancelUp){clearInterval(tm);x.abort();rej(new Error('przerwano przez Ciebie'))}else if(Date.now()-last>25000){clearInterval(tm);x.abort();rej(new Error('Load failed: brak postępu przez 25 s'))}},1000);
  x.upload.onprogress=e=>{last=Date.now();onp&&onp(e.loaded)};x.onload=()=>{clearInterval(tm);res({status:x.status,text:x.responseText,range:x.getResponseHeader('Range')})};x.onerror=()=>{clearInterval(tm);const c=navigator.connection||{};rej(new Error(`Load failed (XHR status ${x.status}, ${navigator.onLine?'online':'offline'}, łącze ${c.effectiveType||'?'}${c.downlink?' '+c.downlink+' Mb/s':''}, host ${(()=>{try{return new URL(loc).host}catch(e){return '?'}})()})`))};x.ontimeout=x.onerror;x.send(body)});
-async function gputBig(tok,name,blob,parent,prog){if(!(blob.size>=8e6))return gput(tok,name,blob,parent);
+async function gputBig(tok,name,blob,parent,prog){if(!(blob.size>=(window.GBIG??8e6)))return gput(tok,name,blob,parent);
  S.cancelUp=false;const N=blob.size;prog&&prog(0,N,'łączę z Dyskiem…');
  const ac=new AbortController(),to=setTimeout(()=>ac.abort(),30000);let r;try{r=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable',{method:'POST',signal:ac.signal,headers:{Authorization:'Bearer '+tok,'Content-Type':'application/json; charset=UTF-8','X-Upload-Content-Type':blob.type||'application/octet-stream','X-Upload-Content-Length':String(N)},body:JSON.stringify({name,parents:[parent]})})}catch(e){throw e&&e.name==='AbortError'?new Error('Load failed: Dysk nie odpowiada (30 s)'):e}finally{clearTimeout(to)}
  if(!r.ok)throw await gerr(r);const loc=r.headers.get('Location');if(!loc)return gput(tok,name,blob,parent);
@@ -522,5 +522,6 @@ try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}ca
 if(gcid())loadJS('https://accounts.google.com/gsi/client').catch(()=>{});
 fetch('/api/n/status').then(r=>r.ok?r.json():{}).then(j=>{cap.stt=!!j.stt;cap.claude=!!j.claude;cap.ckey=!!j.ckey;pump()}).catch(()=>{});
 go();
-fetch(location.pathname+'?c='+Date.now(),{cache:'no-store'}).then(r=>r.text()).then(t=>{const m=t.match(/VER='(v[\d.]+)'/);if(m&&m[1]!==VER){if(!S.rec&&!L&&!sessionStorage['u'+m[1]]){sessionStorage['u'+m[1]]=1;location.replace(location.pathname+'?v='+m[1])}else $('#upd').style.display='block'}}).catch(()=>{});
+const chkVer=()=>fetch(location.pathname+'?c='+Date.now(),{cache:'no-store'}).then(r=>r.text()).then(t=>{const m=t.match(/VER='(v[\d.]+)'/);if(m&&m[1]!==VER){if(!S.rec&&!L&&!S.oj&&!S.up&&!sessionStorage['u'+m[1]]){sessionStorage['u'+m[1]]=1;location.replace(location.pathname+'?v='+m[1])}else{const u=$('#upd');u.textContent=`🔄 Jest nowa wersja ${m[1]} (masz ${VER}) – kliknij, aby odświeżyć`;u.style.display='block'}}}).catch(()=>{});
+{const v=$('#ver');if(v)v.textContent=VER}chkVer();setInterval(chkVer,90000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)chkVer()});
 </script></body></html>
