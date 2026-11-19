@@ -37,7 +37,7 @@ input,textarea,select{width:100%;margin:4px 0}
 <script>
 const GID='461701670960-b0ivbr1cktr8ocfbdaffpplmr09thc6j.apps.googleusercontent.com',gcid=()=>GID; // Client ID jest publiczny z założenia; stary zapis z Ustawień usuwany (powodował 401)
 try{localStorage.removeItem('gcid')}catch(e){}
-const $=s=>document.querySelector(s),cfg=k=>localStorage.getItem(k)||'',VER='v0.43';
+const $=s=>document.querySelector(s),cfg=k=>localStorage.getItem(k)||'',VER='v0.44';
 const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 const tm=s=>{s=Math.floor(s);const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60,p=n=>String(n).padStart(2,'0');return(h?h+':':'')+p(m)+':'+p(x)};
 const SYS='Jesteś asystentem studenta na wykładzie. Odpowiadaj po polsku, zwięźle, rzeczowo.';
@@ -274,17 +274,24 @@ function ojBox(){const m=ojGet(),rd=readyGet();
  if(m&&m.lid===L.id&&m.quick&&m.stage!=='ready'&&!S.oj)return`<div class=card style="border:2px solid #a855f7"><b>🎵 Przerwana optymalizacja audio</b><div class=mut>Gotowe ${m.done} z ${m.nseg} części (${m.kbps} kbps). Wznowienie kontynuuje od miejsca przerwania i wysyła MP3 na Dysk.</div><div style="display:flex;gap:8px;margin-top:8px"><button class=p style="flex:1" onclick="ojResume()">▶ Wznów i wyślij na Dysk</button><button onclick="ojDrop()">🗑 Porzuć</button></div></div>`;return''}
 function ojPause(){S.pz=!S.pz;render()}
 function ojStop(){S.cancel=true;S.pz=false;render()}
-async function ojResume(){const m=ojGet();if(!m)return;S.kb=m.kbps;S.opt=true;return quickGo()}
+const OPTS=[['oc','✂ Utnij długie pauzy (zostaje krótka przerwa)'],['ob','🔊 Podnieś i wyrównaj głośność (ciche nagrania)'],['oe','🎤 Wyostrz głos: więcej wysokich tonów, mniej basu'],['od','🧹 Usuń lekki szum tła']];
+const optFl=()=>({cut:S.oc!==false,boost:S.ob!==false,clear:S.oe!==false,denoise:S.od!==false}),recK=k=>k<=72?96:k<=100?128:160;
+async function srcKbps(l){S.sk=S.sk||{};if(S.sk[l.id]!=null)return S.sk[l.id];let b=0,d=0;for(const c of l.chunks.slice(0,40)){const x=await tx('chunk','readonly',st=>st.get(l.id+':'+c.i));if(x&&x.size&&c.dur){b+=x.size;d+=c.dur}}return S.sk[l.id]=d?Math.round(b*8/d/1000):0}
+function optPanel(l){const k=(S.sk||{})[l.id]||0,R=recK(k||64),kb=S.kb||R;
+ const info=k?`<p class=mut>📥 Nagranie źródłowe ma ok. <b>${k} kbps</b>${k<=72?' (starsze nagranie, niższa jakość)':''}. MP3 w wyższej jakości niż źródło <b>nie poprawia dźwięku</b>, tylko zwiększa plik. Zalecane: <b>${R} kbps</b>.</p>`:`<p class=mut>📥 Nie udało się odczytać jakości nagrania źródłowego. MP3 w wyższej jakości niż źródło <b>nie poprawia dźwięku</b>, tylko zwiększa plik. Zalecane: <b>${R} kbps</b>.</p>`;
+ return`<b>Jakość MP3</b><select onchange="S.kb=+this.value" style="width:100%;margin:6px 0">${[64,96,128,160,192,256].map(v=>`<option value="${v}" ${kb===v?'selected':''}>${v} kbps – ok. ${Math.round(v*0.45)} MB/h${v===R?' (zalecana)':k&&v>k*2?' (bez zysku, tylko większy plik)':''}</option>`).join('')}</select>${info}<div class=mut style="margin-top:8px">Co zrobić z dźwiękiem:</div>${OPTS.map(([key,t])=>`<label class=ck><input type=checkbox ${S[key]!==false?'checked':''} onchange="S.${key}=this.checked"> <span>${t}</span></label>`).join('')}<p class=mut>Wszystko odznaczone = tylko zmniejszenie rozmiaru pliku (bez zmian brzmienia i bez ucinania).</p>`}
+async function ojResume(){const m=ojGet();if(!m)return;S.kb=m.kbps;if(m.fl){S.oc=m.fl.cut;S.ob=m.fl.boost;S.oe=m.fl.clear;S.od=m.fl.denoise}return quickGo()}
 async function ojDrop(){const m=ojGet();if(m)await ojClean(m.lid,m.nseg);ojSet(null);render()}
-function quickOpt(){if(S.oj)return;dlg(`<h3>🎵 Optymalizuj audio i zapisz na Dysku</h3><p class=mut>Z nagrania powstanie <b>nowy plik MP3</b>: utnę ciszę, wyrównam głośność i usunę szelesty. Oryginalne nagranie zostaje w aplikacji. Gotowy plik trafi na Dysk Google (folder wykładu).</p><p class=mut>Możesz w każdej chwili wstrzymać lub przerwać – postęp się zapisuje i da się wznowić.</p><b>Jakość</b><select onchange="S.kb=+this.value" style="width:100%;margin:6px 0">${[[128,'128 kbps – ok. 58 MB/h'],[160,'160 kbps – ok. 72 MB/h (zalecana)'],[192,'192 kbps – ok. 86 MB/h'],[256,'256 kbps – ok. 115 MB/h']].map(([v,t])=>`<option value="${v}" ${(S.kb||160)===v?'selected':''}>${t}</option>`).join('')}</select><button class=p onclick="quickGo()">▶ Start</button> <button onclick="dlg()">Anuluj</button>`)}
-async function quickGo(){if(S.oj)return;const old=S.ex;S.ex={h:0,t:0,c:0,m:1,z:0,dest:'drive'};S.exi=[L.id];S.opt=true;S.qk=true;S.zl=L.id;S.zf='0:00';S.zt=tm(dur(L));S.exm='';try{await exGo()}finally{S.ex=old;S.qk=false}}
+async function quickOpt(){if(S.oj)return;await srcKbps(L);dlg(`<h3>🎵 Optymalizuj audio i zapisz na Dysku</h3><p class=mut>Z nagrania powstanie <b>nowy plik MP3</b>. Oryginalne nagranie zostaje w aplikacji. Gotowy plik trafi na Dysk Google (folder wykładu). Możesz w każdej chwili wstrzymać lub przerwać – postęp się zapisuje.</p>${optPanel(L)}<button class=p onclick="quickGo()">▶ Start</button> <button onclick="dlg()">Anuluj</button>`)}
+async function quickGo(){if(S.oj)return;const old=S.ex;S.ex={h:0,t:0,c:0,m:1,z:0,dest:'drive'};S.exi=[L.id];S.qk=true;S.zl=L.id;S.zf='0:00';S.zt=tm(dur(L));S.exm='';try{await exGo()}finally{S.ex=old;S.qk=false}}
 function exLs(){const all=[...LS];if(L&&!all.includes(L))all.push(L);return(S.exi||[]).map(id=>all.find(l=>l.id===id)).filter(Boolean)}
 function mp3Opts(rng,raw){let zr='';if(rng){const d=dur(L);if(S.zl!==L.id){S.zl=L.id;S.zf='0:00';S.zt=tm(d);S.zsv=''}const ps=P(),o=(v,t)=>`<option value="${v}" ${S.zsv===v?'selected':''}>${t}</option>`;
   zr=`<div style="margin-top:8px"><b>Zakres</b><select id=zs onchange="S.zsv=this.value;zrPick(this.value)" style="width:100%;margin:6px 0">${o('',`Cały wykład (${tm(d)})`)}${o('c','Własny fragment (wpisz poniżej)')}${ps.length>1?ps.map((x,i)=>o(`${x.start},${i+1<ps.length?ps[i+1].start:d}`,`📌 ${esc(x.name)} (${tm(x.start)}–${tm(i+1<ps.length?ps[i+1].start:d)})`)).join(''):''}${L.notes.map(n=>o(`${n.start},${n.end}`,`📝 ${esc(n.title).slice(0,40)} (${tm(n.start)}–${tm(n.end)})`)).join('')}</select>
   <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">Od <input id=zf value="${S.zf}" oninput="S.zf=this.value;S.zsv='c';zs.value='c'" style="width:84px"> <button class=s onclick="zrNow('zf')">⏱ z odtwarzacza</button></div>
   <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:6px">Do <input id=zt value="${S.zt}" oninput="S.zt=this.value;S.zsv='c';zs.value='c'" style="width:84px"> <button class=s onclick="zrNow('zt')">⏱ z odtwarzacza</button></div><p class=mut>Format 1:30 albo 1:02:03. Przycisk „z odtwarzacza” bierze pozycję, na której zatrzymałeś odtwarzacz.</p></div>`}
  const c=(k,d,t)=>`<label class=ck><input type=checkbox ${S[k]===false?'':'checked'} onchange="S.${k}=this.checked"> <span>${t}</span></label>`;
- return `<details ${S.exo?'open':''} ontoggle="S.exo=this.open" style="margin:2px 0 6px 30px"><summary class=mut>⚙ Ustawienia MP3: jakość, optymalizacja${rng?', zakres':''}</summary><div style="margin-top:8px"><b>Jakość</b><select onchange="S.kb=+this.value" style="width:100%;margin:6px 0">${[[128,'128 kbps – ~58 MB/h'],[160,'160 kbps – ~72 MB/h (domyślna)'],[192,'192 kbps – ~86 MB/h'],[256,'256 kbps – ~115 MB/h']].map(([v,t])=>`<option value="${v}" ${(S.kb||160)===v?'selected':''}>${t}</option>`).join('')}</select></div>${zr}<label class=ck><input type=checkbox ${S.opt!==false?'checked':''} onchange="S.opt=this.checked"> <span>✨ Optymalizuj: utnij ciszę, wyrównaj głośność, usuń szelesty i zakłócenia</span></label><p class=mut>Bez optymalizacji dostajesz wierny zapis (czas w pliku = godziny w transkrypcji). Z optymalizacją plik jest krótszy, więc godziny się przesuwają. Kilka godzin nagrania = kilka minut obróbki; nie zamykaj strony i nie blokuj ekranu.</p></details>`}
+ const l0=exLs()[0];if(l0&&(S.sk||{})[l0.id]==null&&!S.skq){S.skq=1;srcKbps(l0).then(()=>{S.skq=0;if(S.ex&&S.ex.m)exDlg()})}
+ return `<details ${S.exo?'open':''} ontoggle="S.exo=this.open" style="margin:2px 0 6px 30px"><summary class=mut>⚙ Ustawienia MP3: jakość, optymalizacja${rng?', zakres':''}</summary><div style="margin-top:8px">${l0?optPanel(l0):''}</div>${zr}<p class=mut>Z optymalizacją (ucinanie pauz) plik jest krótszy, więc godziny w nim nie zgadzają się z transkrypcją. Kilka godzin nagrania = kilka minut obróbki; nie zamykaj strony i nie blokuj ekranu.</p></details>`}
 function exDlg(one){if(one!==undefined){S.exi=one?[L.id]:[...S.sel];S.exm=''}
  const X=S.ex=S.ex||{h:1,t:0,c:0,m:0,z:0,dest:'drive'},ls=exLs();if(!ls.length)return;
  const noN=!ls.some(l=>l.notes.length),noA=!ls.some(l=>l.chunks.length),dis={h:noN,t:noN,c:false,a:noA||S.rec,m:noA||S.rec,z:noA||S.rec},why={h:'brak notatek',t:'brak notatek',a:S.rec?'trwa nagrywanie':'brak nagrania',m:S.rec?'trwa nagrywanie':'brak nagrania',z:S.rec?'trwa nagrywanie':'brak nagrania'};
@@ -323,8 +330,8 @@ async function mkZip(l,files){await loadJS(JSZ);const z=new JSZip();let n=0;
 function shareFiles(fs){window.XF=fs.map(f=>new File([f.blob],f.name,{type:f.blob.type||'application/octet-stream'}));S.msg='';
  dlg(`<h3>Gotowe: ${fs.length} ${fs.length===1?'plik':'pliki'}</h3><p class=mut>${fs.map(f=>esc(f.name)).join('<br>')}</p><button class=p onclick="doShare()">📤 Udostępnij</button> <button onclick="dlg()">Zamknij</button>`)}
 function doShare(){try{if(navigator.canShare&&navigator.canShare({files:XF})){navigator.share({files:XF}).then(()=>dlg()).catch(e=>{if(e.name!=='AbortError'){XF.forEach((f,i)=>setTimeout(()=>dl(f,f.name),i*600));dlg()}});return}}catch(e){}XF.forEach((f,i)=>setTimeout(()=>dl(f,f.name),i*600));dlg()}
-async function exGo(){const X=S.ex,ls=exLs();if(!ls.length)return;if(!EXI.some(([k])=>X[k]))return(S.exm='Zaznacz, co wyeksportować',exDlg());
- const dest=X.dest,st=stamp(),opt=S.opt!==false,o={cut:opt,boost:opt,denoise:opt,kbps:S.kb||160,quick:!!S.qk};let sfx='',span=0;
+async function exGo(){const X=S.ex,ls=exLs();if(!ls.length)return;if(X.m)try{await srcKbps(ls[0])}catch(e){}if(!EXI.some(([k])=>X[k]))return(S.exm='Zaznacz, co wyeksportować',exDlg());
+ const dest=X.dest,st=stamp(),F=optFl(),opt=F.cut||F.boost||F.clear||F.denoise,o={...F,kbps:S.kb||recK((S.sk||{})[ls[0].id]||64),quick:!!S.qk};let sfx='',span=0;
  if(X.m&&ls.length===1&&ls[0]===L)try{const d=dur(L),a=pt(S.zf??'0:00'),b=pt(S.zt??tm(d));if(!(a>=0&&b>a))throw new Error('Zły zakres – wpisz Od i Do w formacie 1:30');const a2=Math.min(a,d),b2=Math.min(b,d);if(b2-a2<1)throw new Error('Zakres poza nagraniem (wykład trwa '+tm(d)+')');
   if(a2>0.5||b2<d-0.5){o.rng=[a2,b2];span=b2-a2;sfx='_'+tm(a2).replace(/:/g,'-')+'_'+tm(b2).replace(/:/g,'-')}}catch(e){S.exm=e.message;S.exo=true;return exDlg()}
  dlg();S.link='';const out=[],done=[],miss=[];let T=null,sk=0,secs=0,orig=0,sc0=0;
@@ -335,7 +342,7 @@ async function exGo(){const X=S.ex,ls=exLs();if(!ls.length)return;if(!EXI.some((
    if(X.c)files.push([nm(`rozmowa_${st}.txt`,`czat_${st}.txt`),new Blob([chat(l)],{type:'text/plain'})]);
    for(const[n,b]of files){S.msg=pre+n;render();if(dest==='drive')await gputBig(T.tok,n,b,dir);else out.push({name:n,blob:b});done.push(n)}
    if(X.m&&l.chunks.length){const raw=!opt;S.oj={id:l.id};S.pz=false;S.cancel=false;let R2;try{R2=await toMp3(l,(a,b,ph)=>{S.msg=`${ph||'MP3'}${ls.length>1?` (wykład ${k+1}/${ls.length})`:''}: ${a}/${b}`;render()},o)}finally{S.oj=null;S.pz=false}const{blob,skip,secs:sc}=R2;sc0=1;if(!raw){sk+=skip;secs+=sc;orig+=o.rng?span:dur(l)}
-    const n=sn+new Date(l.date).toISOString().slice(0,10)+sfx+'_'+o.kbps+'kbps'+(raw?'_bez_obrobki':'_opt')+'.mp3';if(dest==='drive'){{const M2=ojGet();if(M2&&M2.lid===l.id){M2.name=n;M2.stage='ready';M2.orig=o.rng?span:dur(l);M2.cut=o.cut;ojSet(M2)}}S.lastUp='start';S.msg='';render();try{await gputBig(T.tok,n,blob,dir,upProg(l,n,Date.now()))}finally{S.up=null}{const M2=ojGet();if(M2&&M2.lid===l.id)await ojFinish(M2)}}else{out.push({name:n,blob});{const M2=ojGet();if(M2&&M2.lid===l.id)await ojFinish(M2)}}l.opt={at:Date.now(),kbps:o.kbps,raw,dest,orig:o.rng?span:dur(l),secs:sc};await put(l);done.push(n)}
+    const n=sn+new Date(l.date).toISOString().slice(0,10)+sfx+'_'+o.kbps+'kbps'+(raw?'_kompresja':'_opt')+'.mp3';if(dest==='drive'){{const M2=ojGet();if(M2&&M2.lid===l.id){M2.name=n;M2.stage='ready';M2.orig=o.rng?span:dur(l);M2.cut=o.cut;ojSet(M2)}}S.lastUp='start';S.msg='';render();try{await gputBig(T.tok,n,blob,dir,upProg(l,n,Date.now()))}finally{S.up=null}{const M2=ojGet();if(M2&&M2.lid===l.id)await ojFinish(M2)}}else{out.push({name:n,blob});{const M2=ojGet();if(M2&&M2.lid===l.id)await ojFinish(M2)}}l.opt={at:Date.now(),kbps:o.kbps,raw,dest,orig:o.rng?span:dur(l),secs:sc};await put(l);done.push(n)}
    if(X.z&&l.chunks.length){if(dest==='drive'){await drvRaw(T,l,dir,pre);done.push('nagrania + kopia')}else{const n=sn+`nagrania_${st}.zip`;out.push({name:n,blob:await mkZip(l)});done.push(n)}}}
   const mp3i=X.m&&done.length&&sc0?(o.rng?`Fragment ${tm(o.rng[0])}–${tm(o.rng[1])}`:'Cały wykład')+(o.cut?`: ${tm(orig)} → ${tm(secs)} po optymalizacji (skrócono o ${tm(Math.max(0,orig-secs))})`:`: ${tm(secs)}`):'';
   let tail=(miss.length?`\nBez notatek: ${miss.map(esc).join(', ')}`:'')+(mp3i?'\n'+mp3i:'')+(sk?`\nUwaga: ${sk} kawałków 30 s było nieczytelnych`:'');
@@ -467,12 +474,16 @@ function denoise(x,alpha=1.3,floor=0.12,prof){const n=x.length,nf=Math.ceil(n/FH
 const OJ='optjob',ojGet=()=>{try{return JSON.parse(localStorage.getItem(OJ)||'null')}catch(e){return null}},ojSet=m=>{try{m?localStorage.setItem(OJ,JSON.stringify(m)):localStorage.removeItem(OJ)}catch(e){}};
 async function ojClean(lid,n){for(let k=0;k<(n||200);k++){const key='opt:'+lid+':'+k,h=await tx('chunk','readonly',s=>s.get(key));if(!h&&k>0)break;await tx('chunk','readwrite',s=>s.delete(key))}}
 async function toMp3(l,prog,o={}){await loadJS(LAME);const ctx=new(window.AudioContext||window.webkitAudioContext)(),sr=ctx.sampleRate,z=new Int16Array(1152),W=Math.round(sr*0.05),proc=o.cut||o.boost,yl=()=>new Promise(r=>setTimeout(r,0)),SEG=10;
- const bq=(type,f0,Q,gdb)=>{const w0=2*Math.PI*f0/sr,al=Math.sin(w0)/(2*Q),c=Math.cos(w0),A=Math.pow(10,(gdb||0)/40);let b0,b1,b2,a0,a1,a2;
- if(type==='hp'){b0=(1+c)/2;b1=-(1+c);b2=(1+c)/2;a0=1+al;a1=-2*c;a2=1-al}else{b0=1+al*A;b1=-2*c;b2=1-al*A;a0=1+al/A;a1=-2*c;a2=1-al/A}
- const B0=b0/a0,B1=b1/a0,B2=b2/a0,A1=a1/a0,A2=a2/a0;let z1=0,z2=0;return x=>{for(let i=0;i<x.length;i++){const v=x[i],y=B0*v+z1;z1=B1*v-A1*y+z2;z2=B2*v-A2*y;x[i]=y}}},clr=o.cut||o.boost?[bq('hp',90,0.707),bq('pk',3000,0.9,3)]:[];
+ const bq=(type,f0,Q,gdb)=>{const w0=2*Math.PI*f0/sr,c=Math.cos(w0),sn=Math.sin(w0),A=Math.pow(10,(gdb||0)/40),al=sn/(2*Q),sa=2*Math.sqrt(A)*(sn/Math.SQRT2);let b0,b1,b2,a0,a1,a2;
+ if(type==='hp'){b0=(1+c)/2;b1=-(1+c);b2=(1+c)/2;a0=1+al;a1=-2*c;a2=1-al}
+ else if(type==='pk'){b0=1+al*A;b1=-2*c;b2=1-al*A;a0=1+al/A;a1=-2*c;a2=1-al/A}
+ else if(type==='ls'){b0=A*((A+1)-(A-1)*c+sa);b1=2*A*((A-1)-(A+1)*c);b2=A*((A+1)-(A-1)*c-sa);a0=(A+1)+(A-1)*c+sa;a1=-2*((A-1)+(A+1)*c);a2=(A+1)+(A-1)*c-sa}
+ else{b0=A*((A+1)+(A-1)*c+sa);b1=-2*A*((A-1)+(A+1)*c);b2=A*((A+1)+(A-1)*c-sa);a0=(A+1)-(A-1)*c+sa;a1=2*((A-1)-(A+1)*c);a2=(A+1)-(A-1)*c-sa}
+ const B0=b0/a0,B1=b1/a0,B2=b2/a0,A1=a1/a0,A2=a2/a0;let z1=0,z2=0;return x=>{for(let i=0;i<x.length;i++){const v=x[i],y=B0*v+z1;z1=B1*v-A1*y+z2;z2=B2*v-A2*y;x[i]=y}}},
+ clr=o.clear?[bq('hp',110,0.707),bq('ls',300,0.7,-4),bq('pk',3000,0.9,4),...(sr>14000?[bq('hs',5500,0.7,3)]:[])]:[];let lg0=1,lgs=1;
  const mem={};let enc,out,segTot=0,skip=0,ok=0,pend=[],tail=[],long=false,GA=1,thr=0.003;const np={};const CH=l.chunks.filter(c=>!o.rng||(c.start+c.dur>o.rng[0]&&c.start<o.rng[1]));if(!CH.length)throw new Error('w tym zakresie nie ma nagrania');
- const nseg=Math.ceil(CH.length/SEG),key=[l.id,o.kbps,o.cut?1:0,o.boost?1:0,o.denoise?1:0,o.rng?o.rng.join('-'):''].join('|');
- let M=ojGet();if(!M||M.key!==key||M.nseg!==nseg){if(M)await ojClean(M.lid,M.nseg);M={key,lid:l.id,nseg,done:0,tot:0,skip:0,ok:0,thr:null,GA:1,kbps:o.kbps,quick:!!o.quick,t:Date.now()};ojSet(M)}
+ const nseg=Math.ceil(CH.length/SEG),key=[l.id,o.kbps,o.cut?1:0,o.boost?1:0,o.denoise?1:0,o.clear?1:0,o.rng?o.rng.join('-'):''].join('|');
+ let M=ojGet();if(!M||M.key!==key||M.nseg!==nseg){if(M)await ojClean(M.lid,M.nseg);M={key,lid:l.id,nseg,done:0,tot:0,skip:0,ok:0,thr:null,GA:1,kbps:o.kbps,quick:!!o.quick,fl:{cut:o.cut,boost:o.boost,clear:o.clear,denoise:o.denoise},t:Date.now()};ojSet(M)}
  const resumed=M.done>0;
  const emit=pcm=>{for(let i=0;i<pcm.length;i+=1152){const m=enc.encodeBuffer(pcm.subarray(i,i+1152));if(m.length)out.push(m)}segTot+=pcm.length};
  const sil=sec=>{for(let n=Math.round(sec*sr);n>0;n-=1152)emit(z.subarray(0,Math.min(1152,n)))};
@@ -483,16 +494,17 @@ async function toMp3(l,prog,o={}){await loadJS(LAME);const ctx=new(window.AudioC
  const gate=async(k,txt)=>{if(S.cancel){S.cancel=false;S.pz=false;throw new Error('przerwano – postęp zapisany, możesz wznowić')}while(S.pz&&!S.cancel){prog(k,CH.length,'⏸ Wstrzymano');await new Promise(r=>setTimeout(r,400))}if(S.cancel){S.cancel=false;S.pz=false;throw new Error('przerwano – postęp zapisany, możesz wznowić')}};
  try{
   if(proc&&M.thr==null){const R=[];for(const[k,c]of CH.entries()){await gate(k+1);prog(k+1,CH.length,'Analiza');const buf=await dec(c);if(buf){const f=mono(buf);for(let i=0;i<f.length;i+=W)R.push(rms(f,i,Math.min(f.length,i+W)))}await yl()}
-   const q=R.filter(x=>x>1e-5).sort((a,b)=>a-b);if(q.length){const p10=q[Math.floor(q.length*0.1)],p90=q[Math.floor(q.length*0.9)];M.thr=Math.max(0.0015,Math.min(p10*1.6,p90*0.4));if(o.boost){const L2=q.filter(x=>x>=M.thr);if(L2.length){const md=L2[Math.floor(L2.length/2)];M.GA=Math.max(1,Math.min(3,0.1/md))}}}else M.thr=0.003;ojSet(M)}
+   const q=R.filter(x=>x>1e-5).sort((a,b)=>a-b);if(q.length){const nf=q[Math.floor(q.length*0.1)],sp=q[Math.floor(q.length*0.9)];M.thr=Math.max(0.0008,Math.min(nf*3,sp*0.08));if(o.boost){const L2=q.filter(x=>x>=M.thr);if(L2.length){const md=L2[Math.floor(L2.length/2)];M.GA=Math.max(1,Math.min(10,0.14/md))}}}else M.thr=0.003;ojSet(M)}
   if(M.thr!=null){thr=M.thr;GA=M.GA}
   for(let sg=M.done;sg<nseg;sg++){enc=new lamejs.Mp3Encoder(1,sr,o.kbps||192);out=[];segTot=0;pend=[];tail=[];long=false;let segOk=0,segSkip=0;
    for(const[kk,c]of CH.slice(sg*SEG,sg*SEG+SEG).entries()){const k=sg*SEG+kk;await gate(k+1);prog(k+1,CH.length,o.denoise?'Czyszczenie + MP3':'MP3');const buf=await dec(c);
     if(!buf){segSkip++;if(!o.cut)sil(o.rng?Math.max(0,Math.min(c.start+c.dur,o.rng[1])-Math.max(c.start,o.rng[0])):c.dur);continue}
     const fm=mono(buf);let a0=0,a1=fm.length,part=false;if(o.rng){a0=Math.max(0,Math.round((o.rng[0]-c.start)*sr));a1=Math.min(fm.length,Math.round((o.rng[1]-c.start)*sr));part=a0>0||a1<fm.length;if(a1-a0<W)continue}
-    const fo=part?fm.subarray(a0,a1):fm,n=fo.length;let f=o.denoise?denoise(fo,1.0,0.3,np):fo;if(clr.length){f=Float32Array.from(f);clr.forEach(fn=>fn(f))}
+    const fo=part?fm.subarray(a0,a1):fm,n=fo.length;let f=o.denoise?denoise(fo,0.8,0.5,np):fo;if(clr.length){f=Float32Array.from(f);clr.forEach(fn=>fn(f))}
     for(let i=0;i<n;i+=W){const e=Math.min(n,i+W),m=e-i,r=rms(f,i,e),loud=(o.denoise?rms(fo,i,e):r)>=thr;
-     const w=new Int16Array(m);
-     for(let j=0;j<m;j++){let v=f[i+j]*GA;if(v>0.9)v=0.9+0.1*Math.tanh((v-0.9)/0.1);else if(v<-0.9)v=-0.9-0.1*Math.tanh((-v-0.9)/0.1);w[j]=Math.max(-1,Math.min(1,v))*32767}
+     const w=new Int16Array(m);let pk=0;if(o.boost)for(let j=i;j<e;j++){const a=Math.abs(f[j]);if(a>pk)pk=a}
+     const gl=o.boost?Math.min(1,0.9/Math.max(pk*GA,1e-6)):1,g0=lg0;lgs=gl<lgs?gl:lgs+(gl-lgs)*0.08;lg0=lgs;
+     for(let j=0;j<m;j++){let v=f[i+j]*GA*(g0+(lgs-g0)*j/m);if(v>0.92)v=0.92+0.08*Math.tanh((v-0.92)/0.08);else if(v<-0.92)v=-0.92-0.08*Math.tanh((-v-0.92)/0.08);w[j]=Math.max(-1,Math.min(1,v))*32767}
      if(o.cut&&!loud){if(pend.length<14)pend.push(w);else{long=true;tail.push(w);if(tail.length>2)tail.shift()}}else{if(pend.length)flush();emit(w)}}
     if(!o.cut&&!part){const gap=c.dur-n/sr;if(gap>0.2)sil(gap)}segOk++;await yl()}
    if(pend.length)flush();out.push(enc.flush());
