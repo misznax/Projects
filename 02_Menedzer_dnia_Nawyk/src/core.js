@@ -1,5 +1,5 @@
 /* ───────── Nawyk v1.0 — logika aplikacji ───────── */
-const VER='v1.02', MAIL='kontakt@smialo.org', LS='nawyk.v1', APPKEY='nawyk';
+const VER='v1.03', MAIL='kontakt@smialo.org', LS='nawyk.v1', APPKEY='nawyk';
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const pad=n=>String(n).padStart(2,'0');
@@ -192,9 +192,9 @@ function makeTimer(root,build,onDone){
       pc.hidden=false;
       if(T.started){
         const p=pacePhase(s.pace,Math.max(0,s.sec-ms/1000));
-        q('.pp b').textContent=s.pace[p.i][0];q('.pp span').textContent=p.n+' / '+p.len;
+        pc.dataset.d=s.pace[p.i][2];q('.pp b').textContent=s.pace[p.i][0];q('.pp span').textContent=p.n+' / '+p.len;
         q('.pring i').style.transform='scale('+pscale(s.pace[p.i][2],p.f).toFixed(3)+')';
-      }else{q('.pp b').textContent='Gotowy?';q('.pp span').textContent='Start';q('.pring i').style.transform='scale(.55)'}
+      }else{pc.dataset.d='';q('.pp b').textContent='Gotowy?';q('.pp span').textContent='Start';q('.pring i').style.transform='scale(.55)'}
     }else pc.hidden=true;
   }
   function load(){
@@ -330,11 +330,10 @@ const exMin=e=>e.m||Math.max(1,Math.round((e.sec||60)/60));
 const exLabel=e=>(e.c?e.c+' · ':'')+'ok. '+exMin(e)+' min';
 const QI={};
 const hueOf=c=>{let h=0;for(const ch of String(c||'x'))h=(h*31+ch.charCodeAt(0))%360;return h};
-const learning=()=>Object.keys(S.days).length<4;
 const deadline=e=>{const w=e.when||'';return /wieczor|przed snem/i.test(w)?'dziś, najlepiej wieczorem — najpóźniej przed snem':/rano/i.test(w)?'najlepiej rano; najpóźniej do końca dnia':'dziś, do końca dnia'};
 const quoteHTML=bid=>{const q=QUOTES[(QI[bid]||0)%QUOTES.length];return `<h5>Przeczytaj na głos</h5><blockquote class="qt"><p>${esc(q.x).replace(/\n/g,'<br>')}</p><cite>— ${esc(q.a)}, ${esc(q.w)}</cite></blockquote><button class="btn sm" type="button" data-a="nq">Pokaż następny ›</button>`};
 const hk=t=>String(t).slice(0,60);
-const howDef=()=>S.set.how==='open'?true:S.set.how==='closed'?false:learning();
+const howDef=()=>S.set.how!=='closed';
 const howOpen=k=>S.hx[k]===1?true:S.hx[k]===0?false:howDef();
 const HOWSUM='<small><span class="so"> — zwiń, jeśli znasz</span><span class="sc"> — rozwiń, gdy potrzebujesz</span></small>';
 const IMGON=()=>/^\/02\//.test(location.pathname);
@@ -342,21 +341,30 @@ const encq=t=>encodeURIComponent(t);
 const seeLinks=t=>`<p class="see">Zobacz ruch na zdjęciach: <a href="https://pl.pinterest.com/search/pins/?q=${encq(t+' ćwiczenie')}" target="_blank" rel="noopener noreferrer">Pinterest ↗</a> · <a href="https://www.google.com/search?tbm=isch&q=${encq(t+' ćwiczenie jak wykonać')}" target="_blank" rel="noopener noreferrer">Google Grafika ↗</a> · <a href="https://www.youtube.com/results?search_query=${encq(t+' ćwiczenie')}" target="_blank" rel="noopener noreferrer">YouTube ↗</a></p>`;
 const ekImg=t=>{const id=EKIMG[t];return id&&IMGON()?`<span class="ek"><span class="ekp"><img loading="lazy" src="ek-${id}-a.svg" alt="${esc(t)}: pozycja startowa"><img loading="lazy" src="ek-${id}-b.svg" alt="${esc(t)}: pozycja końcowa"></span><small>start → koniec · <a href="https://github.com/everkinetic/data" target="_blank" rel="noopener noreferrer">Everkinetic</a>, <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a></small></span>`:''};
 const wThumbs=e=>e[4]&&IMGON()?`<button class="wp" type="button" aria-label="Powiększ rysunki: ${esc(e[0])}"><span><img loading="lazy" decoding="async" src="ek-${e[4]}-a.svg" alt="${esc(e[0])}: pozycja startowa"><em>start</em></span><span><img loading="lazy" decoding="async" src="ek-${e[4]}-b.svg" alt="${esc(e[0])}: pozycja końcowa"><em>koniec</em></span></button>`:'';
+/* podświetlenie słów kluczowych: wdech / wydech / zatrzymaj / czas i liczba powtórzeń */
+const HLC='[\\wąćęłńóśźż]',HLW=HLC+'*';
+const HL_IN=/\b(?:wdech|wdychaj)\w*/gi,HL_OUT=/\b(?:wydech|wydychaj)\w*/gi,HL_HOLD=/\b(?:zatrzymaj|wstrzymaj|przytrzymaj)\w*/gi;
+const HL_T=new RegExp('(\\d+(?:[–-]\\d+)?(?:,\\d)?\\s?(?:sekund'+HLW+'|minut'+HLW+'|razy(?!'+HLC+')|raz(?!'+HLC+')|s(?!'+HLC+')|min(?!'+HLC+')))','gi');
+const hl=t=>esc(t).replace(HL_IN,m=>`<b class="k-in">${m}</b>`).replace(HL_OUT,m=>`<b class="k-out">${m}</b>`).replace(HL_HOLD,m=>`<b class="k-hold">${m}</b>`).replace(HL_T,m=>`<b class="k-t">${m}</b>`);
+/* ilustracje z Canvy (pliki w /02/); pokazywane tylko na stronie z plikami */
+const FIGIMG={posture:['fig-posture.png','Postawa z boku: ucho nad barkiem, bark nad biodrem'],chest:['fig-chest.png','Dłoń na mostku — wibracja pod dłonią']};
+const figImg=k=>{const f=FIGIMG[k];return f&&IMGON()?`<figure class="fig"><img loading="lazy" decoding="async" src="${f[0]}" alt="${esc(f[1])}"><figcaption>${esc(f[1])} · ilustracja: Canva</figcaption></figure>`:''};
 function exHTML(e,label,bid,mv){
-  const fig=e.img&&FIGS[e.img]?`<figure class="fig">${FIGS[e.img]}</figure>`:'';
-  const k=hk(e.t);
-  return `<div class="task"><span class="pill" style="--ch:${hueOf(e.c||label)}">${esc(label)}</span><h4>${esc(e.t)}</h4>
-  <dl class="what">${e.when?`<dt>Kiedy</dt><dd>${esc(e.when)}</dd>`:''}<dt>Zrobione, gdy</dt><dd>${esc(e.ok||'wykonasz ćwiczenie do końca, bez bólu.')}</dd><dt>Do kiedy</dt><dd>${esc(deadline(e))}</dd></dl></div>
+  const fig=figImg(e.img);
+  const k=hk(e.t),dl=deadline(e),late=!/^dziś, do końca dnia$/.test(dl);
+  return `<div class="task xt" style="--ch:${hueOf(e.c||label)}"><span class="pill">${esc(label)}</span><h4>${esc(e.t)}</h4>
+  ${e.do?`<p class="do"><b>TERAZ</b><span>${hl(e.do)}</span></p>`:''}
   ${e.read?`<div class="read">${quoteHTML(bid)}</div>`:''}
   <details class="how" data-hk="${esc(k)}"${howOpen(k)?' open':''}><summary>Instrukcja krok po kroku${HOWSUM}</summary>
-  <ol class="exsteps">${(e.steps||[]).map(s=>`<li>${esc(s)}</li>`).join('')}</ol>
+  <ol class="exsteps">${(e.steps||[]).map(s=>`<li>${hl(s)}</li>`).join('')}</ol>
   ${ekImg(e.t)}${fig}
   ${e.say?`<h5>Powiedz np.</h5><p class="say">${esc(e.say)}</p>`:''}
-  ${e.solo?`<h5>Nie masz dziś z kim?</h5><p>${esc(e.solo)}</p>`:''}${mv?seeLinks(e.t):''}</details>`;
+  ${e.solo?`<h5>Nie masz dziś z kim?</h5><p>${esc(e.solo)}</p>`:''}${mv?seeLinks(e.t):''}</details>
+  <dl class="what">${e.when?`<dt>Kiedy</dt><dd>${esc(e.when)}</dd>`:''}<dt>Zrobione, gdy</dt><dd class="okd">${esc(e.ok||'wykonasz ćwiczenie do końca, bez bólu.')}</dd>${late?`<dt>Do kiedy</dt><dd>${esc(dl)}</dd>`:''}</dl></div>`;
 }
 const exTimer=e=>{
-  if(e.tm&&e.tm.length)return e.tm.map(x=>({label:x[0],sub:x[2]||'Według instrukcji powyżej.',tag:e.t,sec:x[1],kind:'work',pace:e.pace}));
-  if(e.sec)return[{label:e.t,sub:'Ćwicz teraz — aplikacja odmierza czas.',sec:e.sec,kind:'work',pace:e.pace}];
+  if(e.tm&&e.tm.length)return e.tm.map(x=>({label:x[0],sub:x[2]||'',tag:'',sec:x[1],kind:'work',pace:e.pace}));
+  if(e.sec)return[{label:'',sub:'',tag:'',sec:e.sec,kind:'work',pace:e.pace}];
   return[];
 };
 function armed(btn,fn){
@@ -547,10 +555,10 @@ const BT={
 
   todo:{ic:'✅',n:'Lista zadań',sp:4,
     def:()=>({h:'',cfg:{}}),
-    sum:()=>{const it=S.todos.filter(t=>!t.done||t.done===TODAY),o=it.filter(t=>!t.done).length;return it.length?(o?o+' do zrobienia':'Wszystko zrobione'):'Pusta lista'},
+    sum:()=>{const o=S.todos.filter(t=>!t.done).length;return o?o+' do zrobienia':S.todos.some(t=>t.done===TODAY)?'Wszystko zrobione':'Pusta lista'},
     mount(el,b,c){
-      const items=S.todos.filter(t=>!t.done||t.done===TODAY);
-      el.innerHTML=`<p class="dl">🔔 Wróć wieczorem odhaczyć listę — niezrobione przechodzą na jutro.</p><div class="addrow"><input class="tdIn" type="text" placeholder="Dodaj rzecz do zrobienia i Enter" aria-label="Nowe zadanie" maxlength="140"><button class="btn" data-a="add" type="button">Dodaj</button></div><ul class="td">${items.length?items.map(t=>`<li class="${t.done?'on':''}"><label><input type="checkbox" data-t="${esc(t.id)}" ${t.done?'checked':''}><span>${esc(t.x)}</span>${todoAge(t)}</label><button class="x" type="button" data-x="${esc(t.id)}" aria-label="Usuń">×</button></li>`).join(''):'<li class="empty">Pusto. Dodaj jedną małą rzecz.</li>'}</ul>`;
+      const items=S.todos.filter(t=>!t.done),fin=S.todos.some(t=>t.done===TODAY);
+      el.innerHTML=`<p class="dl">🔔 Wróć wieczorem odhaczyć listę — niezrobione przechodzą na jutro.</p><div class="addrow"><input class="tdIn" type="text" placeholder="Dodaj rzecz do zrobienia i Enter" aria-label="Nowe zadanie" maxlength="140"><button class="btn" data-a="add" type="button">Dodaj</button></div><ul class="td">${items.length?items.map(t=>`<li class="${t.done?'on':''}"><label><input type="checkbox" data-t="${esc(t.id)}" ${t.done?'checked':''}><span>${esc(t.x)}</span>${todoAge(t)}</label><button class="x" type="button" data-x="${esc(t.id)}" aria-label="Usuń">×</button></li>`).join(''):(fin?'<li class="empty ok">✓ Wszystko z listy zrobione. Zaliczone znikają.</li>':'<li class="empty">Pusto. Dodaj jedną małą rzecz.</li>')}</ul>`;
       const add=()=>{
         const i=$('.tdIn',el),x=i.value.trim();if(!x)return;
         S.todos.push({id:uid(),x:x.slice(0,140),done:0,c:TODAY});save();mountAll('todo');paintSums();
@@ -741,7 +749,7 @@ function applyLook(){
 function renderLook(){
   $('#sws').innerHTML=HUES.map(([h,n])=>`<button class="sw" type="button" data-h="${h}" aria-pressed="${h<0?zar():+S.set.hue===h}"><i style="background:${h<0?'conic-gradient(#ff7a45,#ffc43d,#ff4d8d,#8b5cf6,#2dd4bf,#ff7a45)':`hsl(${h} 50% 55%)`}"></i>${esc(n)}</button>`).join('');
   seg($('#modeSeg'),[['auto','Auto'],['dark','Ciemny'],['light','Jasny']],S.set.mode,v=>{S.set.mode=v;save();applyLook()});
-  seg($('#howSeg'),[['auto','Auto'],['open','Rozwinięte'],['closed','Zwinięte']],S.set.how||'auto',v=>{S.set.how=v;S.hx={};save();renderCards()});
+  seg($('#howSeg'),[['auto','Rozwinięte'],['closed','Zwinięte']],S.set.how==='closed'?'closed':'auto',v=>{S.set.how=v;S.hx={};save();renderCards()});
   $('#setQuiet').checked=!!S.set.quiet;$('#setSnd').checked=!!S.set.snd;$('#setFx').checked=S.set.fx!==0;
 }
 function greet(){const h=new Date().getHours();return h<12?'Dzień dobry':h<18?'Miłego dnia':'Dobry wieczór'}
@@ -783,7 +791,7 @@ function togglePlan(){
 function renderRemind(){
   const el=$('#remind');if(!el)return;
   const p=syncPlan(),st=p&&planState(p),rows=[];
-  if(st)rows.push(`<div class="rm pl${st.done?' dn':''}"><span class="rt"><b>↩ Plan z ${p.k===dayKey(1)?'wczoraj':esc(dlabel(p.k))}</b>${esc(shortT(p.t,160))}</span><button class="rb" type="button" data-rm="plan" aria-pressed="${st.done}">${st.done?'✓ Zrobione':'Zrobione?'}</button></div>`);
+  if(st&&!st.done)rows.push(`<div class="rm pl"><span class="rt"><b>↩ Plan z ${p.k===dayKey(1)?'wczoraj':esc(dlabel(p.k))}</b>${esc(shortT(p.t,160))}</span><button class="rb" type="button" data-rm="plan" aria-pressed="false">Zrobione?</button></div>`);
   const old=S.todos.filter(t=>!t.done&&t.c&&t.c<TODAY&&!(st&&st.td&&t.id===st.td.id)).length;
   if(old&&todoBlk())rows.push(`<div class="rm lk" data-rm="list" role="button" tabindex="0"><span class="rt"><b>📋 Z poprzednich dni</b>${old===1?'1 zadanie czeka':old+' zadań czeka'} na liście na dziś</span></div>`);
   const n=lastNoteAny();
@@ -925,7 +933,7 @@ function renderFinish(){
   const tk=TASKS(),n=tk.length,st=streak(),q=WIN[(DN+WI)%WIN.length];
   const dn=x=>x+' '+(x===1?'dzień':'dni');
   el.hidden=false;
-  el.innerHTML=`<div class="fh"><span class="fe">🏆</span><b>Dzień zaliczony</b></div><p class="fs">${n}/${n} etapów · seria ${dn(st)} · ${dn(activeAll())} ćwiczeń${S.act[TODAY]?' · '+esc(shortT(S.act[TODAY],40)):''}</p><div class="fc">${tk.map(c=>`<span>${esc(c.ic||'•')} ${esc(c.title)}</span>`).join('')}</div><blockquote class="win"><p>„${esc(q.x)}”</p><cite>— ${esc(q.a)}${q.w?', '+esc(q.w):''}</cite></blockquote><div class="drow" style="margin-top:8px"><button class="btn sm" type="button" data-fq>Inny cytat ›</button></div><p class="tiny">Jesteś w dobrym towarzystwie: każda z tych osób zaczynała od małych, powtarzanych kroków. Do zobaczenia jutro.</p>`;
+  el.innerHTML=`<div class="fdiv"><i></i><span>Podsumowanie dnia</span><i></i></div><div class="fh"><span class="fe">🏆</span><b>Dzień zaliczony</b></div><p class="fs"><span><b>${n}/${n}</b> etapów</span><span>seria <b>${dn(st)}</b></span><span>ćwiczeń łącznie <b>${dn(activeAll())}</b></span>${S.act[TODAY]?`<span>${esc(shortT(S.act[TODAY],40))}</span>`:''}</p><div class="fc">${tk.map(c=>`<span>${esc(c.ic||'•')} ${esc(c.title)}</span>`).join('')}</div><blockquote class="win"><p>„${esc(q.x)}”</p><cite>— ${esc(q.a)}${q.w?', '+esc(q.w):''}</cite></blockquote><div class="drow" style="margin-top:8px"><button class="btn sm" type="button" data-fq>Inny cytat ›</button></div><p class="tiny">Jesteś w dobrym towarzystwie: każda z tych osób zaczynała od małych, powtarzanych kroków. Do zobaczenia jutro.</p>`;
 }
 const briefKey=()=>{const L=LAY();return ['charyzma','roz','skup'].find(k=>L.some(c=>c.blocks.some(b=>b.type==='daily'&&b.cfg.pack===k)))||null};
 function renderBrief(){

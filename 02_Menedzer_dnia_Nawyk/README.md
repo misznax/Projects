@@ -1,7 +1,8 @@
-# 02 · Nawyk — menedżer dnia (v1.02)
+# 02 · Nawyk — menedżer dnia (v1.03)
 
 Codzienny zestaw małych zadań z sekcjami, które można dowolnie zmieniać. Autor: Michał Rzekiecki · kontakt@smialo.org
 
+- **Nowe w v1.03**: **czytelne ćwiczenia** — każde ma jednozdaniowy brief „TERAZ” (co dokładnie zrobić), kroki zawsze rozwinięte (nie zwijają się już po 4 dniach), słowa kluczowe w kolorze: WDECH (turkus) / WYDECH (koral) / ZATRZYMAJ (fiolet) / czasy i powtórzenia (złoto, czcionka mono); osobne kafelki, mniej odstępów; przepisane niejasne ćwiczenia („Klaskanie i dni tygodnia” itd.) i usunięte sprzeczności z cytatem „Przeczytaj na głos”; timer zwarty, kółko oddechu w kolorze fazy; zaliczone zadania znikają z listy, a „Plan z wczoraj” znika po zrobieniu; „Dzień zaliczony” to osobna sekcja „Podsumowanie dnia”; ręcznie rysowane SVG zastąpione ilustracjami z Canvy (postawa, klatka — kolejne po odnowieniu kredytów Canvy).
 - **Nowe w v1.02**: **ikona strony** — płomień w pierścieniu postępu (kolory motywu „Żar”): favicon (SVG wbudowany w stronę + PNG), `apple-touch-icon`, `manifest.webmanifest` (ikony 192/512 i maskable do dodania na ekran główny), `theme-color`. Pliki: `public/icon*.png`, `public/icon.svg`, `public/apple-touch-icon.png`, `public/manifest.webmanifest`.
 - **Nowe w v1.01**: **jeden link z kluczem** — w „Kopia danych” przycisk „Kopiuj link na inne urządzenie” daje adres `…/02/#k=KLUCZ`; otwarty na dowolnym urządzeniu lub adresie (workers.dev, aplikacje.smialo.org) wczytuje te same dane z chmury (klucz trafia do przeglądarki i znika z paska adresu; poprzedni klucz i kopia lokalna są odkładane jako `nawyk.key.old` / `nawyk.v1.bak`). Okno powitalne ma pole „Masz już swoje dane?” (klucz lub cały link), więc nowa przeglądarka nie zaczyna od zera bez podpowiedzi. W „Kopii danych” opis, gdzie dane są zapisane (hosting: D1 pod kluczem; podgląd w Claude: konto Claude, osobno od workers.dev).
 - **Nowe w v1.0** (wersja pierwsza „duża”): **wybór sekcji** — przy pierwszym uruchomieniu okno „Czego chcesz się uczyć?” (dla użytkowników z historią się nie pojawia), potem przycisk „☑ Wybierz sekcje” u góry i w menu; odznaczone sekcje znikają i nie liczą się do postępu, historia zostaje (w „Edytuj układ” są widoczne jako „ukryta”). **Rysunki start → koniec przy każdym ćwiczeniu z Ruchu** (43 ćwiczenia, Everkinetic CC BY-SA 4.0; dotknięcie powiększa; baza Ruchu przebudowana tak, by każde ćwiczenie miało rysunek). **Plan z wczoraj** („Jedna rzecz na jutro” z dziennika) jako zwarty pasek na samej górze z przyciskiem „Zrobione?” i automatycznie na liście na dziś (znacznik „↩ plan z wczoraj”); zaległe zadania oznaczone „od N dni” i policzone w pasku; plan nie siedzi już na końcu Dziennika.
@@ -16,7 +17,7 @@ Codzienny zestaw małych zadań z sekcjami, które można dowolnie zmieniać. Au
 - Ćwiczenia rozciągania: 30 (relaks, statyczne, dynamiczne, zabawa, biuro), skupienie: 15, charyzma: 35, niski głos: 14.
 
 ## Budowa
-`python3 build.py` składa `index.html` z `src/` (figs.js, figs_stretch.js, data_charyzma.js, data_zestawy.js, core.js, app.src.html).
+`python3 build.py` składa `index.html` z `src/` (data_charyzma.js, data_v5.js, data_v7.js, data_zestawy.js, data_v103.js — poprawki treści ćwiczeń, fx.js, core.js, app.src.html).
 Wdrożenie: push do `main` → wspólny Worker `projects` (00_Worker) → **https://projects.michus.workers.dev/02/** (domena smialo.org nie jest podpięta).
 `backup/` — kopie wersji finalnych (od v1.0).
 

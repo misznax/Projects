@@ -511,6 +511,68 @@ dialog .chk input{accent-color:var(--acc)}
 .tpl p{color:var(--mute);font-size:13px;margin:4px 0 8px}
 textarea.mono{font:12px/1.4 ui-monospace,Consolas,monospace;min-height:110px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* ───────── v1.03: kafelki, mniej przestrzeni, kolory słów kluczowych ───────── */
+.body{padding:2px 12px 12px}
+.blk{margin-top:10px;padding:10px 12px 12px;border-radius:16px;background:color-mix(in srgb,var(--ink) 4%,transparent);border:1px solid color-mix(in srgb,var(--ink) 11%,transparent)}
+.blk>h3{margin:0 0 6px;font-size:11px;letter-spacing:.12em}
+.rowline{margin-bottom:3px;font-size:12px}
+.xt{padding:11px 12px 10px;margin:0;border-radius:14px;border:1px solid hsl(var(--ch) 60% 55%/.4);border-left:5px solid hsl(var(--ch) 70% 55%);background:linear-gradient(135deg,hsl(var(--ch) 60% 50%/.15),hsl(var(--ch) 60% 50%/.03) 75%)}
+.xt h4{font:700 22px/1.15 Fraunces,Georgia,serif;margin:5px 0 7px;letter-spacing:-.01em}
+.do{display:flex;gap:9px;align-items:flex-start;margin:0 0 8px;padding:8px 10px;border-radius:10px;background:color-mix(in srgb,var(--warm) 15%,transparent);border:1px solid color-mix(in srgb,var(--warm) 38%,transparent);font:600 16px/1.35 system-ui,-apple-system,"Segoe UI",sans-serif}
+.do>b{flex:none;margin-top:2px;padding:1px 7px;border-radius:6px;background:var(--warm);color:var(--bg);font:800 11px/1.6 system-ui,sans-serif;letter-spacing:.12em}
+.do>span{min-width:0}
+.k-in,.k-out,.k-hold{font-weight:800;font-size:.92em;letter-spacing:.03em;text-transform:uppercase;padding:0 4px;border-radius:5px;white-space:nowrap}
+.k-in{color:hsl(172 78% calc(var(--pl) - 4%));background:hsl(172 80% 45%/.17)}
+.k-out{color:hsl(14 100% calc(var(--pl) + 2%));background:hsl(14 100% 60%/.17)}
+.k-hold{color:hsl(270 90% calc(var(--pl) + 6%));background:hsl(270 90% 62%/.19)}
+.k-t{font:700 .95em ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--warm);white-space:nowrap;letter-spacing:-.01em}
+.xt .read{margin:0 0 8px;padding:9px 12px}
+.how{margin:6px 0 0;border:0;border-radius:0;padding:0}
+.how>summary{padding:3px 0 5px;font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+.how[open]>summary{border-bottom:0;margin-bottom:2px}
+.exsteps{list-style:none;counter-reset:st;margin:0;padding:0}
+.exsteps li{counter-increment:st;position:relative;margin:0 0 6px;padding-left:30px;font:400 15px/1.42 system-ui,-apple-system,"Segoe UI",sans-serif}
+.exsteps li::before{content:counter(st);position:absolute;left:0;top:1px;width:22px;height:22px;border-radius:50%;background:hsl(var(--ch,168) 60% 50%/.28);color:var(--ink);font:700 12px/22px system-ui,sans-serif;text-align:center}
+.how .exsteps{padding-bottom:2px}
+.xt .say{font:italic 400 16px/1.4 Fraunces,Georgia,serif}
+.what{margin:8px 0 0;padding-top:7px;border-top:1px dashed color-mix(in srgb,var(--ink) 18%,transparent);gap:2px 10px;font-size:13px;color:var(--mute)}
+.what dt{font-size:10px;line-height:1.9}
+.what dd,.what dt:nth-of-type(3)+dd,.what dd:last-child{color:var(--mute)}
+.what dd.okd{color:var(--ink);font-weight:600}
+.what dd.okd::first-line{color:var(--ink)}
+.fin{margin-top:10px}
+.xt+.tmr{margin-top:8px}
+.tm{margin-top:8px;padding:10px 12px}
+.tm-tag:empty,.tm-lbl:empty,.tm-sub:empty{display:none}
+.tm-tag{min-height:0}.tm-sub{min-height:0}.tm-tot{min-height:0;margin-top:6px}
+.tm-lbl{font-size:18px}
+.tm-clock{font:300 40px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;margin:4px 0 8px;letter-spacing:-.02em}
+.tm-row{margin-top:8px}
+.tm-pace{margin:6px 0 2px}
+.pp b{font:800 22px/1.1 system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase}
+.pp span{font:600 15px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--mute)}
+.tm-pace[data-d="1"] .pp b{color:hsl(172 80% var(--pl))}
+.tm-pace[data-d="0"] .pp b{color:hsl(14 100% calc(var(--pl) + 2%))}
+.tm-pace[data-d="2"] .pp b,.tm-pace[data-d="3"] .pp b{color:hsl(270 90% calc(var(--pl) + 6%))}
+.tm-pace[data-d="1"] .pring i{background:hsl(172 80% 45%/.3);border-color:hsl(172 80% 45%)}
+.tm-pace[data-d="2"] .pring i,.tm-pace[data-d="3"] .pring i{background:hsl(270 90% 62%/.3);border-color:hsl(270 90% 62%)}
+.req{margin:6px 0 0;padding:6px 9px}
+.td li.empty.ok{color:hsl(150 70% var(--pl));font-weight:600}
+/* podsumowanie dnia — osobna sekcja, nie karta zadania */
+.finish{margin:36px 0 18px;padding:0 0 6px;border:0;border-radius:0;background:radial-gradient(130% 100% at 50% 0%,color-mix(in srgb,var(--warm) 22%,transparent),transparent 72%);box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none;text-align:center}
+.fdiv{display:flex;align-items:center;gap:12px;margin:0 0 12px;font:800 11px/1 system-ui,sans-serif;letter-spacing:.2em;text-transform:uppercase;color:var(--warm)}
+.fdiv i{flex:1;height:1px;background:linear-gradient(90deg,transparent,var(--warm))}
+.fdiv i:last-child{background:linear-gradient(270deg,transparent,var(--warm))}
+.fh{justify-content:center;font:700 30px/1.1 Fraunces,Georgia,serif}
+.fs{display:flex;flex-wrap:wrap;gap:4px 16px;justify-content:center;margin:10px 0 12px;font-size:13px;color:var(--mute)}
+.fs b{color:var(--warm);font:700 19px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.fc{justify-content:center}
+.finish .win{text-align:left}
+.finish .tiny{text-align:center}
+.fig{margin:8px 0 2px;max-width:300px;padding:0;border:0;background:none}
+.fig img{display:block;width:100%;height:auto;border-radius:12px;border:1px solid color-mix(in srgb,var(--ink) 14%,transparent)}
+.fig figcaption{margin-top:4px;font-size:11px;color:var(--mute)}
 </style>
 </head>
 <body class="quiet">
