@@ -1,9 +1,9 @@
 # Startup Board
 
-Do 8 swobodnych paneli roboczych z pamięcią stanu: pliki tekstowe (kolorowanie Python/HTML/SQL), PDF i obrazy.
+Dowolna liczba swobodnych paneli roboczych (start: 6) z pamięcią stanu: pliki tekstowe (kolorowanie Python/HTML/SQL), PDF i obrazy.
 Autor: Michał Rzekiecki · kontakt: kontakt@smialo.org
 
-- Pobierz: Releases → `startupboard-latest` → `StartupBoard_v1.1.zip`, rozpakuj i uruchom `StartupBoard.exe`.
+- Pobierz: Releases → `startupboard-latest` → `StartupBoard_v1.2.zip`, rozpakuj i uruchom `StartupBoard.exe`.
 - Źródła: `src/`, build: `python build_exe.py`, kopie wersji: `backup/`.
 - Stan zapisuje się w `%LOCALAPPDATA%\smialo\StartupBoard\` (menu Pomoc → „Folder z ustawieniami"): `state.json`, `zestawy\`, `obrazy\`, `startupboard.log`.
 
@@ -16,5 +16,6 @@ Autor: Michał Rzekiecki · kontakt: kontakt@smialo.org
 - **Ustawienia** (Widok → Ustawienia…, Ctrl+,): motyw, kolory składni i interfejsu, ramki, czcionka, ikona – z podglądem na żywo; Anuluj cofa zmiany.
 - **Zestawy**: zapisz bieżący układ paneli z otwartymi plikami pod nazwą i wracaj do niego jednym kliknięciem.
 - **Autozapis** (Plik → Autozapis, domyślnie włączony): zmiany trafiają do pliku 2 s po ostatnim naciśniętym znaku, zamknięcie programu też zapisuje. **Historia wersji** (Plik → Historia wersji pliku…, Ctrl+Alt+H): ostatnie 5 kopii każdego pliku z podglądem i przywracaniem (Ctrl+Z cofa przywrócenie). Gdy plik zmieni inny program (np. Notatnik), autozapis wstrzymuje się i nie nadpisuje go, a poprzednia wersja ląduje w historii. Kopie: `historia\` w folderze ustawień.
+- **Pasek kart** (Widok → Pasek kart): wąski pasek z jedną kartą na panel – klik przechodzi do panelu i wynosi go na wierzch, × lub środkowy przycisk zamyka, ● = niezapisany, ⚠ = konflikt/brak pliku. Tryby: **autoukrywanie** (domyślny; wysuwa się po najechaniu na górną krawędź i chowa po odjechaniu), zawsze widoczny, ukryty. **Ctrl+Tab / Ctrl+Shift+Tab** – następny / poprzedni panel (pasek mignie na chwilę), Alt+1..9 – panel o danym numerze. Limit paneli zdjęty (każdy dodatkowy to ok. 1 MB pamięci).
 - Stan okien (układ, kursor, szkice) zapisuje się po każdej zmianie, bez zapisu w tle, gdy nic się nie dzieje.
 - Ctrl+F / F3 / Shift+F3 – szukanie, Ctrl+Shift+S – zapisz jako, Ostatnie pliki w menu Plik.

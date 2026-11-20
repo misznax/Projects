@@ -3,7 +3,7 @@
 
 Skróty: Ctrl+N nowy plik | Ctrl+O otwórz | Ctrl+S zapisz | Ctrl+Shift+S zapisz jako | Ctrl+W zamknij plik
         Ctrl+F znajdź (F3 / Shift+F3 dalej / wstecz) | Ctrl+Shift+O folder w panelu (F5 kopiuj, F6 przenieś, F7 nowy folder) | Ctrl+V wklej tekst/obraz/plik do pustego panelu | Ctrl+Shift+V obraz
-        Ctrl+, ustawienia | Ctrl+M pokaż/ukryj pasek menu | Ctrl+Shift+E układ siatki | Alt+1..8 panel
+        Ctrl+, ustawienia | Ctrl+M pokaż/ukryj pasek menu | Ctrl+Shift+E układ siatki | Alt+1..9 panel | Ctrl+Tab następny panel
 Panele: przeciągaj za pasek tytułowy, zmieniaj rozmiar łapiąc krawędź/róg.
         Przyciąganie magnetyczne do krawędzi innych paneli (Alt = wyłącz).
 """
@@ -28,7 +28,7 @@ from pathlib import Path
 from PySide6.QtCore import (QByteArray, QEvent, QLockFile, QPoint, QPointF, QRect, QRectF, QSize, QStandardPaths,
                             Qt, QThread, QTimer, QUrl, Signal)
 from PySide6.QtGui import (QAction, QActionGroup, QColor, QDesktopServices, QFont, QIcon, QImage, QImageReader,
-                           QKeySequence, QLinearGradient, QPainter, QPalette, QPen, QPixmap, QPolygonF, QShortcut, QSyntaxHighlighter,
+                           QCursor, QKeySequence, QLinearGradient, QPainter, QPalette, QPen, QPixmap, QPolygonF, QShortcut, QSyntaxHighlighter,
                            QTextCharFormat, QTextCursor, QTextDocument, QBrush)
 from PySide6.QtWidgets import (
     QAbstractButton, QApplication, QBoxLayout, QButtonGroup, QCheckBox, QColorDialog, QComboBox, QDialog, QFileDialog,
@@ -41,7 +41,7 @@ from PySide6.QtCore import QDate, QDateTime, QDir, QFile, QTime
 from PySide6.QtWidgets import QDateEdit, QTimeEdit
 
 APP_NAME = "Startup Board"
-APP_VERSION = "v1.1"  # zmieniać tylko na polecenie autora
+APP_VERSION = "v1.2"  # zmieniać tylko na polecenie autora
 APP_AUTHOR = "Michał Rzekiecki"
 APP_CONTACT = "kontakt@smialo.org"
 
@@ -60,7 +60,7 @@ BORDERS = [1, 2, 3, 4, 6, 8, 0]  # grubość ramki w px (0 = brak)
 DEFAULT_BORDER = 2
 DEFAULT_SCHEME = "morze"
 LOOK_VERSION = 2  # wygląd v2 (Morze i limonka); starszy stan jest raz przestawiany na nowy domyślny motyw
-DEFAULT_PANES, MAX_PANES = 6, 8
+DEFAULT_PANES, MAX_PANES = 6, 200  # 200 = tylko bezpiecznik (ok. 1 MB pamięci na panel)
 SCHEME_ORDER = ["morze", "morze_j", "night", "graphite", "contrast", "light", "paper"]
 ICON_COLORS = [("sealime", "Morze i limonka", "grad"), ("lime", "Limonkowy", "#b8e642"), ("sea", "Morski", "#12a6b0"),
                ("red", "Czerwony", "#e53935"), ("orange", "Pomarańczowy", "#fb8c00"),
@@ -1511,6 +1511,7 @@ class TextPane(QFrame):
     removeRequested = Signal(object)  # × / Ctrl+W na pustym panelu = usuń panel
     menuRequested = Signal(QPoint)  # globalna pozycja, gdzie pokazać menu
     pathChanged = Signal(str)       # plik otwarty / zapisany przez użytkownika (lista ostatnich)
+    titleChanged = Signal()         # zmieniła się nazwa / stan panelu (odświeża pasek kart)
     img_dir = Path(tempfile.gettempdir()) / "startupboard_obrazy"  # obrazy wklejone ze schowka (ustawia okno)
     PH, ED, PDF, IMG, FOLD, REM = 0, 1, 2, 3, 4, 5   # strony QStackedWidget
 
@@ -1742,6 +1743,28 @@ class TextPane(QFrame):
 
     # --- nagłówek ---
     def refresh_header(self):
+        self._refresh_header()
+        self.titleChanged.emit()
+
+    def tab_title(self) -> tuple[str, str, str]:
+        """(tekst karty, podpowiedź, stan: '' | 'mod' | 'warn' | 'empty') dla paska kart."""
+        if self.kind == "reminders":
+            return "Przypomnienia", "Panel przypomnień", ""
+        if self.untitled:
+            mod = self.is_modified()
+            return ("● " if mod else "") + "Bez tytułu", "Nowy dokument (jeszcze bez pliku)", "mod" if mod else ""
+        if self.path is None:
+            return "— pusty —", "Pusty panel", "empty"
+        name = Path(self.path).name or self.path
+        if self.kind == "folder" and not self.missing:
+            return "▸ " + name, self.path, ""
+        if self.missing or self.conflict:
+            return "⚠ " + name, self.path, "warn"
+        if self.is_modified():
+            return "● " + name, self.path, "mod"
+        return name, self.path, ""
+
+    def _refresh_header(self):
         if self.demo:
             name, state, ukey = self.demo
             self.lbl_name.setText(name)
@@ -2358,11 +2381,75 @@ class Canvas(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self._drag: dict | None = None
         self._cursor_on = False
+        self.overlay: QWidget | None = None  # autoukrywany pasek kart: wysuwa się przy górnej krawędzi
+        self._ov_until, self._ov_miss = 0.0, 0
+        self._ov_show = QTimer(self, singleShot=True, interval=220)
+        self._ov_show.timeout.connect(self._ov_try_show)
+        self._ov_poll = QTimer(self, interval=250)  # chodzi tylko, gdy pasek jest widoczny
+        self._ov_poll.timeout.connect(self._ov_check)
         for p in panes:
             p.setParent(self)
             p.show()
         self.grid()
         QApplication.instance().installEventFilter(self)
+
+    # --- nakładka (pasek kart w trybie autoukrywania) ---
+    HOT = 3  # px od górnej krawędzi, które wysuwają pasek
+
+    def set_overlay(self, w: QWidget | None):
+        if self.overlay is not None:
+            self.overlay.hide()
+        self._ov_show.stop()
+        self._ov_poll.stop()
+        self.overlay = w
+        if w is not None:
+            w.setParent(self)
+            w.setGeometry(0, 0, self.width(), w.height())
+            w.hide()
+
+    def _ov_hot(self) -> bool:
+        ov = self.overlay
+        if ov is None:
+            return False
+        p = self.mapFromGlobal(QCursor.pos())
+        return self.rect().contains(p) and (p.y() < self.HOT or (ov.isVisible() and ov.geometry().contains(p)))
+
+    def _ov_open(self):
+        ov = self.overlay
+        if ov is None:
+            return
+        ov.setGeometry(0, 0, self.width(), ov.height())
+        ov.show()
+        ov.raise_()
+        self._ov_miss = 0
+        self._ov_poll.start()
+
+    def _ov_try_show(self):
+        if self.overlay is not None and not self.overlay.isVisible() and not self._drag and self._ov_hot():
+            self._ov_open()
+
+    def _ov_check(self):
+        ov = self.overlay
+        if ov is None or not ov.isVisible():
+            self._ov_poll.stop()
+            return
+        if time.monotonic() < self._ov_until or self._drag or self._ov_hot():
+            self._ov_miss = 0
+            return
+        self._ov_miss += 1
+        if self._ov_miss >= 2:  # kursor poza paskiem przez ~0,5 s -> schowaj
+            ov.hide()
+            self._ov_poll.stop()
+
+    def flash_overlay(self, ms: int = 1800):
+        """Pokaż pasek na chwilę (np. po Ctrl+Tab)."""
+        if self.overlay is not None:
+            self._ov_until = time.monotonic() + ms / 1000
+            self._ov_open()
+
+    def _keep_overlay(self):
+        if self.overlay is not None and self.overlay.isVisible():
+            self.overlay.raise_()
 
     # --- geometria ---
     def grid(self):
@@ -2384,6 +2471,7 @@ class Canvas(QWidget):
         p.show()
         self.apply(p)
         p.raise_()
+        self._keep_overlay()
         self.layoutChanged.emit()
 
     def remove_pane(self, p: TextPane):
@@ -2420,12 +2508,15 @@ class Canvas(QWidget):
     def resizeEvent(self, e):
         super().resizeEvent(e)
         self.apply_all()
+        if self.overlay is not None:
+            self.overlay.setGeometry(0, 0, self.width(), self.overlay.height())
 
     def raise_pane(self, p: TextPane):
         if self.order[-1] is not p:
             self.order.remove(p)
             self.order.append(p)
             p.raise_()
+            self._keep_overlay()
 
     def pane_at(self, cp: QPoint):
         for p in reversed(self.order):
@@ -2543,6 +2634,17 @@ class Canvas(QWidget):
             self.end_drag()
             return True
         cp = self.mapFromGlobal(gp)
+        ov = self.overlay
+        if ov is not None:
+            if ov.isVisible() and (obj is ov or ov.isAncestorOf(obj)):  # klik w pasek kart nie jest chwytaniem panelu
+                self._hover(None)
+                return False
+            if t == QEvent.Type.MouseMove:
+                if cp.y() < self.HOT and not ov.isVisible():
+                    if not self._ov_show.isActive():
+                        self._ov_show.start()
+                else:
+                    self._ov_show.stop()
         pane = self.pane_at(cp)
         if t == QEvent.Type.MouseButtonPress and ev.button() == Qt.MouseButton.LeftButton and pane:
             zone = self.zone_at(pane, cp, obj)
@@ -3012,6 +3114,128 @@ class SettingsDialog(ThemedDialog):
         super().done(r)
 
 
+# ---------- pasek kart ----------
+
+class _HScroll(QScrollArea):
+    """Pozioma lista bez pasków przewijania: kółko myszy przewija w bok."""
+
+    def wheelEvent(self, e):
+        d = e.angleDelta()
+        bar = self.horizontalScrollBar()
+        bar.setValue(bar.value() - (d.y() or d.x()))
+        e.accept()
+
+
+class _TabBtn(QToolButton):
+    middleClicked = Signal()
+
+    def mouseReleaseEvent(self, e):
+        if e.button() == Qt.MouseButton.MiddleButton and self.rect().contains(e.position().toPoint()):
+            self.middleClicked.emit()
+            e.accept()
+            return
+        super().mouseReleaseEvent(e)
+
+
+class TabStrip(QFrame):
+    """Wąski pasek kart: jedna karta na panel. Klik = przejdź i wynieś na wierzch, × lub środkowy przycisk = zamknij.
+    Buduje się tylko, gdy jest widoczny (schowany pasek nic nie kosztuje)."""
+    pick = Signal(object)
+    closeReq = Signal(object)
+    H = 22
+
+    def __init__(self, source):
+        super().__init__()
+        self.source = source  # () -> (lista paneli, aktywny panel)
+        self.setObjectName("tabs")
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        self.setFixedHeight(self.H)
+        self.sa = _HScroll()
+        self.sa.setFrameShape(QFrame.Shape.NoFrame)
+        self.sa.setWidgetResizable(True)
+        self.sa.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.sa.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.inner = QWidget()
+        self.inner.setObjectName("tabin")
+        self.row = QHBoxLayout(self.inner)
+        self.row.setContentsMargins(3, 2, 3, 2)
+        self.row.setSpacing(3)
+        self.sa.setWidget(self.inner)
+        self.inner.setAutoFillBackground(False)
+        self.sa.viewport().setAutoFillBackground(False)
+        lay = QHBoxLayout(self)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.addWidget(self.sa)
+        self._t = QTimer(self, singleShot=True, interval=0)  # zbiera wiele zmian w jedną przebudowę
+        self._t.timeout.connect(self._rebuild)
+        self.apply_colors()
+
+    def refresh(self, *_):
+        if self.isVisible():
+            self._t.start()
+
+    def showEvent(self, e):
+        super().showEvent(e)
+        self._rebuild()
+
+    def _rebuild(self):
+        panes, cur = self.source()
+        while self.row.count():
+            it = self.row.takeAt(0)
+            w = it.widget()
+            if w is not None:
+                w.hide()
+                w.deleteLater()
+        active = None
+        fm = self.fontMetrics()
+        for p in panes:
+            text, tip, state = p.tab_title()
+            fr = QFrame()
+            fr.setObjectName("tab")
+            fr.setProperty("act", p is cur)
+            fr.setProperty("st", state)
+            h = QHBoxLayout(fr)
+            h.setContentsMargins(0, 0, 0, 0)
+            h.setSpacing(0)
+            b = _TabBtn()
+            b.setText(fm.elidedText(text, Qt.TextElideMode.ElideMiddle, 150))
+            b.setToolTip(tip)
+            b.setCursor(Qt.CursorShape.PointingHandCursor)
+            x = QToolButton()
+            x.setText("×")
+            x.setToolTip("Zamknij kartę (też środkowy przycisk myszy)")
+            b.clicked.connect(lambda _c=False, q=p: self.pick.emit(q))
+            b.middleClicked.connect(lambda q=p: self.closeReq.emit(q))
+            x.clicked.connect(lambda _c=False, q=p: self.closeReq.emit(q))
+            h.addWidget(b)
+            h.addWidget(x)
+            self.row.addWidget(fr)
+            if p is cur:
+                active = fr
+
+        self.row.addStretch(1)
+        if active is not None:
+            def show_active(a=active):
+                try:
+                    self.sa.ensureWidgetVisible(a, 20, 0)
+                except RuntimeError:  # karta już zastąpiona nowszą przebudową
+                    pass
+            QTimer.singleShot(0, show_active)
+
+    def apply_colors(self):
+        u = UI
+        self.setStyleSheet(
+            f"#tabs{{background:{grad(u['hdr_bg'], u['hdr_bg2'])};border-bottom:1px solid {u['border_a']};}}"
+            f"QFrame#tab{{border:1px solid {u['border']};border-radius:4px;background:transparent;}}"
+            f"QFrame#tab[act=\"true\"]{{background:{grad(u['hdr_bg_a'], u['hdr_bg_a2'])};border-color:{u['border_a']};}}"
+            f"QFrame#tab QToolButton{{border:none;background:transparent;color:{u['mute']};font-size:8pt;padding:0 5px;}}"
+            f"QFrame#tab[act=\"true\"] QToolButton{{color:{u['hdr_fg']};}}"
+            f"QFrame#tab[st=\"mod\"] QToolButton{{color:{u['warn']};}}"
+            f"QFrame#tab[st=\"warn\"] QToolButton{{color:{u['err']};}}"
+            f"QFrame#tab[st=\"empty\"] QToolButton{{color:{u['mute']};font-style:italic;}}"
+            f"QFrame#tab QToolButton:hover{{color:{u['border_a']};}}")
+
+
 # ---------- okno główne ----------
 
 class MainWindow(QMainWindow):
@@ -3043,16 +3267,27 @@ class MainWindow(QMainWindow):
         self.canvas = Canvas([TextPane(i) for i in range(DEFAULT_PANES)])
         self.panes = self.canvas.panes
         self.current: TextPane = self.panes[0]
-        self.setCentralWidget(self.canvas)
+        self.tab_mode = "auto"  # pasek kart: auto (autoukrywanie) | always | off
+        self.tabs = TabStrip(lambda: (self.panes, self.current))
+        self.tabs.pick.connect(self.activate_pane)
+        self.tabs.closeReq.connect(self.close_tab)
+        holder = QWidget()
+        self.vbox = QVBoxLayout(holder)
+        self.vbox.setContentsMargins(0, 0, 0, 0)
+        self.vbox.setSpacing(0)
+        self.vbox.addWidget(self.canvas, 1)
+        self.setCentralWidget(holder)
         for p in self.panes:
             self._wire(p)
         self._save_timer = QTimer(self, singleShot=True, interval=500)
         self._save_timer.timeout.connect(self.save_state)
         self.canvas.layoutChanged.connect(self.schedule_save)
+        self.canvas.layoutChanged.connect(self.tabs.refresh)
         self._build_menu()
-        for i in range(MAX_PANES):
+        self.set_tab_mode("auto", save=False)
+        for i in range(9):
             QShortcut(QKeySequence(f"Alt+{i + 1}"), self,
-                      activated=lambda i=i: self.panes[i].focus_editor() if i < len(self.panes) else None)
+                      activated=lambda i=i: self.activate_pane(self.panes[i]) if i < len(self.panes) else None)
         self.resize(1500, 900)
         self.apply_scheme(DEFAULT_SCHEME, save=False)
         self.load_state()
@@ -3086,6 +3321,11 @@ class MainWindow(QMainWindow):
         p.transferRequested.connect(self.transfer_files)
         p.menuRequested.connect(self.show_popup)
         p.pathChanged.connect(self.note_recent)
+        p.titleChanged.connect(self.tabs.refresh)
+        p.setMouseTracking(True)  # ruch myszy bez przycisku dociera do filtra (wysuwanie paska kart)
+        for w in p.header.findChildren(QWidget):
+            w.setMouseTracking(True)
+        p.header.setMouseTracking(True)
 
     # --- menu ---
     def _act(self, text, slot, shortcut=None, checkable=False) -> QAction:
@@ -3165,12 +3405,18 @@ class MainWindow(QMainWindow):
         self.act_menu = self._act("Pokaż pasek menu", lambda: self.set_menu_visible(not self.menuBar().isVisible()),
                                   "Ctrl+M", checkable=True)
         v.addAction(self.act_menu)
+        self.tab_acts = self._radio(v.addMenu("Pasek kart"), [
+            ("auto", "Autoukrywanie (wysuwa się przy górnej krawędzi)"), ("always", "Zawsze widoczny"),
+            ("off", "Ukryty")], self.set_tab_mode)
 
         self.m_layout = mb.addMenu("&Układ")
-        self.act_add = self._act(f"Dodaj panel (maks. {MAX_PANES})", self.add_pane, "Ctrl+Shift+N")
+        self.act_add = self._act("Dodaj panel", self.add_pane, "Ctrl+Shift+N")
         self.act_del = self._act("Usuń aktywny panel (zwalnia pamięć)", self.remove_pane, "Ctrl+Shift+D")
         self.m_layout.addAction(self.act_add)
         self.m_layout.addAction(self.act_del)
+        self.m_layout.addSeparator()
+        self.m_layout.addAction(self._act("Następny panel", lambda: self.cycle_pane(1), "Ctrl+Tab"))
+        self.m_layout.addAction(self._act("Poprzedni panel", lambda: self.cycle_pane(-1), "Ctrl+Shift+Tab"))
         self.m_layout.addSeparator()
         self.m_layout.addAction(self._act("Siatka (reset układu)", self.canvas.grid, "Ctrl+Shift+E"))
         self.act_snap = self._act("Przyciąganie magnetyczne (Alt = chwilowo wyłącz)",
@@ -3254,6 +3500,7 @@ class MainWindow(QMainWindow):
             app.setStyleSheet(css)
         for p in self.panes + self.preview_panes:
             p.apply_colors()
+        self.tabs.apply_colors()
         self._dark_titlebar()
         self.lookChanged.emit()
         if save:
@@ -3554,6 +3801,45 @@ class MainWindow(QMainWindow):
         self.current = pane
         for p in self.panes:
             p.set_active(p is pane)
+        self.tabs.refresh()
+
+    def activate_pane(self, p: TextPane):
+        """Przejdź do panelu: wynieś na wierzch i ustaw fokus (też z paska kart i Alt+cyfra)."""
+        if p in self.panes:
+            self.canvas.raise_pane(p)
+            self.set_current(p)
+            p.focus_editor()
+
+    def cycle_pane(self, step: int):
+        if len(self.panes) > 1 and self.current in self.panes:
+            self.activate_pane(self.panes[(self.panes.index(self.current) + step) % len(self.panes)])
+            self.canvas.flash_overlay()
+
+    def close_tab(self, p: TextPane):
+        """× na karcie: zamyka panel (ostatni zostaje, tylko opróżniony)."""
+        if p in self.panes:
+            if len(self.panes) > 1:
+                self.remove_pane(p)
+            else:
+                p.close_file()
+
+    def set_tab_mode(self, mode: str, save: bool = True):
+        if mode not in ("auto", "always", "off"):
+            mode = "auto"
+        self.tab_mode = mode
+        self.vbox.removeWidget(self.tabs)
+        self.canvas.set_overlay(None)
+        self.tabs.hide()
+        self.tabs.setParent(self.centralWidget())
+        if mode == "always":
+            self.vbox.insertWidget(0, self.tabs)
+            self.tabs.show()
+        elif mode == "auto":
+            self.canvas.set_overlay(self.tabs)
+        self.tab_acts[mode].setChecked(True)
+        self.tabs.refresh()
+        if save:
+            self.schedule_save()
 
     # --- dodawanie / usuwanie paneli ---
     def _new_pane(self) -> TextPane:
@@ -3622,7 +3908,7 @@ class MainWindow(QMainWindow):
             self.current.flash("Schowek jest pusty")
             return
         files = [f for f in (u.toLocalFile() for u in md.urls() if u.isLocalFile())] if md.hasUrls() else []
-        files = [f for f in files if Path(f).exists()][:MAX_PANES]
+        files = [f for f in files if Path(f).exists()][:20]  # więcej naraz to pomyłka (np. cały folder skopiowany do schowka)
         if files:
             last = None
             for f in files:
@@ -3913,7 +4199,7 @@ class MainWindow(QMainWindow):
                 "menu": self.menuBar().isVisible(),
                 "font_default": [self.font_family, self.font_size],
                 "recent": self.recent, "last_dir": LAST["dir"], "reminders": self.reminders,
-                "autosave": AUTO["on"],
+                "autosave": AUTO["on"], "tabs": self.tab_mode,
             }
             data.update(self.snapshot())
             js = json.dumps(data, ensure_ascii=False, indent=1)
@@ -3984,6 +4270,7 @@ class MainWindow(QMainWindow):
                 self.set_border(data["border"])
             self.set_snap(bool(data.get("snap", True)))
             self.set_autosave(bool(data.get("autosave", True)))
+            self.set_tab_mode(str(data.get("tabs", "auto")), save=False)
             self.icon_key = "sealime" if old_look and data.get("icon", "yellow") == "yellow" else data.get("icon", "sealime")
             self.set_menu_visible(bool(data.get("menu", True)))
             for p in self.panes:
