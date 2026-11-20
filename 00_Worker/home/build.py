@@ -83,7 +83,7 @@ APPS = [
          problem="Każdy poranek zaczyna się od szukania tych samych plików i okien.",
          solution="Układasz do 8 pól raz. Następnego dnia pracujesz od razu, bez szukania.",
          benefits=["Do 8 paneli: tekst z kolorową składnią, PDF, obrazy i foldery",
-                   "Zapamiętuje układ, pliki i pozycję kursora po ponownym uruchomieniu",
+                   "Pamięta układ i pliki; autozapis i historia 5 wersji chronią przed utratą zmian",
                    "Panel folderu jak w Total Commanderze: kopiuj i przenoś pliki (F5, F6)",
                    "Przypomnienia z datą, godziną i własnym kolorem",
                    "Lekki program na Windows: rozpakuj ZIP i uruchom"],

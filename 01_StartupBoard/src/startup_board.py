@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import base64
 import codecs
+import hashlib
 import json
 import math
 import os
@@ -69,6 +70,8 @@ ICON_COLORS = [("sealime", "Morze i limonka", "grad"), ("lime", "Limonkowy", "#b
 EXT_LANG = {".py": "python", ".pyw": "python", ".html": "html", ".htm": "html",
             ".xhtml": "html", ".sql": "sql"}
 LAST = {"dir": ""}        # ostatnio używany folder w oknach wyboru pliku (zapisywany w stanie)
+AUTO = {"on": True, "ms": 2000}   # autozapis plików tekstowych: włączony, zapis 2 s po ostatniej zmianie
+HIST = {"dir": None, "keep": 5, "gap": 120.0, "last": {}}  # historia wersji: folder, ile kopii, min. odstęp (s), czasy
 THEME = {"dark": True, "grad": True}  # ciemny schemat (pasek tytułu okien); gradient włączony
 
 
@@ -165,6 +168,50 @@ def atomic_write(path: Path, data: bytes) -> None:
         except OSError:
             pass
         raise
+
+
+def hist_dir(path: str) -> Path | None:
+    """Folder z kopiami jednego pliku: <stan>/historia/<nazwa>_<skrót ścieżki>."""
+    if HIST["dir"] is None:
+        return None
+    key = hashlib.sha1(os.path.normcase(os.path.abspath(path)).encode("utf-8", "replace")).hexdigest()[:10]
+    name = re.sub(r'[\\/:*?"<>|]', "_", Path(path).stem)[:40] or "plik"
+    return Path(HIST["dir"]) / f"{name}_{key}"
+
+
+def hist_list(path: str) -> list[Path]:
+    """Kopie pliku od najnowszej."""
+    d = hist_dir(path)
+    if d is None or not d.is_dir():
+        return []
+    try:
+        return sorted((f for f in d.iterdir() if f.is_file()), key=lambda f: f.name, reverse=True)
+    except OSError:
+        return []
+
+
+def hist_push(path: str, data: bytes) -> bool:
+    """Dodaj kopię (pomija identyczną z najnowszą), zostaw ostatnie HIST['keep']."""
+    d = hist_dir(path)
+    if d is None or not data:
+        return False
+    try:
+        items = hist_list(path)
+        if items and items[0].read_bytes() == data:
+            return False
+        d.mkdir(parents=True, exist_ok=True)
+        base = time.strftime("%Y%m%d-%H%M%S")
+        suf, n = Path(path).suffix, 1
+        f = d / f"{base}{suf}"
+        while f.exists():
+            n += 1
+            f = d / f"{base}_{n}{suf}"
+        f.write_bytes(data)
+        for old in hist_list(path)[HIST["keep"]:]:
+            old.unlink(missing_ok=True)
+        return True
+    except OSError:
+        return False
 
 
 def star_pixmap(color: str, size: int) -> QPixmap:
@@ -1483,10 +1530,13 @@ class TextPane(QFrame):
         self.mtime: float | None = None
         self.disk_size = 0
         self.missing = self.conflict = False
+        self.save_err: str | None = None  # komunikat ostatniego nieudanego autozapisu
         self.lang = "auto"
         self.family = "Consolas"
         self.border = DEFAULT_BORDER
         self._active = False
+        self._auto = QTimer(self, singleShot=True)  # autozapis: odlicza od OSTATNIEJ zmiany tekstu
+        self._auto.timeout.connect(self.autosave)
         self.setAcceptDrops(True)
 
         self.header = QWidget()
@@ -1570,6 +1620,7 @@ class TextPane(QFrame):
         self.btn_fcase.toggled.connect(lambda _c: self._find_live())
         self.btn_fclose.clicked.connect(self.hide_find)
         self.editor.document().modificationChanged.connect(lambda _m: self.refresh_header())
+        self.editor.document().contentsChanged.connect(self._on_edit)
         self.editor.fileDropped.connect(self.open_file)
         self.editor.focused.connect(self._on_focus)
         self.set_active(False)
@@ -1729,6 +1780,8 @@ class TextPane(QFrame):
             txt, col = "⚠ nie otwarto", UI["err"]
         elif self.conflict:
             txt, col = "⚠ zmieniony na dysku", UI["err"]
+        elif self.save_err and self.is_modified():
+            txt, col = "⚠ błąd zapisu", UI["err"]
         elif self.kind == "pdf":
             txt, col = f"PDF · {self.pdf.page_count()} str.", UI["info"]
         elif self.kind == "image":
@@ -1741,7 +1794,13 @@ class TextPane(QFrame):
             txt += f" · {human_size(self.disk_size)}"
         self.lbl_state.setText(txt)
         self.lbl_state.setStyleSheet(f"color:{col};")
-        self.lbl_state.setToolTip(f"Kodowanie: {self.encoding}" if self.kind == "text" else "")
+        tip = f"Kodowanie: {self.encoding}" if self.kind == "text" else ""
+        if self.conflict:
+            tip = ("Plik zmieniono poza programem. Autozapis wstrzymany: Ctrl+S nadpisze plik Twoją wersją "
+                   "(wersja z dysku trafi do Historii wersji).")
+        elif self.save_err and self.is_modified():
+            tip = f"Nie udało się zapisać: {self.save_err}\nPonowna próba za chwilę lub Ctrl+S."
+        self.lbl_state.setToolTip(tip)
 
     # --- szukanie ---
     def eventFilter(self, obj, ev):
@@ -2137,21 +2196,46 @@ class TextPane(QFrame):
             fn += m.group(1) if m and "Wszystkie" not in flt else ".txt"
         return self._write(fn)
 
-    def _write(self, path: str) -> bool:
+    def _data(self) -> bytes:
+        """Zawartość edytora w kodowaniu i z końcami wierszy pliku."""
         text = self.editor.toPlainText().replace("\n", self.newline)
         try:
-            data = text.encode(self.encoding)
+            return text.encode(self.encoding)
         except UnicodeEncodeError:
             self.encoding = "utf-8"
-            data = text.encode("utf-8")
+            return text.encode("utf-8")
+
+    def _hist_before_write(self, path: str, data: bytes):
+        """Kopia poprzedniej wersji z dysku: przy zmianie z zewnątrz / innym pliku od razu, w trakcie pracy co >= 2 min."""
         try:
+            p = Path(path)
+            if not p.is_file():
+                return
+            ext = path != self.path or self.mtime is None or abs(p.stat().st_mtime - self.mtime) > 1e-6
+            now = time.time()
+            if not ext and now - HIST["last"].get(path, 0.0) < HIST["gap"]:
+                return
+            if hist_push(path, p.read_bytes()):
+                HIST["last"][path] = now
+        except OSError:
+            pass
+
+    def _write(self, path: str, silent: bool = False) -> bool:
+        data = self._data()
+        try:
+            self._hist_before_write(path, data)
             atomic_write(Path(path), data)
             s = Path(path).stat()
         except Exception as ex:
-            QMessageBox.warning(self, "Błąd zapisu", f"{path}\n\n{ex}")
+            if silent:
+                self.save_err = str(ex)
+                self.refresh_header()
+                QTimer.singleShot(10_000, self.autosave)  # ponów, gdy plik był chwilowo zablokowany
+            else:
+                QMessageBox.warning(self, "Błąd zapisu", f"{path}\n\n{ex}")
             return False
         moved = path != self.path
-        self.path, self.untitled, self.missing = path, False, False
+        self.path, self.untitled, self.missing, self.save_err = path, False, False, None
         self.mtime, self.disk_size, self.conflict = s.st_mtime, s.st_size, False
         self.editor.document().setModified(False)
         self.apply_lang()
@@ -2160,9 +2244,33 @@ class TextPane(QFrame):
             self._note_path()
         return True
 
+    def can_autosave(self) -> bool:
+        return (AUTO["on"] and self.kind == "text" and self.demo is None and bool(self.path) and not self.untitled
+                and not self.missing and not self.conflict and self.stack.currentIndex() == self.ED)
+
+    def _on_edit(self):
+        if AUTO["on"] and self.path and not self.untitled and self.kind == "text":
+            self._auto.start(AUTO["ms"])  # każda zmiana odsuwa zapis: plik powstaje 2 s po ostatnim znaku
+
+    def autosave(self) -> bool:
+        """Cichy zapis zmian do pliku; nie nadpisuje, gdy plik zmieniono poza programem."""
+        if not self.is_modified() or not self.can_autosave():
+            return False
+        try:
+            m = Path(self.path).stat().st_mtime
+        except OSError:
+            m = None
+        if m is None or (self.mtime is not None and m != self.mtime):
+            self.conflict = True  # plik zmieniony / usunięty z zewnątrz: decyzja należy do użytkownika
+            self.refresh_header()
+            return False
+        return self._write(self.path, silent=True)
+
     def confirm_close(self) -> bool:
         if not self.is_modified():
             return True
+        if self.can_autosave():  # autozapis włączony: zamknięcie po prostu zapisuje
+            return self.save()
         name = Path(self.path).name if self.path else "Bez tytułu"
         r = QMessageBox.question(
             self, "Niezapisane zmiany", f"Zapisać zmiany w „{name}”?",
@@ -2203,6 +2311,11 @@ class TextPane(QFrame):
             self.conflict = True
             self.refresh_header()
         else:
+            if self.kind == "text" and not self.untitled:  # to, co było w panelu, zanim zmiana z zewnątrz to zastąpi
+                now = time.time()
+                if now - HIST["last"].get(self.path + "|ext", 0.0) > 10:
+                    HIST["last"][self.path + "|ext"] = now
+                    hist_push(self.path, self._data())
             self.open_file(self.path, self.state(), ask=False)
 
     def state(self) -> dict:
@@ -2910,6 +3023,7 @@ class MainWindow(QMainWindow):
         self.state_path = state_path or self._default_state_path()
         self.state_dir = self.state_path.parent
         TextPane.img_dir = self.state_dir / "obrazy"
+        HIST["dir"] = self.state_dir / "historia"
         self._ready = False
         self._app_css = ""
         self._xfers: list = []
@@ -2944,10 +3058,7 @@ class MainWindow(QMainWindow):
         self.load_state()
         self.set_icon_color(self.icon_key)
         self.set_current(self.current)
-        self.timer = QTimer(self, interval=5_000)
-        self.timer.timeout.connect(self.save_state)
-        self.timer.start()
-        QApplication.instance().aboutToQuit.connect(self.save_state)
+        QApplication.instance().aboutToQuit.connect(self.save_state)  # stan zapisuje się po każdej zmianie (schedule_save)
         self._alt_clean = False
         QApplication.instance().installEventFilter(self)
 
@@ -3006,7 +3117,7 @@ class MainWindow(QMainWindow):
         m.addAction(self._act("Otwórz w aktywnym panelu…", lambda: self.current.ask_open(), "Ctrl+O"))
         m.addAction(self._act("Otwórz folder w panelu…", self.open_folder_dialog, "Ctrl+Shift+O"))
         m.addAction(self._act("Panel przypomnień", lambda: self.show_reminders(), "Ctrl+Shift+R"))
-        m.addAction(self._act("Nowe przypomnienie…", self.quick_reminder, "Ctrl+Shift+N"))
+        m.addAction(self._act("Nowe przypomnienie…", self.quick_reminder, "Ctrl+Alt+N"))
         self.m_recent = m.addMenu("Ostatnie pliki")
         self.m_recent.aboutToShow.connect(self._fill_recent)
         m.addSeparator()
@@ -3014,6 +3125,12 @@ class MainWindow(QMainWindow):
         self.act_saveas = self._act("Zapisz jako…", lambda: self.current.save_as(), "Ctrl+Shift+S")
         m.addAction(self.act_save)
         m.addAction(self.act_saveas)
+        self.act_auto = self._act("Autozapis (2 s po ostatniej zmianie)",
+                                  lambda: self.set_autosave(self.act_auto.isChecked()), checkable=True)
+        self.act_auto.setChecked(True)
+        m.addAction(self.act_auto)
+        self.act_hist = self._act("Historia wersji pliku…", self.show_history, "Ctrl+Alt+H")
+        m.addAction(self.act_hist)
         m.addSeparator()
         m.addAction(self._act("Wklej do pustego panelu (tekst, obraz lub plik)", self.paste_smart, "Ctrl+V"))
         m.addAction(self._act("Wklej obraz ze schowka", self.paste_image, "Ctrl+Shift+V"))
@@ -3202,6 +3319,8 @@ class MainWindow(QMainWindow):
         self.act_find.setEnabled(text_ok)
         self.act_save.setEnabled(c.kind == "text" and c.stack.currentIndex() == c.ED)
         self.act_saveas.setEnabled(text_ok)
+        self.act_hist.setEnabled(text_ok and bool(c.path) and not c.untitled)
+        self.act_auto.setChecked(AUTO["on"])
         self.act_saveimg.setEnabled(c.kind == "image")
 
     def show_popup(self, pos: QPoint):
@@ -3211,6 +3330,8 @@ class MainWindow(QMainWindow):
     def eventFilter(self, obj, ev):
         """Stuknięcie samego Alt pokazuje ukryty pasek menu."""
         t = ev.type()
+        if t in (QEvent.Type.KeyRelease, QEvent.Type.MouseButtonRelease, QEvent.Type.Wheel):
+            self.schedule_save()
         if t == QEvent.Type.ShortcutOverride:  # Alt+cyfra (skrót) nie liczy się jako stuknięcie Alt
             if ev.key() != Qt.Key.Key_Alt:
                 self._alt_clean = False
@@ -3325,6 +3446,83 @@ class MainWindow(QMainWindow):
     def set_gradient(self, on: bool):
         THEME["grad"] = bool(on)
         self.apply_look()
+
+    def set_autosave(self, on: bool):
+        AUTO["on"] = bool(on)
+        self.act_auto.setChecked(bool(on))
+        if on:
+            for p in self.panes:  # zmiany, które czekały na ręczny zapis, zapisz od razu
+                p.autosave()
+        self.schedule_save()
+
+    def show_history(self):
+        """Kopie aktywnego pliku (ostatnie HIST['keep']) z podglądem i przywracaniem."""
+        c = self.current
+        if c.kind != "text" or not c.path or c.untitled:
+            return
+        path = c.path
+        d = ThemedDialog(self)
+        d.setWindowTitle(f"Historia wersji – {Path(path).name}")
+        d.resize(760, 460)
+        lay = QVBoxLayout(d)
+        info = QLabel(f"Ostatnie {HIST['keep']} wersji pliku. Kopia powstaje przed nadpisaniem (co ≥ 2 min pracy "
+                      f"oraz zawsze po zmianie pliku poza programem). Przywrócenie można cofnąć (Ctrl+Z).")
+        info.setWordWrap(True)
+        lay.addWidget(info)
+        row = QHBoxLayout()
+        lst = QListWidget()
+        lst.setFixedWidth(230)
+        prev = QPlainTextEdit()
+        prev.setReadOnly(True)
+        prev.setLineWrapMode(QPlainTextEdit.LineWrapMode.WidgetWidth)
+        prev.setFont(c.editor.font())
+        row.addWidget(lst)
+        row.addWidget(prev, 1)
+        lay.addLayout(row, 1)
+        btns = QHBoxLayout()
+        b_res = QPushButton("Przywróć tę wersję")
+        b_dir = QPushButton("Otwórz folder kopii")
+        b_close = QPushButton("Zamknij")
+        for b in (b_res, b_dir):
+            btns.addWidget(b)
+        btns.addStretch(1)
+        btns.addWidget(b_close)
+        lay.addLayout(btns)
+        files = hist_list(path)
+        for f in files:
+            lst.addItem(f"{time.strftime('%d.%m.%Y %H:%M:%S', time.localtime(f.stat().st_mtime))} · {human_size(f.stat().st_size)}")
+        if not files:
+            lst.addItem("(brak kopii – powstaną przy kolejnym zapisie)")
+        b_res.setEnabled(False)
+
+        def show(i: int):
+            ok = 0 <= i < len(files)
+            b_res.setEnabled(ok)
+            prev.setPlainText(decode_bytes(files[i].read_bytes())[0] if ok else "")
+        lst.currentRowChanged.connect(show)
+
+        def restore():
+            i = lst.currentRow()
+            if not 0 <= i < len(files) or c.path != path or c.kind != "text":
+                return
+            hist_push(path, c._data())  # obecny stan też zostaje w historii
+            text = decode_bytes(files[i].read_bytes())[0].replace("\r\n", "\n").replace("\r", "\n")
+            cur = c.editor.textCursor()
+            cur.beginEditBlock()
+            cur.select(QTextCursor.SelectionType.Document)
+            cur.insertText(text)
+            cur.endEditBlock()
+            c.editor.document().setModified(True)  # zapis: autozapis za 2 s albo Ctrl+S
+            c._on_edit()
+            d.accept()
+        b_res.clicked.connect(restore)
+        b_dir.clicked.connect(lambda: (hist_dir(path).mkdir(parents=True, exist_ok=True),
+                                       QDesktopServices.openUrl(QUrl.fromLocalFile(str(hist_dir(path))))))
+        b_close.clicked.connect(d.reject)
+        if files:
+            lst.setCurrentRow(0)
+        d.exec()
+        d.deleteLater()
 
     def set_snap(self, on: bool):
         self.canvas.snap_on = bool(on)
@@ -3715,6 +3913,7 @@ class MainWindow(QMainWindow):
                 "menu": self.menuBar().isVisible(),
                 "font_default": [self.font_family, self.font_size],
                 "recent": self.recent, "last_dir": LAST["dir"], "reminders": self.reminders,
+                "autosave": AUTO["on"],
             }
             data.update(self.snapshot())
             js = json.dumps(data, ensure_ascii=False, indent=1)
@@ -3784,6 +3983,7 @@ class MainWindow(QMainWindow):
             if data.get("border") in BORDERS:
                 self.set_border(data["border"])
             self.set_snap(bool(data.get("snap", True)))
+            self.set_autosave(bool(data.get("autosave", True)))
             self.icon_key = "sealime" if old_look and data.get("icon", "yellow") == "yellow" else data.get("icon", "sealime")
             self.set_menu_visible(bool(data.get("menu", True)))
             for p in self.panes:
