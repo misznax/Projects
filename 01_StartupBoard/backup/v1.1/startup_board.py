@@ -3911,7 +3911,7 @@ def main():
         except Exception:
             pass
     app = QApplication(sys.argv)
-    app.setApplicationName("StartupBoard")
+    app.setApplicationName("Startup Board")
     app.setOrganizationName("smialo")
     sp = MainWindow._default_state_path()
     sp.parent.mkdir(parents=True, exist_ok=True)

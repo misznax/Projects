@@ -24,7 +24,7 @@ def tile(name, state, body, cls="", extra=""):
             f'<div class="tb">{body}</div></div>')
 
 
-# ─────────────────────────────── 01 StartupBoard ───────────────────────────────
+# ─────────────────────────────── 01 Startup Board ───────────────────────────────
 def mock_board(caps=True):
     pop = lambda i: f'data-at2="5" style="--i:{i}"'
     t4 = tile(
@@ -46,8 +46,8 @@ def mock_board(caps=True):
     toast = '<div class="toast2 sb" data-at="5"><b>✔</b> Układ zapamiętany. Jutro wszystko czeka otwarte.</div>'
     c = ["Przeciągasz plik w wolne pole", "Plik otwiera się od razu, z zawijaniem wierszy",
          "Piszesz, a pole pokazuje „zmieniony”", "Ctrl+S i znów „zapisany”", "Jutro układ wraca sam, bez szukania"] if caps else None
-    return dem(f'<div class="win">{bar("StartupBoard")}<div class="board">{"".join(t)}</div>{ghost}{toast}</div><div class="dcap"></div>' if caps
-               else f'<div class="win">{bar("StartupBoard")}<div class="board">{"".join(t)}</div>{ghost}{toast}</div>', c)
+    return dem(f'<div class="win">{bar("Startup Board")}<div class="board">{"".join(t)}</div>{ghost}{toast}</div><div class="dcap"></div>' if caps
+               else f'<div class="win">{bar("Startup Board")}<div class="board">{"".join(t)}</div>{ghost}{toast}</div>', c)
 
 
 # ─────────────────────────────── 02 Nawyk ───────────────────────────────

@@ -78,16 +78,16 @@ def placeholder(n):
 
 # ───────────────────────── dane aplikacji ─────────────────────────
 APPS = [
-    dict(id="01", slug="startupboard", name="StartupBoard", cat="Produktywność", plat=["Windows", "Program offline"],
+    dict(id="01", slug="startupboard", name="Startup Board", cat="Produktywność", plat=["Windows", "Program offline"],
          tag="Jedno okno na start dnia. Pliki, których potrzebujesz, czekają już otwarte.",
          problem="Każdy poranek zaczyna się od szukania tych samych plików i okien.",
-         solution="Układasz 6 pól raz. Następnego dnia pracujesz od razu, bez szukania.",
-         benefits=["6 paneli na pliki z kolorową składnią (m.in. skrypty)",
+         solution="Układasz do 8 pól raz. Następnego dnia pracujesz od razu, bez szukania.",
+         benefits=["Do 8 paneli: tekst z kolorową składnią, PDF, obrazy i foldery",
                    "Zapamiętuje układ, pliki i pozycję kursora po ponownym uruchomieniu",
-                   "Edytor w każdym polu: zawijanie wierszy, stan zapisu, rozmiar pliku",
-                   "Przeciągnij i upuść plik, bez przeszukiwania folderów",
+                   "Panel folderu jak w Total Commanderze: kopiuj i przenoś pliki (F5, F6)",
+                   "Przypomnienia z datą, godziną i własnym kolorem",
                    "Lekki program na Windows: rozpakuj ZIP i uruchom"],
-         roadmap="W planie: docx · xlsx · pdf · okna innych programów",
+         roadmap="W planie: edycja docx · xlsx · okna innych programów",
          price="49 zł na stałe lub 10 zł miesięcznie netto",
          demo=None, mock=mock_board),
     dict(id="02", slug="nawyk", name="Nawyk", cat="Organizacja dnia", plat=["Przeglądarka", "Chmura"],

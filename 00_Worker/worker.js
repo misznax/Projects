@@ -212,7 +212,7 @@ async function appState(request, env, app) {
 
 
 // ── Lista chętnych (strona główna): imię + e-mail + aplikacja, D1 ──
-const WANT_APPS = ['StartupBoard', 'Nawyk', 'Esencja', 'Notatnik Słuchacza', 'Anatomia 3D'];
+const WANT_APPS = ['Startup Board', 'Nawyk', 'Esencja', 'Notatnik Słuchacza', 'Anatomia 3D'];
 let interestReady = false;
 async function interest(request, env) {
   if (request.method !== 'POST') return J({ code: 'method' }, 405);

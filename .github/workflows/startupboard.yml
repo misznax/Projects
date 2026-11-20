@@ -25,4 +25,4 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release delete startupboard-latest -y --cleanup-tag || true
-          gh release create startupboard-latest dist/StartupBoard_v*.zip --title "StartupBoard (ZIP)" --notes "Rozpakuj ZIP i uruchom StartupBoard/StartupBoard.exe. Automatyczny build z ostatniego commita."
+          gh release create startupboard-latest dist/StartupBoard_v*.zip --title "Startup Board (ZIP)" --notes "Rozpakuj ZIP i uruchom StartupBoard/StartupBoard.exe. Automatyczny build z ostatniego commita."
