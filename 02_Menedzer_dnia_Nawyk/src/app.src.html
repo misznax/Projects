@@ -434,6 +434,11 @@ html[data-dark="0"] .okb{color:hsl(150 70% 22%)}
 .ek{display:block;margin:10px 0 4px}
 .ekp{display:flex;gap:8px;flex-wrap:wrap}
 .ek img{width:min(46%,200px);height:auto;border-radius:12px;background:#fff;border:1px solid color-mix(in srgb,var(--ink) 14%,transparent)}
+.ekp{display:grid;justify-content:start}
+.ekp img{grid-area:1/1;width:min(70%,260px)}
+.ekp img+img{animation:ekb 2.4s ease-in-out infinite}
+@keyframes ekb{0%,15%{opacity:0}45%,65%{opacity:1}95%,100%{opacity:0}}
+@media (prefers-reduced-motion:reduce){.ekp{display:flex}.ekp img{width:min(46%,200px)}.ekp img+img{animation:none}}
 .ek small{display:block;margin-top:4px;font-size:11px;color:var(--mute)}
 .ek small a{color:var(--cacc)}
 .alt{margin-top:14px;padding-top:10px;border-top:1px dashed color-mix(in srgb,var(--ink) 16%,transparent)}
