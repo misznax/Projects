@@ -41,7 +41,7 @@ from PySide6.QtCore import QDate, QDateTime, QDir, QFile, QTime
 from PySide6.QtWidgets import QDateEdit, QTimeEdit
 
 APP_NAME = "Startup Board"
-APP_VERSION = "v1.2"  # zmieniać tylko na polecenie autora
+APP_VERSION = "v1.3"  # zmieniać tylko na polecenie autora
 APP_AUTHOR = "Michał Rzekiecki"
 APP_CONTACT = "kontakt@smialo.org"
 
@@ -168,6 +168,37 @@ def atomic_write(path: Path, data: bytes) -> None:
         except OSError:
             pass
         raise
+
+
+def _state_score(f: Path) -> int:
+    """Ile paneli z zawartością (plik, szkic, przypomnienia) ma zapisany stan; 0 = brak / pusty / uszkodzony."""
+    try:
+        d = json.loads(f.read_text(encoding="utf-8"))
+        return sum(1 for s in d.get("panes", []) if isinstance(s, dict) and (s.get("path") or s.get("untitled") or s.get("reminders")))
+    except Exception:
+        return 0
+
+
+def migrate_legacy_state(state_dir: Path) -> str:
+    """Wersje 1.1-1.2 przez pomyłkę zapisywały stan w folderze „Startup Board” (ze spacją) zamiast „StartupBoard”:
+    po aktualizacji pliki się nie wczytywały. Jeśli w bieżącym folderze stanu nie ma nic, a w drugim jest, przenieś."""
+    legacy = state_dir.with_name("Startup Board" if state_dir.name == "StartupBoard" else "StartupBoard")
+    try:
+        if not legacy.is_dir() or _state_score(legacy / "state.json") == 0 or _state_score(state_dir / "state.json") > 0:
+            return ""
+        state_dir.mkdir(parents=True, exist_ok=True)
+        old = state_dir / "state.json"
+        if old.exists():  # pusty stan nie ginie: zostaje obok
+            shutil.copy2(old, state_dir / f"state_pusty_{time.strftime('%Y%m%d-%H%M%S')}.json")
+        for name in ("state.json", "zestawy", "historia", "obrazy"):
+            src, dst = legacy / name, state_dir / name
+            if src.is_file():
+                shutil.copy2(src, dst)
+            elif src.is_dir():
+                shutil.copytree(src, dst, dirs_exist_ok=True)
+        return f"stan przeniesiony z {legacy}"
+    except OSError as ex:
+        return f"migracja stanu nie powiodła się: {ex}"
 
 
 def hist_dir(path: str) -> Path | None:
@@ -4398,11 +4429,18 @@ def main():
         except Exception:
             pass
     app = QApplication(sys.argv)
-    app.setApplicationName("Startup Board")
+    app.setApplicationName("StartupBoard")  # NIE zmieniać: to nazwa folderu stanu (%LOCALAPPDATA%\\smialo\\StartupBoard); napis w oknie to APP_NAME
     app.setOrganizationName("smialo")
     sp = MainWindow._default_state_path()
     sp.parent.mkdir(parents=True, exist_ok=True)
     install_excepthook(sp.with_name("startupboard.log"))
+    note = migrate_legacy_state(sp.parent)
+    if note:
+        try:
+            with open(sp.with_name("startupboard.log"), "a", encoding="utf-8") as f:
+                f.write(time.strftime("%Y-%m-%d %H:%M:%S ") + note + "\n")
+        except OSError:
+            pass
     lock = QLockFile(str(sp.parent / "app.lock"))  # jedna kopia naraz, by nie nadpisywały sobie stanu
     if not lock.tryLock(300):
         QMessageBox.information(None, APP_NAME, "Program już działa (sprawdź pasek zadań).")

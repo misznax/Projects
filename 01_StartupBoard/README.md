@@ -3,9 +3,9 @@
 Dowolna liczba swobodnych paneli roboczych (start: 6) z pamięcią stanu: pliki tekstowe (kolorowanie Python/HTML/SQL), PDF i obrazy.
 Autor: Michał Rzekiecki · kontakt: kontakt@smialo.org
 
-- Pobierz: Releases → `startupboard-latest` → `StartupBoard_v1.2.zip`, rozpakuj i uruchom `StartupBoard.exe`.
+- Pobierz: Releases → `startupboard-latest` → `StartupBoard_v1.3.zip`, rozpakuj i uruchom `StartupBoard.exe`.
 - Źródła: `src/`, build: `python build_exe.py`, kopie wersji: `backup/`.
-- Stan zapisuje się w `%LOCALAPPDATA%\smialo\StartupBoard\` (menu Pomoc → „Folder z ustawieniami"): `state.json`, `zestawy\`, `obrazy\`, `startupboard.log`.
+- Stan zapisuje się w `%LOCALAPPDATA%\smialo\StartupBoard (v1.3 sama przenosi stan, który v1.1–1.2 zapisały w folderze „Startup Board” ze spacją)\` (menu Pomoc → „Folder z ustawieniami"): `state.json`, `zestawy\`, `obrazy\`, `startupboard.log`.
 
 ## Najważniejsze
 - Pusty panel ma **+** → nowy plik tekstowy gotowy do pisania (nazwę wybierasz przy pierwszym Ctrl+S). **Ctrl+V** wkleja do pustego panelu skopiowany plik, tekst (nowy dokument) albo obraz; w edytorze działa jak zwykle. Obok: obraz ze schowka (Ctrl+Shift+V), obraz z pliku, otwórz plik; można też przeciągnąć plik na panel.
