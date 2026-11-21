@@ -2779,13 +2779,13 @@ class Canvas(QWidget):
 
 # ---------- okno Ustawienia z podglądem na żywo ----------
 
-UI_LABELS = [("hdr_bg", "Pasek panelu – kolor 1"), ("hdr_bg_a", "Pasek aktywnego – kolor 1"), ("hdr_fg", "Tekst paska"),
-             ("mute", "Tekst pomocniczy"), ("canvas", "Tło za panelami – kolor 1"), ("sel", "Zaznaczenie tekstu"),
+UI_LABELS = [("hdr_fg", "Tekst paska"), ("mute", "Tekst pomocniczy"), ("sel", "Zaznaczenie tekstu"),
              ("ok", "Status: zapisany"), ("warn", "Status: niezapisany"), ("err", "Status: błąd"),
              ("info", "Status: informacja")]
-GRAD_LABELS = [("hdr_bg2", "Pasek panelu – kolor 2"), ("hdr_bg_a2", "Pasek aktywnego – kolor 2"),
-               ("border2", "Ramka nieaktywna – kolor 2"), ("border_a2", "Ramka aktywna – kolor 2"),
-               ("canvas2", "Tło za panelami – kolor 2")]
+# (opis, kolor 1, kolor 2): kolor 2 działa tylko przy włączonym gradiencie
+PAIR_BARS = [("Pasek panelu", "hdr_bg", "hdr_bg2"), ("Pasek aktywnego panelu", "hdr_bg_a", "hdr_bg_a2"),
+             ("Tło za panelami", "canvas", "canvas2")]
+PAIR_BORDERS = [("Ramka aktywnego panelu", "border_a", "border_a2"), ("Ramka pozostałych paneli", "border", "border2")]
 SYNTAX_TIPS = {"kw": "if, for, return, SELECT, FROM…", "kw2": "def, class, import, INSERT, CREATE…",
                "const": "True, None, NULL", "func": "nazwy wywoływanych funkcji", "builtin": "print, len, open, self…",
                "cls": "nazwy klas i typów (INT, VARCHAR)", "deco": "@dekorator", "tag": "znaczniki HTML: div, p, a…",
@@ -2938,6 +2938,17 @@ class SettingsDialog(ThemedDialog):
         (self.ui_btns if ui else self.col_btns)[key] = b
         return b
 
+    def _pair_rows(self, gl: QGridLayout, rows: list, r0: int):
+        """Wiersze „opis | kolor 1 | kolor 2”; kolor 2 jest nieaktywny, gdy gradient wyłączony."""
+        if not hasattr(self, "c2_btns"):
+            self.c2_btns = []
+        for i, (lab, k1, k2) in enumerate(rows):
+            gl.addWidget(QLabel(lab), r0 + i, 0)
+            gl.addWidget(self._cbtn(k1, "Kolor 1", True), r0 + i, 1)
+            b2 = self._cbtn(k2, "Kolor 2", True)
+            self.c2_btns.append(b2)
+            gl.addWidget(b2, r0 + i, 2)
+
     def _page_theme(self) -> QWidget:
         w, v = self._page()
         v.addWidget(QLabel("Gotowy schemat kolorów:"))
@@ -2952,11 +2963,10 @@ class SettingsDialog(ThemedDialog):
         for i, (k, lab) in enumerate(UI_LABELS):
             gl.addWidget(self._cbtn(k, lab, True), i // 2, i % 2)
         v.addWidget(g)
-        g, gl = self._group("Gradient (pasek, ramka, tło)")
-        self.chk_grad = QCheckBox("Subtelny gradient między kolorami")
-        gl.addWidget(self.chk_grad, 0, 0, 1, 2)
-        for i, (k, lab) in enumerate(GRAD_LABELS):
-            gl.addWidget(self._cbtn(k, lab, True), 1 + i // 2, i % 2)
+        g, gl = self._group("Paski i tło")
+        self.chk_grad = QCheckBox("Gradient (płynne przejście z koloru 1 w kolor 2)")
+        gl.addWidget(self.chk_grad, 0, 0, 1, 3)
+        self._pair_rows(gl, PAIR_BARS, 1)
         v.addWidget(g)
         self.chk_grad.toggled.connect(self._on_grad)
         b = QPushButton("Przywróć kolory schematu")
@@ -3010,13 +3020,10 @@ class SettingsDialog(ThemedDialog):
         v.addLayout(row)
         self.border_grp.idClicked.connect(self._on_border)
         g, gl = self._group("Kolory ramek")
-        gl.addWidget(self._cbtn("border_a", "Ramka aktywna – kolor 1", True), 0, 0)
-        gl.addWidget(self._cbtn("border_a2", "Ramka aktywna – kolor 2", True), 0, 1)
-        gl.addWidget(self._cbtn("border", "Ramka nieaktywna – kolor 1", True), 1, 0)
-        gl.addWidget(self._cbtn("border2", "Ramka nieaktywna – kolor 2", True), 1, 1)
-        hint = QLabel("Ramka przechodzi płynnie z koloru 1 w kolor 2. Chcesz jeden kolor? Ustaw oba tak samo.")
+        self._pair_rows(gl, PAIR_BORDERS, 0)
+        hint = QLabel("Kolor 2 działa tylko przy włączonym gradiencie (Motyw → Paski i tło). Bez gradientu liczy się kolor 1.")
         hint.setWordWrap(True)
-        gl.addWidget(hint, 2, 0, 1, 2)
+        gl.addWidget(hint, 2, 0, 1, 3)
         v.addWidget(g)
         b = QPushButton("Przywróć kolory ramek ze schematu")
         b.clicked.connect(self.win.reset_border_colors)
@@ -3157,6 +3164,8 @@ class SettingsDialog(ThemedDialog):
             self.chk_menu.setChecked(w.menuBar().isVisible())
             self.chk_snap.setChecked(w.canvas.snap_on)
             self.chk_grad.setChecked(THEME["grad"])
+            for b in self.c2_btns:
+                b.setEnabled(THEME["grad"])
         finally:
             self._syncing = False
 
@@ -3190,6 +3199,8 @@ class SettingsDialog(ThemedDialog):
             self.win.set_snap(on)
 
     def _on_grad(self, on: bool):
+        for b in self.c2_btns:
+            b.setEnabled(on)
         if not self._syncing:
             self.win.set_gradient(on)
 
