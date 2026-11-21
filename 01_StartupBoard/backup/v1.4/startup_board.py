@@ -229,19 +229,34 @@ def migrate_legacy_state(state_dir: Path) -> str:
     return "; ".join(notes)
 
 
-def backup_state(state_dir: Path, keep: int = 14) -> None:
-    """Raz dziennie kopia state.json (stan z końca poprzedniej sesji) w folderze kopie_stanu; zostaje ostatnie `keep`."""
+def _ver_tuple(v) -> tuple:
+    try:
+        return tuple(int(x) for x in re.findall(r"\d+", str(v)))
+    except ValueError:
+        return ()
+
+
+def backup_state(state_dir: Path, tag: str = "", keep: int = 10) -> None:
+    """Kopia state.json z datą i godziną w nazwie (kopie_stanu\\state_RRRRMMDD-GGMMSS.json); pomija kopię identyczną
+    z najnowszą, zostaje ostatnie `keep`. tag: _obcy = plik zmienił inny program / inna kopia programu."""
     try:
         src = state_dir / "state.json"
         if not src.is_file() or src.stat().st_size == 0:
             return
+        data = src.read_bytes()
         d = state_dir / "kopie_stanu"
         d.mkdir(exist_ok=True)
-        dst = d / f"state_{time.strftime('%Y%m%d')}.json"
-        if not dst.exists():
-            shutil.copy2(src, dst)
-        for old in sorted(d.glob("state_*.json"), reverse=True)[keep:]:
-            old.unlink(missing_ok=True)
+        old = sorted(d.glob("state_*.json"), reverse=True)
+        if old and old[0].read_bytes() == data:
+            return
+        dst = d / f"state_{time.strftime('%Y%m%d-%H%M%S')}{tag}.json"
+        n = 1
+        while dst.exists():
+            n += 1
+            dst = d / f"state_{time.strftime('%Y%m%d-%H%M%S')}{tag}_{n}.json"
+        dst.write_bytes(data)
+        for f in sorted(d.glob("state_*.json"), reverse=True)[keep:]:
+            f.unlink(missing_ok=True)
     except OSError:
         pass
 
@@ -3763,6 +3778,9 @@ class MainWindow(QMainWindow):
         self.hook.fired.connect(self.bring_to_front)
         self._popups: list = []
         self._last_json = ""
+        self._last_bytes: bytes | None = None  # to, co sami ostatnio zapisaliśmy / wczytaliśmy z state.json
+        self._last_bak = 0.0
+        self._readonly_state = False  # stan zapisał nowszy program: nie nadpisujemy
         self._pending: list[tuple[TextPane, dict]] = []
         self._args: list[str] = []
         self.border = DEFAULT_BORDER
@@ -4904,12 +4922,25 @@ class MainWindow(QMainWindow):
                 "hotkey": self.hotkey_on, "sched": self.sched_on,
             }
             data.update(self.snapshot())
+            data["app_version"] = APP_VERSION
             js = json.dumps(data, ensure_ascii=False, indent=1)
             if js == self._last_json:  # nic się nie zmieniło - nie ruszaj dysku
                 return
+            if self._readonly_state:
+                return
             self.state_path.parent.mkdir(parents=True, exist_ok=True)
+            try:
+                disk = self.state_path.read_bytes()
+            except OSError:
+                disk = None
+            if disk and disk != self._last_bytes:  # ktoś inny (inny program / kopia) zmienił plik: najpierw kopia
+                backup_state(self.state_dir, "_obcy")
+                self._last_bak = time.time()
+            elif disk and time.time() - self._last_bak > 600:  # w trakcie pracy kopia co >= 10 min
+                backup_state(self.state_dir)
+                self._last_bak = time.time()
             atomic_write(self.state_path, js.encode())
-            self._last_json = js
+            self._last_json, self._last_bytes = js, js.encode()
         except Exception as ex:  # zapis stanu nigdy nie może zawiesić programu
             self._log(f"save_state: {ex!r} ({self.state_path})")
 
@@ -4929,12 +4960,18 @@ class MainWindow(QMainWindow):
     def load_state(self):
         """Wczytuje wygląd i układ od razu; pliki paneli dopiero po pokazaniu okna (start_loading)."""
         try:
-            data = json.loads(self.state_path.read_text(encoding="utf-8"))
+            raw = self.state_path.read_bytes()
+            data = json.loads(raw.decode("utf-8"))
         except FileNotFoundError:
             return
         except Exception as ex:
             self._log(f"load_state (odczyt): {ex!r}")
             return
+        self._last_bytes = raw
+        if _ver_tuple(data.get("app_version")) > _ver_tuple(APP_VERSION):  # stan nowszego programu: tylko odczyt
+            self._readonly_state = True
+            self.setWindowTitle(f"{APP_NAME} – STARSZA WERSJA: stan nie jest zapisywany (zapisał go {data.get('app_version')})")
+            self._log(f"stan zapisała nowsza wersja {data.get('app_version')}; ta ({APP_VERSION}) go nie nadpisuje")
         try:
             old_look = int(data.get("look_v", 1) or 1) < LOOK_VERSION
             sch = data.get("scheme") or "light"  # stary stan bez schematu = jasny
