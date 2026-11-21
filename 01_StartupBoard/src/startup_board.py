@@ -17,7 +17,11 @@ import math
 import os
 import re
 import shutil
+import struct
+import subprocess
+import threading
 import uuid
+import wave
 from datetime import datetime, timedelta
 import sys
 import tempfile
@@ -25,7 +29,7 @@ import time
 from functools import lru_cache
 from pathlib import Path
 
-from PySide6.QtCore import (QByteArray, QEvent, QLockFile, QPoint, QPointF, QRect, QRectF, QSize, QStandardPaths,
+from PySide6.QtCore import (QByteArray, QEvent, QLockFile, QObject, QPoint, QPointF, QRect, QRectF, QSize, QStandardPaths,
                             Qt, QThread, QTimer, QUrl, Signal)
 from PySide6.QtGui import (QAction, QActionGroup, QColor, QDesktopServices, QFont, QIcon, QImage, QImageReader,
                            QCursor, QKeySequence, QLinearGradient, QPainter, QPalette, QPen, QPixmap, QPolygonF, QShortcut, QSyntaxHighlighter,
@@ -41,7 +45,7 @@ from PySide6.QtCore import QDate, QDateTime, QDir, QFile, QTime
 from PySide6.QtWidgets import QDateEdit, QTimeEdit
 
 APP_NAME = "Startup Board"
-APP_VERSION = "v1.3"  # zmieniać tylko na polecenie autora
+APP_VERSION = "v1.4"  # zmieniać tylko na polecenie autora
 APP_AUTHOR = "Michał Rzekiecki"
 APP_CONTACT = "kontakt@smialo.org"
 
@@ -179,26 +183,67 @@ def _state_score(f: Path) -> int:
         return 0
 
 
+def _read_json(f: Path) -> dict:
+    try:
+        d = json.loads(f.read_text(encoding="utf-8"))
+        return d if isinstance(d, dict) else {}
+    except Exception:
+        return {}
+
+
 def migrate_legacy_state(state_dir: Path) -> str:
     """Wersje 1.1-1.2 przez pomyłkę zapisywały stan w folderze „Startup Board” (ze spacją) zamiast „StartupBoard”:
-    po aktualizacji pliki się nie wczytywały. Jeśli w bieżącym folderze stanu nie ma nic, a w drugim jest, przenieś."""
+    po aktualizacji pliki się nie wczytywały. Jeśli w bieżącym folderze stanu nie ma nic, a w drugim jest, przenieś;
+    przypomnienia ze starego folderu zawsze dołączamy (raz), żeby żadne nie przepadło."""
     legacy = state_dir.with_name("Startup Board" if state_dir.name == "StartupBoard" else "StartupBoard")
+    notes = []
     try:
-        if not legacy.is_dir() or _state_score(legacy / "state.json") == 0 or _state_score(state_dir / "state.json") > 0:
+        lf, cf = legacy / "state.json", state_dir / "state.json"
+        if not legacy.is_dir() or not lf.is_file():
             return ""
-        state_dir.mkdir(parents=True, exist_ok=True)
-        old = state_dir / "state.json"
-        if old.exists():  # pusty stan nie ginie: zostaje obok
-            shutil.copy2(old, state_dir / f"state_pusty_{time.strftime('%Y%m%d-%H%M%S')}.json")
-        for name in ("state.json", "zestawy", "historia", "obrazy"):
-            src, dst = legacy / name, state_dir / name
-            if src.is_file():
-                shutil.copy2(src, dst)
-            elif src.is_dir():
-                shutil.copytree(src, dst, dirs_exist_ok=True)
-        return f"stan przeniesiony z {legacy}"
+        if _state_score(lf) > 0 and _state_score(cf) == 0:
+            state_dir.mkdir(parents=True, exist_ok=True)
+            if cf.exists():  # pusty stan nie ginie: zostaje obok
+                shutil.copy2(cf, state_dir / f"state_pusty_{time.strftime('%Y%m%d-%H%M%S')}.json")
+            for name in ("state.json", "zestawy", "historia", "obrazy"):
+                src, dst = legacy / name, state_dir / name
+                if src.is_file():
+                    shutil.copy2(src, dst)
+                elif src.is_dir():
+                    shutil.copytree(src, dst, dirs_exist_ok=True)
+            notes.append(f"stan przeniesiony z {legacy}")
+        extra = [r for r in _read_json(lf).get("reminders", []) if isinstance(r, dict) and r.get("id")]
+        if extra and cf.is_file():
+            cur = _read_json(cf)
+            have = {r.get("id") for r in cur.get("reminders", []) if isinstance(r, dict)}
+            new = [r for r in extra if r["id"] not in have]
+            if new:
+                shutil.copy2(cf, state_dir / f"state_przed_scaleniem_{time.strftime('%Y%m%d-%H%M%S')}.json")
+                cur["reminders"] = list(cur.get("reminders", [])) + new
+                atomic_write(cf, json.dumps(cur, ensure_ascii=False, indent=1).encode())
+                notes.append(f"dołączono {len(new)} przypomnień z {legacy}")
+        if notes or extra:  # stary plik zostaje jako kopia, ale nie jest już wczytywany ani scalany ponownie
+            os.replace(lf, legacy / "state_przeniesiony.json")
     except OSError as ex:
-        return f"migracja stanu nie powiodła się: {ex}"
+        notes.append(f"migracja stanu nie powiodła się: {ex}")
+    return "; ".join(notes)
+
+
+def backup_state(state_dir: Path, keep: int = 14) -> None:
+    """Raz dziennie kopia state.json (stan z końca poprzedniej sesji) w folderze kopie_stanu; zostaje ostatnie `keep`."""
+    try:
+        src = state_dir / "state.json"
+        if not src.is_file() or src.stat().st_size == 0:
+            return
+        d = state_dir / "kopie_stanu"
+        d.mkdir(exist_ok=True)
+        dst = d / f"state_{time.strftime('%Y%m%d')}.json"
+        if not dst.exists():
+            shutil.copy2(src, dst)
+        for old in sorted(d.glob("state_*.json"), reverse=True)[keep:]:
+            old.unlink(missing_ok=True)
+    except OSError:
+        pass
 
 
 def hist_dir(path: str) -> Path | None:
@@ -1171,7 +1216,7 @@ class FolderView(QWidget):
 
 # ---------- panel przypomnień ----------
 
-REM_COLORS = ["#e5484d", "#f5a524", "#c6e03b", "#2dbf6c", "#12a6b0", "#3e8ef7", "#9b6bff", "#ec5fa5"]
+REM_COLORS = ["#2dbf6c", "#e5484d", "#f5a524", "#c6e03b", "#12a6b0", "#3e8ef7", "#9b6bff", "#ec5fa5"]  # [0] = domyślny zielony
 DAYS_PL = ["pn", "wt", "śr", "cz", "pt", "sb", "nd"]
 _WD = {"poniedziałek": 0, "poniedzialek": 0, "wtorek": 1, "środę": 2, "srode": 2, "środa": 2, "sroda": 2,
        "czwartek": 3, "piątek": 4, "piatek": 4, "sobotę": 5, "sobote": 5, "sobota": 5, "niedzielę": 6,
@@ -1377,11 +1422,7 @@ class RemindersView(QWidget):
         self.refresh()
 
     def next_color(self) -> str:
-        used = [i.get("color") for i in self.items if not i.get("done")]
-        for c in REM_COLORS:
-            if c not in used:
-                return c
-        return REM_COLORS[len(self.items) % len(REM_COLORS)]
+        return REM_COLORS[0]
 
     def active_count(self) -> int:
         return sum(1 for i in self.items if not i.get("done"))
@@ -1391,7 +1432,9 @@ class RemindersView(QWidget):
         keep = self._cur_id()
         self.list.clear()
         now = datetime.now()
-        show_done = self.chk_done.isChecked()
+        n_done = sum(1 for i in self.items if i.get("done"))
+        self.chk_done.setText(f"Pokaż wykonane ({n_done})" if n_done else "Pokaż wykonane")
+        show_done = self.chk_done.isChecked() or (n_done > 0 and n_done == len(self.items))  # same wykonane: pokaż je, by lista nie wyglądała na pustą
         for it in sorted(self.items, key=lambda x: (x.get("done", False), x["dt"])):
             if it.get("done") and not show_done:
                 continue
@@ -2414,8 +2457,11 @@ class Canvas(QWidget):
         self._cursor_on = False
         self.overlay: QWidget | None = None  # autoukrywany pasek kart: wysuwa się przy górnej krawędzi
         self._ov_until, self._ov_miss = 0.0, 0
-        self._ov_show = QTimer(self, singleShot=True, interval=220)
+        self._ov_show = QTimer(self, singleShot=True, interval=150)
         self._ov_show.timeout.connect(self._ov_try_show)
+        self._ov_idle = QTimer(self, interval=120)  # sprawdza położenie kursora także wtedy, gdy zdarzenia myszy nie dochodzą
+        self._ov_idle.timeout.connect(self._ov_scan)
+        self._ov_hits = 0
         self._ov_poll = QTimer(self, interval=250)  # chodzi tylko, gdy pasek jest widoczny
         self._ov_poll.timeout.connect(self._ov_check)
         for p in panes:
@@ -2425,25 +2471,51 @@ class Canvas(QWidget):
         QApplication.instance().installEventFilter(self)
 
     # --- nakładka (pasek kart w trybie autoukrywania) ---
-    HOT = 3  # px od górnej krawędzi, które wysuwają pasek
+    HOT = 14  # px od górnej krawędzi płótna; liczy się też pasek tytułu i menu nad nim (szybki ruch myszy je przeskakuje)
 
     def set_overlay(self, w: QWidget | None):
         if self.overlay is not None:
             self.overlay.hide()
         self._ov_show.stop()
         self._ov_poll.stop()
+        self._ov_idle.stop()
+        self._ov_hits = 0
         self.overlay = w
         if w is not None:
             w.setParent(self)
             w.setGeometry(0, 0, self.width(), w.height())
             w.hide()
+            self._ov_idle.start()
+
+    def _in_zone(self, g: QPoint) -> bool:
+        """Czy punkt (globalny) leży przy górnej krawędzi okna: pasek tytułu, menu albo pierwsze HOT px płótna."""
+        fg = self.window().frameGeometry()
+        top = self.mapToGlobal(QPoint(0, 0)).y()
+        return fg.left() <= g.x() <= fg.right() and fg.top() <= g.y() < top + self.HOT
 
     def _ov_hot(self) -> bool:
         ov = self.overlay
         if ov is None:
             return False
-        p = self.mapFromGlobal(QCursor.pos())
-        return self.rect().contains(p) and (p.y() < self.HOT or (ov.isVisible() and ov.geometry().contains(p)))
+        g = QCursor.pos()
+        if self._in_zone(g):
+            return True
+        return ov.isVisible() and self.rect().contains(self.mapFromGlobal(g)) and ov.geometry().contains(self.mapFromGlobal(g))
+
+    def _ov_scan(self):
+        ov = self.overlay
+        win = self.window()
+        if (ov is None or ov.isVisible() or self._drag or not win.isActiveWindow() or win.isMinimized()
+                or QApplication.activePopupWidget() is not None or QApplication.mouseButtons()):
+            self._ov_hits = 0
+            return
+        if self._in_zone(QCursor.pos()):
+            self._ov_hits += 1
+            if self._ov_hits >= 2:  # kursor stoi przy krawędzi ~0,25 s
+                self._ov_hits = 0
+                self._ov_open()
+        else:
+            self._ov_hits = 0
 
     def _ov_open(self):
         ov = self.overlay
@@ -2671,7 +2743,7 @@ class Canvas(QWidget):
                 self._hover(None)
                 return False
             if t == QEvent.Type.MouseMove:
-                if cp.y() < self.HOT and not ov.isVisible():
+                if 0 <= cp.y() < self.HOT and not ov.isVisible():
                     if not self._ov_show.isActive():
                         self._ov_show.start()
                 else:
@@ -3267,6 +3339,401 @@ class TabStrip(QFrame):
             f"QFrame#tab QToolButton:hover{{color:{u['border_a']};}}")
 
 
+# ---------- przypomnienia: pasek u dołu, alarm, 2xShift, Harmonogram zadań ----------
+
+def parse_reminder(text: str, now: datetime | None = None) -> datetime | None:
+    """„skaling jutro 10:00”, „za 30 min”, „o 17” -> termin; None, gdy w tekście nie ma ani daty, ani godziny."""
+    now = now or datetime.now()
+    low = text.lower()
+    m = re.search(r"\bza\s+(\d{1,3})\s*(min\w*|m\b|godz\w*|h\b)", low)
+    if m:
+        n = int(m.group(1))
+        delta = timedelta(hours=n) if m.group(2)[0] in "gh" else timedelta(minutes=n)
+        return (now + delta).replace(second=0, microsecond=0)
+    if re.search(r"\bza\s+pół\s+godziny\b|\bza\s+pol\s+godziny\b", low):
+        return (now + timedelta(minutes=30)).replace(second=0, microsecond=0)
+    if re.search(r"\bza\s+godzin[ęe]\b", low):
+        return (now + timedelta(hours=1)).replace(second=0, microsecond=0)
+    if re.search(r"\bza\s+minut[ęe]\b", low):
+        return (now + timedelta(minutes=1)).replace(second=0, microsecond=0)
+    d, t = parse_when(text)
+    if d is None and t is None:
+        return None
+    h, mi = t if t else (9, 0)
+    if d is None:
+        dt = now.replace(hour=h, minute=mi, second=0, microsecond=0)
+        return dt if dt > now else dt + timedelta(days=1)
+    return datetime(d.year, d.month, d.day, h, mi)
+
+
+class RemindBar(QFrame):
+    """Wąski pasek u dołu okna: wpisz „skaling jutro 10:00” i Enter. Bez daty/godziny pole zaświeca się na czerwono."""
+    submitted = Signal(str, object)  # treść, datetime
+    H = 28
+
+    def __init__(self):
+        super().__init__()
+        self.setObjectName("rembar")
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        self.setFixedHeight(self.H)
+        self._err = False
+        self.ico = QLabel("⏰")
+        self.ed = QLineEdit()
+        self.ed.setObjectName("remed")
+        self.ed.setPlaceholderText("Przypomnij: treść + kiedy, np. „skaling jutro 10:00”, „za 30 min”, „piątek 8:30”  ·  Enter")
+        self.msg = QLabel("")
+        self.msg.setObjectName("remmsg")
+        lay = QHBoxLayout(self)
+        lay.setContentsMargins(8, 2, 8, 2)
+        lay.setSpacing(6)
+        lay.addWidget(self.ico)
+        lay.addWidget(self.ed, 1)
+        lay.addWidget(self.msg)
+        self.ed.returnPressed.connect(self._enter)
+        self.ed.textChanged.connect(self._edited)
+        self._hide_msg = QTimer(self, singleShot=True, interval=3000)
+        self._hide_msg.timeout.connect(lambda: self.msg.setText(""))
+        self.apply_colors()
+
+    def focus_input(self):
+        self.ed.setFocus()
+        self.ed.selectAll()
+
+    def _edited(self, *_):
+        if self._err:
+            self._err = False
+            self.apply_colors()
+            self.msg.setText("")
+
+    def _fail(self, why: str):
+        self._err = True
+        self.apply_colors()
+        self.msg.setText(why)
+        self.msg.setStyleSheet("color:#e5484d;")
+        self._hide_msg.start(6000)
+
+    def _enter(self):
+        text = self.ed.text().strip()
+        if not text:
+            return
+        dt = parse_reminder(text)
+        if dt is None:
+            self._fail("brak daty lub godziny")
+            return
+        if dt <= datetime.now():
+            self._fail("ten termin już minął")
+            return
+        self.submitted.emit(text, dt)
+        self.ed.clear()
+        self._err = False
+        self.apply_colors()
+        self.msg.setStyleSheet(f"color:{UI['ok']};")
+        self.msg.setText(f"✔ dodano · {rem_when_text(dt)}")
+        self._hide_msg.start(3000)
+
+    def apply_colors(self):
+        u = UI
+        edit = (f"background:rgba(229,72,77,70);border:2px solid #e5484d;" if self._err
+                else f"background:{u['hdr_bg']};border:1px solid {u['border']};")
+        self.setStyleSheet(
+            f"#rembar{{background:{grad(u['hdr_bg'], u['hdr_bg2'])};border-top:1px solid {u['border_a']};}}"
+            f"#remed{{{edit}color:{u['hdr_fg']};border-radius:3px;padding:1px 6px;}}"
+            f"#remed:focus{{border-color:{u['border_a']};}}"
+            f"#remmsg{{color:{u['mute']};}}")
+
+
+def make_chime(path: Path) -> None:
+    """Domyślny dźwięk alarmu: trzy krótkie, jasne tony (do-mi-sol). Własny: alarm.mp3 / alarm.wav w folderze ustawień."""
+    rate, total = 22050, 0.8
+    n = int(rate * total)
+    buf = [0.0] * n
+    for freq, t0 in ((1046.5, 0.0), (1318.5, 0.17), (1568.0, 0.34)):
+        i0 = int(t0 * rate)
+        for i in range(int(0.32 * rate)):
+            if i0 + i >= n:
+                break
+            env = math.exp(-i / (0.09 * rate)) * min(1.0, i / (0.004 * rate))
+            x = math.sin(2 * math.pi * freq * i / rate) + 0.25 * math.sin(4 * math.pi * freq * i / rate)
+            buf[i0 + i] += x * env
+    peak = max(abs(x) for x in buf) or 1.0
+    data = b"".join(struct.pack("<h", int(0.85 * 32767 * x / peak)) for x in buf)
+    with wave.open(str(path), "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(rate)
+        w.writeframes(data)
+
+
+class AlarmPlayer(QObject):
+    """Alarm: BEEPS sygnałów, jeden na GAP_MS (domyślnie 6 × co 10 s = minuta). Dźwięk: własny plik alarm.* albo wygenerowany."""
+    BEEPS, GAP_MS = 6, 10_000
+    EXTS = (".mp3", ".wav", ".wma", ".m4a", ".aac")
+
+    def __init__(self, folder: Path):
+        super().__init__()
+        self.folder = folder
+        self.count = 0
+        self.played = 0
+        self._t = QTimer(self, interval=self.GAP_MS)
+        self._t.timeout.connect(self._tick)
+
+    def custom(self) -> Path | None:
+        for ext in self.EXTS:
+            f = self.folder / f"alarm{ext}"
+            if f.is_file():
+                return f
+        return None
+
+    def start(self):
+        self._t.stop()
+        self.count = 0
+        self._tick()
+        self._t.start()
+
+    def active(self) -> bool:
+        return self._t.isActive()
+
+    def _tick(self):
+        if self.count >= self.BEEPS:
+            self.stop()
+            return
+        self.count += 1
+        self.play_once()
+
+    def stop(self):
+        self._t.stop()
+        if sys.platform == "win32":
+            try:
+                import ctypes
+                import winsound
+                winsound.PlaySound(None, winsound.SND_PURGE)
+                ctypes.windll.winmm.mciSendStringW("close sbalarm", None, 0, 0)
+            except Exception:
+                pass
+
+    def play_once(self):
+        self.played += 1
+        if sys.platform != "win32":
+            QApplication.beep()
+            return
+        try:
+            import ctypes
+            import winsound
+            f = self.custom()
+            if f is None:
+                f = self.folder / "alarm_domyslny.wav"
+                if not f.is_file():
+                    make_chime(f)
+            if f.suffix.lower() == ".wav":
+                winsound.PlaySound(str(f), winsound.SND_FILENAME | winsound.SND_ASYNC | winsound.SND_NODEFAULT)
+            else:
+                mci = ctypes.windll.winmm.mciSendStringW
+                mci("close sbalarm", None, 0, 0)
+                mci(f'open "{f}" type mpegvideo alias sbalarm', None, 0, 0)
+                mci("play sbalarm", None, 0, 0)
+        except Exception:
+            QApplication.beep()
+
+
+def bring_window_front(win: QWidget) -> None:
+    """Przywróć okno z paska zadań i wyciągnij na pierwszy plan (Windows blokuje kradzież fokusu - obchodzimy AttachThreadInput)."""
+    if win.isMinimized():
+        win.setWindowState((win.windowState() & ~Qt.WindowState.WindowMinimized) | Qt.WindowState.WindowActive)
+    win.show()
+    win.raise_()
+    win.activateWindow()
+    if sys.platform != "win32":
+        return
+    try:
+        import ctypes
+        from ctypes import wintypes
+        u, k = ctypes.WinDLL("user32"), ctypes.WinDLL("kernel32")
+        u.GetForegroundWindow.restype = wintypes.HWND
+        u.GetWindowThreadProcessId.argtypes = [wintypes.HWND, ctypes.c_void_p]
+        u.SetForegroundWindow.argtypes = [wintypes.HWND]
+        u.BringWindowToTop.argtypes = [wintypes.HWND]
+        u.IsIconic.argtypes = [wintypes.HWND]
+        u.ShowWindow.argtypes = [wintypes.HWND, ctypes.c_int]
+        u.SwitchToThisWindow.argtypes = [wintypes.HWND, wintypes.BOOL]
+        hwnd = wintypes.HWND(int(win.winId()))
+        if u.IsIconic(hwnd):
+            u.ShowWindow(hwnd, 9)  # SW_RESTORE
+        fg = u.GetForegroundWindow()
+        cur = k.GetCurrentThreadId()
+        fgt = u.GetWindowThreadProcessId(fg, None) if fg else 0
+        attached = bool(fgt and fgt != cur and u.AttachThreadInput(fgt, cur, True))
+        try:
+            u.BringWindowToTop(hwnd)
+            u.SetForegroundWindow(hwnd)
+        finally:
+            if attached:
+                u.AttachThreadInput(fgt, cur, False)
+        if u.GetForegroundWindow() != hwnd.value:
+            u.SwitchToThisWindow(hwnd, True)
+    except Exception:
+        pass
+
+
+class DoubleShiftHook(QObject):
+    """Globalny podwójny Shift (Windows): niski hook klawiatury w osobnym wątku. Zapamiętuje tylko czas stuknięć Shift,
+    żadnych znaków. Sygnał `fired` idzie do głównego wątku Qt."""
+    fired = Signal()
+    GAP = 0.45  # maks. przerwa między stuknięciami
+    TAP = 0.35  # maks. czas przytrzymania, by to było „stuknięcie”
+
+    def __init__(self):
+        super().__init__()
+        self._thread: threading.Thread | None = None
+        self._tid = 0
+        self._last = 0.0
+        self._down_at = 0.0
+        self._down = False
+        self._skip = False
+        self._proc = None
+
+    def available(self) -> bool:
+        return sys.platform == "win32"
+
+    def start(self) -> bool:
+        if not self.available() or (self._thread and self._thread.is_alive()):
+            return False
+        self._thread = threading.Thread(target=self._run, name="dblshift", daemon=True)
+        self._thread.start()
+        return True
+
+    def stop(self):
+        if self._tid:
+            try:
+                import ctypes
+                ctypes.windll.user32.PostThreadMessageW(self._tid, 0x0012, 0, 0)  # WM_QUIT
+            except Exception:
+                pass
+        self._tid = 0
+        self._thread = None
+
+    def feed(self, vk: int, down: bool, now: float | None = None) -> bool:
+        """Logika podwójnego Shift (osobno, żeby dało się ją przetestować). True = wykryto."""
+        now = time.monotonic() if now is None else now
+        if vk in (0xA0, 0xA1, 0x10):
+            if down:
+                if self._down:  # autopowtarzanie przy przytrzymaniu
+                    return False
+                self._down, self._down_at = True, now
+                if self._last and now - self._last <= self.GAP:
+                    self._last, self._skip = 0.0, True
+                    return True
+            else:
+                self._down = False
+                if self._skip:  # puszczenie drugiego Shift po wykryciu nie zaczyna nowej sekwencji
+                    self._skip, self._last = False, 0.0
+                else:
+                    self._last = now if now - self._down_at <= self.TAP else 0.0
+        elif down:
+            self._last = 0.0  # inny klawisz (np. wielka litera) przerywa sekwencję
+        return False
+
+    def _run(self):
+        import ctypes
+        from ctypes import wintypes
+        user32 = ctypes.WinDLL("user32", use_last_error=True)
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+
+        class KBD(ctypes.Structure):
+            _fields_ = [("vkCode", wintypes.DWORD), ("scanCode", wintypes.DWORD), ("flags", wintypes.DWORD),
+                        ("time", wintypes.DWORD), ("dwExtraInfo", ctypes.c_size_t)]
+
+        HOOKPROC = ctypes.WINFUNCTYPE(ctypes.c_ssize_t, ctypes.c_int, wintypes.WPARAM, wintypes.LPARAM)
+        user32.SetWindowsHookExW.argtypes = [ctypes.c_int, HOOKPROC, wintypes.HINSTANCE, wintypes.DWORD]
+        user32.SetWindowsHookExW.restype = wintypes.HHOOK
+        user32.CallNextHookEx.argtypes = [wintypes.HHOOK, ctypes.c_int, wintypes.WPARAM, wintypes.LPARAM]
+        user32.CallNextHookEx.restype = ctypes.c_ssize_t
+        user32.UnhookWindowsHookEx.argtypes = [wintypes.HHOOK]
+        kernel32.GetModuleHandleW.restype = wintypes.HMODULE
+        kernel32.GetModuleHandleW.argtypes = [wintypes.LPCWSTR]
+
+        def proc(code, wparam, lparam):
+            try:
+                if code == 0:
+                    kb = ctypes.cast(lparam, ctypes.POINTER(KBD)).contents
+                    if not kb.flags & 0x10:  # pomiń zdarzenia wstrzyknięte (np. z innych programów)
+                        if self.feed(kb.vkCode, wparam in (0x100, 0x104)):
+                            self.fired.emit()
+            except Exception:
+                pass
+            return user32.CallNextHookEx(None, code, wparam, lparam)
+
+        self._proc = HOOKPROC(proc)  # referencja: inaczej GC usunie wywołanie zwrotne
+        hook = user32.SetWindowsHookExW(13, self._proc, kernel32.GetModuleHandleW(None), 0)  # WH_KEYBOARD_LL
+        if not hook:
+            return
+        self._tid = kernel32.GetCurrentThreadId()
+        msg = wintypes.MSG()
+        while user32.GetMessageW(ctypes.byref(msg), None, 0, 0) > 0:
+            user32.TranslateMessage(ctypes.byref(msg))
+            user32.DispatchMessageW(ctypes.byref(msg))
+        user32.UnhookWindowsHookEx(hook)
+
+
+TASK_NAME = "StartupBoard Alarm"
+
+
+def task_xml(exe: str, start: datetime, user: str) -> str:
+    """Zadanie Harmonogramu zadań Windows: jednorazowo o `start` uruchamia program z --alarm."""
+    from xml.sax.saxutils import escape as esc
+    return f"""<?xml version="1.0" encoding="UTF-16"?>
+<Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
+  <RegistrationInfo><Description>Startup Board: budzi program na czas przypomnienia</Description></RegistrationInfo>
+  <Triggers><TimeTrigger><StartBoundary>{start:%Y-%m-%dT%H:%M:%S}</StartBoundary><Enabled>true</Enabled></TimeTrigger></Triggers>
+  <Principals><Principal id="Author"><UserId>{esc(user)}</UserId><LogonType>InteractiveToken</LogonType><RunLevel>LeastPrivilege</RunLevel></Principal></Principals>
+  <Settings>
+    <MultipleInstancesPolicy>Parallel</MultipleInstancesPolicy>
+    <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>
+    <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>
+    <StartWhenAvailable>true</StartWhenAvailable>
+    <ExecutionTimeLimit>PT0S</ExecutionTimeLimit>
+    <Enabled>true</Enabled>
+  </Settings>
+  <Actions Context="Author"><Exec><Command>{esc(exe)}</Command><Arguments>--alarm</Arguments><WorkingDirectory>{esc(str(Path(exe).parent))}</WorkingDirectory></Exec></Actions>
+</Task>
+"""
+
+
+def apply_task(exe: str, start: datetime | None, log: Path) -> bool:
+    """Utwórz / zastąp zadanie (start) albo usuń je (start=None). Wywoływane w wątku; wynik trafia do startupboard.log."""
+    flags = 0x08000000  # CREATE_NO_WINDOW
+    tmp = None
+    try:
+        if start is None:
+            r = subprocess.run(["schtasks", "/Delete", "/TN", TASK_NAME, "/F"], capture_output=True, timeout=30,
+                               creationflags=flags)
+            return r.returncode == 0
+        user = f"{os.environ.get('USERDOMAIN', '')}\\{os.environ.get('USERNAME', '')}".strip("\\")
+        fd, tmp = tempfile.mkstemp(suffix=".xml")
+        with os.fdopen(fd, "wb") as f:
+            f.write(b"\xff\xfe" + task_xml(exe, start, user).encode("utf-16-le"))
+        r = subprocess.run(["schtasks", "/Create", "/TN", TASK_NAME, "/XML", tmp, "/F"], capture_output=True,
+                           timeout=30, creationflags=flags)
+        ok = r.returncode == 0
+        if not ok:
+            err = (r.stderr or r.stdout or b"").decode("mbcs" if sys.platform == "win32" else "utf-8", "replace").strip()
+            with open(log, "a", encoding="utf-8") as f:
+                f.write(time.strftime("%Y-%m-%d %H:%M:%S ") + f"Harmonogram zadań: błąd {r.returncode}: {err}\n")
+        return ok
+    except Exception as ex:
+        try:
+            with open(log, "a", encoding="utf-8") as f:
+                f.write(time.strftime("%Y-%m-%d %H:%M:%S ") + f"Harmonogram zadań: {ex}\n")
+        except OSError:
+            pass
+        return False
+    finally:
+        if tmp:
+            try:
+                os.unlink(tmp)
+            except OSError:
+                pass
+
+
 # ---------- okno główne ----------
 
 class MainWindow(QMainWindow):
@@ -3283,8 +3750,18 @@ class MainWindow(QMainWindow):
         self._app_css = ""
         self._xfers: list = []
         self.reminders: list[dict] = []
-        self._rem_timer = QTimer(self, interval=20_000)
+        self._rem_timer = QTimer(self, interval=180_000)  # sprawdzanie co 3 min (+ dokładny budzik na najbliższy termin)
         self._rem_timer.timeout.connect(self.check_reminders)
+        self._rem_exact = QTimer(self, singleShot=True)
+        self._rem_exact.timeout.connect(self.check_reminders)
+        self._sched_timer = QTimer(self, singleShot=True, interval=4000)
+        self._sched_timer.timeout.connect(self.sync_scheduler)
+        self._sched_last: str | None = None
+        self.sched_on, self.hotkey_on = True, True
+        self.alarm = AlarmPlayer(self.state_dir)
+        self.hook = DoubleShiftHook()
+        self.hook.fired.connect(self.bring_to_front)
+        self._popups: list = []
         self._last_json = ""
         self._pending: list[tuple[TextPane, dict]] = []
         self._args: list[str] = []
@@ -3307,6 +3784,9 @@ class MainWindow(QMainWindow):
         self.vbox.setContentsMargins(0, 0, 0, 0)
         self.vbox.setSpacing(0)
         self.vbox.addWidget(self.canvas, 1)
+        self.rembar = RemindBar()
+        self.rembar.submitted.connect(self.add_quick_reminder)
+        self.vbox.addWidget(self.rembar)
         self.setCentralWidget(holder)
         for p in self.panes:
             self._wire(p)
@@ -3325,6 +3805,9 @@ class MainWindow(QMainWindow):
         self.set_icon_color(self.icon_key)
         self.set_current(self.current)
         QApplication.instance().aboutToQuit.connect(self.save_state)  # stan zapisuje się po każdej zmianie (schedule_save)
+        self._cmd_timer = QTimer(self, interval=1000)  # polecenia od drugiej kopii programu (pokaż okno / alarm)
+        self._cmd_timer.timeout.connect(self._poll_cmd)
+        self._cmd_timer.start()
         self._alt_clean = False
         QApplication.instance().installEventFilter(self)
 
@@ -3362,7 +3845,9 @@ class MainWindow(QMainWindow):
     def _act(self, text, slot, shortcut=None, checkable=False) -> QAction:
         a = QAction(text, self)
         a.setCheckable(checkable)
-        if shortcut:
+        if isinstance(shortcut, (tuple, list)):
+            a.setShortcuts([QKeySequence(x) for x in shortcut])
+        elif shortcut:
             a.setShortcut(QKeySequence(shortcut))
         a.triggered.connect(lambda *_: slot())
         self.addAction(a)  # skróty działają także po ukryciu paska menu
@@ -3388,7 +3873,8 @@ class MainWindow(QMainWindow):
         m.addAction(self._act("Otwórz w aktywnym panelu…", lambda: self.current.ask_open(), "Ctrl+O"))
         m.addAction(self._act("Otwórz folder w panelu…", self.open_folder_dialog, "Ctrl+Shift+O"))
         m.addAction(self._act("Panel przypomnień", lambda: self.show_reminders(), "Ctrl+Shift+R"))
-        m.addAction(self._act("Nowe przypomnienie…", self.quick_reminder, "Ctrl+Alt+N"))
+        m.addAction(self._act("Nowe przypomnienie (pasek u dołu)", self.focus_reminder_bar, ("Ctrl+Shift+P", "Ctrl+Alt+N")))
+        m.addAction(self._act("Nowe przypomnienie – okno…", self.quick_reminder))
         self.m_recent = m.addMenu("Ostatnie pliki")
         self.m_recent.aboutToShow.connect(self._fill_recent)
         m.addSeparator()
@@ -3439,6 +3925,26 @@ class MainWindow(QMainWindow):
         self.tab_acts = self._radio(v.addMenu("Pasek kart"), [
             ("auto", "Autoukrywanie (wysuwa się przy górnej krawędzi)"), ("always", "Zawsze widoczny"),
             ("off", "Ukryty")], self.set_tab_mode)
+        v.addSeparator()
+        rm = v.addMenu("Przypomnienia i alarm")
+        self.act_rembar = self._act("Pasek przypomnień u dołu okna", lambda: self.set_rembar(self.act_rembar.isChecked()),
+                                    checkable=True)
+        self.act_rembar.setChecked(True)
+        self.act_hotkey = self._act("Podwójny Shift wywołuje program (Windows)",
+                                    lambda: self.set_hotkey(self.act_hotkey.isChecked()), checkable=True)
+        self.act_hotkey.setChecked(True)
+        self.act_hotkey.setEnabled(self.hook.available())
+        self.act_sched = self._act("Budź program z Harmonogramu zadań, gdy jest zamknięty (Windows)",
+                                   lambda: self.set_sched(self.act_sched.isChecked()), checkable=True)
+        self.act_sched.setChecked(True)
+        self.act_sched.setEnabled(sys.platform == "win32")
+        rm.addAction(self.act_rembar)
+        rm.addAction(self.act_hotkey)
+        rm.addAction(self.act_sched)
+        rm.addSeparator()
+        rm.addAction(self._act("Dźwięk alarmu: wybierz plik…", self.choose_alarm_sound))
+        rm.addAction(self._act("Dźwięk alarmu: domyślny", self.reset_alarm_sound))
+        rm.addAction(self._act("Odtwórz dźwięk alarmu", self.alarm.play_once))
 
         self.m_layout = mb.addMenu("&Układ")
         self.act_add = self._act("Dodaj panel", self.add_pane, "Ctrl+Shift+N")
@@ -3446,8 +3952,9 @@ class MainWindow(QMainWindow):
         self.m_layout.addAction(self.act_add)
         self.m_layout.addAction(self.act_del)
         self.m_layout.addSeparator()
-        self.m_layout.addAction(self._act("Następny panel", lambda: self.cycle_pane(1), "Ctrl+Tab"))
-        self.m_layout.addAction(self._act("Poprzedni panel", lambda: self.cycle_pane(-1), "Ctrl+Shift+Tab"))
+        # Ctrl+Tab / Ctrl+Shift+Tab (oraz Ctrl+PgDn / Ctrl+PgUp) obsługuje eventFilter okna - niezależnie od tego, co ma fokus
+        self.m_layout.addAction(self._act("Następny panel\tCtrl+Tab", lambda: self.cycle_pane(1)))
+        self.m_layout.addAction(self._act("Poprzedni panel\tCtrl+Shift+Tab", lambda: self.cycle_pane(-1)))
         self.m_layout.addSeparator()
         self.m_layout.addAction(self._act("Siatka (reset układu)", self.canvas.grid, "Ctrl+Shift+E"))
         self.act_snap = self._act("Przyciąganie magnetyczne (Alt = chwilowo wyłącz)",
@@ -3532,6 +4039,7 @@ class MainWindow(QMainWindow):
         for p in self.panes + self.preview_panes:
             p.apply_colors()
         self.tabs.apply_colors()
+        self.rembar.apply_colors()
         self._dark_titlebar()
         self.lookChanged.emit()
         if save:
@@ -3605,9 +4113,29 @@ class MainWindow(QMainWindow):
         self._sync_menu()
         self.popup.exec(pos)
 
+    @staticmethod
+    def _tab_key_step(ev) -> int:
+        """Ctrl+Tab / Ctrl+PgDn = +1, Ctrl+Shift+Tab / Ctrl+PgUp = -1, inaczej 0."""
+        m = ev.modifiers() & (Qt.KeyboardModifier.ControlModifier | Qt.KeyboardModifier.ShiftModifier
+                              | Qt.KeyboardModifier.AltModifier | Qt.KeyboardModifier.MetaModifier)
+        ctrl, shift = Qt.KeyboardModifier.ControlModifier, Qt.KeyboardModifier.ShiftModifier
+        k = ev.key()
+        if m == ctrl:
+            return {Qt.Key.Key_Tab: 1, Qt.Key.Key_PageDown: 1, Qt.Key.Key_PageUp: -1}.get(k, 0)
+        if m == ctrl | shift:
+            return {Qt.Key.Key_Tab: -1, Qt.Key.Key_Backtab: -1}.get(k, 0)
+        return 0
+
     def eventFilter(self, obj, ev):
-        """Stuknięcie samego Alt pokazuje ukryty pasek menu."""
+        """Stuknięcie samego Alt pokazuje ukryty pasek menu; Ctrl+Tab przełącza panele."""
         t = ev.type()
+        if t in (QEvent.Type.ShortcutOverride, QEvent.Type.KeyPress) and QApplication.activeWindow() is self:
+            step = self._tab_key_step(ev)
+            if step:
+                if t == QEvent.Type.KeyPress:
+                    self.cycle_pane(step)
+                ev.accept()  # ShortcutOverride: skrót nie przejmuje klawisza; KeyPress: edytor nie wstawi tabulatora
+                return t == QEvent.Type.KeyPress
         if t in (QEvent.Type.KeyRelease, QEvent.Type.MouseButtonRelease, QEvent.Type.Wheel):
             self.schedule_save()
         if t == QEvent.Type.ShortcutOverride:  # Alt+cyfra (skrót) nie liczy się jako stuknięcie Alt
@@ -3980,38 +4508,168 @@ class MainWindow(QMainWindow):
 
     def quick_reminder(self):
         """Okno dodawania przypomnienia z dowolnego miejsca (bez otwierania panelu)."""
-        d = ReminderDialog(self, None, REM_COLORS[len(self.reminders) % len(REM_COLORS)])
+        d = ReminderDialog(self, None, REM_COLORS[0])
         if d.exec() == QDialog.DialogCode.Accepted:
             self.reminders.append(d.result_item(None))
             self.on_reminders_changed()
-            for q in self.panes:
-                if q.rv:
-                    q.rv.refresh()
-                    q.refresh_header()
+            self._reminders_refresh()
+
+    def add_quick_reminder(self, text: str, dt: datetime):
+        """Z paska u dołu okna: treść + termin."""
+        self.reminders.append({"id": uuid.uuid4().hex, "text": text, "dt": dt.isoformat(timespec="minutes"),
+                               "color": REM_COLORS[0], "done": False, "notified": False})
+        self.on_reminders_changed()
+        self._reminders_refresh()
+
+    def _reminders_refresh(self):
+        for q in self.panes:
+            if q.rv:
+                q.rv.refresh()
+                q.refresh_header()
+
+    def focus_reminder_bar(self):
+        if not self.act_rembar.isChecked():
+            self.set_rembar(True)
+        self.rembar.focus_input()
+
+    def set_rembar(self, on: bool, save: bool = True):
+        self.act_rembar.setChecked(on)
+        self.rembar.setVisible(on)
+        if save:
+            self.schedule_save()
+
+    def set_hotkey(self, on: bool, save: bool = True):
+        self.hotkey_on = on
+        self.act_hotkey.setChecked(on)
+        if on:
+            self.hook.start()
+        else:
+            self.hook.stop()
+        if save:
+            self.schedule_save()
+
+    def set_sched(self, on: bool, save: bool = True):
+        self.sched_on = on
+        self.act_sched.setChecked(on)
+        self._sched_timer.start()
+        if save:
+            self.schedule_save()
+
+    def bring_to_front(self):
+        bring_window_front(self)
+
+    def choose_alarm_sound(self):
+        f, _ = QFileDialog.getOpenFileName(self, "Dźwięk alarmu", LAST["dir"] or "", "Dźwięk (*.mp3 *.wav *.wma *.m4a *.aac)")
+        ext = Path(f).suffix.lower() if f else ""
+        if ext not in AlarmPlayer.EXTS:
+            return
+        try:
+            self.reset_alarm_sound()
+            shutil.copy2(f, self.state_dir / f"alarm{ext}")
+        except OSError as ex:
+            QMessageBox.warning(self, APP_NAME, f"Nie udało się skopiować dźwięku: {ex}")
+            return
+        self.alarm.play_once()
+
+    def reset_alarm_sound(self):
+        for e in AlarmPlayer.EXTS:
+            (self.state_dir / f"alarm{e}").unlink(missing_ok=True)
 
     def on_reminders_changed(self):
         self.schedule_save()
+        self.arm_reminders()
+
+    def _next_due(self, after: datetime | None = None) -> datetime | None:
+        best = None
+        for it in self.reminders:
+            if it.get("done") or it.get("notified"):
+                continue
+            try:
+                dt = datetime.fromisoformat(it["dt"])
+            except (ValueError, KeyError):
+                continue
+            if after is not None and dt <= after:
+                continue
+            if best is None or dt < best:
+                best = dt
+        return best
+
+    def arm_reminders(self):
+        """Dokładny budzik na najbliższy termin (obok sprawdzania co 3 min) + synchronizacja Harmonogramu zadań."""
+        nxt = self._next_due()
+        if nxt is None:
+            self._rem_exact.stop()
+        else:
+            ms = int((nxt - datetime.now()).total_seconds() * 1000) + 400
+            self._rem_exact.start(max(500, min(ms, 3 * 3600 * 1000)))
+        self._sched_timer.start()
+
+    def sync_scheduler(self, wait: bool = False):
+        """Windows: jednorazowe zadanie w Harmonogramie zadań na najbliższe przypomnienie, żeby alarm nie przepadł,
+        gdy program jest zamknięty (zadanie uruchamia program z --alarm)."""
+        if sys.platform != "win32" or not getattr(sys, "frozen", False):
+            return
+        target = self._next_due(after=datetime.now() + timedelta(seconds=45)) if self.sched_on else None
+        key = target.isoformat() if target else ""
+        if key == self._sched_last:
+            return
+        self._sched_last = key
+        args = (sys.executable, target, self.state_path.with_name("startupboard.log"))
+        if wait:
+            apply_task(*args)
+        else:
+            threading.Thread(target=apply_task, args=args, daemon=True).start()
+
+    def _poll_cmd(self):
+        """Druga uruchomiona kopia programu zostawia polecenie w cmd.txt: pokaż okno / sprawdź przypomnienia / otwórz pliki."""
+        f = self.state_dir / "cmd.txt"
+        try:
+            if not f.exists():
+                return
+            fresh = time.time() - f.stat().st_mtime < 60
+            lines = f.read_text(encoding="utf-8").splitlines()
+            f.unlink()
+        except OSError:
+            return
+        if not fresh or not lines:
+            return
+        for a in [x for x in lines[1:] if x]:
+            self.open_in_free_pane(a)
+        if lines[0] == "show":
+            self.bring_to_front()
+        elif lines[0] == "alarm":
+            self.check_reminders()
 
     def check_reminders(self):
         now = datetime.now()
+        due = []
         for it in list(self.reminders):
             if it.get("done") or it.get("notified"):
                 continue
             if datetime.fromisoformat(it["dt"]) <= now:
                 it["notified"] = True
+                due.append(it)
+        if due:
+            self.alarm.start()
+            for it in due:
                 self._remind_popup(it)
-        for q in self.panes:
-            if q.rv:
-                q.rv.refresh()
-        self.schedule_save()
+        self._reminders_refresh()
+        if due:
+            self.schedule_save()
+        self.arm_reminders()
 
     def _remind_popup(self, it: dict):
+        """Okno na wierzchu (także gdy program zminimalizowany) + sygnał; przyciski ruszają się dopiero po chwili,
+        żeby przypadkowy Enter/spacja z innego programu nie zamknął alarmu."""
         box = QMessageBox(QMessageBox.Icon.Information, "⏰ Przypomnienie",
-                          f"{it['text']}\n{rem_when_text(datetime.fromisoformat(it['dt']))}", parent=self)
+                          f"{it['text']}\n{rem_when_text(datetime.fromisoformat(it['dt']))}")
+        box.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, True)
+        box.setWindowIcon(self.windowIcon())
         done = box.addButton("Gotowe", QMessageBox.ButtonRole.AcceptRole)
         later = box.addButton("Za 10 minut", QMessageBox.ButtonRole.ActionRole)
         box.addButton("Zamknij", QMessageBox.ButtonRole.RejectRole)
         box.setWindowModality(Qt.WindowModality.NonModal)
+        box.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)
         box.setStyleSheet(f"QMessageBox{{border-left:6px solid {it['color']};}}")
 
         def clicked(b):
@@ -4020,14 +4678,26 @@ class MainWindow(QMainWindow):
             elif b is later:
                 it["dt"] = (datetime.now() + timedelta(minutes=10)).isoformat(timespec="minutes")
                 it["notified"] = False
-            for q in self.panes:
-                if q.rv:
-                    q.rv.refresh()
-                    q.refresh_header()
+            self._reminders_refresh()
             self.schedule_save()
+            self.arm_reminders()
+
+        def closed(_r=0):
+            self._popups = [x for x in self._popups if x is not box]
+            if not self._popups:
+                self.alarm.stop()
+
         box.buttonClicked.connect(clicked)
-        self._popups = [x for x in getattr(self, "_popups", []) if x.isVisible()] + [box]
+        box.finished.connect(closed)
+        buttons = box.buttons()
+        for b in buttons:
+            b.setEnabled(False)
+        t = QTimer(box, singleShot=True, interval=1200)
+        t.timeout.connect(lambda: [b.setEnabled(True) for b in buttons])
+        t.start()
+        self._popups.append(box)
         box.show()
+        box.raise_()
         QApplication.alert(self, 0)
 
     def open_folder_dialog(self):
@@ -4230,7 +4900,8 @@ class MainWindow(QMainWindow):
                 "menu": self.menuBar().isVisible(),
                 "font_default": [self.font_family, self.font_size],
                 "recent": self.recent, "last_dir": LAST["dir"], "reminders": self.reminders,
-                "autosave": AUTO["on"], "tabs": self.tab_mode,
+                "autosave": AUTO["on"], "tabs": self.tab_mode, "rembar": self.act_rembar.isChecked(),
+                "hotkey": self.hotkey_on, "sched": self.sched_on,
             }
             data.update(self.snapshot())
             js = json.dumps(data, ensure_ascii=False, indent=1)
@@ -4302,6 +4973,9 @@ class MainWindow(QMainWindow):
             self.set_snap(bool(data.get("snap", True)))
             self.set_autosave(bool(data.get("autosave", True)))
             self.set_tab_mode(str(data.get("tabs", "auto")), save=False)
+            self.set_rembar(bool(data.get("rembar", True)), save=False)
+            self.set_hotkey(bool(data.get("hotkey", True)), save=False)
+            self.set_sched(bool(data.get("sched", True)), save=False)
             self.icon_key = "sealime" if old_look and data.get("icon", "yellow") == "yellow" else data.get("icon", "sealime")
             self.set_menu_visible(bool(data.get("menu", True)))
             for p in self.panes:
@@ -4365,6 +5039,8 @@ class MainWindow(QMainWindow):
         self._ready = True
         self._rem_timer.start()
         QTimer.singleShot(1500, self.check_reminders)
+        if self.tab_mode == "auto":
+            self.canvas.flash_overlay(2500)  # pokaż pasek kart na starcie: wiadomo, że jest
         self.schedule_save()
 
     def prune_images(self):
@@ -4399,6 +5075,9 @@ class MainWindow(QMainWindow):
                 e.ignore()
                 return
         self.save_state()
+        self.alarm.stop()
+        self.hook.stop()
+        self.sync_scheduler(wait=True)
         e.accept()
 
 
@@ -4441,13 +5120,20 @@ def main():
                 f.write(time.strftime("%Y-%m-%d %H:%M:%S ") + note + "\n")
         except OSError:
             pass
+    backup_state(sp.parent)
+    alarm_start = "--alarm" in sys.argv  # start z Harmonogramu zadań na czas przypomnienia
+    files = [a for a in sys.argv[1:] if a != "--alarm"]
     lock = QLockFile(str(sp.parent / "app.lock"))  # jedna kopia naraz, by nie nadpisywały sobie stanu
     if not lock.tryLock(300):
-        QMessageBox.information(None, APP_NAME, "Program już działa (sprawdź pasek zadań).")
+        try:  # działająca kopia odbierze polecenie w ciągu ~1 s: wyciągnie okno / sprawdzi przypomnienia / otworzy pliki
+            atomic_write(sp.parent / "cmd.txt", "\n".join(["alarm" if alarm_start else "show", *files]).encode("utf-8"))
+        except OSError:
+            if not alarm_start:
+                QMessageBox.information(None, APP_NAME, "Program już działa (sprawdź pasek zadań).")
         sys.exit(0)
     win = MainWindow()
     win.show()
-    win.start_loading(sys.argv[1:])  # pliki z poprzedniej sesji wczytują się już po pokazaniu okna
+    win.start_loading(files)  # pliki z poprzedniej sesji wczytują się już po pokazaniu okna
     code = app.exec()
     lock.unlock()
     sys.exit(code)

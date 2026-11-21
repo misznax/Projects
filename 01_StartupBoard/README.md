@@ -3,7 +3,7 @@
 Dowolna liczba swobodnych paneli roboczych (start: 6) z pamięcią stanu: pliki tekstowe (kolorowanie Python/HTML/SQL), PDF i obrazy.
 Autor: Michał Rzekiecki · kontakt: kontakt@smialo.org
 
-- Pobierz: Releases → `startupboard-latest` → `StartupBoard_v1.3.zip`, rozpakuj i uruchom `StartupBoard.exe`.
+- Pobierz: Releases → `startupboard-latest` → `StartupBoard_v1.4.zip`, rozpakuj i uruchom `StartupBoard.exe`.
 - Źródła: `src/`, build: `python build_exe.py`, kopie wersji: `backup/`.
 - Stan zapisuje się w `%LOCALAPPDATA%\smialo\StartupBoard (v1.3 sama przenosi stan, który v1.1–1.2 zapisały w folderze „Startup Board” ze spacją)\` (menu Pomoc → „Folder z ustawieniami"): `state.json`, `zestawy\`, `obrazy\`, `startupboard.log`.
 
@@ -19,3 +19,11 @@ Autor: Michał Rzekiecki · kontakt: kontakt@smialo.org
 - **Pasek kart** (Widok → Pasek kart): wąski pasek z jedną kartą na panel – klik przechodzi do panelu i wynosi go na wierzch, × lub środkowy przycisk zamyka, ● = niezapisany, ⚠ = konflikt/brak pliku. Tryby: **autoukrywanie** (domyślny; wysuwa się po najechaniu na górną krawędź i chowa po odjechaniu), zawsze widoczny, ukryty. **Ctrl+Tab / Ctrl+Shift+Tab** – następny / poprzedni panel (pasek mignie na chwilę), Alt+1..9 – panel o danym numerze. Limit paneli zdjęty (każdy dodatkowy to ok. 1 MB pamięci).
 - Stan okien (układ, kursor, szkice) zapisuje się po każdej zmianie, bez zapisu w tle, gdy nic się nie dzieje.
 - Ctrl+F / F3 / Shift+F3 – szukanie, Ctrl+Shift+S – zapisz jako, Ostatnie pliki w menu Plik.
+
+## v1.4
+- Pasek przypomnień u dołu okna: wpisz np. `skaling jutro 10:00` / `za 30 min` + Enter (Ctrl+Shift+P = fokus). Bez daty/godziny pole świeci na czerwono; po dodaniu „✔ dodano”. Domyślny kolor: zielony.
+- Sprawdzanie co 3 min + dokładny budzik; alarm: 6 sygnałów co 10 s (okno na wierzchu). Własny dźwięk: Widok → Przypomnienia i alarm → „Dźwięk alarmu: wybierz plik…” (mp3/wav).
+- Podwójny Shift przywołuje program (Windows; do wyłączenia w menu).
+- Zamknięty program: zadanie w Harmonogramie zadań Windows uruchamia go na czas przypomnienia (`--alarm`).
+- Ctrl+Tab / Ctrl+PgDn przełączają panele niezależnie od fokusu; pasek kart wysuwa się też przy pasku tytułu/menu.
+- Drugie uruchomienie wyciąga działające okno. Przypomnienia ze starego folderu stanu są dołączane; dzienna kopia stanu w `kopie_stanu\`.
