@@ -2779,12 +2779,13 @@ class Canvas(QWidget):
 
 # ---------- okno Ustawienia z podglądem na żywo ----------
 
-UI_LABELS = [("hdr_bg", "Pasek panelu"), ("hdr_bg_a", "Pasek aktywnego panelu"), ("hdr_fg", "Tekst paska"),
-             ("mute", "Tekst pomocniczy"), ("canvas", "Tło za panelami"), ("sel", "Zaznaczenie tekstu"),
+UI_LABELS = [("hdr_bg", "Pasek panelu – kolor 1"), ("hdr_bg_a", "Pasek aktywnego – kolor 1"), ("hdr_fg", "Tekst paska"),
+             ("mute", "Tekst pomocniczy"), ("canvas", "Tło za panelami – kolor 1"), ("sel", "Zaznaczenie tekstu"),
              ("ok", "Status: zapisany"), ("warn", "Status: niezapisany"), ("err", "Status: błąd"),
              ("info", "Status: informacja")]
-GRAD_LABELS = [("hdr_bg2", "Pasek: koniec"), ("hdr_bg_a2", "Pasek aktywny: koniec"),
-               ("border2", "Ramka: koniec"), ("border_a2", "Ramka aktywna: koniec"), ("canvas2", "Tło za panelami: koniec")]
+GRAD_LABELS = [("hdr_bg2", "Pasek panelu – kolor 2"), ("hdr_bg_a2", "Pasek aktywnego – kolor 2"),
+               ("border2", "Ramka nieaktywna – kolor 2"), ("border_a2", "Ramka aktywna – kolor 2"),
+               ("canvas2", "Tło za panelami – kolor 2")]
 SYNTAX_TIPS = {"kw": "if, for, return, SELECT, FROM…", "kw2": "def, class, import, INSERT, CREATE…",
                "const": "True, None, NULL", "func": "nazwy wywoływanych funkcji", "builtin": "print, len, open, self…",
                "cls": "nazwy klas i typów (INT, VARCHAR)", "deco": "@dekorator", "tag": "znaczniki HTML: div, p, a…",
@@ -3009,8 +3010,13 @@ class SettingsDialog(ThemedDialog):
         v.addLayout(row)
         self.border_grp.idClicked.connect(self._on_border)
         g, gl = self._group("Kolory ramek")
-        gl.addWidget(self._cbtn("border_a", "Aktywny panel", True), 0, 0)
-        gl.addWidget(self._cbtn("border", "Pozostałe panele", True), 0, 1)
+        gl.addWidget(self._cbtn("border_a", "Ramka aktywna – kolor 1", True), 0, 0)
+        gl.addWidget(self._cbtn("border_a2", "Ramka aktywna – kolor 2", True), 0, 1)
+        gl.addWidget(self._cbtn("border", "Ramka nieaktywna – kolor 1", True), 1, 0)
+        gl.addWidget(self._cbtn("border2", "Ramka nieaktywna – kolor 2", True), 1, 1)
+        hint = QLabel("Ramka przechodzi płynnie z koloru 1 w kolor 2. Chcesz jeden kolor? Ustaw oba tak samo.")
+        hint.setWordWrap(True)
+        gl.addWidget(hint, 2, 0, 1, 2)
         v.addWidget(g)
         b = QPushButton("Przywróć kolory ramek ze schematu")
         b.clicked.connect(self.win.reset_border_colors)
