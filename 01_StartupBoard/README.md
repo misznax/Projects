@@ -3,7 +3,7 @@
 Dowolna liczba swobodnych paneli roboczych (start: 6) z pamięcią stanu: pliki tekstowe (kolorowanie Python/HTML/SQL), PDF i obrazy.
 Autor: Michał Rzekiecki · kontakt: kontakt@smialo.org
 
-- Pobierz: Releases → `startupboard-latest` → `StartupBoard_v1.4.zip`, rozpakuj i uruchom `StartupBoard.exe`.
+- Pobierz: Releases → `startupboard-latest` → `StartupBoard_v1.41.zip`, rozpakuj i uruchom `StartupBoard.exe`.
 - Źródła: `src/`, build: `python build_exe.py`, kopie wersji: `backup/`.
 - Stan zapisuje się w `%LOCALAPPDATA%\smialo\StartupBoard (v1.3 sama przenosi stan, który v1.1–1.2 zapisały w folderze „Startup Board” ze spacją)\` (menu Pomoc → „Folder z ustawieniami"): `state.json`, `zestawy\`, `obrazy\`, `startupboard.log`.
 
@@ -13,6 +13,7 @@ Autor: Michał Rzekiecki · kontakt: kontakt@smialo.org
 - Kolorowanie: słowa kluczowe (if, for, SELECT…), definicje, stałe, funkcje, klasy, dekoratory, znaczniki i atrybuty HTML, adresy www/e-mail, daty, TODO/UWAGA oraz interpunkcja – każda rola ma własny kolor (Ustawienia → Składnia).
 - **Folder w panelu** (Ctrl+Shift+O, przycisk „Folder…”, przeciągnięcie lub wklejenie folderu): lista jak w Total Commanderze. Enter/dwuklik otwiera (plik trafia do wolnego panelu), Backspace w górę, F2 nazwa, F5 kopiuj, F6 przenieś do drugiego panelu folderu, F7 nowy folder, Del do kosza. Lekki: czyta jeden katalog naraz, a widok znika z pamięci po zamknięciu panelu.
 - **Przypomnienia** (Ctrl+Shift+R, przycisk „Przypomnienia” w pustym panelu; Ctrl+Alt+N = szybkie nowe): okno z treścią, datą, godziną i kolorem. Wpisz np. „skaling jutro 10:00” – termin rozpoznawany sam. Każde przypomnienie ma swój kolor (zmiana: prawy przycisk → Kolor), w terminie wyskakuje okno z „Gotowe / Za 10 minut”.
+- **Schowek** (Ctrl+Shift+H, przycisk „Schowek” w pustym panelu): historia skopiowanych **tekstów** i **grafik** w dwóch zakładkach. Domyślnie wyłączona; włączasz polem „Przechwytuj schowek” (albo Widok → Przechwytuj schowek). Bez nasłuchu, gdy wyłączona; włączona korzysta ze zdarzenia systemu (bez odpytywania). Enter/dwuklik tekstu = kopiuj, dwuklik grafiki = otwórz w nowym panelu, Del = usuń. Tylko w pamięci i w folderze tymczasowym – po zamknięciu programu znika (w schowku bywają hasła; menedżery haseł są pomijane). Limit: 100 tekstów i 30 grafik.
 - **Ustawienia** (Widok → Ustawienia…, Ctrl+,): motyw, kolory składni i interfejsu, ramki, czcionka, ikona – z podglądem na żywo; Anuluj cofa zmiany.
 - **Zestawy**: zapisz bieżący układ paneli z otwartymi plikami pod nazwą i wracaj do niego jednym kliknięciem.
 - **Autozapis** (Plik → Autozapis, domyślnie włączony): zmiany trafiają do pliku 2 s po ostatnim naciśniętym znaku, zamknięcie programu też zapisuje. **Historia wersji** (Plik → Historia wersji pliku…, Ctrl+Alt+H): ostatnie 5 kopii każdego pliku z podglądem i przywracaniem (Ctrl+Z cofa przywrócenie). Gdy plik zmieni inny program (np. Notatnik), autozapis wstrzymuje się i nie nadpisuje go, a poprzednia wersja ląduje w historii. Kopie: `historia\` w folderze ustawień.
@@ -27,3 +28,10 @@ Autor: Michał Rzekiecki · kontakt: kontakt@smialo.org
 - Zamknięty program: zadanie w Harmonogramie zadań Windows uruchamia go na czas przypomnienia (`--alarm`).
 - Ctrl+Tab / Ctrl+PgDn przełączają panele niezależnie od fokusu; pasek kart wysuwa się też przy pasku tytułu/menu.
 - Drugie uruchomienie wyciąga działające okno. Przypomnienia ze starego folderu stanu są dołączane; dzienna kopia stanu w `kopie_stanu\`.
+
+## v1.41
+- **Ctrl+V z samym obrazem** w schowku otwiera go w nowym panelu także wtedy, gdy kursor jest w edytorze (tekst + obraz, np. z Excela, wkleja się jak zwykle jako tekst). Bez nasłuchu, nic nie obciąża programu.
+- **Schowek**: panel historii tekstów i grafik (opcjonalny, domyślnie wyłączony) – patrz „Najważniejsze”.
+- **Podwójny Shift przełącza**: pierwszy raz wyciąga program na pierwszy plan, kolejny (gdy jest aktywny) chowa go.
+- **Zasobnik** (Widok → Minimalizuj do zasobnika): minimalizacja i podwójny Shift chowają okno całkiem, bez przycisku na pasku zadań; ikona w zasobniku: klik = pokaż, prawy = Pokaż / Ukryj / Zakończ. Krzyżyk okna nadal zamyka program.
+- Wersje to liczby dziesiętne (v1.41 < v1.5); zabezpieczenie przed nadpisaniem stanu przez starszy program działa też dla setnych.

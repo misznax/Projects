@@ -40,12 +40,12 @@ from PySide6.QtWidgets import (
     QMainWindow, QMenu, QMessageBox, QPlainTextEdit, QPushButton, QScrollArea, QSizePolicy, QSpinBox, QStackedWidget,
     QToolButton, QVBoxLayout, QWidget,
 )
-from PySide6.QtWidgets import QAbstractItemView, QFileIconProvider, QFileSystemModel, QHeaderView, QTreeView
+from PySide6.QtWidgets import QAbstractItemView, QFileIconProvider, QFileSystemModel, QHeaderView, QSystemTrayIcon, QTreeView
 from PySide6.QtCore import QDate, QDateTime, QDir, QFile, QTime
 from PySide6.QtWidgets import QDateEdit, QTimeEdit
 
 APP_NAME = "Startup Board"
-APP_VERSION = "v1.4"  # zmieniać tylko na polecenie autora
+APP_VERSION = "v1.41"  # zmieniać tylko na polecenie autora
 APP_AUTHOR = "Michał Rzekiecki"
 APP_CONTACT = "kontakt@smialo.org"
 
@@ -178,7 +178,7 @@ def _state_score(f: Path) -> int:
     """Ile paneli z zawartością (plik, szkic, przypomnienia) ma zapisany stan; 0 = brak / pusty / uszkodzony."""
     try:
         d = json.loads(f.read_text(encoding="utf-8"))
-        return sum(1 for s in d.get("panes", []) if isinstance(s, dict) and (s.get("path") or s.get("untitled") or s.get("reminders")))
+        return sum(1 for s in d.get("panes", []) if isinstance(s, dict) and (s.get("path") or s.get("untitled") or s.get("reminders") or s.get("clips")))
     except Exception:
         return 0
 
@@ -230,8 +230,9 @@ def migrate_legacy_state(state_dir: Path) -> str:
 
 
 def _ver_tuple(v) -> tuple:
+    """"v1.41" -> (1.41,): wersje to liczby dziesiętne (nowa funkcja = kolejna setna), więc v1.41 < v1.5."""
     try:
-        return tuple(int(x) for x in re.findall(r"\d+", str(v)))
+        return tuple(float(x) for x in re.findall(r"\d+(?:\.\d+)?", str(v)))
     except ValueError:
         return ()
 
@@ -918,7 +919,8 @@ class Placeholder(QWidget):
         self.btn_img = QPushButton("Obraz z pliku…", toolTip="Otwórz plik graficzny (PNG, JPG, BMP, GIF, WEBP…)")
         self.btn_dir = QPushButton("Folder…", toolTip="Pokaż zawartość folderu w panelu (Ctrl+Shift+O)")
         self.btn_rem = QPushButton("Przypomnienia", toolTip="Lista przypomnień z datą i godziną (Ctrl+Shift+R)")
-        for b in (self.btn_open, self.btn_dir, self.btn_clip, self.btn_img, self.btn_rem):
+        self.btn_hist = QPushButton("Schowek", toolTip="Historia schowka: teksty i grafiki (Ctrl+Shift+H)")
+        for b in (self.btn_open, self.btn_dir, self.btn_clip, self.btn_img, self.btn_rem, self.btn_hist):
             b.setCursor(Qt.CursorShape.PointingHandCursor)
             self.row_l.addWidget(b)
         v.addStretch(1)
@@ -1238,10 +1240,10 @@ _WD = {"poniedziałek": 0, "poniedzialek": 0, "wtorek": 1, "środę": 2, "srode"
        "niedziele": 6, "niedziela": 6}
 
 
-def parse_when(text: str):
+def parse_when(text: str, today=None):
     """Z tekstu typu „skaling jutro 10:00” wyciąga (data, godzina); brakujące elementy = None."""
     low = text.lower()
-    today = datetime.now().date()
+    today = today or datetime.now().date()
     d, t = None, None
     m = re.search(r"\b(\d{1,2})[:.](\d{2})\b", low) or re.search(r"\bo\s+(\d{1,2})\b()", low)
     if m:
@@ -1563,11 +1565,373 @@ class RemindersView(QWidget):
 
 
 
+# ---------- schowek: historia tekstów i obrazów (opcjonalna; wyłączona = zero nasłuchu) ----------
+
+class ClipStore(QObject):
+    """Historia schowka w pamięci, osobno teksty i obrazy. Gdy użytkownik włączy przechwytywanie, program korzysta ze
+    zdarzenia systemowego QClipboard.dataChanged (bez odpytywania, bez pętli). Nic nie ląduje w state.json ani na dysku
+    na stałe (w schowku bywają hasła): obrazy leżą w folderze tymczasowym i są sprzątane przy włączeniu i wyjściu."""
+    changed = Signal()
+    MAX_TEXTS, MAX_IMAGES, MAX_CHARS, MAX_PIXELS = 100, 30, 1_000_000, 64_000_000
+    SKIP_FORMATS = ("ExcludeClipboardContentFromMonitorProcessing", "Clipboard Viewer Ignore")  # menedżery haseł
+
+    def __init__(self):
+        super().__init__()
+        self.on = False
+        self.texts: list[dict] = []   # {"t": str, "ts": float}, najnowsze pierwsze
+        self.images: list[dict] = []  # {"path", "ts", "w", "h", "hash", "thumb"}, najnowsze pierwsze
+        self.dir = Path(tempfile.gettempdir()) / "startupboard_schowek"
+        self._mute_until = 0.0  # własne kopiowanie z panelu nie wraca do historii
+        self._debounce = QTimer(self, singleShot=True, interval=150)  # Windows zgłasza zmianę kilka razy pod rząd
+        self._debounce.timeout.connect(self._grab)
+
+    def set_enabled(self, on: bool) -> None:
+        if on == self.on:
+            return
+        self.on = on
+        cb = QApplication.clipboard()
+        if on:
+            self._clean_dir()
+            cb.dataChanged.connect(self._debounce.start)
+            self._grab()  # od razu to, co już jest w schowku
+        else:
+            try:
+                cb.dataChanged.disconnect(self._debounce.start)
+            except (RuntimeError, TypeError):
+                pass
+            self._debounce.stop()
+        self.changed.emit()
+
+    def _clean_dir(self) -> None:
+        shutil.rmtree(self.dir, ignore_errors=True)
+
+    def shutdown(self) -> None:
+        """Wyjście z programu: koniec nasłuchu i sprzątanie plików; `on` zostaje, bo trafia do zapamiętanych ustawień."""
+        self._debounce.stop()
+        if self.on:
+            try:
+                QApplication.clipboard().dataChanged.disconnect(self._debounce.start)
+            except (RuntimeError, TypeError):
+                pass
+        self._clean_dir()
+
+    def _grab(self) -> None:
+        if time.monotonic() < self._mute_until:
+            return
+        try:
+            cb = QApplication.clipboard()
+            md = cb.mimeData()
+            if md is None or any(k in f for f in md.formats() for k in self.SKIP_FORMATS):
+                return
+            text = md.text() if md.hasText() else ""
+            if not text.strip() and md.hasUrls():  # skopiowane pliki: zapisz ich ścieżki
+                text = "\n".join(u.toLocalFile() or u.toString() for u in md.urls())
+            as_img = md.hasImage() and (not text.strip() or (md.hasHtml() and "<img" in md.html().lower()))
+            if as_img:  # kopiowany obraz (np. zrzut ekranu, grafika z przeglądarki); tekst wygrywa tylko gdy to nie obraz
+                img = cb.image()
+                if not img.isNull():
+                    self._add_image(img)
+                    return
+            if text.strip():
+                self._add_text(text)
+        except Exception:  # schowek bywa chwilowo zajęty przez inny program: pomijamy to przechwycenie
+            pass
+
+    def _add_text(self, text: str) -> None:
+        if len(text) > self.MAX_CHARS or (self.texts and self.texts[0]["t"] == text):
+            return
+        self.texts = [e for e in self.texts if e["t"] != text]
+        self.texts.insert(0, {"t": text, "ts": time.time()})
+        del self.texts[self.MAX_TEXTS:]
+        self.changed.emit()
+
+    def _add_image(self, img: QImage) -> None:
+        if img.width() * img.height() > self.MAX_PIXELS:
+            return
+        h = hashlib.blake2b(bytes(img.constBits())[:img.sizeInBytes()], digest_size=12).hexdigest()
+        for i, e in enumerate(self.images):
+            if e["hash"] == h:  # ten sam obraz: tylko na górę
+                if i:
+                    self.images.insert(0, self.images.pop(i))
+                    self.changed.emit()
+                return
+        try:
+            self.dir.mkdir(parents=True, exist_ok=True)
+            path = self.dir / f"{time.strftime('%Y%m%d_%H%M%S')}_{h[:6]}.png"
+            if not img.save(str(path), "PNG", 90):
+                return
+        except OSError:
+            return
+        thumb = QPixmap.fromImage(img.scaled(112, 84, Qt.AspectRatioMode.KeepAspectRatio,
+                                             Qt.TransformationMode.SmoothTransformation))
+        self.images.insert(0, {"path": str(path), "ts": time.time(), "w": img.width(), "h": img.height(),
+                               "hash": h, "thumb": thumb})
+        while len(self.images) > self.MAX_IMAGES:
+            old = self.images.pop()
+            try:
+                Path(old["path"]).unlink()
+            except OSError:
+                pass
+        self.changed.emit()
+
+    def copy_text(self, text: str) -> None:
+        self._mute_until = time.monotonic() + 0.8
+        QApplication.clipboard().setText(text)
+
+    def copy_image(self, path: str) -> None:
+        img = QImage(path)
+        if not img.isNull():
+            self._mute_until = time.monotonic() + 0.8
+            QApplication.clipboard().setImage(img)
+
+    def remove(self, kind: str, idx: int) -> None:
+        lst = self.texts if kind == "text" else self.images
+        if 0 <= idx < len(lst):
+            e = lst.pop(idx)
+            if kind == "image":
+                try:
+                    Path(e["path"]).unlink()
+                except OSError:
+                    pass
+            self.changed.emit()
+
+    def clear(self, kind: str) -> None:
+        if kind == "text":
+            self.texts.clear()
+        else:
+            self.images.clear()
+            self._clean_dir()
+        self.changed.emit()
+
+
+class ClipsView(QWidget):
+    """Panel „Schowek”: dwie listy (Tekst / Grafika) nad wspólną historią ClipStore. Sam nic nie nasłuchuje."""
+    changed = Signal()                 # zmieniły się liczby (nagłówek panelu)
+    openTextRequested = Signal(str)    # tekst do nowego dokumentu
+    openImageRequested = Signal(str)   # ścieżka obrazu do nowego panelu
+    captureToggled = Signal(bool)
+
+    def __init__(self, store: ClipStore):
+        super().__init__()
+        self.setObjectName("cv")
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        self.store = store
+        self.chk = QCheckBox("Przechwytuj schowek")
+        self.chk.setToolTip("Gdy włączone, program zapisuje w pamięci to, co kopiujesz (Ctrl+C). Wyłączone = brak nasłuchu.")
+        self.btn_t = QPushButton("Tekst")
+        self.btn_i = QPushButton("Grafika")
+        self.btn_clear = QPushButton("Wyczyść")
+        for b in (self.btn_t, self.btn_i):
+            b.setCheckable(True)
+            b.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_clear.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_t.setChecked(True)
+        grp = QButtonGroup(self)
+        grp.setExclusive(True)
+        grp.addButton(self.btn_t)
+        grp.addButton(self.btn_i)
+        top = QHBoxLayout()
+        top.setContentsMargins(6, 4, 6, 4)
+        top.addWidget(self.btn_t)
+        top.addWidget(self.btn_i)
+        top.addStretch(1)
+        top.addWidget(self.btn_clear)
+        sub = QHBoxLayout()
+        sub.setContentsMargins(8, 0, 6, 4)
+        sub.addWidget(self.chk)
+        sub.addStretch(1)
+        self.tl = QListWidget()
+        self.il = QListWidget()
+        for lw in (self.tl, self.il):
+            lw.setFrameShape(QFrame.Shape.NoFrame)
+            lw.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+            lw.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
+            lw.installEventFilter(self)
+        self.tl.setSpacing(1)
+        self.tl.setUniformItemSizes(True)
+        self.il.setViewMode(QListWidget.ViewMode.IconMode)
+        self.il.setIconSize(QSize(112, 84))
+        self.il.setGridSize(QSize(132, 116))
+        self.il.setResizeMode(QListWidget.ResizeMode.Adjust)
+        self.il.setMovement(QListWidget.Movement.Static)
+        self.il.setWordWrap(True)
+        self.stack = QStackedWidget()
+        self.stack.addWidget(self.tl)
+        self.stack.addWidget(self.il)
+        self.lbl = QLabel()
+        self.lbl.setWordWrap(True)
+        self.lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lbl.setContentsMargins(12, 6, 12, 6)
+        v = QVBoxLayout(self)
+        v.setContentsMargins(0, 0, 0, 0)
+        v.setSpacing(0)
+        v.addLayout(top)
+        v.addLayout(sub)
+        v.addWidget(self.lbl)
+        v.addWidget(self.stack, 1)
+        self.chk.setChecked(store.on)
+        self.chk.toggled.connect(self.captureToggled)
+        self.btn_t.clicked.connect(lambda: self._page(0))
+        self.btn_i.clicked.connect(lambda: self._page(1))
+        self.btn_clear.clicked.connect(self._clear)
+        self.tl.itemDoubleClicked.connect(lambda _i: self.copy_selected())
+        self.il.itemDoubleClicked.connect(lambda _i: self.open_selected_image())
+        self.tl.customContextMenuRequested.connect(lambda pos: self._menu(self.tl, pos, "text"))
+        self.il.customContextMenuRequested.connect(lambda pos: self._menu(self.il, pos, "image"))
+        store.changed.connect(self.refresh)
+        self.apply_colors()
+        self.refresh()
+
+    def _page(self, i: int):
+        self.stack.setCurrentIndex(i)
+        self.btn_t.setChecked(i == 0)
+        self.btn_i.setChecked(i == 1)
+        self._hint()
+
+    def show_images(self):
+        self._page(1)
+
+    def _hint(self):
+        s = self.store
+        empty = not (s.images if self.stack.currentIndex() else s.texts)
+        if not s.on:
+            msg = "Przechwytywanie wyłączone – zaznacz „Przechwytuj schowek”, by zbierać historię (tylko w pamięci, po zamknięciu programu znika)."
+        elif empty:
+            msg = "Skopiuj coś (Ctrl+C), pojawi się tutaj." if not self.stack.currentIndex() else "Skopiuj obraz lub zrób zrzut ekranu, pojawi się tutaj."
+        else:
+            msg = ""
+        self.lbl.setText(msg)
+        self.lbl.setVisible(bool(msg))
+
+    def refresh(self):
+        s = self.store
+        if self.chk.isChecked() != s.on:
+            self.chk.blockSignals(True)
+            self.chk.setChecked(s.on)
+            self.chk.blockSignals(False)
+        tcur, icur = self.tl.currentRow(), self.il.currentRow()
+        self.tl.clear()
+        for e in s.texts:
+            first = next((ln.strip() for ln in e["t"].splitlines() if ln.strip()), "")
+            more = " …" if len(first) > 140 or len([ln for ln in e["t"].splitlines() if ln.strip()]) > 1 else ""
+            li = QListWidgetItem(f"{time.strftime('%H:%M', time.localtime(e['ts']))}   {first[:140]}{more}")
+            li.setToolTip(e["t"][:800] + ("…" if len(e["t"]) > 800 else "") + f"\n\n({len(e['t'])} zn.)")
+            self.tl.addItem(li)
+        self.il.clear()
+        for e in s.images:
+            li = QListWidgetItem(QIcon(e["thumb"]), f"{time.strftime('%H:%M', time.localtime(e['ts']))} · {e['w']}×{e['h']}")
+            li.setToolTip("Dwuklik = otwórz w panelu, prawy przycisk = więcej")
+            self.il.addItem(li)
+        if tcur >= 0 and self.tl.count():
+            self.tl.setCurrentRow(min(tcur, self.tl.count() - 1))
+        if icur >= 0 and self.il.count():
+            self.il.setCurrentRow(min(icur, self.il.count() - 1))
+        self.btn_t.setText(f"Tekst ({len(s.texts)})")
+        self.btn_i.setText(f"Grafika ({len(s.images)})")
+        self._hint()
+        self.changed.emit()
+
+    def _cur(self):
+        i = self.stack.currentIndex()
+        lw = self.il if i else self.tl
+        rows = sorted({lw.row(x) for x in lw.selectedItems()}) or ([lw.currentRow()] if lw.currentRow() >= 0 else [])
+        return ("image" if i else "text"), rows
+
+    def copy_selected(self):
+        kind, rows = self._cur()
+        if not rows:
+            return
+        if kind == "text":
+            self.store.copy_text("\n".join(self.store.texts[r]["t"] for r in rows if r < len(self.store.texts)))
+        else:
+            self.store.copy_image(self.store.images[rows[0]]["path"])
+
+    def open_selected_image(self):
+        _k, rows = self._cur()
+        for r in rows[:4]:  # dużo naraz to pomyłka
+            if r < len(self.store.images):
+                self.openImageRequested.emit(self.store.images[r]["path"])
+
+    def open_selected_text(self):
+        _k, rows = self._cur()
+        if rows and rows[0] < len(self.store.texts):
+            self.openTextRequested.emit(self.store.texts[rows[0]]["t"])
+
+    def delete_selected(self):
+        kind, rows = self._cur()
+        for r in reversed(rows):
+            self.store.remove(kind, r)
+
+    def _clear(self):
+        kind = "image" if self.stack.currentIndex() else "text"
+        n = len(self.store.images if kind == "image" else self.store.texts)
+        if n and QMessageBox.question(self, APP_NAME, f"Wyczyścić historię ({n})?") == QMessageBox.StandardButton.Yes:
+            self.store.clear(kind)
+
+    def _menu(self, lw: QListWidget, pos, kind: str):
+        li = lw.itemAt(pos)
+        if not li:
+            return
+        if not li.isSelected():
+            lw.clearSelection()
+            lw.setCurrentItem(li)
+        m = QMenu(self)
+        m.addAction("Kopiuj do schowka").triggered.connect(self.copy_selected)
+        if kind == "text":
+            m.addAction("Otwórz w nowym panelu").triggered.connect(self.open_selected_text)
+        else:
+            m.addAction("Otwórz w nowym panelu").triggered.connect(self.open_selected_image)
+        m.addAction("Usuń").triggered.connect(self.delete_selected)
+        m.exec(lw.viewport().mapToGlobal(pos))
+
+    def eventFilter(self, obj, ev):
+        if obj in (self.tl, self.il) and ev.type() == QEvent.Type.KeyPress:
+            if ev.key() == Qt.Key.Key_Delete:
+                self.delete_selected()
+                return True
+            if ev.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+                self.copy_selected() if obj is self.tl else self.open_selected_image()
+                return True
+            if ev.key() == Qt.Key.Key_C and ev.modifiers() & Qt.KeyboardModifier.ControlModifier:
+                self.copy_selected()
+                return True
+        return False
+
+    def apply_colors(self):
+        u, c = UI, COLORS
+        self.setStyleSheet(
+            f"#cv{{background:{c['bg']};}}"
+            f"QListWidget{{background:{c['bg']};color:{c['text']};border:none;outline:0;}}"
+            f"QListWidget::item{{padding:3px 6px;border-radius:5px;}}"
+            f"QListWidget::item:selected{{background:{u['sel']};color:{c['text']};}}"
+            f"QLabel{{color:{u['mute']};}}"
+            f"QCheckBox{{color:{u['mute']};}}"
+            f"QCheckBox::indicator{{width:13px;height:13px;border:1px solid {u['mute']};border-radius:3px;background:transparent;}}"
+            f"QCheckBox::indicator:checked{{background:{u['border_a']};border-color:{u['border_a']};}}"
+            f"QPushButton{{background:{u['hdr_bg']};color:{u['hdr_fg']};border:1px solid {u['border']};"
+            f"border-radius:4px;padding:3px 10px;}}QPushButton:hover{{border-color:{u['border_a']};}}"
+            f"QPushButton:checked{{border-color:{u['border_a']};font-weight:bold;}}")
+
+
 # ---------- edytor ----------
 
 class Editor(QPlainTextEdit):
     fileDropped = Signal(str)
     focused = Signal()
+    imagePasted = Signal()  # Ctrl+V z samym obrazem w schowku: nie do tekstu, tylko do nowego panelu
+
+    @staticmethod
+    def _image_only(md) -> bool:
+        return md is not None and md.hasImage() and not md.hasText()
+
+    def canInsertFromMimeData(self, source) -> bool:
+        return self._image_only(source) or super().canInsertFromMimeData(source)
+
+    def insertFromMimeData(self, source):
+        if self._image_only(source):
+            self.imagePasted.emit()
+            return
+        super().insertFromMimeData(source)
 
     def focusInEvent(self, e):
         super().focusInEvent(e)
@@ -1597,12 +1961,17 @@ class TextPane(QFrame):
     openFromFolder = Signal(object, str)
     remindersChanged = Signal()
     remindersRequested = Signal(object)
+    clipsRequested = Signal(object)
+    clipCaptureToggled = Signal(bool)
+    clipTextOpened = Signal(str)
+    clipImageOpened = Signal(str)
+    imagePasted = Signal()          # w edytorze wklejono sam obraz (Ctrl+V): okno otworzy go w nowym panelu
     removeRequested = Signal(object)  # × / Ctrl+W na pustym panelu = usuń panel
     menuRequested = Signal(QPoint)  # globalna pozycja, gdzie pokazać menu
     pathChanged = Signal(str)       # plik otwarty / zapisany przez użytkownika (lista ostatnich)
     titleChanged = Signal()         # zmieniła się nazwa / stan panelu (odświeża pasek kart)
     img_dir = Path(tempfile.gettempdir()) / "startupboard_obrazy"  # obrazy wklejone ze schowka (ustawia okno)
-    PH, ED, PDF, IMG, FOLD, REM = 0, 1, 2, 3, 4, 5   # strony QStackedWidget
+    PH, ED, PDF, IMG, FOLD, REM, CLP = 0, 1, 2, 3, 4, 5, 6   # strony QStackedWidget
 
     def __init__(self, index: int):
         super().__init__()
@@ -1611,6 +1980,7 @@ class TextPane(QFrame):
         self.kind = "text"  # text | pdf | image | folder
         self.fv: FolderView | None = None  # panel folderu tworzony na żądanie
         self.rv: RemindersView | None = None  # panel przypomnień tworzony na żądanie
+        self.cv: ClipsView | None = None  # panel schowka tworzony na żądanie
         self._fcount = "folder"
         self.untitled = False  # nowy dokument jeszcze bez pliku
         self.clip = False      # obraz wklejony ze schowka (plik w folderze aplikacji)
@@ -1661,7 +2031,7 @@ class TextPane(QFrame):
         self.hl = Highlighter(self.editor.document(), "text")
         self.pdf = PdfViewer()
         self.imgv = ImageViewer()
-        for w in (self.ph, self.editor, self.pdf, self.imgv, QWidget(), QWidget()):  # 4, 5 = miejsca na folder i przypomnienia
+        for w in (self.ph, self.editor, self.pdf, self.imgv, QWidget(), QWidget(), QWidget()):  # 4, 5, 6 = miejsca na folder, przypomnienia, schowek
             self.stack.addWidget(w)
 
         # pasek wyszukiwania (Ctrl+F)
@@ -1702,6 +2072,7 @@ class TextPane(QFrame):
         self.ph.btn_img.clicked.connect(self.ask_open_image)
         self.ph.btn_dir.clicked.connect(self.ask_open_dir)
         self.ph.btn_rem.clicked.connect(lambda: self.remindersRequested.emit(self))
+        self.ph.btn_hist.clicked.connect(lambda: self.clipsRequested.emit(self))
         self.ph.customContextMenuRequested.connect(lambda pos: self.menuRequested.emit(self.ph.mapToGlobal(pos)))
         self.find_edit.textChanged.connect(self._find_live)
         self.find_edit.returnPressed.connect(lambda: self.find_next())
@@ -1712,6 +2083,7 @@ class TextPane(QFrame):
         self.editor.document().modificationChanged.connect(lambda _m: self.refresh_header())
         self.editor.document().contentsChanged.connect(self._on_edit)
         self.editor.fileDropped.connect(self.open_file)
+        self.editor.imagePasted.connect(self.imagePasted)
         self.editor.focused.connect(self._on_focus)
         self.set_active(False)
         self.apply_colors()
@@ -1737,6 +2109,8 @@ class TextPane(QFrame):
             self.fv.apply_colors()
         if self.rv:
             self.rv.apply_colors()
+        if self.cv:
+            self.cv.apply_colors()
         cv = UI["canvas"]
         self.imgv.setStyleSheet(f"QScrollArea{{background:{cv};}}QScrollArea>QWidget>QWidget{{background:{cv};}}")
         self.pdf.restyle()
@@ -1811,7 +2185,8 @@ class TextPane(QFrame):
 
     def focus_editor(self):
         w = {self.ED: self.editor, self.PDF: self.pdf, self.IMG: self.imgv,
-             self.FOLD: self.fv.view if self.fv else None, self.REM: self.rv.list if self.rv else None}.get(
+             self.FOLD: self.fv.view if self.fv else None, self.REM: self.rv.list if self.rv else None,
+             self.CLP: self.cv.tl if self.cv else None}.get(
             self.stack.currentIndex(), None) or self.ph.btn_plus
         w.setFocus()
         self.activated.emit(self)
@@ -1820,7 +2195,7 @@ class TextPane(QFrame):
         return self.kind == "text" and self.editor.document().isModified()
 
     def is_empty(self) -> bool:
-        return self.path is None and not self.untitled and self.demo is None and self.kind != "reminders"
+        return self.path is None and not self.untitled and self.demo is None and self.kind not in ("reminders", "clips")
 
     def flash(self, msg: str):
         """Krótki komunikat w pustym panelu (w zajętym: okienko)."""
@@ -1839,6 +2214,8 @@ class TextPane(QFrame):
         """(tekst karty, podpowiedź, stan: '' | 'mod' | 'warn' | 'empty') dla paska kart."""
         if self.kind == "reminders":
             return "Przypomnienia", "Panel przypomnień", ""
+        if self.kind == "clips":
+            return "Schowek", "Historia schowka: teksty i obrazy", ""
         if self.untitled:
             mod = self.is_modified()
             return ("● " if mod else "") + "Bez tytułu", "Nowy dokument (jeszcze bez pliku)", "mod" if mod else ""
@@ -1867,6 +2244,17 @@ class TextPane(QFrame):
             n = self.rv.active_count() if self.rv else 0
             self.lbl_state.setText(f"{n} aktywnych")
             self.lbl_state.setStyleSheet(f"color:{UI['info']};")
+            return
+        if self.kind == "clips":
+            st = self.cv.store if self.cv else None
+            self.lbl_name.setText("Schowek")
+            self.lbl_name.setToolTip("Historia schowka (Enter = kopiuj, Del = usuń). Tylko w pamięci, po zamknięciu programu znika.")
+            if st is not None and st.on:
+                self.lbl_state.setText(f"{len(st.texts)} tekstów · {len(st.images)} obrazów")
+                self.lbl_state.setStyleSheet(f"color:{UI['info']};")
+            else:
+                self.lbl_state.setText("wyłączony")
+                self.lbl_state.setStyleSheet(f"color:{UI['mute']};")
             return
         if self.untitled:
             self.lbl_name.setText("Bez tytułu")
@@ -2023,6 +2411,9 @@ class TextPane(QFrame):
         if self.rv is not None:
             self._mount(self.REM, QWidget())
             self.rv = None
+        if self.cv is not None:
+            self._mount(self.CLP, QWidget())
+            self.cv = None
         if self.fv is not None:  # zwolnij widok folderu (obserwator plików, model)
             self._mount(self.FOLD, QWidget())
             self.fv = None
@@ -2100,6 +2491,24 @@ class TextPane(QFrame):
         self._mount(self.REM, rv)
         rv.changed.connect(lambda: (self.refresh_header(), self.remindersChanged.emit()))
         self.stack.setCurrentIndex(self.REM)
+        self.refresh_header()
+        return True
+
+    def open_clips(self, store: ClipStore) -> bool:
+        if not self.confirm_close():
+            return False
+        self._release()
+        self.editor.setPlainText("")
+        self.editor.document().setModified(False)
+        self.kind, self.path, self.mtime, self.disk_size = "clips", None, None, 0
+        self.btn_wrap.setEnabled(False)
+        cv = self.cv = ClipsView(store)
+        self._mount(self.CLP, cv)
+        cv.changed.connect(self.refresh_header)
+        cv.captureToggled.connect(self.clipCaptureToggled)
+        cv.openTextRequested.connect(self.clipTextOpened)
+        cv.openImageRequested.connect(self.clipImageOpened)
+        self.stack.setCurrentIndex(self.CLP)
         self.refresh_header()
         return True
 
@@ -2443,6 +2852,8 @@ class TextPane(QFrame):
             d["img_zoom"], d["clip"] = self.imgv.zoom, self.clip
         if self.kind == "reminders":
             d["reminders"] = True
+        if self.kind == "clips":
+            d["clips"] = True
         if self.untitled:
             d["untitled"] = True
             d["draft"] = self.editor.toPlainText()[:MAX_BYTES]
@@ -3388,7 +3799,7 @@ def parse_reminder(text: str, now: datetime | None = None) -> datetime | None:
         return (now + timedelta(hours=1)).replace(second=0, microsecond=0)
     if re.search(r"\bza\s+minut[ęe]\b", low):
         return (now + timedelta(minutes=1)).replace(second=0, microsecond=0)
-    d, t = parse_when(text)
+    d, t = parse_when(text, now.date())
     if d is None and t is None:
         return None
     h, mi = t if t else (9, 0)
@@ -3792,7 +4203,10 @@ class MainWindow(QMainWindow):
         self.sched_on, self.hotkey_on = True, True
         self.alarm = AlarmPlayer(self.state_dir)
         self.hook = DoubleShiftHook()
-        self.hook.fired.connect(self.bring_to_front)
+        self.hook.fired.connect(self.toggle_front)
+        self.clipstore = ClipStore()
+        self.tray: QSystemTrayIcon | None = None
+        self.tray_on = False
         self._popups: list = []
         self._last_json = ""
         self._last_bytes: bytes | None = None  # to, co sami ostatnio zapisaliśmy / wczytaliśmy z state.json
@@ -3866,6 +4280,11 @@ class MainWindow(QMainWindow):
         p.removeRequested.connect(self.remove_pane)
         p.openFromFolder.connect(self.open_from_folder)
         p.remindersRequested.connect(self.show_reminders)
+        p.clipsRequested.connect(self.show_clips)
+        p.clipCaptureToggled.connect(self.set_clipcap)
+        p.clipTextOpened.connect(self.open_clip_text)
+        p.clipImageOpened.connect(self.open_clip_image)
+        p.imagePasted.connect(self.paste_image)
         p.remindersChanged.connect(self.on_reminders_changed)
         p.transferRequested.connect(self.transfer_files)
         p.menuRequested.connect(self.show_popup)
@@ -3908,6 +4327,7 @@ class MainWindow(QMainWindow):
         m.addAction(self._act("Otwórz w aktywnym panelu…", lambda: self.current.ask_open(), "Ctrl+O"))
         m.addAction(self._act("Otwórz folder w panelu…", self.open_folder_dialog, "Ctrl+Shift+O"))
         m.addAction(self._act("Panel przypomnień", lambda: self.show_reminders(), "Ctrl+Shift+R"))
+        m.addAction(self._act("Panel schowka (historia tekstów i grafik)", lambda: self.show_clips(), "Ctrl+Shift+H"))
         m.addAction(self._act("Nowe przypomnienie (pasek u dołu)", self.focus_reminder_bar, ("Ctrl+Shift+P", "Ctrl+Alt+N")))
         m.addAction(self._act("Nowe przypomnienie – okno…", self.quick_reminder))
         self.m_recent = m.addMenu("Ostatnie pliki")
@@ -3965,7 +4385,7 @@ class MainWindow(QMainWindow):
         self.act_rembar = self._act("Pasek przypomnień u dołu okna", lambda: self.set_rembar(self.act_rembar.isChecked()),
                                     checkable=True)
         self.act_rembar.setChecked(True)
-        self.act_hotkey = self._act("Podwójny Shift wywołuje program (Windows)",
+        self.act_hotkey = self._act("Podwójny Shift: pokaż / schowaj program (Windows)",
                                     lambda: self.set_hotkey(self.act_hotkey.isChecked()), checkable=True)
         self.act_hotkey.setChecked(True)
         self.act_hotkey.setEnabled(self.hook.available())
@@ -3980,6 +4400,14 @@ class MainWindow(QMainWindow):
         rm.addAction(self._act("Dźwięk alarmu: wybierz plik…", self.choose_alarm_sound))
         rm.addAction(self._act("Dźwięk alarmu: domyślny", self.reset_alarm_sound))
         rm.addAction(self._act("Odtwórz dźwięk alarmu", self.alarm.play_once))
+
+        self.act_clipcap = self._act("Przechwytuj schowek (historia tekstów i grafik)",
+                                     lambda: self.set_clipcap(self.act_clipcap.isChecked()), checkable=True)
+        self.act_tray = self._act("Minimalizuj do zasobnika (czysty pasek zadań)",
+                                  lambda: self.set_tray(self.act_tray.isChecked()), checkable=True)
+        v.addSeparator()
+        v.addAction(self.act_clipcap)
+        v.addAction(self.act_tray)
 
         self.m_layout = mb.addMenu("&Układ")
         self.act_add = self._act("Dodaj panel", self.add_pane, "Ctrl+Shift+N")
@@ -4378,6 +4806,8 @@ class MainWindow(QMainWindow):
         ic = star_icon(cols[key])
         self.setWindowIcon(ic)
         QApplication.instance().setWindowIcon(ic)
+        if self.tray is not None:
+            self.tray.setIcon(ic)
         self.schedule_save()
 
     def set_default_font(self, family: str, size: float):
@@ -4541,6 +4971,45 @@ class MainWindow(QMainWindow):
         if p.open_reminders(self.reminders):
             self._focus(p)
 
+    # --- schowek ---
+    def show_clips(self, pane: TextPane | None = None):
+        """Panel historii schowka (jeden na okno): w pustym panelu albo przechodzi do już otwartego."""
+        for q in self.panes:
+            if q.kind == "clips":
+                self._focus(q)
+                return
+        p = pane if (pane is not None and pane.is_empty()) else self.target_pane()
+        if p.open_clips(self.clipstore):
+            self._focus(p)
+
+    def set_clipcap(self, on: bool, save: bool = True):
+        self.clipstore.set_enabled(bool(on))
+        self.act_clipcap.setChecked(bool(on))
+        if save:
+            self.schedule_save()
+
+    def open_clip_text(self, text: str):
+        p = self.target_pane()
+        if p.new_document(text, modified=True, ask=not p.is_empty()):
+            self._focus(p)
+
+    def open_clip_image(self, path: str):
+        """Obraz z historii do osobnego panelu: kopia w folderze obrazów aplikacji (historia jest tymczasowa)."""
+        try:
+            TextPane.img_dir.mkdir(parents=True, exist_ok=True)
+            dst = TextPane.img_dir / time.strftime("schowek_%Y%m%d_%H%M%S.png")
+            n = 1
+            while dst.exists():
+                n += 1
+                dst = TextPane.img_dir / time.strftime(f"schowek_%Y%m%d_%H%M%S_{n}.png")
+            shutil.copy2(path, dst)
+        except OSError as ex:
+            self.current.flash(f"Nie można otworzyć obrazu: {ex}")
+            return
+        p = self.target_pane()
+        if p.open_file(str(dst), {"clip": True}, ask=not p.is_empty()):
+            self._focus(p)
+
     def quick_reminder(self):
         """Okno dodawania przypomnienia z dowolnego miejsca (bez otwierania panelu)."""
         d = ReminderDialog(self, None, REM_COLORS[0])
@@ -4592,6 +5061,54 @@ class MainWindow(QMainWindow):
 
     def bring_to_front(self):
         bring_window_front(self)
+
+    def toggle_front(self):
+        """Podwójny Shift: okno nieaktywne / schowane -> na pierwszy plan; aktywne -> chowa (zasobnik albo pasek zadań)."""
+        if self.isVisible() and not self.isMinimized() and self.isActiveWindow():
+            self.hide_window()
+        else:
+            self.bring_to_front()
+
+    def hide_window(self):
+        if self.tray is not None:
+            self.hide()
+        else:
+            self.showMinimized()
+
+    def set_tray(self, on: bool, save: bool = True):
+        """Ikona w zasobniku systemowym: minimalizacja i 2xShift chowają okno całkiem (bez przycisku na pasku zadań)."""
+        on = bool(on) and QSystemTrayIcon.isSystemTrayAvailable()
+        self.tray_on = on
+        self.act_tray.setChecked(on)
+        if on and self.tray is None:
+            t = QSystemTrayIcon(self.windowIcon(), self)
+            t.setToolTip(APP_NAME)
+            m = self._tray_menu = QMenu()
+            m.addAction("Pokaż okno").triggered.connect(self.bring_to_front)
+            m.addAction("Ukryj do zasobnika").triggered.connect(self.hide_window)
+            m.addSeparator()
+            m.addAction("Zakończ").triggered.connect(self.close)
+            t.setContextMenu(m)
+            t.activated.connect(self._tray_clicked)
+            t.show()
+            self.tray = t
+        elif not on and self.tray is not None:
+            self.tray.hide()
+            self.tray.deleteLater()
+            self.tray = None
+            if not self.isVisible():  # okno schowane, a ikony już nie ma: nie zostawiamy go bez dostępu
+                self.bring_to_front()
+        if save:
+            self.schedule_save()
+
+    def _tray_clicked(self, reason):
+        if reason == QSystemTrayIcon.ActivationReason.Trigger:
+            self.toggle_front()
+
+    def changeEvent(self, e):
+        super().changeEvent(e)
+        if e.type() == QEvent.Type.WindowStateChange and self.tray is not None and self.isMinimized():
+            QTimer.singleShot(0, self.hide)  # zminimalizowane przy włączonym zasobniku: znika z paska zadań
 
     def choose_alarm_sound(self):
         f, _ = QFileDialog.getOpenFileName(self, "Dźwięk alarmu", LAST["dir"] or "", "Dźwięk (*.mp3 *.wav *.wma *.m4a *.aac)")
@@ -4937,6 +5454,7 @@ class MainWindow(QMainWindow):
                 "recent": self.recent, "last_dir": LAST["dir"], "reminders": self.reminders,
                 "autosave": AUTO["on"], "tabs": self.tab_mode, "rembar": self.act_rembar.isChecked(),
                 "hotkey": self.hotkey_on, "sched": self.sched_on,
+                "clipcap": self.clipstore.on, "tray": self.tray_on,
             }
             data.update(self.snapshot())
             data["app_version"] = APP_VERSION
@@ -5030,6 +5548,8 @@ class MainWindow(QMainWindow):
             self.set_rembar(bool(data.get("rembar", True)), save=False)
             self.set_hotkey(bool(data.get("hotkey", True)), save=False)
             self.set_sched(bool(data.get("sched", True)), save=False)
+            self.set_clipcap(bool(data.get("clipcap", False)), save=False)
+            self.set_tray(bool(data.get("tray", False)), save=False)
             self.icon_key = "sealime" if old_look and data.get("icon", "yellow") == "yellow" else data.get("icon", "sealime")
             self.set_menu_visible(bool(data.get("menu", True)))
             for p in self.panes:
@@ -5051,6 +5571,8 @@ class MainWindow(QMainWindow):
         try:
             if st.get("reminders"):
                 p.open_reminders(self.reminders)
+            elif st.get("clips"):
+                p.open_clips(self.clipstore)
             elif st.get("path"):
                 p.open_file(st["path"], st, ask=False)
             elif st.get("untitled"):
@@ -5131,8 +5653,12 @@ class MainWindow(QMainWindow):
         self.save_state()
         self.alarm.stop()
         self.hook.stop()
+        self.clipstore.shutdown()
+        if self.tray is not None:
+            self.tray.hide()  # inaczej ikona zostaje w zasobniku do najechania myszą
         self.sync_scheduler(wait=True)
         e.accept()
+        QApplication.instance().quit()  # okna bez rodzica (alarmy) i ukryte okno nie decydują o zamknięciu programu
 
 
 def install_excepthook(log_path: Path):
@@ -5164,6 +5690,7 @@ def main():
     app = QApplication(sys.argv)
     app.setApplicationName("StartupBoard")  # NIE zmieniać: to nazwa folderu stanu (%LOCALAPPDATA%\\smialo\\StartupBoard); napis w oknie to APP_NAME
     app.setOrganizationName("smialo")
+    app.setQuitOnLastWindowClosed(False)  # okno schowane w zasobniku / okienko alarmu nie kończy programu; wyjście = MainWindow.closeEvent
     sp = MainWindow._default_state_path()
     sp.parent.mkdir(parents=True, exist_ok=True)
     install_excepthook(sp.with_name("startupboard.log"))
