@@ -233,6 +233,54 @@ async function interest(request, env) {
   return J({ ok: true });
 }
 
+// ── 05 Anatomia: analiza objawów (Claude gdy jest klucz, inaczej Workers AI/Llama); limit zapytań na IP (hash) w D1 ──
+let anaReady = false;
+async function anaLimit(request, env) {
+  if (!env.DB) return true;
+  const ip = request.headers.get('cf-connecting-ip') || 'x';
+  const h = (await sha256hex(ip + '|ana|' + (env.STATS_SALT || 'projects'))).slice(0, 20), hr = Math.floor(Date.now() / 36e5);
+  if (!anaReady) { await env.DB.prepare('CREATE TABLE IF NOT EXISTS ana_rl (h TEXT NOT NULL, hr INTEGER NOT NULL, n INTEGER NOT NULL, PRIMARY KEY (h, hr))').run(); anaReady = true; }
+  await env.DB.prepare('INSERT INTO ana_rl (h, hr, n) VALUES (?1, ?2, 1) ON CONFLICT(h, hr) DO UPDATE SET n = n + 1').bind(h, hr).run();
+  const r = await env.DB.prepare('SELECT n FROM ana_rl WHERE h = ?1 AND hr = ?2').bind(h, hr).first();
+  if (hr % 24 === 0) env.DB.prepare('DELETE FROM ana_rl WHERE hr < ?1').bind(hr - 48).run().catch(() => {});
+  return !r || r.n <= 15;
+}
+const ANA_SYS = `Jesteś ekspertem anatomii funkcjonalnej i fizjoterapii (język polski). Użytkownik opisuje pozycję lub ruch oraz odczuwany dyskomfort. Odpowiedz WYŁĄCZNIE jednym obiektem JSON (bez markdown, bez komentarzy) o schemacie:
+{"pozycja":"krótka nazwa pozycji/ruchu","podsumowanie":"2-3 zdania: co się dzieje w ciele i skąd może być odczucie","okolica":"np. lędźwie","widok":"przod|tyl|bok",
+"miesnie":[{"k":"klucz","tryb":"czynny|izometryczny|rozciagany|skrocony","pct":liczba,"opis":"maks. 14 słów"}],
+"przyczyny":[{"t":"prawdopodobna przyczyna","dlaczego":"1 zdanie"}],
+"oslabione":[{"k":"klucz","dlaczego":"1 zdanie","cwiczenie":"konkretne ćwiczenie + dawkowanie"}],
+"rozciagac":[{"k":"klucz","jak":"konkretne rozciąganie + czas"}],
+"alarm":["objaw wymagający konsultacji lekarskiej"]}
+Zasady: 6-14 mięśni; pct = szacowany udział mięśnia w napięciu/pracy w tej pozycji, suma wszystkich pct ≈ 100; tryb: czynny = skurcz wykonujący ruch, izometryczny = stabilizacja bez ruchu, rozciagany = bierne napięcie rozciągnięcia, skrocony = mięsień skrócony/rozluźniony w tej pozycji. Mięśnie główne mają największe pct. 2-4 przyczyny (zaczynaj od najbardziej prawdopodobnej, używaj języka ostrożnego: "może", "często"), 2-5 osłabionych, 2-5 do rozciągania, 2-4 objawy alarmowe. Pole "k" MUSI być kluczem z podanej listy (nie wymyślaj). Nie stawiaj diagnozy; to szacunki edukacyjne.`;
+async function analyze(request, env) {
+  if (request.method !== 'POST') return J({ code: 'method' }, 405);
+  let b; try { b = await request.json(); } catch { return J({ code: 'bad' }, 400); }
+  const q = String(b.q || '').trim().slice(0, 1200);
+  if (q.length < 8) return J({ code: 'bad_q' }, 400);
+  const keys = (Array.isArray(b.keys) ? b.keys : []).slice(0, 400).map((x) => String(x).slice(0, 70)).join('\n');
+  if (b.only === 'claude' && !env.ANTHROPIC_API_KEY) return J({ code: 'no_claude' }, 501);
+  if (!env.ANTHROPIC_API_KEY && !env.AI) return J({ code: 'no_key' }, 501);
+  if (!(await anaLimit(request, env))) return J({ code: 'rate' }, 429);
+  const user = `Opis użytkownika: ${q}\n\nDozwolone klucze mięśni (klucz|nazwa):\n${keys}`;
+  let txt = '', src = '';
+  try {
+    if (env.ANTHROPIC_API_KEY) {
+      const r = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+        body: JSON.stringify({ model: env.MODEL_ANA || 'claude-sonnet-5-5', max_tokens: 2600, system: ANA_SYS, messages: [{ role: 'user', content: user }] }) });
+      if (!r.ok) throw new Error('claude ' + r.status);
+      txt = ((await r.json()).content || []).map((c) => c.text || '').join(''); src = 'claude';
+    } else {
+      const o = await env.AI.run('@cf/meta/llama-3.3-70b-instruct-fp8-fast', { messages: [{ role: 'system', content: ANA_SYS }, { role: 'user', content: user }], max_tokens: 2600 });
+      txt = o.response || ''; src = 'llama';
+    }
+    const a = txt.indexOf('{'), z = txt.lastIndexOf('}');
+    const r = JSON.parse(txt.slice(a, z + 1));
+    if (!r || !Array.isArray(r.miesnie)) throw new Error('format');
+    return J({ ok: true, src, r });
+  } catch (e) { return J({ code: 'ai_error', msg: String(e.message || e).slice(0, 120) }, 502); }
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -304,6 +352,7 @@ export default {
         return new Response(r.body, { status: r.status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
       }
       if (url.pathname === '/api/ask' && request.method === 'POST') return ask(request, env);
+      if (url.pathname === '/api/anatomia/analyze') return analyze(request, env);
       return J({ code: 'not_found' }, 404);
     }
     const nn = hostApp(url.hostname);

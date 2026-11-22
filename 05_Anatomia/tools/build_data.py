@@ -139,6 +139,21 @@ for j in joints:
                 if m in C.M or m in HC.M2 or m.startswith('m. ') : continue
                 if m not in C.M: print('? klucz mięśnia',m,j['id'])
 
+# ---- tułów, miednica, udo (trunk.glb): mięśnie T###, kości Q###
+import trunk_content as TC
+tid=json.load(open('/home/claude/work/out3/trunk_ids.json'))
+for k,v in TC.M3.items(): groups[k]=dict(v, ids=[])
+for i,en in sorted(tid.items()):
+    if i[0]=='T':
+        g,ppl,pla=TC.MESH3[en]
+        groups[g]['ids'].append(i)
+        muscles.append(dict(id=i,en=en,grp=g,pl=ppl or groups[g]['pl'],la=pla or groups[g]['la']))
+    else:
+        pl,la,d=TC.BONES3[en]
+        bones.append(dict(id=i,en=en,pl=pl,la=la,d=d,kind='trunk',region='tulow'))
+for g in list(groups):
+    if not groups[g]['ids']: del groups[g]
+
 # ---- struktury: więzadła, nerwy, naczynia (lig.glb / nerv.glb / vess.glb)
 import struct_lig, struct_nerv, struct_vess
 sid=json.load(open('/home/claude/work/out3/struct_ids.json'))
@@ -164,8 +179,8 @@ for i,en in sorted(sid.items()):
         j=lig_joints(en)
         if j: d['j']=['J_'+x for x in j]
     structs.append(d)
-REG=[('all','Cała kończyna'),('bark','Bark'),('ramie','Ramię'),('przedramie','Przedramię'),('dlon','Dłoń'),('glowa','Głowa i szyja')]
-out=dict(version='0.05',regions=REG,groups=groups,muscles=muscles,bones=bones,patches=patches,lms=lms,joints=joints,structs=structs,shapes={k:dict(pl=v[0],c=v[1],d=v[2]) for k,v in JD.SHAPES.items()},mid=jp['mid'])
+REG=[('all','Cała kończyna'),('bark','Bark'),('ramie','Ramię'),('przedramie','Przedramię'),('dlon','Dłoń'),('glowa','Głowa i szyja'),('tulow','Tułów i biodro')]
+out=dict(version='0.06',regions=REG,groups=groups,muscles=muscles,bones=bones,patches=patches,lms=lms,joints=joints,structs=structs,shapes={k:dict(pl=v[0],c=v[1],d=v[2]) for k,v in JD.SHAPES.items()},mid=jp['mid'])
 json.dump(out,open(O+'data.json','w'),ensure_ascii=False,separators=(',',':'))
 print('muscles',len(muscles),'groups',len(groups),'bones',len(bones),'patches',len(patches),'lms',len(lms))
 missing=[b for b in bid if b[0]=='P' and re.sub(r'\.(o|e)\d?r$','',bid[b]) not in C.PATCH]

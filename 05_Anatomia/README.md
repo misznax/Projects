@@ -1,10 +1,14 @@
-# 05 Anatomia — v0.05
+# 05 Anatomia — v0.06
 
-Interaktywny model 3D **kończyny górnej** (prawa / lewa = lustro / obie): 32 kości, 67 siatek mięśniowych (51 mięśni), 109 punktów kostnych, **22 stawy** (typ, osie, powierzchnie, antagoniści, torebki) oraz czaszka i kręgi szyjne (wczytywane na żądanie). Nazwy polskie (duże) i łacińskie (pod spodem, w nawiasie), wyszukiwarka po wszystkich nazwach (PL/łac./ang.), regiony (bark · ramię · przedramię · dłoń), obrót modelu, początki (niebieski) i przyczepy końcowe (pomarańczowy) mięśni na kościach.
+Interaktywny model 3D **kończyny górnej, głowy i szyi oraz tułowia, miednicy i uda** (prawa / lewa = lustro / obie): 32 kości, 67 siatek mięśniowych (51 mięśni), 109 punktów kostnych, **22 stawy** (typ, osie, powierzchnie, antagoniści, torebki) oraz czaszka i kręgi szyjne (wczytywane na żądanie). Nazwy polskie (duże) i łacińskie (pod spodem, w nawiasie), wyszukiwarka po wszystkich nazwach (PL/łac./ang.), regiony (bark · ramię · przedramię · dłoń), obrót modelu, początki (niebieski) i przyczepy końcowe (pomarańczowy) mięśni na kościach.
 
 - Adres: https://anatomia.smialo.org/ (domena Workera podpięta 2026-11-16, tymczasowo do 2026-12-31) oraz https://projects.michus.workers.dev/05/ (stały). Żaden z nich nie jest za Cloudflare Access.
 - Technologia: three.js (WebGL) + three-mesh-bvh; jeden `index.html` + dwa pliki GLB (`public/`).
 - Dane: `data/data.json` (nazwy, opisy, przyczepy, pozycje punktów).
+
+## v0.06
+- **🔎 Analiza objawów**: opisz pozycję/ruch i dyskomfort (np. „ból w lędźwiach w pozycji dziecka”) → mięśnie na modelu w kolorach (główne / pomocnicze / stabilizatory), szacunkowy udział % (suma = 100), tryb pracy (czynny / izometryczny / rozciągany / skrócony), możliwe przyczyny, co **wzmocnić** (zielone), co **rozciągać** (niebieskie) z konkretnymi ćwiczeniami, objawy alarmowe. 9 wzorców wbudowanych działa offline (`src/analysis.js`), a dla innych opisów — AI przez Workera (`/api/anatomia/analyze`: Claude, gdy jest `ANTHROPIC_API_KEY`, inaczej Workers AI/Llama; limit 15 zapytań/h/IP, hash w D1 `ana_rl`). Procenty to oszacowania edukacyjne, nie pomiar EMG; narzędzie nie jest diagnozą.
+- Nowy region **Tułów i biodro**: 41 grup mięśni (prostownik grzbietu, mięśnie głębokie, brzucha, pośladki, rotatory biodra, dno miednicy, udo — czworogłowy, kulszowo-goleniowe, przywodziciele) + kości (L1–L5, kość krzyżowa i guziczna, miednica, kość udowa); `trunk.glb` ładowany na żądanie (6 MB). Mapa ciała: tułów i biodro/udo aktywne.
 
 ## v0.05
 - Nowe zakładki: Więzadła (77), Nerwy (52), Naczynia (63: tętnice i żyły) kończyny górnej — modele 3D z opisami PL/LA, doczytywane na żądanie; warstwy w menu „Warstwy”.
