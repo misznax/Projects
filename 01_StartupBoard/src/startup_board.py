@@ -40,12 +40,13 @@ from PySide6.QtWidgets import (
     QMainWindow, QMenu, QMessageBox, QPlainTextEdit, QPushButton, QScrollArea, QSizePolicy, QSpinBox, QStackedWidget,
     QToolButton, QVBoxLayout, QWidget,
 )
-from PySide6.QtWidgets import QAbstractItemView, QFileIconProvider, QFileSystemModel, QHeaderView, QSystemTrayIcon, QTreeView
+from PySide6.QtWidgets import (QAbstractItemView, QFileIconProvider, QFileSystemModel, QHeaderView, QListView, QSystemTrayIcon,
+                               QTreeView)
 from PySide6.QtCore import QDate, QDateTime, QDir, QFile, QTime
-from PySide6.QtWidgets import QDateEdit, QTimeEdit
+from PySide6.QtWidgets import QDateEdit, QTimeEdit, QToolTip
 
 APP_NAME = "Startup Board"
-APP_VERSION = "v1.41"  # zmieniać tylko na polecenie autora
+APP_VERSION = "v1.42"  # zmieniać tylko na polecenie autora
 APP_AUTHOR = "Michał Rzekiecki"
 APP_CONTACT = "kontakt@smialo.org"
 
@@ -75,6 +76,8 @@ EXT_LANG = {".py": "python", ".pyw": "python", ".html": "html", ".htm": "html",
             ".xhtml": "html", ".sql": "sql"}
 LAST = {"dir": ""}        # ostatnio używany folder w oknach wyboru pliku (zapisywany w stanie)
 AUTO = {"on": True, "ms": 2000}   # autozapis plików tekstowych: włączony, zapis 2 s po ostatniej zmianie
+HEAD = {"on": True}               # wyróżnianie nagłówków w zwykłym tekście (cecha programu, plik bez zmian)
+ZOOM = {"step": 1.1, "min": 5.0, "max": 96.0}  # Ctrl+kółko: ×1,1 na ząbek, zakres w punktach
 HIST = {"dir": None, "keep": 5, "gap": 120.0, "last": {}}  # historia wersji: folder, ile kopii, min. odstęp (s), czasy
 THEME = {"dark": True, "grad": True}  # ciemny schemat (pasek tytułu okien); gradient włączony
 
@@ -528,6 +531,10 @@ SQL_FN = "count sum avg min max coalesce ifnull upper lower length substr substr
 URL_RE = re.compile(r"https?://[^\s<>\"']+|www\.[^\s<>\"']+|[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
 DATE_RE = re.compile(r"\b\d{4}-\d{2}-\d{2}\b|\b\d{1,2}[./-]\d{1,2}[./-]\d{2,4}\b|\b\d{1,2}:\d{2}(?::\d{2})?\b")
 MARK_RE = re.compile(r"\b(?:TODO|FIXME|NOTE|UWAGA|WAŻNE|PILNE|BŁĄD|ZADANIE)\b")
+HEAD_MD_RE = re.compile(r"^[ \t]{0,3}(#{1,6})[ \t]+\S")                          # ### Temat
+HEAD_NUM_RE = re.compile(r"^[ \t]{0,3}(\d{1,3}(?:\.\d{1,3})*)[.)][ \t]+[^\s.,;][^\n]{0,70}$")  # 1. Początek, 2.1. Temat
+HEAD_SCALE_MD = (1.4, 1.28, 1.18, 1.1, 1.06, 1.04)   # # ... ###### : lekko większe, nie krzykliwe
+HEAD_SCALE_NUM = (1.2, 1.12, 1.07)                    # 1. / 1.1. / 1.1.1.
 
 
 def _words(ws, flags=0):
@@ -595,6 +602,26 @@ class Highlighter(QSyntaxHighlighter):
             self.lang = lang
             self.rehighlight()
 
+    def _heading(self, text: str):
+        """Nagłówek zwykłego tekstu (### Temat, 1. Początek): pogrubiony i lekko powiększony - tylko w widoku, plik bez zmian."""
+        m = HEAD_MD_RE.match(text)
+        if m:
+            k = HEAD_SCALE_MD[len(m.group(1)) - 1]
+        else:
+            m = HEAD_NUM_RE.match(text)
+            if not m or text.rstrip()[-1] in ".,;":
+                return
+            k = HEAD_SCALE_NUM[min(m.group(1).count("."), 2)]
+        base = self.document().defaultFont().pointSizeF()
+        if base <= 0:
+            return
+        size = round(base * k, 1)
+        for i in range(len(text)):  # zachowaj kolory adresów, dat itd. - zmień tylko wagę i rozmiar
+            f = self.format(i)
+            f.setFontWeight(QFont.Weight.Bold)
+            f.setFontPointSize(size)
+            self.setFormat(i, 1, f)
+
     def highlightBlock(self, text: str):
         rules, post, strcom, ml = _lang_def(self.lang)
         self.setCurrentBlockState(0)
@@ -624,6 +651,8 @@ class Highlighter(QSyntaxHighlighter):
             for a, b in comments:
                 for m in MARK_RE.finditer(text, a, b):
                     self.setFormat(m.start(), m.end() - m.start(), mk)
+        if self.lang == "text" and HEAD["on"]:
+            self._heading(text)
         if not ml:
             return
         start, state = 0, self.previousBlockState()
@@ -1007,6 +1036,12 @@ class _Xfer(QThread):
         self.finished_n.emit(n, err)
 
 
+FOLDER_MODES = [("det", "Szczegóły"), ("list", "Lista"), ("icons", "Ikony")]
+ICON_LADDER = (12, 16, 20, 24, 32, 40, 48, 64, 80, 96, 128)            # kolejne rozmiary ikon (Ctrl+kółko)
+ICON_RANGE = {"det": (12, 48), "list": (12, 48), "icons": (24, 128)}  # dozwolony zakres w każdym widoku
+ICON_DEFAULT = {"det": 16, "list": 16, "icons": 48}
+
+
 class _PlModel(QFileSystemModel):
     """QFileSystemModel z polskimi nagłówkami kolumn."""
     _H = {0: "Nazwa", 1: "Rozmiar", 3: "Zmieniono"}
@@ -1031,6 +1066,9 @@ class FolderView(QWidget):
         self.setObjectName("fv")
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.root = ""
+        self.mode = "det"
+        self.sizes = dict(ICON_DEFAULT)
+        self._wacc = 0
         self.model = _PlModel(self)
         self.model.setFilter(QDir.Filter.AllEntries | QDir.Filter.NoDotAndDotDot)
         ip = QFileIconProvider()
@@ -1048,9 +1086,15 @@ class FolderView(QWidget):
         top = QHBoxLayout()
         top.setContentsMargins(4, 3, 4, 3)
         top.setSpacing(4)
+        self.btn_view = QToolButton(text="Widok ▾", toolTip="Widok folderu: Szczegóły / Lista / Ikony (Ctrl + kółko = rozmiar ikon)")
+        self.btn_view.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+        vm = QMenu(self.btn_view)
+        vm.aboutToShow.connect(lambda: self._view_menu(vm))  # zaznaczenie trybu odświeżane przy każdym otwarciu
+        self.btn_view.setMenu(vm)
         top.addWidget(self.drives)
         top.addWidget(self.btn_up)
         top.addWidget(self.path_edit, 1)
+        top.addWidget(self.btn_view)
         self.view = QTreeView()
         self.view.setModel(self.model)
         self.view.setFrameShape(QFrame.Shape.NoFrame)
@@ -1068,19 +1112,106 @@ class FolderView(QWidget):
         hv.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
         hv.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
         hv.setStretchLastSection(False)
+        # widok listy / ikon: ten sam model i to samo zaznaczenie co w widoku szczegółów
+        self.lview = QListView()
+        self.lview.setModel(self.model)
+        self.lview.setSelectionModel(self.view.selectionModel())
+        self.lview.setFrameShape(QFrame.Shape.NoFrame)
+        self.lview.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
+        self.lview.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.lview.setMovement(QListView.Movement.Static)
+        self.lview.setResizeMode(QListView.ResizeMode.Adjust)
+        self.lview.setUniformItemSizes(True)
+        self.lview.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.views = QStackedWidget()
+        self.views.addWidget(self.view)
+        self.views.addWidget(self.lview)
         v = QVBoxLayout(self)
         v.setContentsMargins(0, 0, 0, 0)
         v.setSpacing(0)
         v.addLayout(top)
-        v.addWidget(self.view, 1)
-        self.view.installEventFilter(self)
-        self.view.viewport().installEventFilter(self)
+        v.addWidget(self.views, 1)
+        for w in (self.view, self.lview):
+            w.installEventFilter(self)
+            w.viewport().installEventFilter(self)
+            w.doubleClicked.connect(lambda _i: self.open_current())
+            w.customContextMenuRequested.connect(self._menu)
         self.path_edit.returnPressed.connect(lambda: self.navigate(self.path_edit.text().strip().strip('"')))
         self.btn_up.clicked.connect(self.go_up)
         self.drives.activated.connect(lambda i: self.navigate(self.drives.itemData(i)))
-        self.view.doubleClicked.connect(lambda _i: self.open_current())
-        self.view.customContextMenuRequested.connect(self._menu)
         self.apply_colors()
+        self._apply_view()
+
+    # --- widok: Szczegóły / Lista / Ikony ---
+    @property
+    def cur(self):
+        """Aktualnie widoczny widok (drzewo szczegółów albo lista / ikony)."""
+        return self.view if self.mode == "det" else self.lview
+
+    def _view_menu(self, m: QMenu) -> QMenu:
+        m.clear()
+        for key, name in FOLDER_MODES:
+            a = m.addAction(name)
+            a.setCheckable(True)
+            a.setChecked(key == self.mode)
+            a.triggered.connect(lambda _c=False, k=key: self.set_view(k))
+        m.addSeparator()
+        m.addAction("Ikony większe (Ctrl + kółko w górę)").triggered.connect(lambda: self.zoom_icons(1))
+        m.addAction("Ikony mniejsze (Ctrl + kółko w dół)").triggered.connect(lambda: self.zoom_icons(-1))
+        m.addAction("Rozmiar ikon domyślny").triggered.connect(lambda: self.zoom_icons(0))
+        return m
+
+    def set_view(self, mode: str | None = None, sizes: dict | None = None):
+        if isinstance(sizes, dict):
+            for k, (lo, hi) in ICON_RANGE.items():
+                try:
+                    self.sizes[k] = max(lo, min(hi, int(sizes.get(k, self.sizes[k]))))
+                except (TypeError, ValueError):
+                    pass
+        if mode in dict(FOLDER_MODES):
+            self.mode = mode
+        self._apply_view()
+
+    def zoom_icons(self, steps: int):
+        """+1 / -1 = następny / poprzedni rozmiar ikon z drabinki (w zakresie widoku), 0 = domyślny."""
+        lo, hi = ICON_RANGE[self.mode]
+        cur = self.sizes[self.mode]
+        if steps == 0:
+            new = ICON_DEFAULT[self.mode]
+        else:
+            ladder = [x for x in ICON_LADDER if lo <= x <= hi]
+            i = min(range(len(ladder)), key=lambda j: abs(ladder[j] - cur))
+            new = ladder[max(0, min(len(ladder) - 1, i + (1 if steps > 0 else -1)))]
+        self.sizes[self.mode] = new
+        self._apply_view()
+        QToolTip.showText(QCursor.pos(), f"Ikony {new} px   (Ctrl + kółko; „Widok” = Szczegóły / Lista / Ikony)", self.cur)
+
+    def _apply_view(self):
+        s = self.sizes[self.mode]
+        sz = QSize(s, s)
+        root = self.model.index(self.root) if self.root else self.view.rootIndex()
+        if self.mode == "det":
+            self.view.setIconSize(sz)
+            self.views.setCurrentWidget(self.view)
+        else:
+            lv, fm = self.lview, self.lview.fontMetrics()
+            lv.setIconSize(sz)
+            if self.mode == "list":
+                lv.setViewMode(QListView.ViewMode.ListMode)
+                lv.setFlow(QListView.Flow.TopToBottom)
+                lv.setWrapping(True)
+                lv.setGridSize(QSize())
+                lv.setWordWrap(False)
+            else:
+                lv.setViewMode(QListView.ViewMode.IconMode)
+                lv.setFlow(QListView.Flow.LeftToRight)
+                lv.setWrapping(True)
+                lv.setWordWrap(True)
+                lv.setGridSize(QSize(max(76, s + 28), s + fm.height() * 3 + 12))
+            lv.setUniformItemSizes(self.mode == "icons")
+            lv.setRootIndex(root)
+            self.views.setCurrentWidget(lv)
+        self.btn_view.setText(f"{dict(FOLDER_MODES)[self.mode]} ▾")
 
     # --- nawigacja ---
     def navigate(self, path: str) -> bool:
@@ -1096,6 +1227,7 @@ class FolderView(QWidget):
         self.root = str(p.resolve()) if str(p) else str(p)
         self.model.setRootPath(self.root)
         self.view.setRootIndex(self.model.index(self.root))
+        self.lview.setRootIndex(self.model.index(self.root))
         self.path_edit.setText(self.root)
         i = self.drives.findData(Path(self.root).anchor)
         if i >= 0:
@@ -1187,12 +1319,22 @@ class FolderView(QWidget):
             lambda: QApplication.clipboard().setText("\n".join(sel) if sel else self.root))
         m.addAction("Pokaż w Eksploratorze").triggered.connect(
             lambda: QDesktopServices.openUrl(QUrl.fromLocalFile(self.root)))
-        m.exec(self.view.viewport().mapToGlobal(pos))
+        m.addSeparator()
+        self._view_menu(m.addMenu("Widok"))
+        m.exec(self.cur.viewport().mapToGlobal(pos))
 
     def eventFilter(self, obj, ev):
-        if ev.type() == QEvent.Type.FocusIn or (obj is self.view.viewport() and ev.type() == QEvent.Type.MouseButtonPress):
+        if ev.type() == QEvent.Type.FocusIn or (obj in (self.view.viewport(), self.lview.viewport())
+                                                 and ev.type() == QEvent.Type.MouseButtonPress):
             self.activated.emit()
-        if obj is self.view and ev.type() == QEvent.Type.KeyPress:
+        if obj in (self.view.viewport(), self.lview.viewport()) and ev.type() == QEvent.Type.Wheel \
+                and ev.modifiers() & Qt.KeyboardModifier.ControlModifier:
+            self._wacc += ev.angleDelta().y()  # panele dotykowe wysyłają małe porcje: sumuj do pełnego „ząbka”
+            while abs(self._wacc) >= 120:
+                self.zoom_icons(1 if self._wacc > 0 else -1)
+                self._wacc -= 120 if self._wacc > 0 else -120
+            return True
+        if obj in (self.view, self.lview) and ev.type() == QEvent.Type.KeyPress:
             k = ev.key()
             if k in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
                 self.open_current()
@@ -1221,6 +1363,10 @@ class FolderView(QWidget):
             f"selection-background-color:{u['sel']};selection-color:{c['text']};}}"
             f"QTreeView::item{{padding:1px 2px;}}"
             f"QTreeView::item:hover{{background:{u['border']};}}"
+            f"QListView{{background:{c['bg']};color:{c['text']};border:none;outline:0;"
+            f"selection-background-color:{u['sel']};selection-color:{c['text']};}}"
+            f"QListView::item{{padding:2px;}}"
+            f"QListView::item:hover{{background:{u['border']};}}"
             f"QHeaderView::section{{background:{u['hdr_bg']};color:{u['mute']};border:none;"
             f"border-bottom:1px solid {u['border']};padding:2px 6px;}}"
             f"QLineEdit,QComboBox{{background:{u['hdr_bg']};color:{u['hdr_fg']};border:1px solid {u['border']};"
@@ -1919,6 +2065,16 @@ class Editor(QPlainTextEdit):
     fileDropped = Signal(str)
     focused = Signal()
     imagePasted = Signal()  # Ctrl+V z samym obrazem w schowku: nie do tekstu, tylko do nowego panelu
+    zoomed = Signal(float)  # Ctrl+kółko: liczba ząbków (+ w górę = powiększ)
+
+    def wheelEvent(self, e):
+        if e.modifiers() & Qt.KeyboardModifier.ControlModifier:
+            d = e.angleDelta().y()
+            if d:
+                self.zoomed.emit(d / 120.0)
+            e.accept()
+            return
+        super().wheelEvent(e)
 
     @staticmethod
     def _image_only(md) -> bool:
@@ -1971,6 +2127,7 @@ class TextPane(QFrame):
     pathChanged = Signal(str)       # plik otwarty / zapisany przez użytkownika (lista ostatnich)
     titleChanged = Signal()         # zmieniła się nazwa / stan panelu (odświeża pasek kart)
     img_dir = Path(tempfile.gettempdir()) / "startupboard_obrazy"  # obrazy wklejone ze schowka (ustawia okno)
+    nonames_dir = Path(tempfile.gettempdir()) / "No Names"  # szkice bez nazwy zapisywane same (ustawia okno)
     PH, ED, PDF, IMG, FOLD, REM, CLP = 0, 1, 2, 3, 4, 5, 6   # strony QStackedWidget
 
     def __init__(self, index: int):
@@ -2063,6 +2220,7 @@ class TextPane(QFrame):
         lay.addWidget(self.find_bar)
 
         self.set_font(self.family, 10)
+        self.editor.zoomed.connect(self.zoom_by)
         self.btn_wrap.toggled.connect(self.set_wrap)
         self.btn_open.clicked.connect(self.ask_open)
         self.btn_close.clicked.connect(self.close_file)
@@ -2130,11 +2288,40 @@ class TextPane(QFrame):
         self._restyle()
 
     def set_font(self, family: str, size: float | None = None):
+        self._zf = None  # ustawienie z zewnątrz kasuje „dokładny” rozmiar zoomu
+        self._apply_font(family, size)
+
+    def _apply_font(self, family: str, size: float | None = None):
         self.family = family
         f = QFont(family)
         f.setStyleHint(QFont.StyleHint.Monospace if family in MONO else QFont.StyleHint.AnyStyle)
         f.setPointSizeF(size if size else self.editor.font().pointSizeF())
         self.editor.setFont(f)
+        self.editor.setTabStopDistance(4 * self.editor.fontMetrics().horizontalAdvance(" "))  # tabulator rośnie razem z tekstem
+        if HEAD["on"] and self.hl.lang == "text" and self.hl.document() is not None:
+            self.hl.rehighlight()  # rozmiar nagłówków wynika z rozmiaru czcionki
+
+    def _default_size(self) -> float:
+        return float(getattr(self.window(), "font_size", 10.0)) or 10.0
+
+    def zoom_by(self, notches: float):
+        """Ctrl+kółko / Ctrl +/-: równomierny zoom (×1,1 na ząbek); nagłówki i tabulatory skalują się razem z tekstem."""
+        if self.kind != "text" or self.demo is not None or not notches:
+            return
+        cur = self._zf or self.editor.font().pointSizeF()
+        self._zf = max(ZOOM["min"], min(ZOOM["max"], cur * ZOOM["step"] ** notches))
+        self._apply_font(self.family, round(self._zf, 1))
+        self._zoom_tip()
+
+    def zoom_reset(self):
+        if self.kind != "text" or self.demo is not None:
+            return
+        self.set_font(self.family, self._default_size())
+        self._zoom_tip()
+
+    def _zoom_tip(self):
+        cur = self.editor.font().pointSizeF()
+        QToolTip.showText(QCursor.pos(), f"{round(cur / self._default_size() * 100)}%  ({cur:g} pt)   Ctrl+0 = 100%", self.editor)
 
     def effective_lang(self) -> str:
         if self.lang != "auto":
@@ -2185,7 +2372,7 @@ class TextPane(QFrame):
 
     def focus_editor(self):
         w = {self.ED: self.editor, self.PDF: self.pdf, self.IMG: self.imgv,
-             self.FOLD: self.fv.view if self.fv else None, self.REM: self.rv.list if self.rv else None,
+             self.FOLD: self.fv.cur if self.fv else None, self.REM: self.rv.list if self.rv else None,
              self.CLP: self.cv.tl if self.cv else None}.get(
             self.stack.currentIndex(), None) or self.ph.btn_plus
         w.setFocus()
@@ -2375,12 +2562,12 @@ class TextPane(QFrame):
 
     # --- pliki ---
     def _start_dir(self) -> str:
-        if self.path:
+        if self.path and not self._is_noname():
             return str(Path(self.path).parent)
         return LAST["dir"] or QStandardPaths.writableLocation(QStandardPaths.StandardLocation.DocumentsLocation)
 
     def _note_path(self):
-        if self.path:
+        if self.path and not self._is_noname():  # szkice z No Names nie trafiają na listę ostatnich plików
             LAST["dir"] = str(Path(self.path).parent)
             self.pathChanged.emit(self.path)
 
@@ -2405,6 +2592,7 @@ class TextPane(QFrame):
 
     def _release(self):
         """Zwolnij bieżącą zawartość (PDF, obraz, flagi) przed wczytaniem innej."""
+        self._drop_empty_noname()
         self.pdf.close_doc()
         self.imgv.clear()
         self.find_bar.hide()
@@ -2428,7 +2616,7 @@ class TextPane(QFrame):
         st = st or {}
         p = Path(path)
         if p.is_dir():
-            return self.open_folder(str(p), fresh, ask=False)
+            return self.open_folder(str(p), fresh, ask=False, st=st)
         ext = p.suffix.lower()
         kind = "pdf" if ext == ".pdf" else "image" if ext in IMG_EXTS else "text"
         try:
@@ -2453,7 +2641,7 @@ class TextPane(QFrame):
         old.deleteLater()
         self.stack.insertWidget(idx, w)
 
-    def open_folder(self, path: str, fresh: bool = True, ask: bool = True) -> bool:
+    def open_folder(self, path: str, fresh: bool = True, ask: bool = True, st: dict | None = None) -> bool:
         if ask and not self.confirm_close():
             return False
         if not Path(path).is_dir():
@@ -2472,6 +2660,8 @@ class TextPane(QFrame):
         fv.openFile.connect(lambda f: self.openFromFolder.emit(self, f))
         fv.transfer.connect(lambda paths, mv: self.transferRequested.emit(self, paths, mv))
         fv.activated.connect(lambda: self.activated.emit(self))
+        if st:
+            fv.set_view(st.get("fmode"), st.get("fsz"))
         fv.navigate(path)
         self.stack.setCurrentIndex(self.FOLD)
         self.refresh_header()
@@ -2697,7 +2887,7 @@ class TextPane(QFrame):
     def save(self) -> bool:
         if self.kind != "text" or self.stack.currentIndex() != self.ED or self.demo:
             return True
-        if self.untitled:
+        if self.untitled or self._is_noname():  # szkic bez nazwy: Ctrl+S pozwala nadać nazwę i miejsce
             return self.save_as()
         if self.path is None:
             return True
@@ -2765,18 +2955,62 @@ class TextPane(QFrame):
             self._note_path()
         return True
 
+    def _is_noname(self) -> bool:
+        """Plik z folderu No Names (szkic bez nazwy zapisany przez program)."""
+        try:
+            return bool(self.path) and Path(self.path).parent.resolve() == self.nonames_dir.resolve()
+        except OSError:
+            return False
+
+    @classmethod
+    def next_noname(cls) -> Path:
+        """Kolejna wolna nazwa: „No Name n+1.txt” (n = największy numer w folderze No Names)."""
+        cls.nonames_dir.mkdir(parents=True, exist_ok=True)
+        n = max((int(m.group(1)) for f in cls.nonames_dir.iterdir()
+                 if (m := re.fullmatch(r"No Name (\d+)(?:\.[^.]*)?", f.name))), default=0)
+        while (cls.nonames_dir / f"No Name {n + 1}.txt").exists():
+            n += 1
+        return cls.nonames_dir / f"No Name {n + 1}.txt"
+
+    def _drop_empty_noname(self):
+        """Pusty szkic z No Names, który użytkownik opróżnił i zamyka, nie zostawia po sobie pustego pliku."""
+        if self.kind == "text" and self.demo is None and self._is_noname() and not self.editor.toPlainText().strip():
+            try:
+                Path(self.path).unlink()
+            except OSError:
+                pass
+
     def can_autosave(self) -> bool:
-        return (AUTO["on"] and self.kind == "text" and self.demo is None and bool(self.path) and not self.untitled
-                and not self.missing and not self.conflict and self.stack.currentIndex() == self.ED)
+        if self.kind != "text" or self.demo is not None or self.missing or self.conflict or self.stack.currentIndex() != self.ED:
+            return False
+        if self.untitled:  # szkic z treścią zapisuje się sam jako No Name n+1 (także przy wyłączonym autozapisie)
+            return bool(self.editor.toPlainText().strip())
+        return bool(self.path) and (AUTO["on"] or self._is_noname())
 
     def _on_edit(self):
-        if AUTO["on"] and self.path and not self.untitled and self.kind == "text":
+        if self.kind == "text" and self.demo is None and (
+                self.untitled or (self.path and (AUTO["on"] or self._is_noname()))):
             self._auto.start(AUTO["ms"])  # każda zmiana odsuwa zapis: plik powstaje 2 s po ostatnim znaku
+
+    def _save_noname(self, silent: bool = True) -> bool:
+        try:
+            path = self.next_noname()
+        except OSError as ex:
+            self.save_err = str(ex)
+            if not silent:
+                QMessageBox.warning(self, "Błąd zapisu", f"Nie można utworzyć folderu No Names:\n{ex}")
+            else:
+                self.refresh_header()
+                QTimer.singleShot(10_000, self.autosave)
+            return False
+        return self._write(str(path), silent=silent)
 
     def autosave(self) -> bool:
         """Cichy zapis zmian do pliku; nie nadpisuje, gdy plik zmieniono poza programem."""
         if not self.is_modified() or not self.can_autosave():
             return False
+        if self.untitled:
+            return self._save_noname()
         try:
             m = Path(self.path).stat().st_mtime
         except OSError:
@@ -2790,8 +3024,10 @@ class TextPane(QFrame):
     def confirm_close(self) -> bool:
         if not self.is_modified():
             return True
-        if self.can_autosave():  # autozapis włączony: zamknięcie po prostu zapisuje
-            return self.save()
+        if self.untitled and not self.editor.toPlainText().strip():
+            return True  # pusty szkic: nie ma czego zapisywać
+        if self.can_autosave():  # autozapis (lub szkic bez nazwy): zamknięcie po prostu zapisuje, bez okienka
+            return self._save_noname(silent=False) if self.untitled else self._write(self.path)
         name = Path(self.path).name if self.path else "Bez tytułu"
         r = QMessageBox.question(
             self, "Niezapisane zmiany", f"Zapisać zmiany w „{name}”?",
@@ -2854,6 +3090,8 @@ class TextPane(QFrame):
             d["reminders"] = True
         if self.kind == "clips":
             d["clips"] = True
+        if self.kind == "folder" and self.fv is not None:
+            d["fmode"], d["fsz"] = self.fv.mode, dict(self.fv.sizes)
         if self.untitled:
             d["untitled"] = True
             d["draft"] = self.editor.toPlainText()[:MAX_BYTES]
@@ -3004,6 +3242,7 @@ class Canvas(QWidget):
         self.layoutChanged.emit()
 
     def remove_pane(self, p: TextPane):
+        p._drop_empty_noname()
         self.panes.remove(p)
         self.order.remove(p)
         self.rel.pop(p, None)
@@ -4188,6 +4427,7 @@ class MainWindow(QMainWindow):
         self.state_path = state_path or self._default_state_path()
         self.state_dir = self.state_path.parent
         TextPane.img_dir = self.state_dir / "obrazy"
+        TextPane.nonames_dir = self.state_dir / "No Names"
         HIST["dir"] = self.state_dir / "historia"
         self._ready = False
         self._app_css = ""
@@ -4328,6 +4568,7 @@ class MainWindow(QMainWindow):
         m.addAction(self._act("Otwórz folder w panelu…", self.open_folder_dialog, "Ctrl+Shift+O"))
         m.addAction(self._act("Panel przypomnień", lambda: self.show_reminders(), "Ctrl+Shift+R"))
         m.addAction(self._act("Panel schowka (historia tekstów i grafik)", lambda: self.show_clips(), "Ctrl+Shift+H"))
+        m.addAction(self._act("Folder No Names (szkice bez nazwy) w panelu", self.open_nonames))
         m.addAction(self._act("Nowe przypomnienie (pasek u dołu)", self.focus_reminder_bar, ("Ctrl+Shift+P", "Ctrl+Alt+N")))
         m.addAction(self._act("Nowe przypomnienie – okno…", self.quick_reminder))
         self.m_recent = m.addMenu("Ostatnie pliki")
@@ -4373,6 +4614,13 @@ class MainWindow(QMainWindow):
         self.act_wrap = self._act("Zawijanie wierszy (aktywny panel)", lambda: self.current.btn_wrap.toggle(),
                                   "Ctrl+Shift+W", checkable=True)
         v.addAction(self.act_wrap)
+        v.addAction(self._act("Powiększ tekst (Ctrl + kółko)", lambda: self.zoom_text(1), ("Ctrl++", "Ctrl+=")))
+        v.addAction(self._act("Pomniejsz tekst (Ctrl + kółko)", lambda: self.zoom_text(-1), "Ctrl+-"))
+        v.addAction(self._act("Rozmiar tekstu domyślny (100%)", lambda: self.zoom_text(0), "Ctrl+0"))
+        self.act_head = self._act("Wyróżniaj nagłówki w zwykłym tekście (### Temat, 1. Początek)",
+                                  lambda: self.set_headings(self.act_head.isChecked()), checkable=True)
+        self.act_head.setChecked(True)
+        v.addAction(self.act_head)
         v.addSeparator()
         self.act_menu = self._act("Pokaż pasek menu", lambda: self.set_menu_visible(not self.menuBar().isVisible()),
                                   "Ctrl+M", checkable=True)
@@ -4715,6 +4963,25 @@ class MainWindow(QMainWindow):
     def set_gradient(self, on: bool):
         THEME["grad"] = bool(on)
         self.apply_look()
+
+    def zoom_text(self, n: float):
+        """Aktywny panel: n ząbków zoomu (+1 / -1), 0 = rozmiar domyślny."""
+        c = self.current
+        if c is None:
+            return
+        if c.kind == "text":
+            c.zoom_by(n) if n else c.zoom_reset()
+        elif c.kind == "folder" and c.fv is not None:
+            c.fv.zoom_icons(int(n))
+
+    def set_headings(self, on: bool, save: bool = True):
+        HEAD["on"] = bool(on)
+        self.act_head.setChecked(bool(on))
+        for p in self.panes + self.preview_panes:
+            if p.hl.document() is not None and p.hl.lang == "text":
+                p.hl.rehighlight()
+        if save:
+            self.schedule_save()
 
     def set_autosave(self, on: bool):
         AUTO["on"] = bool(on)
@@ -5252,6 +5519,17 @@ class MainWindow(QMainWindow):
         box.raise_()
         QApplication.alert(self, 0)
 
+    def open_nonames(self):
+        d = TextPane.nonames_dir
+        try:
+            d.mkdir(parents=True, exist_ok=True)
+        except OSError as ex:
+            self.current.flash(f"Nie można otworzyć folderu No Names: {ex}")
+            return
+        p = self.target_pane()
+        if p.open_folder(str(d), ask=not p.is_empty()):
+            self._focus(p)
+
     def open_folder_dialog(self):
         p = self.target_pane()
         p.ask_open_dir()
@@ -5454,7 +5732,7 @@ class MainWindow(QMainWindow):
                 "recent": self.recent, "last_dir": LAST["dir"], "reminders": self.reminders,
                 "autosave": AUTO["on"], "tabs": self.tab_mode, "rembar": self.act_rembar.isChecked(),
                 "hotkey": self.hotkey_on, "sched": self.sched_on,
-                "clipcap": self.clipstore.on, "tray": self.tray_on,
+                "clipcap": self.clipstore.on, "tray": self.tray_on, "headings": HEAD["on"],
             }
             data.update(self.snapshot())
             data["app_version"] = APP_VERSION
@@ -5550,6 +5828,7 @@ class MainWindow(QMainWindow):
             self.set_sched(bool(data.get("sched", True)), save=False)
             self.set_clipcap(bool(data.get("clipcap", False)), save=False)
             self.set_tray(bool(data.get("tray", False)), save=False)
+            self.set_headings(bool(data.get("headings", True)), save=False)
             self.icon_key = "sealime" if old_look and data.get("icon", "yellow") == "yellow" else data.get("icon", "sealime")
             self.set_menu_visible(bool(data.get("menu", True)))
             for p in self.panes:

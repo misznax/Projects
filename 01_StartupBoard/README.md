@@ -3,7 +3,7 @@
 Dowolna liczba swobodnych paneli roboczych (start: 6) z pamięcią stanu: pliki tekstowe (kolorowanie Python/HTML/SQL), PDF i obrazy.
 Autor: Michał Rzekiecki · kontakt: kontakt@smialo.org
 
-- Pobierz: Releases → `startupboard-latest` → `StartupBoard_v1.41.zip`, rozpakuj i uruchom `StartupBoard.exe`.
+- Pobierz: Releases → `startupboard-latest` → `StartupBoard_v1.42.zip`, rozpakuj i uruchom `StartupBoard.exe`.
 - Źródła: `src/`, build: `python build_exe.py`, kopie wersji: `backup/`.
 - Stan zapisuje się w `%LOCALAPPDATA%\smialo\StartupBoard (v1.3 sama przenosi stan, który v1.1–1.2 zapisały w folderze „Startup Board” ze spacją)\` (menu Pomoc → „Folder z ustawieniami"): `state.json`, `zestawy\`, `obrazy\`, `startupboard.log`.
 
@@ -28,6 +28,12 @@ Autor: Michał Rzekiecki · kontakt: kontakt@smialo.org
 - Zamknięty program: zadanie w Harmonogramie zadań Windows uruchamia go na czas przypomnienia (`--alarm`).
 - Ctrl+Tab / Ctrl+PgDn przełączają panele niezależnie od fokusu; pasek kart wysuwa się też przy pasku tytułu/menu.
 - Drugie uruchomienie wyciąga działające okno. Przypomnienia ze starego folderu stanu są dołączane; dzienna kopia stanu w `kopie_stanu\`.
+
+## v1.42
+- **No Names**: tekst, który nie ma jeszcze nazwy, zapisuje się sam 2 s po ostatnim znaku jako `No Name 1.txt`, `No Name 2.txt`… w folderze `No Names` obok ustawień (Plik → „Folder No Names…” otwiera go w panelu). Zamknięcie programu lub wylogowanie Windows nie pyta o zapis i niczego nie gubi; Ctrl+S nadal pozwala nadać własną nazwę. Pusty szkic znika przy zamknięciu panelu.
+- **Zoom tekstu Ctrl + kółko** (też Ctrl +/−, Ctrl+0 = 100%, Widok): równomierny, ×1,1 na ząbek (5–96 pt), osobno dla każdego panelu; skaluje się razem z nagłówkami i tabulatorem, rozmiar jest zapamiętywany.
+- **Nagłówki w zwykłym tekście** (`# Temat`, `### Temat`, `1. Początek`, `1.2. Podpunkt`) są pogrubione i lekko powiększone – tylko w widoku, plik zostaje bez zmian. Wyłączysz w Widok → „Wyróżniaj nagłówki…”.
+- **Widoki folderu** (przycisk „Widok” w panelu folderu lub prawy przycisk): Szczegóły, Lista, Ikony; **Ctrl + kółko** zmienia rozmiar ikon (12–48 px w Szczegółach i Liście, 24–128 px w Ikonach), wybór jest zapamiętywany w panelu.
 
 ## v1.41
 - **Ctrl+V z samym obrazem** w schowku otwiera go w nowym panelu także wtedy, gdy kursor jest w edytorze (tekst + obraz, np. z Excela, wkleja się jak zwykle jako tekst). Bez nasłuchu, nic nie obciąża programu.
