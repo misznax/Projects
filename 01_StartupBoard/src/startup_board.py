@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Startup Board - do 8 swobodnych paneli roboczych z pamięcią stanu.
 
-Skróty: Ctrl+N nowy plik | Ctrl+O otwórz | Ctrl+S zapisz | Ctrl+Shift+S zapisz jako | Ctrl+W zamknij plik
+Skróty: Ctrl+N nowe okno (wybór) | Ctrl+Shift+1..0 ekran | Ctrl+O otwórz | Ctrl+S zapisz | Ctrl+Shift+S zapisz jako | Ctrl+W zamknij plik
         Ctrl+F znajdź (F3 / Shift+F3 dalej / wstecz) | Ctrl+Shift+O folder w panelu (F5 kopiuj, F6 przenieś, F7 nowy folder) | Ctrl+V wklej tekst/obraz/plik do pustego panelu | Ctrl+Shift+V obraz
         Ctrl+, ustawienia | Ctrl+M pokaż/ukryj pasek menu | Ctrl+Shift+E układ siatki | Alt+1..9 panel | Ctrl+Tab następny panel
 Panele: przeciągaj za pasek tytułowy, zmieniaj rozmiar łapiąc krawędź/róg.
@@ -33,7 +33,7 @@ from PySide6.QtCore import (QByteArray, QEvent, QLockFile, QObject, QPoint, QPoi
                             Qt, QThread, QTimer, QUrl, Signal)
 from PySide6.QtGui import (QAction, QActionGroup, QColor, QDesktopServices, QFont, QIcon, QImage, QImageReader,
                            QCursor, QKeySequence, QLinearGradient, QPainter, QPalette, QPen, QPixmap, QPolygonF, QShortcut, QSyntaxHighlighter,
-                           QTextCharFormat, QTextCursor, QTextDocument, QBrush)
+                           QTextCharFormat, QTextCursor, QTextDocument, QBrush, QPainterPath)
 from PySide6.QtWidgets import (
     QAbstractButton, QApplication, QBoxLayout, QButtonGroup, QCheckBox, QColorDialog, QComboBox, QDialog, QFileDialog,
     QFrame, QGridLayout, QGroupBox, QHBoxLayout, QInputDialog, QLabel, QLineEdit, QListWidget, QListWidgetItem,
@@ -46,7 +46,7 @@ from PySide6.QtCore import QDate, QDateTime, QDir, QFile, QTime
 from PySide6.QtWidgets import QDateEdit, QTimeEdit, QToolTip
 
 APP_NAME = "Startup Board"
-APP_VERSION = "v1.42"  # zmieniać tylko na polecenie autora
+APP_VERSION = "v1.43"  # zmieniać tylko na polecenie autora
 APP_AUTHOR = "Michał Rzekiecki"
 APP_CONTACT = "kontakt@smialo.org"
 
@@ -65,6 +65,8 @@ BORDERS = [1, 2, 3, 4, 6, 8, 0]  # grubość ramki w px (0 = brak)
 DEFAULT_BORDER = 2
 DEFAULT_SCHEME = "morze"
 LOOK_VERSION = 2  # wygląd v2 (Morze i limonka); starszy stan jest raz przestawiany na nowy domyślny motyw
+MAX_SCREENS = 10
+SCREEN_PALETTE = ["#3b82f6", "#10b981", "#f59e0b", "#ec4899", "#8b5cf6", "#06b6d4", "#ef4444", "#84cc16", "#f97316", "#14b8a6"]
 DEFAULT_PANES, MAX_PANES = 6, 200  # 200 = tylko bezpiecznik (ok. 1 MB pamięci na panel)
 SCHEME_ORDER = ["morze", "morze_j", "night", "graphite", "contrast", "light", "paper"]
 ICON_COLORS = [("sealime", "Morze i limonka", "grad"), ("lime", "Limonkowy", "#b8e642"), ("sea", "Morski", "#12a6b0"),
@@ -932,7 +934,7 @@ class Placeholder(QWidget):
         v = QVBoxLayout(self)
         v.setContentsMargins(8, 6, 8, 6)
         v.setSpacing(6)
-        self.btn_plus = QToolButton(text="+", toolTip="Nowy plik tekstowy (Ctrl+N)")
+        self.btn_plus = QToolButton(text="+", toolTip="Nowy plik tekstowy (Ctrl+N otwiera puste okno z wyborem)")
         self.btn_plus.setCursor(Qt.CursorShape.PointingHandCursor)
         self.lbl_plus = QLabel("Nowy plik tekstowy")
         self.lbl_hint = QLabel(self.DEFAULT_HINT)
@@ -3724,10 +3726,13 @@ class SettingsDialog(ThemedDialog):
         row.addStretch(1)
         v.addLayout(row)
         self.icon_grp.idClicked.connect(self._on_icon)
-        self.chk_menu = QCheckBox("Pokaż pasek menu (Ctrl+M)")
+        self.chk_menu = QCheckBox("Pokaż pasek menu na stałe (Ctrl+M; inaczej wyskakuje po stuknięciu Alt)")
         self.chk_snap = QCheckBox("Przyciąganie magnetyczne paneli (Alt = chwilowo wyłącz)")
         v.addWidget(self.chk_menu)
         v.addWidget(self.chk_snap)
+        b_sc = QPushButton("Ekrany: przywróć automatyczne kolory (własny kolor: prawy przycisk na ekranie)")
+        b_sc.clicked.connect(lambda: self.win.auto_screen_colors())
+        v.addWidget(b_sc, 0, Qt.AlignmentFlag.AlignLeft)
         b = QPushButton("Otwórz folder z ustawieniami")
         b.clicked.connect(lambda: QDesktopServices.openUrl(QUrl.fromLocalFile(str(self.win.state_dir))))
         v.addWidget(b, 0, Qt.AlignmentFlag.AlignLeft)
@@ -3811,7 +3816,7 @@ class SettingsDialog(ThemedDialog):
             keys = [k for k, _n, _c in ICON_COLORS]
             if w.icon_key in keys:
                 self.icon_grp.button(keys.index(w.icon_key)).setChecked(True)
-            self.chk_menu.setChecked(w.menuBar().isVisible())
+            self.chk_menu.setChecked(w.menu_perm)
             self.chk_snap.setChecked(w.canvas.snap_on)
             self.chk_grad.setChecked(THEME["grad"])
             for b in self.c2_btns:
@@ -4124,6 +4129,119 @@ class RemindBar(QFrame):
             f"#remmsg{{color:{u['mute']};}}")
 
 
+class ScreenBtn(QAbstractButton):
+    """Szklany przycisk ekranu: gradient w kolorze ekranu + połysk u góry; aktywny jest nasycony z jasną ramką."""
+    menuRequested = Signal(QPoint)
+    renameRequested = Signal()
+
+    def __init__(self, text: str, color: str, active: bool, plus: bool = False):
+        super().__init__()
+        self.color, self.active, self.plus, self._hover = QColor(color), active, plus, False
+        self.setText(text)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.setMinimumWidth(26 if plus else 40)
+        self.setFixedHeight(ScreenBar.H - 4)
+
+    def enterEvent(self, e):
+        self._hover = True
+        self.update()
+
+    def leaveEvent(self, e):
+        self._hover = False
+        self.update()
+
+    def contextMenuEvent(self, e):
+        if not self.plus:
+            self.menuRequested.emit(e.globalPos())
+
+    def mouseDoubleClickEvent(self, e):
+        if not self.plus:
+            self.renameRequested.emit()
+
+    def sizeHint(self):
+        return QSize(26 if self.plus else 90, ScreenBar.H - 4)
+
+    def paintEvent(self, e):
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        r = QRectF(self.rect()).adjusted(1, 1, -1, -1)
+        a = 255 if self.active else (215 if self._hover else 150)
+        top, bot = self.color.lighter(138), self.color.darker(118)
+        top.setAlpha(a)
+        bot.setAlpha(a)
+        g = QLinearGradient(r.topLeft(), r.bottomLeft())
+        g.setColorAt(0, top)
+        g.setColorAt(1, bot)
+        path = QPainterPath()
+        path.addRoundedRect(r, 7, 7)
+        p.fillPath(path, g)
+        gl = QRectF(r.left() + 1.5, r.top() + 1.5, r.width() - 3, r.height() * 0.48)
+        gg = QLinearGradient(gl.topLeft(), gl.bottomLeft())
+        gg.setColorAt(0, QColor(255, 255, 255, 130 if self.active else 85))
+        gg.setColorAt(1, QColor(255, 255, 255, 12))
+        gp = QPainterPath()
+        gp.addRoundedRect(gl, 6, 6)
+        p.fillPath(gp, gg)
+        p.setPen(QPen(QColor(255, 255, 255, 235 if self.active else 95), 1.7 if self.active else 1.0))
+        p.drawPath(path)
+        f = QFont(self.font())
+        f.setBold(self.active)
+        p.setFont(f)
+        txt = p.fontMetrics().elidedText(self.text(), Qt.TextElideMode.ElideRight, int(r.width()) - 10)
+        tr = r.toRect()
+        p.setPen(QColor(0, 0, 0, 120))
+        p.drawText(tr.translated(0, 1), Qt.AlignmentFlag.AlignCenter, txt)
+        p.setPen(QColor(255, 255, 255))
+        p.drawText(tr, Qt.AlignmentFlag.AlignCenter, txt)
+
+
+class ScreenBar(QFrame):
+    """Pasek ekranów na samej górze okna, na całą szerokość (jak pasek przypomnień)."""
+    H = 28
+    picked = Signal(int)
+    addRequested = Signal()
+    menuRequested = Signal(int, QPoint)
+    renameRequested = Signal(int)
+
+    def __init__(self):
+        super().__init__()
+        self.setObjectName("scrbar")
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        self.setFixedHeight(self.H)
+        self.lay = QHBoxLayout(self)
+        self.lay.setContentsMargins(6, 2, 6, 2)
+        self.lay.setSpacing(5)
+        self.btns: list[ScreenBtn] = []
+
+    def rebuild(self, screens: list, cur: int):
+        while self.lay.count():
+            it = self.lay.takeAt(0)
+            wd = it.widget()
+            if wd:
+                wd.hide()
+                wd.setParent(None)
+                wd.deleteLater()
+        self.btns = []
+        for i, sc in enumerate(screens):
+            b = ScreenBtn(f"{i + 1}  {sc['name']}", sc["color"], i == cur)
+            b.setToolTip(f"Ekran {i + 1}: {sc['name']}  (Ctrl+Shift+{(i + 1) % 10})\nPPM: nazwa, kolor, usuń")
+            b.clicked.connect(lambda _c=False, k=i: self.picked.emit(k))
+            b.menuRequested.connect(lambda pos, k=i: self.menuRequested.emit(k, pos))
+            b.renameRequested.connect(lambda k=i: self.renameRequested.emit(k))
+            self.lay.addWidget(b, 1)
+            self.btns.append(b)
+        if len(screens) < MAX_SCREENS:
+            plus = ScreenBtn("+", "#8a94a6", False, plus=True)
+            plus.setToolTip("Nowy ekran (maks. 10)")
+            plus.clicked.connect(self.addRequested.emit)
+            self.lay.addWidget(plus, 0)
+
+    def apply_colors(self):
+        u = UI
+        self.setStyleSheet(f"#scrbar{{background:{grad(u['hdr_bg'], u['hdr_bg2'])};border-bottom:1px solid {u['border_a']};}}")
+
+
 def make_chime(path: Path) -> None:
     """Domyślny dźwięk alarmu: trzy krótkie, jasne tony (do-mi-sol). Własny: alarm.mp3 / alarm.wav w folderze ustawień."""
     rate, total = 22050, 0.8
@@ -4423,6 +4541,9 @@ class MainWindow(QMainWindow):
 
     def __init__(self, state_path: Path | None = None):
         super().__init__()
+        self.menu_perm, self._menu_temp, self._menu_used, self._menu_age = False, False, False, 0
+        self._menu_timer = QTimer(self, interval=250)
+        self._menu_timer.timeout.connect(self._menu_poll)
         self.setWindowTitle(APP_NAME)
         self.state_path = state_path or self._default_state_path()
         self.state_dir = self.state_path.parent
@@ -4472,6 +4593,14 @@ class MainWindow(QMainWindow):
         self.vbox = QVBoxLayout(holder)
         self.vbox.setContentsMargins(0, 0, 0, 0)
         self.vbox.setSpacing(0)
+        self.screens = [{"name": "Ekran 1", "color": SCREEN_PALETTE[0], "snap": None}]  # ekrany: aktywny żywy, reszta uśpiona
+        self.scr_cur = 0
+        self.screenbar = ScreenBar()
+        self.screenbar.picked.connect(self.switch_screen)
+        self.screenbar.addRequested.connect(self.add_screen)
+        self.screenbar.menuRequested.connect(self.screen_menu)
+        self.screenbar.renameRequested.connect(self.rename_screen)
+        self.vbox.addWidget(self.screenbar)
         self.vbox.addWidget(self.canvas, 1)
         self.rembar = RemindBar()
         self.rembar.submitted.connect(self.add_quick_reminder)
@@ -4485,12 +4614,17 @@ class MainWindow(QMainWindow):
         self.canvas.layoutChanged.connect(self.tabs.refresh)
         self._build_menu()
         self.set_tab_mode("auto", save=False)
+        for i in range(MAX_SCREENS):
+            QShortcut(QKeySequence(f"Ctrl+Shift+{(i + 1) % 10}"), self, activated=lambda i=i: self.switch_screen(i))
         for i in range(9):
             QShortcut(QKeySequence(f"Alt+{i + 1}"), self,
                       activated=lambda i=i: self.activate_pane(self.panes[i]) if i < len(self.panes) else None)
         self.resize(1500, 900)
         self.apply_scheme(DEFAULT_SCHEME, save=False)
+        self.menuBar().setVisible(False)  # domyślnie ukryte (Alt je wysuwa); load_state ustawi zapisany wybór
         self.load_state()
+        self.menuBar().setVisible(self.menu_perm)
+        self._screens_refresh()
         self.set_icon_color(self.icon_key)
         self.set_current(self.current)
         QApplication.instance().aboutToQuit.connect(self.save_state)  # stan zapisuje się po każdej zmianie (schedule_save)
@@ -4563,7 +4697,7 @@ class MainWindow(QMainWindow):
     def _build_menu(self):
         mb = self.menuBar()
         m = mb.addMenu("&Plik")
-        m.addAction(self._act("Nowy plik tekstowy", self.new_document, "Ctrl+N"))
+        m.addAction(self._act("Nowe okno (wybór: tekst, plik, folder, obraz…)", self.new_document, "Ctrl+N"))
         m.addAction(self._act("Otwórz w aktywnym panelu…", lambda: self.current.ask_open(), "Ctrl+O"))
         m.addAction(self._act("Otwórz folder w panelu…", self.open_folder_dialog, "Ctrl+Shift+O"))
         m.addAction(self._act("Panel przypomnień", lambda: self.show_reminders(), "Ctrl+Shift+R"))
@@ -4622,9 +4756,23 @@ class MainWindow(QMainWindow):
         self.act_head.setChecked(True)
         v.addAction(self.act_head)
         v.addSeparator()
-        self.act_menu = self._act("Pokaż pasek menu", lambda: self.set_menu_visible(not self.menuBar().isVisible()),
+        self.act_menu = self._act("Pokaż pasek menu na stałe (inaczej: stuknij Alt)", lambda: self.set_menu_visible(not self.menu_perm),
                                   "Ctrl+M", checkable=True)
         v.addAction(self.act_menu)
+        sm = v.addMenu("Ekrany (do 10 zestawów okien)")
+        self.act_scrbar = self._act("Pasek ekranów na górze", lambda: self.set_scrbar(self.act_scrbar.isChecked()), checkable=True)
+        self.act_scrbar.setChecked(True)
+        sm.addAction(self.act_scrbar)
+        self.act_scr_add = self._act("Nowy ekran", self.add_screen)
+        sm.addAction(self.act_scr_add)
+        sm.addAction(self._act("Zmień nazwę aktywnego ekranu…", lambda: self.rename_screen(self.scr_cur)))
+        sm.addAction(self._act("Kolor aktywnego ekranu…", lambda: self.recolor_screen(self.scr_cur)))
+        sm.addAction(self._act("Przywróć automatyczne kolory ekranów", self.auto_screen_colors))
+        sm.addAction(self._act("Usuń aktywny ekran…", lambda: self.delete_screen(self.scr_cur)))
+        sm.addSeparator()
+        hint = self._act("Przełączanie: Ctrl+Shift+1…9, 0 = ekran 10", lambda: None)
+        hint.setEnabled(False)
+        sm.addAction(hint)
         self.tab_acts = self._radio(v.addMenu("Pasek kart"), [
             ("auto", "Autoukrywanie (wysuwa się przy górnej krawędzi)"), ("always", "Zawsze widoczny"),
             ("off", "Ukryty")], self.set_tab_mode)
@@ -4751,6 +4899,7 @@ class MainWindow(QMainWindow):
             p.apply_colors()
         self.tabs.apply_colors()
         self.rembar.apply_colors()
+        self.screenbar.apply_colors()
         self._dark_titlebar()
         self.lookChanged.emit()
         if save:
@@ -4759,7 +4908,7 @@ class MainWindow(QMainWindow):
     def snapshot_look(self) -> dict:
         """Migawka wyglądu (do cofnięcia przez Anuluj w Ustawieniach)."""
         return {"scheme": self.scheme_key, "colors": dict(COLORS), "ui": dict(UI), "ui_over": dict(self.ui_over),
-                "border": self.border, "icon": self.icon_key, "menu": self.menuBar().isVisible(),
+                "border": self.border, "icon": self.icon_key, "menu": self.menu_perm,
                 "grad": THEME["grad"], "snap": self.canvas.snap_on, "font": (self.font_family, self.font_size),
                 "panes": [(p.family, p.editor.font().pointSizeF(), p.btn_wrap.isChecked()) for p in self.panes]}
 
@@ -4787,7 +4936,7 @@ class MainWindow(QMainWindow):
         self.set_border(DEFAULT_BORDER)
         self.set_icon_color("sealime")
         self.set_gradient(True)
-        self.set_menu_visible(True)
+        self.set_menu_visible(False)
         self.set_snap(True)
         self.set_default_font("Consolas", 10.0)
         self.set_wrap_all(True)
@@ -4808,7 +4957,7 @@ class MainWindow(QMainWindow):
         self.lang_acts[c.lang].setChecked(True)
         self.scheme_acts[self.scheme_key].setChecked(True)
         self.act_wrap.setChecked(c.btn_wrap.isChecked())
-        self.act_menu.setChecked(self.menuBar().isVisible())
+        self.act_menu.setChecked(self.menu_perm)
         self.act_snap.setChecked(self.canvas.snap_on)
         self.act_add.setEnabled(len(self.panes) < MAX_PANES)
         self.act_del.setEnabled(len(self.panes) > 1)
@@ -4854,9 +5003,14 @@ class MainWindow(QMainWindow):
                 self._alt_clean = False
         elif t == QEvent.Type.KeyPress:
             self._alt_clean = ev.key() == Qt.Key.Key_Alt and not ev.isAutoRepeat()
+            if ev.key() == Qt.Key.Key_Escape and self._menu_temp and QApplication.activePopupWidget() is None:
+                self._menu_hide()
         elif t == QEvent.Type.KeyRelease and ev.key() == Qt.Key.Key_Alt:
-            if self._alt_clean and self.isActiveWindow() and not self.menuBar().isVisible():
-                self.set_menu_visible(True)
+            if self._alt_clean and self.isActiveWindow():
+                if self.menuBar().isVisible() and self._menu_temp:
+                    self._menu_hide()
+                elif not self.menuBar().isVisible():
+                    self.peek_menu()
             self._alt_clean = False
         return False
 
@@ -4950,9 +5104,51 @@ class MainWindow(QMainWindow):
 
     # --- ustawienia widoku ---
     def set_menu_visible(self, on: bool):
-        self.menuBar().setVisible(on)
-        self.act_menu.setChecked(on)
+        """Menu na stałe (Ctrl+M / Ustawienia). Domyślnie ukryte; Alt wysuwa je tylko na chwilę."""
+        self.menu_perm = bool(on)
+        self._menu_temp = False
+        self._menu_timer.stop()
+        self.menuBar().setVisible(self.menu_perm)
+        self.act_menu.setChecked(self.menu_perm)
         self.schedule_save()
+
+    def peek_menu(self):
+        """Stuknięcie Alt: pasek menu pojawia się do czasu wybrania polecenia / Esc / kliknięcia obok / drugiego Alt."""
+        if self.menu_perm:
+            return
+        mb = self.menuBar()
+        mb.setVisible(True)
+        self._menu_temp, self._menu_used, self._menu_age = True, False, 0
+        acts = mb.actions()
+        if acts:
+            mb.setActiveAction(acts[0])
+        mb.setFocus(Qt.FocusReason.MenuBarFocusReason)
+        self._menu_timer.start()
+
+    def _menu_hide(self):
+        if self._menu_temp and not self.menu_perm:
+            self._menu_temp = False
+            self._menu_timer.stop()
+            self.menuBar().setActiveAction(None)
+            self.menuBar().setVisible(False)
+            self.current.focus_editor()
+
+    def _menu_poll(self):
+        if not self._menu_temp:
+            self._menu_timer.stop()
+            return
+        busy = QApplication.activePopupWidget() is not None
+        act = self.menuBar().activeAction() is not None
+        if busy or act:
+            self._menu_used = True
+            self._menu_age = 0
+        elif self._menu_used or self._menu_age >= 16:  # po użyciu – od razu; bez użycia – po ok. 4 s
+            self._menu_hide()
+            return
+        else:
+            self._menu_age += 1
+        if not self.isActiveWindow() and not busy:
+            self._menu_hide()
 
     def set_border(self, n: int):
         self.border = n
@@ -5123,7 +5319,7 @@ class MainWindow(QMainWindow):
         self.tabs.hide()
         self.tabs.setParent(self.centralWidget())
         if mode == "always":
-            self.vbox.insertWidget(0, self.tabs)
+            self.vbox.insertWidget(1, self.tabs)
             self.tabs.show()
         elif mode == "auto":
             self.canvas.set_overlay(self.tabs)
@@ -5131,6 +5327,108 @@ class MainWindow(QMainWindow):
         self.tabs.refresh()
         if save:
             self.schedule_save()
+
+    # --- ekrany (do 10 zestawów okien; nieaktywne śpią, działają tylko przypomnienia) ---
+    def _screens_refresh(self):
+        self.screenbar.rebuild(self.screens, self.scr_cur)
+        if hasattr(self, "act_scr_add"):
+            self.act_scr_add.setEnabled(len(self.screens) < MAX_SCREENS)
+
+    def set_scrbar(self, on: bool, save: bool = True):
+        self.screenbar.setVisible(bool(on))
+        if hasattr(self, "act_scrbar"):
+            self.act_scrbar.setChecked(bool(on))
+        if save:
+            self.schedule_save()
+
+    def _free_screen_color(self) -> str:
+        used = {sc["color"] for sc in self.screens}
+        for c in SCREEN_PALETTE:
+            if c not in used:
+                return c
+        return SCREEN_PALETTE[len(self.screens) % len(SCREEN_PALETTE)]
+
+    def switch_screen(self, i: int):
+        if not self._ready or not (0 <= i < len(self.screens)) or i == self.scr_cur:
+            return
+        for p in self.panes:  # zapis (autozapis) albo pytanie; Anuluj przerywa przełączenie
+            if not p.confirm_close():
+                return
+        self.screens[self.scr_cur]["snap"] = self.snapshot()
+        for p in self.panes:
+            p.clear_content()
+        self.scr_cur = i
+        data = self.screens[i].get("snap")
+        sts = [s for s in (data or {}).get("panes", []) if isinstance(s, dict)]
+        self._set_pane_count(max(1, min(len(sts) or DEFAULT_PANES, MAX_PANES)))
+        if data:
+            self._apply_layout(data)
+        else:
+            self.canvas.grid()
+        for p, st in zip(self.panes, sts):
+            self._open_state(p, st)
+        idx = (data or {}).get("current", 0)
+        self.set_current(self.panes[idx] if isinstance(idx, int) and 0 <= idx < len(self.panes) else self.panes[0])
+        self.screens[i]["snap"] = None  # żywy ekran: stan bierze się z paneli
+        self._screens_refresh()
+        self.tabs.refresh()
+        self.schedule_save()
+
+    def add_screen(self):
+        if len(self.screens) >= MAX_SCREENS:
+            return
+        n = len(self.screens) + 1
+        self.screens.append({"name": f"Ekran {n}", "color": self._free_screen_color(), "snap": None})
+        self._screens_refresh()
+        self.switch_screen(len(self.screens) - 1)
+
+    def rename_screen(self, i: int):
+        name, ok = QInputDialog.getText(self, "Nazwa ekranu", f"Nazwa ekranu {i + 1}:", text=self.screens[i]["name"])
+        name = name.strip()[:30]
+        if ok and name:
+            self.screens[i]["name"] = name
+            self._screens_refresh()
+            self.schedule_save()
+
+    def recolor_screen(self, i: int):
+        c = QColorDialog.getColor(QColor(self.screens[i]["color"]), self, f"Kolor ekranu {i + 1}")
+        if c.isValid():
+            self.screens[i]["color"] = c.name()
+            self._screens_refresh()
+            self.schedule_save()
+
+    def auto_screen_colors(self):
+        for i, sc in enumerate(self.screens):
+            sc["color"] = SCREEN_PALETTE[i % len(SCREEN_PALETTE)]
+        self._screens_refresh()
+        self.schedule_save()
+
+    def delete_screen(self, i: int):
+        if len(self.screens) < 2:
+            return
+        if QMessageBox.question(self, APP_NAME, f"Usunąć ekran „{self.screens[i]['name']}”?\nOkna z niego zostaną zamknięte "
+                                "(otwarte pliki są zapisane).") != QMessageBox.StandardButton.Yes:
+            return
+        if i == self.scr_cur:
+            j = i - 1 if i > 0 else 1
+            self.switch_screen(j)
+            if self.scr_cur != j:  # przerwano (Anuluj przy zapisie)
+                return
+        del self.screens[i]
+        if i < self.scr_cur:
+            self.scr_cur -= 1
+        self._screens_refresh()
+        self.schedule_save()
+
+    def screen_menu(self, i: int, pos):
+        m = QMenu(self)
+        m.addAction("Zmień nazwę…", lambda: self.rename_screen(i))
+        m.addAction("Kolor…", lambda: self.recolor_screen(i))
+        m.addAction("Przywróć automatyczne kolory ekranów", self.auto_screen_colors)
+        m.addSeparator()
+        d = m.addAction("Usuń ekran…", lambda: self.delete_screen(i))
+        d.setEnabled(len(self.screens) > 1)
+        m.exec(pos)
 
     # --- dodawanie / usuwanie paneli ---
     def _new_pane(self) -> TextPane:
@@ -5184,9 +5482,10 @@ class MainWindow(QMainWindow):
         p.focus_editor()
 
     def new_document(self):
+        """Ctrl+N: puste okno z wyborem (tekst, plik, folder, obraz, przypomnienia, schowek). Wklejony tekst
+        otworzy się jako dokument txt, wklejony obraz jako obraz (Ctrl+V w pustym oknie)."""
         p = self.target_pane()
-        if p.new_document():
-            self._focus(p)
+        self._focus(p)
 
     def paste_smart(self):
         """Ctrl+V poza edytorem: do pustego panelu wkleja skopiowany plik, tekst albo obraz (w tej kolejności)."""
@@ -5727,7 +6026,7 @@ class MainWindow(QMainWindow):
                 "scheme": self.scheme_key, "look_v": LOOK_VERSION, "grad": THEME["grad"],
                 "colors": {k: v for k, v in COLORS.items() if v != SCHEMES[self.scheme_key]["colors"].get(k)},
                 "ui_over": dict(self.ui_over),
-                "menu": self.menuBar().isVisible(),
+                "menu_perm": self.menu_perm,
                 "font_default": [self.font_family, self.font_size],
                 "recent": self.recent, "last_dir": LAST["dir"], "reminders": self.reminders,
                 "autosave": AUTO["on"], "tabs": self.tab_mode, "rembar": self.act_rembar.isChecked(),
@@ -5735,6 +6034,10 @@ class MainWindow(QMainWindow):
                 "clipcap": self.clipstore.on, "tray": self.tray_on, "headings": HEAD["on"],
             }
             data.update(self.snapshot())
+            data["screens"] = [{"name": sc["name"], "color": sc["color"], "snap": None if i == self.scr_cur else sc.get("snap")}
+                               for i, sc in enumerate(self.screens)]
+            data["screen_cur"] = self.scr_cur
+            data["scrbar"] = self.screenbar.isVisible()
             data["app_version"] = APP_VERSION
             js = json.dumps(data, ensure_ascii=False, indent=1)
             if js == self._last_json:  # nic się nie zmieniło - nie ruszaj dysku
@@ -5812,6 +6115,23 @@ class MainWindow(QMainWindow):
                 except (ValueError, TypeError):
                     continue
             LAST["dir"] = data.get("last_dir") if isinstance(data.get("last_dir"), str) else ""
+            scr = data.get("screens")
+            if isinstance(scr, list):
+                out = []
+                for e in scr[:MAX_SCREENS]:
+                    if not isinstance(e, dict):
+                        continue
+                    col = e.get("color")
+                    col = col if isinstance(col, str) and QColor(col).isValid() else SCREEN_PALETTE[len(out) % len(SCREEN_PALETTE)]
+                    sn = e.get("snap")
+                    sn = sn if isinstance(sn, dict) and isinstance(sn.get("panes"), list) else None
+                    out.append({"name": (str(e.get("name") or "").strip() or f"Ekran {len(out) + 1}")[:30], "color": col, "snap": sn})
+                if out:
+                    sc = data.get("screen_cur")
+                    self.screens = out
+                    self.scr_cur = sc if isinstance(sc, int) and 0 <= sc < len(out) else 0
+            self.set_scrbar(bool(data.get("scrbar", True)), save=False)
+            self._screens_refresh()
             self.apply_look(save=False)
             sts = [s if isinstance(s, dict) else {} for s in data.get("panes", [])]
             self._set_pane_count(max(1, min(len(sts) or DEFAULT_PANES, MAX_PANES)))
@@ -5830,7 +6150,7 @@ class MainWindow(QMainWindow):
             self.set_tray(bool(data.get("tray", False)), save=False)
             self.set_headings(bool(data.get("headings", True)), save=False)
             self.icon_key = "sealime" if old_look and data.get("icon", "yellow") == "yellow" else data.get("icon", "sealime")
-            self.set_menu_visible(bool(data.get("menu", True)))
+            self.set_menu_visible(bool(data.get("menu_perm", False)))
             for p in self.panes:
                 p.set_font(self.font_family, self.font_size)
             self._pending = list(zip(self.panes, sts))

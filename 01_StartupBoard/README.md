@@ -3,7 +3,7 @@
 Dowolna liczba swobodnych paneli roboczych (start: 6) z pamięcią stanu: pliki tekstowe (kolorowanie Python/HTML/SQL), PDF i obrazy.
 Autor: Michał Rzekiecki · kontakt: kontakt@smialo.org
 
-- Pobierz: Releases → `startupboard-latest` → `StartupBoard_v1.42.zip`, rozpakuj i uruchom `StartupBoard.exe`.
+- Pobierz: Releases → `startupboard-latest` → `StartupBoard_v1.43.zip`, rozpakuj i uruchom `StartupBoard.exe`.
 - Źródła: `src/`, build: `python build_exe.py`, kopie wersji: `backup/`.
 - Stan zapisuje się w `%LOCALAPPDATA%\smialo\StartupBoard (v1.3 sama przenosi stan, który v1.1–1.2 zapisały w folderze „Startup Board” ze spacją)\` (menu Pomoc → „Folder z ustawieniami"): `state.json`, `zestawy\`, `obrazy\`, `startupboard.log`.
 
@@ -28,6 +28,11 @@ Autor: Michał Rzekiecki · kontakt: kontakt@smialo.org
 - Zamknięty program: zadanie w Harmonogramie zadań Windows uruchamia go na czas przypomnienia (`--alarm`).
 - Ctrl+Tab / Ctrl+PgDn przełączają panele niezależnie od fokusu; pasek kart wysuwa się też przy pasku tytułu/menu.
 - Drugie uruchomienie wyciąga działające okno. Przypomnienia ze starego folderu stanu są dołączane; dzienna kopia stanu w `kopie_stanu\`.
+
+## v1.43
+- **Menu pod Alt**: pasek menu jest domyślnie ukryty; stuknięcie Alt wysuwa go na chwilę (znika po wyborze polecenia, Esc, drugim Alt albo po ok. 4 s bez użycia). Na stałe: Ctrl+M lub Ustawienia. Wszystkie skróty działają także przy ukrytym menu.
+- **Ekrany (do 10)**: pasek na samej górze, na całą szerokość; szklane przyciski, każdy w innym kolorze (dobieranym automatycznie). Przełączanie: klik albo Ctrl+Shift+1…9, 0 (ekran 10). Nieaktywne ekrany śpią (pliki zapisane, panele zwolnione), działają tylko przypomnienia. Prawy przycisk: nazwa, kolor, usuń, „Przywróć automatyczne kolory” (także w Ustawieniach); „+” dodaje ekran; Widok → Ekrany pozwala ukryć pasek. Ekrany i ich zawartość wracają po restarcie.
+- **Ctrl+N** otwiera puste okno z wyborem (tekst, plik, folder, obraz, przypomnienia, schowek); wklejony Ctrl+V tekst otworzy dokument txt, a obraz – obraz.
 
 ## v1.42
 - **No Names**: tekst, który nie ma jeszcze nazwy, zapisuje się sam 2 s po ostatnim znaku jako `No Name 1.txt`, `No Name 2.txt`… w folderze `No Names` obok ustawień (Plik → „Folder No Names…” otwiera go w panelu). Zamknięcie programu lub wylogowanie Windows nie pyta o zapis i niczego nie gubi; Ctrl+S nadal pozwala nadać własną nazwę. Pusty szkic znika przy zamknięciu panelu.
