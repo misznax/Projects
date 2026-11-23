@@ -202,7 +202,7 @@ dialog a{color:var(--acc)}
 <script>
 (()=>{
 'use strict';
-const VER='v0.05', MAIL='kontakt@smialo.org', LS='esencja.v1';
+const VER='v0.06', MAIL='kontakt@smialo.org', LS='esencja.v1';
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
 
 /*LOGIC-START*/
@@ -571,7 +571,7 @@ function errText(e,stage){
     if(c==='needs_reauth')return'Composio wymaga ponownego zalogowania w <a href="https://claude.ai/settings/connectors" target="_blank" rel="noopener">Ustawieniach → Connectors</a>.';
     if(c==='not_in_manifest'||c==='approval_required'||c==='consent_required'||c==='not_granted')return'Brak zgody na użycie Composio dla tej strony — zezwól albo wklej transkrypt ręcznie.';
     if(c==='no_captions')return'Ten film nie ma dostępnych napisów. Wklej transkrypt ręcznie.';
-    if(c==='yt')return'Serwer nie dostał napisów od YouTube: '+esc(String(e.detail).slice(0,200))+'. Wklej transkrypt ręcznie.';
+    if(c==='yt')return'YouTube zablokował pobranie przez serwer (test na boty). Na filmie: „Pokaż transkrypcję” → zaznacz tekst → skopiuj, wróć tu — wklei się sama.';
     if(c==='no_mcp'||c==='capability_disabled')return'Pobieranie napisów jest tu niedostępne. Wklej transkrypt ręcznie.';
     return'Nie udało się pobrać napisów (usługa zwróciła błąd). Wklej transkrypt ręcznie albo spróbuj za chwilę.';
   }
@@ -701,6 +701,7 @@ document.addEventListener('paste',e=>{
   if(editable(e.target))return;
   const t=(e.clipboardData&&e.clipboardData.getData('text'))||'';
   if(ytId(t,false)){e.preventDefault();$url.value=t.trim();run(t)}
+  else if(cleanManual(t).length>=400){e.preventDefault();run('',{manual:t})}
 });
 let lastAuto=null;
 async function tryClipboard(){
@@ -709,6 +710,7 @@ async function tryClipboard(){
     const t=await navigator.clipboard.readText();
     const id=ytId(t,false);
     if(id&&id!==lastAuto&&id!==R.id){lastAuto=id;$url.value=t.trim();run(t)}
+    else if(!id&&$('#manual').open&&!R.busy&&cleanManual(t).length>=400&&hash(t)!==lastAuto){lastAuto=hash(t);run('',{manual:t})}
   }catch(e){}
 }
 window.addEventListener('focus',tryClipboard);
