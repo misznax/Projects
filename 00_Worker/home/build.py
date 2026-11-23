@@ -5,6 +5,7 @@ Składa src/template.html + src/style.css + src/main.js + dane aplikacji z tego 
 Uruchom:  python3 build.py
 """
 import html
+import re
 import urllib.request
 from pathlib import Path
 from urllib.parse import quote
@@ -221,6 +222,13 @@ def main():
            .replace("{{OPTIONS}}", options()).replace("{{HERO_APPS}}", asset("apps/hero-apps.webp")).replace("{{VERSION}}", VERSION).replace("{{MAIL}}", MAIL)
            .replace("{{CONSULT}}", consult("ogólna", "wybór aplikacji / wdrożenie pod moją firmę"))
            .replace("{{SUGGEST}}", f"mailto:{MAIL}?subject={quote('Sugestia – strona aplikacji')}"))
+    # CSP: skrypty tylko własne (inline po hashu SHA-256), brak zewnętrznych źródeł poza zdjęciami awaryjnymi
+    import base64, hashlib
+    hs = " ".join("'sha256-%s'" % base64.b64encode(hashlib.sha256(m.encode("utf-8")).digest()).decode()
+                  for m in re.findall(r"<script>(.*?)</script>", out, re.S))
+    csp = ("default-src 'self'; script-src 'self' %s; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://twojastrona.smialo.org; "
+           "font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'" % hs)
+    out = out.replace('<meta charset="utf-8">', '<meta charset="utf-8">\n<meta http-equiv="Content-Security-Policy" content="%s">' % csp, 1)
     (HERE / "index.html").write_text(out, encoding="utf-8")
     print(f"OK index.html  {len(out) / 1024:.1f} KB  ({VERSION})")
 

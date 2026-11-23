@@ -3,17 +3,17 @@
 // Dostęp: Cloudflare Access przed Workerem; /api/* dodatkowo sprawdza token Access (zmienna ACCESS_TEAM).
 import APPS from './apps.json';
 
-const J = (o, s = 200) => new Response(JSON.stringify(o), { status: s, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' } });
+const J = (o, s = 200) => new Response(JSON.stringify(o), { status: s, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' } });
 const b64u = (s) => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0));
 
 // ── Cloudflare Access: weryfikacja tokena (gdy ustawiono ACCESS_TEAM, np. "moje.cloudflareaccess.com") ──
 let certs = null;
-async function accessOk(request, env) {
+async function accessOk(request, env, strict = false) {
   const url = new URL(request.url);
   if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') return true;
   const jwt = request.headers.get('Cf-Access-Jwt-Assertion');
-  if (!jwt) return request.headers.get('Sec-Fetch-Site') === 'same-origin'; // wywołanie z własnej strony (Access chroni cały adres)
-  if (!env.ACCESS_TEAM) return true; // bez zmiennej: wystarcza obecność nagłówka (Access jest przed Workerem)
+  if (!jwt) return !strict && request.headers.get('Sec-Fetch-Site') === 'same-origin'; // wywołanie z własnej strony; strict (panel admina) wymaga tokena Access
+  if (!env.ACCESS_TEAM) return !strict; // bez zmiennej: wystarcza obecność nagłówka (Access jest przed Workerem)
   try {
     const [h, p, s] = jwt.split('.');
     const head = JSON.parse(new TextDecoder().decode(b64u(h))), pay = JSON.parse(new TextDecoder().decode(b64u(p)));
@@ -217,6 +217,10 @@ let interestReady = false;
 async function interest(request, env) {
   if (request.method !== 'POST') return J({ code: 'method' }, 405);
   if (!env.DB) return J({ code: 'no_db' }, 501);
+  const og = request.headers.get('origin');
+  if (og) { let ok = false; try { ok = new URL(og).host === new URL(request.url).host; } catch {} if (!ok) return J({ code: 'forbidden' }, 403); }
+  if (+(request.headers.get('content-length') || 0) > 2000) return J({ code: 'too_big' }, 413);
+  if (!(await rl(request, env, 'interest', 10))) return J({ code: 'rate' }, 429);
   let b; try { b = await request.json(); } catch { return J({ code: 'bad' }, 400); }
   if (b.website) return J({ ok: true }); // pułapka na boty
   const name = String(b.name || '').trim().slice(0, 80), email = String(b.email || '').trim().toLowerCase().slice(0, 120), app = String(b.app || '');
@@ -234,6 +238,17 @@ async function interest(request, env) {
 }
 
 // ── 05 Anatomia: analiza objawów (Claude gdy jest klucz, inaczej Workers AI/Llama); limit zapytań na IP (hash) w D1 ──
+let rlReady = false;
+async function rl(request, env, name, max) { // limit żądań na godzinę z jednego IP (IP tylko jako skrót SHA-256 z solą)
+  if (!env.DB) return true;
+  const ip = request.headers.get('cf-connecting-ip') || 'x';
+  const h = (await sha256hex(ip + '|' + name + '|' + (env.STATS_SALT || 'projects'))).slice(0, 20), hr = Math.floor(Date.now() / 36e5);
+  if (!rlReady) { await env.DB.prepare('CREATE TABLE IF NOT EXISTS ana_rl (h TEXT NOT NULL, hr INTEGER NOT NULL, n INTEGER NOT NULL, PRIMARY KEY (h, hr))').run(); rlReady = true; }
+  await env.DB.prepare('INSERT INTO ana_rl (h, hr, n) VALUES (?1, ?2, 1) ON CONFLICT(h, hr) DO UPDATE SET n = n + 1').bind(h, hr).run();
+  const r = await env.DB.prepare('SELECT n FROM ana_rl WHERE h = ?1 AND hr = ?2').bind(h, hr).first();
+  return !r || r.n <= max;
+}
+
 let anaReady = false;
 async function anaLimit(request, env) {
   if (!env.DB) return true;
@@ -281,11 +296,23 @@ async function analyze(request, env) {
   } catch (e) { return J({ code: 'ai_error', msg: String(e.message || e).slice(0, 120) }, 502); }
 }
 
+function secure(res, url) { // nagłówki bezpieczeństwa dla stron i plików statycznych
+  const h = new Headers(res.headers);
+  h.set('X-Content-Type-Options', 'nosniff');
+  h.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  h.set('Permissions-Policy', 'camera=(), geolocation=(), microphone=(self), payment=(), usb=(), interest-cohort=()');
+  h.set('Cross-Origin-Opener-Policy', 'same-origin');
+  h.set('X-Frame-Options', 'SAMEORIGIN');
+  if (url.protocol === 'https:') h.set('Strict-Transport-Security', 'max-age=31536000');
+  return new Response(res.body, { status: res.status, statusText: res.statusText, headers: h });
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     if (url.pathname.startsWith('/api/')) {
       if (!(await accessOk(request, env))) return J({ code: 'forbidden' }, 403);
+      if (['/api/transcript', '/api/ask', '/api/n/claude', '/api/n/stt'].includes(url.pathname) && !(await rl(request, env, 'ai', 120))) return J({ code: 'rate' }, 429);
       if (url.pathname === '/api/transcript') {
         const id = url.searchParams.get('id') || '';
         if (!/^[\w-]{11}$/.test(id)) return J({ code: 'bad' }, 400);
@@ -293,7 +320,7 @@ export default {
         return t.code ? J(t, t.code === 'no_captions' ? 404 : 502) : J(t);
       }
       if (url.pathname === '/api/interest') return interest(request, env);
-      if (url.pathname === '/api/stats') return J(await stats(env));
+      if (url.pathname === '/api/stats') return (await accessOk(request, env, true)) ? J(await stats(env)) : J({ code: 'forbidden' }, 403);
       const sm = url.pathname.match(/^\/api\/state\/([a-z0-9_-]+)$/);
       if (sm) return appState(request, env, sm[1]);
       if (url.pathname === '/api/n/status') return J({ stt: !!(env.OPENAI_API_KEY || env.AI || env.GROQ_API_KEY), diar: !!env.OPENAI_API_KEY, claude: !!(env.ANTHROPIC_API_KEY || env.AI || env.GROQ_API_KEY), ckey: !!env.ANTHROPIC_API_KEY });
@@ -362,6 +389,6 @@ export default {
     const page = nn ? (url.pathname === '/' || url.pathname === '/index.html') : !!pm;
     if (page && request.method === 'GET' && env.DB) ctx.waitUntil(track(request, env, nn || pm[1]).catch(() => {}));
     if (nn) url.pathname = '/' + nn + (url.pathname === '/' ? '/' : url.pathname);
-    return env.ASSETS.fetch(new Request(url, request));
+    return secure(await env.ASSETS.fetch(new Request(url, request)), new URL(request.url));
   },
 };
