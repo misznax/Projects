@@ -108,3 +108,16 @@ dd .small{margin-top:3px}
 .ldbar{height:5px;border-radius:3px;background:#ffffff14;overflow:hidden;margin:14px 0}.ldbar i{display:block;height:100%;width:35%;background:var(--acc);border-radius:3px;animation:ldb 1.1s ease-in-out infinite}@keyframes ldb{0%{margin-left:-35%}100%{margin-left:100%}}
 #anaQ{width:100%;margin-top:8px;padding:10px;border-radius:10px;background:var(--panel2);border:1px solid var(--line);color:inherit;font:inherit;resize:vertical}
 #anaBtn{white-space:nowrap}
+/* v0.07: kolory mięśni, select widoczności, analiza bez AI */
+.mdot{width:11px;height:11px;margin:0 2px 0 0;box-shadow:0 0 0 1px #0006}
+.vsel{font-size:11px;padding:2px 2px;height:24px;max-width:74px;flex:none;background:#1b2231;color:var(--mut);border:1px solid var(--line);border-radius:6px;cursor:pointer}
+.vsel:hover,.vsel:focus{color:var(--tx);border-color:#4a5a80;outline:none}
+.vsel[data-v="h"]{opacity:.55}.vsel[data-v="g"]{color:#9aa3b2}.vsel[data-v="f"]{color:#ffd23f;border-color:#ffd23f66}
+.achips{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 8px}
+.achip{font-size:12.5px;padding:6px 10px;border-radius:999px;border:1px solid var(--line);background:#1b2231;color:var(--tx);cursor:pointer;line-height:1.2;text-align:left}
+.achip:hover{border-color:#4a5a80}.achip.on{background:var(--acc);border-color:var(--acc);color:#fff}
+.achip.tr{font-size:12px;padding:5px 9px}.achip.ex{font-size:11.5px;color:var(--mut);border-radius:10px}
+.aex2{margin-top:10px;font-size:12px;color:var(--mut)}.aex2 summary{cursor:pointer;padding:4px 0}
+.arow.cause{cursor:pointer}.arow.cause.on{background:#4da3ff1f;box-shadow:inset 3px 0 0 var(--acc)}.ctit{font-size:13px;line-height:1.3}
+.asub.by{color:var(--mut);font-size:11.5px;margin-top:3px}
+.car0{width:34px;flex:none}.vsel{max-width:66px}

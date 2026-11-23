@@ -1,10 +1,19 @@
-# 05 Anatomia — v0.06
+# 05 Anatomia — v0.07
 
-Interaktywny model 3D **kończyny górnej, głowy i szyi oraz tułowia, miednicy i uda** (prawa / lewa = lustro / obie): 32 kości, 67 siatek mięśniowych (51 mięśni), 109 punktów kostnych, **22 stawy** (typ, osie, powierzchnie, antagoniści, torebki) oraz czaszka i kręgi szyjne (wczytywane na żądanie). Nazwy polskie (duże) i łacińskie (pod spodem, w nawiasie), wyszukiwarka po wszystkich nazwach (PL/łac./ang.), regiony (bark · ramię · przedramię · dłoń), obrót modelu, początki (niebieski) i przyczepy końcowe (pomarańczowy) mięśni na kościach.
+Interaktywny model 3D **kończyny górnej, głowy i szyi, tułowia, miednicy, uda oraz podudzia i stopy** (prawa / lewa = lustro / obie): 32 kości, 67 siatek mięśniowych (51 mięśni), 109 punktów kostnych, **22 stawy** (typ, osie, powierzchnie, antagoniści, torebki) oraz czaszka i kręgi szyjne (wczytywane na żądanie). Nazwy polskie (duże) i łacińskie (pod spodem, w nawiasie), wyszukiwarka po wszystkich nazwach (PL/łac./ang.), regiony (bark · ramię · przedramię · dłoń), obrót modelu, początki (niebieski) i przyczepy końcowe (pomarańczowy) mięśni na kościach.
 
 - Adres: https://anatomia.smialo.org/ (domena Workera podpięta 2026-11-16, tymczasowo do 2026-12-31) oraz https://projects.michus.workers.dev/05/ (stały). Żaden z nich nie jest za Cloudflare Access.
 - Technologia: three.js (WebGL) + three-mesh-bvh; jeden `index.html` + dwa pliki GLB (`public/`).
 - Dane: `data/data.json` (nazwy, opisy, przyczepy, pozycje punktów).
+
+## v0.07
+- **Kolory**: każdy mięsień ma własny kolor (`data.groups[k].col`, 113 odcieni rozłożonych tak, by sąsiadujące mięśnie się różniły — `tools/colors.py`: graf sąsiedztwa z siatek 3D + kolorowanie DSATUR w przestrzeni Lab).
+- **Najechanie kursorem** (na model lub na pozycję listy) na mięsień/kość: reszta modelu traci 40% krycia.
+- **Lista mięśni**: zamiast „oka” mały `select` (Pokaż / Tło / Wyróżnij / Ukryj) + kolorowa kropka; klik w nazwę nigdy nie chowa mięśnia (zdejmuje Ukryj/Tło).
+- Nowy region **Podudzie i stopa**: 29 grup mięśni (goleń, łydka, Achilles, rozcięgno podeszwowe, mięśnie stopy), 16 kości (piszczel, strzałka, rzepka, kości stopy), `lower.glb` doczytywany na żądanie; udo i kość udowa z regionu Tułów (widoczne razem w widoku kolana). Mapa ciała: osobne strefy uda i podudzia.
+- **🔎 Analiza objawów bez AI** (działa w przeglądarce, offline): okolica (12: lędźwie, górne plecy, kark, żuchwa, bark, łokieć, nadgarstek, biodro, udo, kolano, podudzie, kostka/stopa) + czynniki (siedzenie, dźwiganie, schody, bieganie, noc, ulga w zgięciu…) + opis własnymi słowami → 72 przyczyny z prawdopodobieństwem %, mięśnie, które mogą boleć (szansa %), co wzmocnić (ćwiczenia z dawkowaniem), co rozciągać, kiedy do lekarza. Pozycje (dziecka, deska…) dają dodatkową zakładkę „Pozycja” z podziałem pracy mięśni. Baza wiedzy: `src/kb_*.js`, silnik: `src/symptoms.js`. Prawdopodobieństwa = częstość × czynniki (heurystyka edukacyjna, nie diagnoza; treści do przeglądu przez fizjoterapeutę).
+- Z Workera usunięto endpoint `/api/anatomia/analyze` (AI nie jest już używane).
+- Brak stawów biodra/kolana/kostki w zakładce Stawy (planowane).
 
 ## v0.06
 - **🔎 Analiza objawów**: opisz pozycję/ruch i dyskomfort (np. „ból w lędźwiach w pozycji dziecka”) → mięśnie na modelu w kolorach (główne / pomocnicze / stabilizatory), szacunkowy udział % (suma = 100), tryb pracy (czynny / izometryczny / rozciągany / skrócony), możliwe przyczyny, co **wzmocnić** (zielone), co **rozciągać** (niebieskie) z konkretnymi ćwiczeniami, objawy alarmowe. 9 wzorców wbudowanych działa offline (`src/analysis.js`), a dla innych opisów — AI przez Workera (`/api/anatomia/analyze`: Claude, gdy jest `ANTHROPIC_API_KEY`, inaczej Workers AI/Llama; limit 15 zapytań/h/IP, hash w D1 `ana_rl`). Procenty to oszacowania edukacyjne, nie pomiar EMG; narzędzie nie jest diagnozą.

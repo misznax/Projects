@@ -3,7 +3,8 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
-import { matchLocal, normalize as anaNormalize, sideHint, EXAMPLES, TRYB, ROLA } from './analysis.js';
+import { TRYB, ROLA } from './analysis.js';
+import { AREAS, TRIG, SYMPTOM_EXAMPLES, POS_EXAMPLES, parseText, run as runSym } from './symptoms.js';
 
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
@@ -18,7 +19,7 @@ const norm = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').rep
 
 /* ---------- dane ---------- */
 const REGION_NAME = Object.fromEntries(DATA.regions);
-const REG_ORDER = ['bark', 'ramie', 'przedramie', 'dlon', 'glowa', 'tulow'];
+const REG_ORDER = ['bark', 'ramie', 'przedramie', 'dlon', 'glowa', 'tulow', 'podudzie'];
 const G = DATA.groups; // key -> grupa mięśniowa
 const MUS = new Map(DATA.muscles.map((m) => [m.id, m]));
 const BON = new Map(DATA.bones.map((b) => [b.id, b]));
@@ -35,6 +36,9 @@ for (const j of JN) for (const pr of j.pairs) {
 }
 const capOwn = new Map(); for (const j of JN) for (const c of j.caps) { if (!capOwn.has(c)) capOwn.set(c, []); capOwn.get(c).push(j); }
 const OTHER = new Set(['extret', 'flexret', 'palmapo']);
+// mięśnie uda (region „tułów”), które pokazujemy też w widoku „Podudzie i stopa” (kolano)
+const LEGX = new Set(['rectfem', 'vastlat', 'vastmed', 'vastint', 'sartorius', 'pectineus', 'addlong', 'addbrev', 'addmag', 'gracilis', 'bicfem', 'semitend', 'semimem', 'tfl']);
+const LEGXB = new Set(['Q001']); // udowa
 for (const [k, g] of Object.entries(G)) { g.key = k; g.parts = DATA.muscles.filter((m) => m.grp === k); g.lms = []; }
 const lmsByBone = new Map();
 for (const l of DATA.lms) { if (!lmsByBone.has(l.bone)) lmsByBone.set(l.bone, []); lmsByBone.get(l.bone).push(l); }
@@ -69,9 +73,10 @@ controls.addEventListener('change', dirty);
 
 /* ---------- materiały ---------- */
 const hash = (s) => { let h = 0; for (const c of s) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h; };
-const musMat = (g) => {
-  const h = hash(g), c = new THREE.Color().setHSL((3 + (h % 9)) / 360, 0.62 + (h % 5) * 0.02, 0.29 + (h % 7) * 0.012);
-  return new THREE.MeshStandardMaterial({ color: c, roughness: 0.52, metalness: 0, envMapIntensity: 0.9 });
+const musMat = (g) => { // każdy mięsień ma własny kolor (data.groups[k].col — rozłożone tak, by sąsiednie mięśnie się różniły)
+  const col = G[g].col; const h = hash(g);
+  const c = col ? new THREE.Color(col) : new THREE.Color().setHSL((h % 360) / 360, 0.6, 0.45);
+  return new THREE.MeshStandardMaterial({ color: c, roughness: 0.5, metalness: 0, envMapIntensity: 0.85 });
 };
 const MAT = {
   bone: new THREE.MeshStandardMaterial({ color: 0xe9e0c9, roughness: 0.68, metalness: 0, envMapIntensity: 0.8 }),
@@ -83,9 +88,17 @@ const MAT = {
   org: new THREE.MeshBasicMaterial({ color: 0x2f8cff, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3, side: THREE.DoubleSide }),
   ins: new THREE.MeshBasicMaterial({ color: 0xffa21f, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3, side: THREE.DoubleSide }),
 };
-const HI_COL = ['#ff4b3a', '#35c46a', '#f2c53d', '#e05bd0', '#2fc7d6', '#9b7bff', '#ff8a8a'];
-const HI = HI_COL.map((c) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.4, emissive: new THREE.Color(c).multiplyScalar(0.22), envMapIntensity: 1 }));
-const ANAM = Object.fromEntries(Object.entries({ g: '#ff3b30', p: '#ff9f0a', s: '#30c4d6', osl: '#34c759', roz: '#4da3ff', focus: '#fff27a' }).map(([k, c]) => [k, new THREE.MeshStandardMaterial({ color: c, roughness: 0.4, emissive: new THREE.Color(c).multiplyScalar(k === 'focus' ? 0.45 : 0.25), envMapIntensity: 1, transparent: true, opacity: k === 'focus' ? 0.95 : 0.8, depthWrite: false })]));
+const tintCache = new Map(), fadeCache = new Map();
+const FADE = 0.6; // po najechaniu na mięsień reszta modelu traci 40% krycia
+function tintOf(k, em, opq) { // własny kolor mięśnia + poświata (em) i ew. półprzezroczystość (opq)
+  const key = k + '|' + em + '|' + opq; let m = tintCache.get(key);
+  if (!m) { const base = grpMat[k]; m = base.clone(); m.emissive = base.color.clone().multiplyScalar(em); m.roughness = 0.42; m.userData = { base, opq }; tintCache.set(key, m); }
+  const o = m.userData.base.opacity * m.userData.opq; m.opacity = o; m.transparent = o < 1; m.depthWrite = o >= 0.65; return m;
+}
+function fadeOf(mat) {
+  let f = fadeCache.get(mat); if (!f) { f = mat.clone(); f.transparent = true; f.depthWrite = false; fadeCache.set(mat, f); }
+  f.opacity = (mat.opacity ?? 1) * FADE; return f;
+}
 const capMats = new Map(); const capMatFor = (j) => { if (!capMats.has(j.shape)) capMats.set(j.shape, new THREE.MeshStandardMaterial({ color: SHP[j.shape].c, roughness: 0.5, transparent: true, opacity: 0.5, depthWrite: false, side: THREE.DoubleSide, emissive: new THREE.Color(SHP[j.shape].c).multiplyScalar(0.25) })); return capMats.get(j.shape); };
 const grpMat = {};
 for (const k of Object.keys(G)) {
@@ -97,9 +110,9 @@ for (const k of Object.keys(G)) {
 const LAYERS0 = () => ({ bones: true, muscles: true, ctx: false, other: false, att: false, joints: false, cap: false, skull: false, lig: false, nerv: false, vess: false });
 const S = {
   region: 'all', tab: 'mus', layers: LAYERS0(), side: 'r',
-  hidden: new Set(), sel: null, // {t:'grp'|'part'|'bone'|'lm'|'joint', id, side?}
+  hidden: new Set(), ghosted: new Set(), focused: new Set(), hov: null, sel: null, // {t:'grp'|'part'|'bone'|'lm'|'joint', id, side?}
   multiMode: false, multi: new Map(), // klucz grupy -> indeks koloru
-  ghostBg: true, showPins: false, muscleOpacity: 1, axial: false, trunk: false, ana: null,
+  ghostBg: true, showPins: false, muscleOpacity: 1, axial: false, trunk: false, leg: false, ana: null,
 };
 try { const sv = localStorage.getItem('anatomia.side'); if (sv === 'r' || sv === 'l' || sv === 'b') S.side = sv; } catch (e) {}
 const mkSide = (k) => ({ k, mus: new Map(), bone: new Map(), patch: new Map(), cap: new Map(), mk: new Map(), str: new Map() });
@@ -206,6 +219,22 @@ function ensureTrunk() {
 }
 const needTrunk = (sel) => { if (!sel) return false; if (sel.t === 'bone') return BON.get(sel.id)?.kind === 'trunk'; if (sel.t === 'grp' || sel.t === 'part') return G[grpOf(sel)].region === 'tulow'; return false; };
 
+let legP = null; // podudzie i stopa — wczytywane na żądanie (2 MB); udo i kość udowa pochodzą z pliku tułowia
+function ensureLeg() {
+  if (S.leg) return Promise.resolve(); if (legP) return legP;
+  toast('Wczytywanie podudzia i stopy (ok. 2 MB)…');
+  legP = ready.then(() => Promise.all([loadGLB('lower.glb', 'x'), ensureTrunk()])).then(([g]) => {
+    g.updateMatrixWorld(true); const ml = [], bl = [];
+    g.traverse((o) => { if (!o.isMesh) return; if (MUS.has(o.name)) ml.push(o); else if (BON.has(o.name)) bl.push(o); });
+    const cl2 = (o) => { const c = new THREE.Mesh(o.geometry, o.material); c.position.copy(o.position); c.quaternion.copy(o.quaternion); c.scale.copy(o.scale); c.userData = { ...o.userData, side: 'l' }; c.visible = false; rootL.add(c); return c; };
+    for (const o of ml) { const m = MUS.get(o.name); o.userData = { kind: 'mus', id: m.id, grp: m.grp, side: 'r' }; o.material = grpMat[m.grp]; o.geometry.computeBoundsTree(); o.visible = false; root.attach(o); objs.mus.set(m.id, o); const c = cl2(o); SIDE.l.mus.set(m.id, c); pickables.push(o, c); }
+    for (const o of bl) { const b = BON.get(o.name); o.userData = { kind: 'bone', id: b.id, side: 'r' }; o.material = MAT.bone; o.geometry.computeBoundsTree(); o.visible = false; root.attach(o); objs.bone.set(b.id, o); pickables.push(o); const c = cl2(o); SIDE.l.bone.set(b.id, c); pickables.push(c); }
+    S.leg = true; toast(''); apply();
+  }).catch((e) => { toast('Nie udało się wczytać podudzia: ' + e.message); legP = null; });
+  return legP;
+}
+const needLeg = (sel) => { if (!sel) return false; if (sel.t === 'bone') return BON.get(sel.id)?.kind === 'leg'; if (sel.t === 'grp' || sel.t === 'part') return G[grpOf(sel)].region === 'podudzie'; return false; };
+
 const structP = {};
 function ensureStruct(f) { // f: 'lig' | 'nerv' | 'vess'
   if (structP[f]) return structP[f];
@@ -232,6 +261,7 @@ const jointRegionOk = (j) => regionOk(j.reg) && (j.reg !== 'glowa' || S.layers.s
 function curGroups() { // Map: klucz grupy -> indeks koloru
   const m = new Map(S.multi); const s = S.sel;
   if (s && (s.t === 'grp' || s.t === 'part')) { const k = s.t === 'grp' ? s.id : MUS.get(s.id).grp; if (!m.has(k)) m.set(k, 0); }
+  for (const k of S.focused) if (!m.has(k)) m.set(k, 0);
   const ac = anaColors(); if (ac) for (const k of ac.keys()) if (!m.has(k)) m.set(k, 0);
   return m;
 }
@@ -242,9 +272,11 @@ function neededBones(gs) { // kości, na których leżą przyczepy zaznaczonych 
 }
 function apply() {
   if (!S.box) return;
+  { const op = S.muscleOpacity; for (const k of Object.keys(grpMat)) { const m = grpMat[k]; if (m.opacity !== op) { m.opacity = op; m.transparent = op < 1; m.depthWrite = op >= 0.65; m.needsUpdate = true; } } }
   const sel = S.sel, gm = curGroups(), gs = new Set(gm.keys()), need = neededBones(gs);
   if (!S.axial) for (const k of gs) if (G[k].region === 'glowa') { ensureAxial(); break; }
   if (!S.trunk) for (const k of gs) if (G[k].region === 'tulow') { ensureTrunk(); break; }
+  if (!S.leg) for (const k of gs) if (G[k].region === 'podudzie') { ensureLeg(); break; }
   const AC = anaColors(), AP = anaParts(), anaRegs = S.ana ? new Set(anaAllKeys(S.ana).map((k) => G[k].region)) : null;
   const sj = sel && sel.t === 'joint' ? JMAP.get(sel.id) : null;
   const jb = new Set(sj ? sj.bones : []);
@@ -267,32 +299,34 @@ function apply() {
   for (const SD of [SIDE.r, SIDE.l]) {
     const on = S.side === 'b' || S.side === SD.k;
     for (const [id, o] of SD.mus) {
-      const m = MUS.get(id), g = G[m.grp];
-      let vis = on && S.layers.muscles && !S.hidden.has(m.grp) && (OTHER.has(m.grp) ? S.layers.other : true);
-      let ghost = false;
-      if (g.region === 'glowa' || g.region === 'tulow') vis = vis && (S.region === g.region || gs.has(m.grp));
-      else if (!regionOk(g.region)) { if (S.ghostBg && S.layers.muscles && !OTHER.has(m.grp) && on) { vis = true; ghost = true; } else vis = false; }
-      if (anaRegs && !gs.has(m.grp)) { vis = on && S.layers.muscles && !S.hidden.has(m.grp) && !OTHER.has(m.grp) && anaRegs.has(g.region); ghost = false; }
-      if (on && gs.has(m.grp)) { vis = true; ghost = false; }
+      const m = MUS.get(id), g = G[m.grp], k = m.grp;
+      let vis = on && S.layers.muscles && !S.hidden.has(k) && (OTHER.has(k) ? S.layers.other : true);
+      let ghost = vis && S.ghosted.has(k);
+      if (g.region === 'glowa' || g.region === 'tulow' || g.region === 'podudzie') vis = vis && (S.region === g.region || gs.has(k) || (S.region === 'podudzie' && LEGX.has(k)));
+      else if (!regionOk(g.region)) { if (S.ghostBg && S.layers.muscles && !OTHER.has(k) && on) { vis = true; ghost = true; } else vis = false; }
+      if (anaRegs && !gs.has(k)) { vis = on && S.layers.muscles && !S.hidden.has(k) && !OTHER.has(k) && anaRegs.has(g.region); ghost = vis && S.ghosted.has(k); }
+      if (on && gs.has(k)) { vis = true; ghost = false; }
       o.visible = vis;
-      let mat = grpMat[m.grp];
-      const isSel = gs.has(m.grp) && !(partSel && MUS.get(partSel).grp === m.grp && partSel !== id && !S.multi.has(m.grp));
-      if (isSel) mat = HI[gm.get(m.grp) % HI.length]; else if (ghost || (hasSel && vis)) mat = MAT.ghost;
-      if (AC && AC.has(m.grp)) mat = AP.get(m.grp) && !AP.get(m.grp).test(m.en) ? MAT.ghost : AC.get(m.grp);
-      o.material = mat; o.renderOrder = mat === MAT.ghost ? 2 : 0;
+      let mat = grpMat[k];
+      const isSel = gs.has(k) && !(partSel && MUS.get(partSel).grp === k && partSel !== id && !S.multi.has(k));
+      if (AC && AC.has(k)) { const v = AC.get(k); mat = AP.get(k) && !AP.get(k).test(m.en) ? MAT.ghost : tintOf(k, v.em, v.op); }
+      else if (isSel) mat = tintOf(k, 0.24, 1);
+      else if (ghost || (hasSel && vis)) mat = MAT.ghost;
+      o.userData.gh = mat === MAT.ghost; o.material = mat; o.renderOrder = mat === MAT.ghost ? 2 : 0;
     }
     for (const [id, o] of SD.bone) {
       const b = BON.get(id), mid = MIDB.has(id); if (SD.k === 'l' && mid) continue;
-      const sideOn = mid || on, ctxLayer = b.kind === 'ctx', ax = b.kind === 'axial', tr = b.kind === 'trunk';
-      let vis = bonesOn && sideOn && (ctxLayer ? (S.layers.ctx || need.has(id)) : ax ? (S.layers.skull || S.region === 'glowa') : tr ? (S.region === 'tulow' || !!(anaRegs && anaRegs.has('tulow'))) : true);
+      const sideOn = mid || on, ctxLayer = b.kind === 'ctx', ax = b.kind === 'axial', tr = b.kind === 'trunk', lg = b.kind === 'leg';
+      const legCtx = LEGXB.has(id) && (S.region === 'podudzie' || !!(anaRegs && anaRegs.has('podudzie')));
+      let vis = bonesOn && sideOn && (ctxLayer ? (S.layers.ctx || need.has(id)) : ax ? (S.layers.skull || S.region === 'glowa') : tr ? (S.region === 'tulow' || !!(anaRegs && anaRegs.has('tulow')) || legCtx) : lg ? (S.region === 'podudzie' || !!(anaRegs && anaRegs.has('podudzie'))) : true);
       let ghost = false;
-      if (!ctxLayer && !ax && !tr && !regionOk(b.region)) { if (S.ghostBg && bonesOn && sideOn) { vis = true; ghost = true; } else vis = false; }
+      if (!ctxLayer && !ax && !tr && !lg && !regionOk(b.region)) { if (S.ghostBg && bonesOn && sideOn) { vis = true; ghost = true; } else vis = false; }
       if ((need.has(id) || selBone === id || jb.has(id)) && sideOn) { vis = true; ghost = false; }
       o.visible = vis;
       let mat = ctxLayer ? MAT.ctx : MAT.bone;
       if (selBone === id) mat = MAT.hiBone;
       else if (ghost || (gs.size && !need.has(id)) || (sj && !jb.has(id))) mat = MAT.ghostBone;
-      o.material = mat; o.renderOrder = mat === MAT.ghostBone ? 2 : 0;
+      o.userData.gh = mat === MAT.ghostBone; o.material = mat; o.renderOrder = mat === MAT.ghostBone ? 2 : 0;
     }
     for (const [id, o] of SD.patch) {
       const role = patchOn.get(id); o.visible = !!role && on && SD.bone.get(patchBone(id))?.visible !== false;
@@ -311,9 +345,21 @@ function apply() {
       j.mat.opacity = sj ? (isSel ? (j.caps.length ? 0.4 : 0.62) : 0.2) : 0.5;
     }
   }
-  const op = S.muscleOpacity;
-  for (const k of Object.keys(grpMat)) { const m = grpMat[k]; m.opacity = op; m.transparent = op < 1; m.depthWrite = op >= 0.65; m.needsUpdate = true; }
-  updatePins(); dirty();
+  applyHover(); updatePins(); dirty();
+}
+function applyHover() { // najechany mięsień / kość zostaje w pełni widoczny, reszta modelu ma o 40% mniejsze krycie
+  const h = S.hov; if (!h) return;
+  for (const SD of [SIDE.r, SIDE.l]) {
+    for (const [id, o] of SD.mus) {
+      if (!o.visible) continue; const k = MUS.get(id).grp;
+      if (h.t === 'grp' && h.id === k) { o.material = tintOf(k, 0.2, 1); o.renderOrder = 0; } else o.material = fadeOf(o.material);
+    }
+    for (const [id, o] of SD.bone) { if (!o.visible || (SD.k === 'l' && MIDB.has(id))) continue; if (h.t === 'bone' && h.id === id) { o.material = MAT.hiBone; o.renderOrder = 0; } else o.material = fadeOf(o.material); }
+    for (const [id, o] of SD.str) if (o.visible) o.material = fadeOf(o.material);
+  }
+}
+function setHover(h) {
+  const a = S.hov, same = (!a && !h) || (a && h && a.t === h.t && a.id === h.id); if (same) return; S.hov = h; apply();
 }
 const patchBoneMap = new Map(DATA.patches.map((p) => [p.id, p.bone]));
 const patchBone = (id) => patchBoneMap.get(id);
@@ -378,8 +424,8 @@ const DIRS = { front: [0, 0.05, 1], back: [0, 0.05, -1], lat: [-1, 0.05, 0.12], 
 function regionBox(region) {
   const list = []; const R = region;
   for (const SD of activeSides()) {
-    for (const [id, o] of SD.mus) if (R === 'all' ? !OTHER.has(MUS.get(id).grp) : G[MUS.get(id).grp].region === R) list.push(o);
-    for (const [id, o] of SD.bone) { const b = BON.get(id); if (R === 'all' ? b.kind === 'bone' : b.region === R) list.push(o); }
+    for (const [id, o] of SD.mus) { const k = MUS.get(id).grp; if (R === 'all' ? !OTHER.has(k) && G[k].region !== 'podudzie' && G[k].region !== 'tulow' && G[k].region !== 'glowa' : (G[k].region === R || (R === 'podudzie' && LEGX.has(k)))) list.push(o); }
+    for (const [id, o] of SD.bone) { const b = BON.get(id); if (R === 'all' ? b.kind === 'bone' : (b.region === R || (R === 'podudzie' && LEGXB.has(id)))) list.push(o); }
   }
   return list;
 }
@@ -397,6 +443,8 @@ function select(sel, opts = {}) {
   if (S.multiMode && sel) exitMulti(true);
   if (sel && needAxial(sel) && !S.axial) { ensureAxial().then(() => select(sel, opts)); return; }
   if (sel && needTrunk(sel) && !S.trunk) { ensureTrunk().then(() => select(sel, opts)); return; }
+  if (sel && needLeg(sel) && !S.leg) { ensureLeg().then(() => select(sel, opts)); return; }
+  if (sel && (sel.t === 'grp' || sel.t === 'part')) { const k = grpOf(sel); S.hidden.delete(k); S.ghosted.delete(k); } // klik w nazwę nigdy nie chowa mięśnia
   if (sel && sel.t === 'str') { const f = STRK[STR.get(sel.id).t]; if (!SIDE.r.str.has(sel.id)) { S.layers[f] = true; const el = $('#l' + ({ lig: 'Lig', nerv: 'Nerv', vess: 'Vess' })[f]); if (el) el.checked = true; ensureStruct(f).then(() => select(sel, opts)); return; } if (STR.get(sel.id).reg === 'glowa' && !S.axial) { ensureAxial(); } }
   S.sel = sel;
   apply(); renderInfo(); markList();
@@ -412,7 +460,7 @@ function select(sel, opts = {}) {
   if (window.innerWidth < 820) closeDrawer();
 }
 /* wielokrotny wybór mięśni */
-const nextIdx = () => { const used = new Set(S.multi.values()); for (let i = 0; i < HI.length; i++) if (!used.has(i)) return i; return S.multi.size % HI.length; };
+const nextIdx = () => 0; // kolory mięśni są własne (data.groups[k].col); wartość w S.multi nie wpływa już na kolor
 function enterMulti() {
   if (S.multiMode) return; S.multiMode = true; $('#multiBtn').classList.add('on');
   if (S.sel && (S.sel.t === 'grp' || S.sel.t === 'part')) S.multi.set(grpOf(S.sel), 0);
@@ -440,7 +488,7 @@ function pick(ev) {
   ray.setFromCamera(ndc, camera); ray.firstHitOnly = true;
   if (pinGroup.children.length) { const h = ray.intersectObjects(pinGroup.children, false); if (h.length) return { pin: h[0].object.userData }; }
   const mk = markerMeshes.filter((m) => m.visible); if (mk.length) { const h = ray.intersectObjects(mk, false); if (h.length) return { obj: h[0].object }; }
-  const vis = pickables.filter((o) => o.visible && o.material !== MAT.ghost && o.material !== MAT.ghostBone);
+  const vis = pickables.filter((o) => o.visible && !o.userData.gh);
   const h = ray.intersectObjects(vis, false); return h.length ? { obj: h[0].object } : null;
 }
 let down = null;
@@ -463,6 +511,7 @@ const tip = $('#tip'); let lastMove = 0;
 canvas.addEventListener('pointermove', (e) => {
   const now = performance.now(); if (now - lastMove < 60 || (e.buttons & 1) || e.pointerType === 'touch') return; lastMove = now;
   const h = pick(e);
+  if (!h || !h.obj) setHover(null); else { const u = h.obj.userData; setHover(u.kind === 'mus' ? { t: 'grp', id: u.grp } : u.kind === 'bone' ? { t: 'bone', id: u.id } : null); }
   if (!h) { tip.classList.remove('show'); canvas.style.cursor = 'grab'; return; }
   canvas.style.cursor = 'pointer';
   let pl, la;
@@ -470,7 +519,7 @@ canvas.addEventListener('pointermove', (e) => {
   else { const u = h.obj.userData; if (u.kind === 'mus') { const g = G[u.grp], m = MUS.get(u.id); pl = g.pl + (m.pl && g.parts.length > 1 ? ' — ' + m.pl.toLowerCase() : ''); la = g.la; } else if (u.kind === 'str') { const x = STR.get(u.id); pl = x.pl; la = x.la; } else if (u.kind === 'joint') { const j = JMAP.get(u.id); pl = j.pl; la = j.la; } else { const b = BON.get(u.id); pl = b.pl; la = b.la; } }
   tip.innerHTML = `<b>${esc(pl)}</b><small>(${esc(la)})</small>`; tip.style.transform = `translate(${e.clientX + 14}px, ${e.clientY + 14}px)`; tip.classList.add('show');
 });
-canvas.addEventListener('pointerleave', () => tip.classList.remove('show'));
+canvas.addEventListener('pointerleave', () => { tip.classList.remove('show'); setHover(null); });
 canvas.addEventListener('dblclick', (e) => {
   const r = canvas.getBoundingClientRect(); ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1); ray.setFromCamera(ndc, camera);
   const h = ray.intersectObjects(pickables.filter((o) => o.visible), false); if (h.length) flyTo(h[0].point, Math.max(0.1, camera.position.distanceTo(h[0].point) * 0.5), null, 500);
@@ -480,6 +529,16 @@ canvas.addEventListener('dblclick', (e) => {
 const listEl = $('#list');
 const rowHTML = (pl, la, extra = '') => `<span class="nm"><span class="pl">${esc(pl)}</span><span class="la">(${esc(la)})</span></span>${extra}`;
 const sdot = (j) => `<i class="sdot" style="background:${SHP[j.shape].c}"></i>`;
+const VIS_OPT = [['v', 'Pokaż'], ['g', 'Tło'], ['f', 'Wyróżnij'], ['h', 'Ukryj']];
+const visOf = (k) => (S.hidden.has(k) ? 'h' : S.ghosted.has(k) ? 'g' : S.focused.has(k) ? 'f' : 'v');
+const visSel = (k) => `<select class="vsel" data-vsel="${k}" data-v="${visOf(k)}" title="Widoczność mięśnia: widoczny / tło (półprzezroczysty) / wyróżniony / ukryty" aria-label="Widoczność mięśnia">${VIS_OPT.map(([x, n]) => `<option value="${x}"${x === visOf(k) ? ' selected' : ''}>${n}</option>`).join('')}</select>`;
+const clearVis = () => { S.hidden.clear(); S.ghosted.clear(); S.focused.clear(); };
+function setVis(k, v) {
+  S.hidden.delete(k); S.ghosted.delete(k); S.focused.delete(k);
+  if (v === 'h') S.hidden.add(k); else if (v === 'g') S.ghosted.add(k); else if (v === 'f') S.focused.add(k);
+  syncVis(); apply();
+}
+function syncVis() { $$('select.vsel', listEl).forEach((el) => { const v = visOf(el.dataset.vsel); el.value = v; el.dataset.v = v; }); }
 function renderList() {
   const regs = S.region === 'all' ? REG_ORDER : [S.region];
   let h = '';
@@ -493,8 +552,8 @@ function renderList() {
       for (const g of gs) {
         const multi = g.parts.length > 1;
         h += `<div class="grp" data-g="${g.key}"><div class="row" data-t="grp" data-id="${g.key}">
-          <button class="eye ${S.hidden.has(g.key) ? 'off' : ''}" data-eye="${g.key}" title="Pokaż / ukryj" aria-label="Pokaż lub ukryj">${eyeSvg}</button>
-          ${rowHTML(g.pl, g.la, multi ? `<button class="car" data-car="${g.key}" aria-label="Części">${g.parts.length}▾</button>` : '')}</div>`;
+          <i class="dotc mdot" style="background:${OTHER.has(g.key) ? '#d9c39a' : g.col}"></i>
+          ${rowHTML(g.pl, g.la, (multi ? `<button class="car" data-car="${g.key}" aria-label="Części">${g.parts.length}▾</button>` : '<span class="car0"></span>') + visSel(g.key))}</div>`;
         if (multi) { h += `<div class="parts" data-parts="${g.key}">`; for (const p of g.parts) h += `<div class="row sub" data-t="part" data-id="${p.id}">${rowHTML(p.pl, p.la)}</div>`; h += '</div>'; }
         h += '</div>';
       }
@@ -522,7 +581,7 @@ function renderList() {
     }
   } else {
     for (const r of regs) {
-      const bs = DATA.bones.filter((b) => (b.kind === 'bone' || b.kind === 'axial' || b.kind === 'trunk') && b.region === r).sort((a, b) => (a.pl.localeCompare(b.pl, 'pl', { numeric: true })));
+      const bs = DATA.bones.filter((b) => (b.kind === 'bone' || b.kind === 'axial' || b.kind === 'trunk' || b.kind === 'leg') && b.region === r).sort((a, b) => (a.pl.localeCompare(b.pl, 'pl', { numeric: true })));
       if (!bs.length) continue;
       h += `<div class="sec">${esc(REGION_NAME[r])} <i>${bs.length}</i></div>`;
       for (const b of bs) {
@@ -543,7 +602,7 @@ function renderList() {
 }
 const eyeSvg = '<svg viewBox="0 0 24 24" width="16" height="16"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>';
 function markList() {
-  $$('.row.on', listEl).forEach((e) => e.classList.remove('on'));
+  syncVis(); $$('.row.on', listEl).forEach((e) => e.classList.remove('on'));
   if (S.multiMode) { for (const k of S.multi.keys()) { const el = $(`.row[data-t="grp"][data-id="${k}"]`, listEl); if (el) el.classList.add('on'); } return; }
   const s = S.sel; if (!s) return;
   let el = $(`.row[data-t="${s.t}"][data-id="${s.id}"]`, listEl);
@@ -552,14 +611,21 @@ function markList() {
 }
 listEl.addEventListener('click', (e) => {
   if (e.target.closest('[data-tipx]')) { try { localStorage.setItem('anatomia.tipMulti', '1'); } catch (x) {} renderList(); return; }
-  const eye = e.target.closest('[data-eye]');
-  if (eye) { const k = eye.dataset.eye; S.hidden.has(k) ? S.hidden.delete(k) : S.hidden.add(k); eye.classList.toggle('off'); apply(); e.stopPropagation(); return; }
+  if (e.target.closest('select')) { e.stopPropagation(); return; }
   const car = e.target.closest('[data-car],[data-lcar]');
   if (car) { const p = $(`[data-parts="${car.dataset.car}"],[data-lparts="${car.dataset.lcar}"]`, listEl); p && p.classList.toggle('open'); e.stopPropagation(); return; }
   const row = e.target.closest('.row'); if (!row) return;
   if ((e.ctrlKey || e.metaKey || e.shiftKey) && row.dataset.t === 'grp') { toggleMulti(row.dataset.id); return; }
   select({ t: row.dataset.t, id: row.dataset.id });
 });
+
+listEl.addEventListener('change', (e) => { const sel = e.target.closest('select.vsel'); if (sel) setVis(sel.dataset.vsel, sel.value); });
+// najechanie na pozycję listy podświetla ją na modelu (reszta wygaszona o 40%)
+listEl.addEventListener('pointerover', (e) => {
+  if (e.pointerType && e.pointerType !== 'mouse') return; const row = e.target.closest('.row[data-t]'); if (!row || e.target.closest('select')) return;
+  const t = row.dataset.t; if (t === 'grp') setHover({ t: 'grp', id: row.dataset.id }); else if (t === 'part') setHover({ t: 'grp', id: MUS.get(row.dataset.id).grp }); else if (t === 'bone') setHover({ t: 'bone', id: row.dataset.id });
+});
+listEl.addEventListener('pointerleave', () => setHover(null));
 
 /* ---------- szukajka ---------- */
 const searchEl = $('#q'); const resEl = $('#results'); let searchActive = false;
@@ -611,7 +677,7 @@ function renderMulti() {
   let h = head(`Wybrane mięśnie (${keys.length})`, 'wybór wielokrotny', 'Tryb wielu mięśni');
   if (!keys.length) h += '<p class="desc">Klikaj mięśnie na modelu albo na liście, aby dodać lub usunąć je z zaznaczenia. Na komputerze działa też <b>Ctrl</b> / <b>Shift</b> + klik.</p>';
   else {
-    h += `<div class="chips mt">${keys.map((k) => `<span class="chip sel"><i class="dotc" style="background:${HI_COL[S.multi.get(k) % HI_COL.length]}"></i><button class="cn" data-t="grp" data-id="${k}">${esc(G[k].pl)} <small>(${esc(G[k].la)})</small></button><button class="rm" data-rm="${k}" aria-label="Usuń">×</button></span>`).join('')}</div>`;
+    h += `<div class="chips mt">${keys.map((k) => `<span class="chip sel"><i class="dotc" style="background:${G[k].col}"></i><button class="cn" data-t="grp" data-id="${k}">${esc(G[k].pl)} <small>(${esc(G[k].la)})</small></button><button class="rm" data-rm="${k}" aria-label="Usuń">×</button></span>`).join('')}</div>`;
     const rel = []; const seen = new Set();
     for (const a of keys) for (const b of ANT.get(a) || []) if (S.multi.has(b) && S.multi.get(a) !== S.multi.get(b)) { const id = [a, b].sort().join('|'); if (!seen.has(id)) { seen.add(id); rel.push([a, b]); } }
     if (rel.length) h += `<div class="subt">Antagoniści w zaznaczeniu</div><ul class="rel">${rel.map(([a, b]) => `<li>${esc(G[a].pl)} <b>⇄</b> ${esc(G[b].pl)}</li>`).join('')}</ul>`;
@@ -685,17 +751,17 @@ function renderInfo() {
 }
 infoEl.addEventListener('click', (e) => {
   const t = e.target;
-  const at = t.closest('[data-at]'); if (at && S.ana) { S.ana.tab = at.dataset.at; S.ana.focus = null; apply(); renderInfo(); anaFly(); return; }
+  const at = t.closest('[data-at]'); if (at && S.ana) { S.ana.tab = at.dataset.at; S.ana.focus = null; S.ana.cause = null; apply(); renderInfo(); anaFly(); return; }
+  const ac = t.closest('[data-ac]'); if (ac && S.ana) { const i = +ac.dataset.ac; S.ana.cause = S.ana.cause === i ? null : i; S.ana.focus = null; apply(); renderAna(true); anaFly(); return; }
   const ak = t.closest('[data-ak]'); if (ak && S.ana) { S.ana.focus = ak.dataset.ak; apply(); renderAna(true); const o = G[ak.dataset.ak].ids.map((i) => O('mus', i, defSide())); focusObjects(o, null, 0.14); return; }
   const ai = t.closest('[data-ai]'); if (ai) { select({ t: 'grp', id: ai.dataset.ai }); return; }
   if (t.closest('#anaClose')) { closeAna(); return; }
   if (t.closest('#anaNew')) { openAna(S.ana ? S.ana.q : ''); return; }
   if (t.closest('#anaFocus')) { anaFly(); return; }
-  if (t.closest('#anaAI')) { runAnalysis(S.ana.q, true); return; }
   if (t.closest('#anaBack')) { S.sel = null; apply(); renderInfo(); markList(); return; }
   if (t.closest('#ix') || t.closest('#bClear')) { select(null); return; }
   if (t.closest('#bFocus')) { const s = S.sel; S.sel = null; select(s); return; }
-  if (t.closest('#bIso')) { S.ghostBg = false; S.layers.bones = true; const s = S.sel; $('#ghostBg').checked = false; const gk = grpOf(s); for (const k of Object.keys(G)) { if (k !== gk) S.hidden.add(k); else S.hidden.delete(k); } renderList(); apply(); return; }
+  if (t.closest('#bIso')) { S.ghostBg = false; S.layers.bones = true; const s = S.sel; $('#ghostBg').checked = false; const gk = grpOf(s); clearVis(); for (const k of Object.keys(G)) if (k !== gk) S.hidden.add(k); renderList(); apply(); return; }
   if (t.closest('#bAnt')) { const k = grpOf(S.sel); setMulti([[k, 0], ...[...ANT.get(k)].map((a) => [a, 1])]); return; }
   if (t.closest('#bJm')) { const j = JMAP.get(S.sel.id); const m = new Map(); for (const pr of j.pairs) { for (const k of pr[1].filter(isG)) m.set(k, 0); } for (const pr of j.pairs) for (const k of pr[3].filter(isG)) if (!m.has(k)) m.set(k, 1); setMulti([...m]); return; }
   const mv = t.closest('[data-mv]'); if (mv) { const [jid, i] = mv.dataset.mv.split('|'); const pr = JMAP.get(jid).pairs[+i]; const m = new Map(); for (const k of pr[1].filter(isG)) m.set(k, 0); for (const k of pr[3].filter(isG)) if (!m.has(k)) m.set(k, 1); if (m.size) setMulti([...m]); return; }
@@ -708,103 +774,119 @@ infoEl.addEventListener('click', (e) => {
 });
 infoEl.addEventListener('change', (e) => { if (e.target.id === 'pinsToggle') { S.showPins = e.target.checked; updatePins(); dirty(); } });
 
-/* ---------- analiza objawów ---------- */
-const anaAllKeys = (a) => [...new Set([...a.res.miesnie, ...a.res.oslabione, ...a.res.rozciagac].map((x) => x.k))];
-function anaColors() {
-  const a = S.ana; if (!a) return null; const m = new Map();
-  if (a.tab === 'w') for (const x of a.res.oslabione) m.set(x.k, ANAM.osl);
-  else if (a.tab === 'r') for (const x of a.res.rozciagac) m.set(x.k, ANAM.roz);
-  else for (const x of a.res.miesnie) m.set(x.k, ANAM[x.rola]);
-  if (a.focus && m.has(a.focus)) m.set(a.focus, ANAM.focus);
+/* ---------- analiza objawów (offline, bez AI) ---------- */
+const anaAllKeys = (a) => [...new Set([...a.res.miesnie, ...a.res.oslabione, ...a.res.rozciagac, ...(a.res.poz ? a.res.poz.miesnie : []), ...a.res.przyczyny.flatMap((c) => (c.m || []).map(([k]) => ({ k })))].map((x) => x.k))];
+function anaItems() { // klucz grupy -> { em: poświata, op: krycie, p: RegExp części mięśnia | null }
+  const a = S.ana; if (!a) return null; const m = new Map(); const r = a.res;
+  const put = (k, em, op = 1, p = '') => m.set(k, { em, op, p: p ? new RegExp(p, 'i') : null });
+  if (a.tab === 'w') for (const x of r.oslabione) put(x.k, 0.3);
+  else if (a.tab === 'r') for (const x of r.rozciagac) put(x.k, 0.3);
+  else if (a.tab === 'z' && r.poz) for (const x of r.poz.miesnie) put(x.k, { g: 0.34, p: 0.2, s: 0.08 }[x.rola], x.rola === 's' ? 0.85 : 1, x.p);
+  else if (a.tab === 'p' && a.cause != null && r.przyczyny[a.cause]) for (const [k, w, p] of r.przyczyny[a.cause].m || []) put(k, { 3: 0.34, 2: 0.2, 1: 0.08 }[w], w === 1 ? 0.85 : 1, p);
+  else for (const x of r.miesnie) put(x.k, 0.08 + 0.3 * Math.min(1, x.pct / 60), x.pct < 22 ? 0.85 : 1, x.p);
+  if (a.focus && m.has(a.focus)) { const v = m.get(a.focus); m.set(a.focus, { ...v, em: 0.6, op: 1 }); }
   return m;
 }
-function anaParts() { // klucz grupy -> RegExp części mięśnia, którą pokazujemy (np. tylko część lędźwiowa)
-  const m = new Map(); if (!S.ana || S.ana.tab === 'w' || S.ana.tab === 'r') return m;
-  for (const x of S.ana.res.miesnie) if (x.p) m.set(x.k, new RegExp(x.p, 'i'));
-  return m;
-}
+const anaColors = () => anaItems();
+function anaParts() { const m = new Map(); const it = anaItems(); if (it) for (const [k, v] of it) if (v.p) m.set(k, v.p); return m; }
 function anaFly() {
   const ac = anaColors(), ap = anaParts(); if (!ac || !S.ana) return; const list = [];
   for (const SD of activeSides()) for (const k of ac.keys()) { const pr = ap.get(k); for (const i of G[k].ids) { const o = SD.mus.get(i); if (o && (!pr || pr.test(MUS.get(i).en))) list.push(o); } }
   const dir = new THREE.Vector3(...DIRS[{ przod: 'front', tyl: 'back', bok: 'lat' }[S.ana.res.widok] || 'back']); if (S.side === 'l' && dir.x) dir.x *= -1;
   focusObjects(list, dir, 0.2);
 }
+const LAB = (p) => (p >= 40 ? 'bardzo prawdopodobne' : p >= 22 ? 'prawdopodobne' : 'możliwe');
 function renderAna(keep) {
   const a = S.ana, r = a.res, st = infoEl.scrollTop;
-  const tabs = [['m', 'Mięśnie'], ['w', `Wzmocnić (${r.oslabione.length})`], ['r', `Rozciągać (${r.rozciagac.length})`], ['p', 'Przyczyny']];
-  const srcTxt = { wzorzec: 'wzorzec wbudowany', claude: 'analiza AI (Claude)', llama: 'analiza AI (tryb podstawowy)' }[r.src] || 'analiza AI';
-  const nm = (k, dot) => `<button class="an" data-ak="${k}"><i class="dotc" style="background:${dot}"></i>${esc(G[k].pl)} <small>(${esc(G[k].la)})</small></button><button class="ai" data-ai="${k}" title="Karta mięśnia" aria-label="Karta mięśnia">ⓘ</button>`;
-  let h = `<div class="ihead"><div><div class="itag">Analiza objawów · ${esc(srcTxt)}</div><h2>${esc(r.pozycja)}</h2><div class="ila">${esc(r.okolica)}</div></div><button class="x" id="anaClose" aria-label="Zamknij analizę">×</button></div>`;
-  if (a.note) h += `<div class="anote">${esc(a.note)}</div>`;
+  const tabs = [['p', 'Przyczyny'], ['m', 'Mięśnie'], ['w', `Wzmocnić (${r.oslabione.length})`], ['r', `Rozciągać (${r.rozciagac.length})`]]; if (r.poz) tabs.push(['z', 'Pozycja']);
+  const dot = (k) => (OTHER.has(k) ? '#d9c39a' : G[k].col);
+  const nm = (k) => `<button class="an" data-ak="${k}"><i class="dotc" style="background:${dot(k)}"></i>${esc(G[k].pl)} <small>(${esc(G[k].la)})</small></button><button class="ai" data-ai="${k}" title="Karta mięśnia" aria-label="Karta mięśnia">ⓘ</button>`;
+  let h = `<div class="ihead"><div><div class="itag">Analiza objawów · działa offline, bez AI</div><h2>${esc(r.pozycja)}</h2><div class="ila">${esc(r.okolica)}</div></div><button class="x" id="anaClose" aria-label="Zamknij analizę">×</button></div>`;
   h += `<p class="desc">${esc(r.podsumowanie)}</p><div class="atabs">${tabs.map(([k, n]) => `<button data-at="${k}" class="${a.tab === k ? 'on' : ''}">${esc(n)}</button>`).join('')}</div>`;
-  if (a.tab === 'm') {
-    h += `<div class="legend aleg">${['g', 'p', 's'].map((k) => `<span><i class="dotc" style="background:${ROLA[k][1]}"></i>${ROLA[k][0]}</span>`).join('')}</div>`;
+  if (a.tab === 'p') {
+    h += '<div class="subt">Możliwe przyczyny — prawdopodobieństwo</div><p class="small">Kliknij przyczynę, aby zobaczyć jej mięśnie na modelu.</p>';
+    r.przyczyny.forEach((x, i) => { h += `<div class="arow cause ${a.cause === i ? 'on' : ''}" data-ac="${i}"><div class="atop"><b class="ctit">${esc(x.t)}</b><span class="apct">${x.pct}%</span></div><div class="abar"><i style="width:${Math.min(100, x.pct * 1.6)}%;background:var(--acc)"></i></div><div class="asub">${esc(x.dlaczego)}</div></div>`; });
+    h += '<p class="small">% = szacunek: częstość danej przyczyny w tej okolicy × zaznaczone czynniki, znormalizowany do 100% (pokazane są przyczyny ≥ 4%). To heurystyka edukacyjna, nie diagnoza.</p>';
+  } else if (a.tab === 'm') {
+    h += '<div class="subt">Mięśnie, które mogą boleć — szansa zaangażowania</div>';
+    for (const x of r.miesnie) h += `<div class="arow ${a.focus === x.k ? 'on' : ''}"><div class="atop">${nm(x.k)}<span class="apct">${x.pct}%</span></div><div class="abar"><i style="width:${Math.min(100, x.pct * 1.6)}%;background:${dot(x.k)}"></i></div><div class="asub"><span class="tr">${LAB(x.pct)}</span> ${esc(x.opis)}</div></div>`;
+    h += '<p class="small">% = szansa, że mięsień uczestniczy w dolegliwości (suma po przyczynach, nie sumuje się do 100%). Kolor kropki = kolor mięśnia na modelu.</p>';
+  } else if (a.tab === 'w') {
+    h += '<div class="subt">Mięśnie do wzmocnienia (od najważniejszych)</div>';
+    for (const x of r.oslabione) h += `<div class="arow ${a.focus === x.k ? 'on' : ''}"><div class="atop">${nm(x.k)}</div><div class="asub">${esc(x.dlaczego)}</div><div class="aex">💪 ${esc(x.cwiczenie)}</div>${x.przez && x.przez.length ? `<div class="asub by">Dotyczy: ${esc(x.przez.join('; '))}</div>` : ''}</div>`;
+    if (!r.oslabione.length) h += '<p class="small">Brak wskazań do wzmacniania — to przypadek do oceny lekarza / dentysty.</p>';
+    h += '<p class="small">Zacznij od lżejszych wariantów, bez bólu ostrego; progresję ustal z fizjoterapeutą.</p>';
+  } else if (a.tab === 'r') {
+    h += '<div class="subt">Mięśnie do rozciągania / rozluźnienia</div>';
+    for (const x of r.rozciagac) h += `<div class="arow ${a.focus === x.k ? 'on' : ''}"><div class="atop">${nm(x.k)}</div><div class="aex">🧘 ${esc(x.jak)}</div>${x.przez && x.przez.length ? `<div class="asub by">Dotyczy: ${esc(x.przez.join('; '))}</div>` : ''}</div>`;
+    if (!r.rozciagac.length) h += '<p class="small">Brak wskazań.</p>';
+    h += '<p class="small">Rozciągaj do lekkiego napięcia — bez bólu; przy ostrym bólu najpierw odpoczynek.</p>';
+  } else if (a.tab === 'z' && r.poz) {
+    const z = r.poz;
+    h += `<div class="subt">${esc(z.pozycja)}</div><p class="small">${esc(z.podsumowanie)}</p><div class="legend aleg">${['g', 'p', 's'].map((k) => `<span>${ROLA[k][0]}</span>`).join('')}</div>`;
     for (const k of ['g', 'p', 's']) {
-      const xs = r.miesnie.filter((x) => x.rola === k); if (!xs.length) continue;
+      const xs = z.miesnie.filter((x) => x.rola === k); if (!xs.length) continue;
       h += `<div class="subt">${{ g: 'Główna praca', p: 'Mięśnie pomocnicze', s: 'Stabilizatory' }[k]} · ${xs.reduce((q, x) => q + x.pct, 0)}%</div>`;
-      for (const x of xs) h += `<div class="arow ${a.focus === x.k ? 'on' : ''}"><div class="atop">${nm(x.k, ROLA[k][1])}<span class="apct">${x.pct}%</span></div><div class="abar"><i style="width:${Math.min(100, x.pct * 3.2)}%;background:${ROLA[k][1]}"></i></div><div class="asub"><span class="tr">${esc(TRYB[x.tryb][0])}</span> ${esc(x.opis)}</div></div>`;
+      for (const x of xs) h += `<div class="arow ${a.focus === x.k ? 'on' : ''}"><div class="atop">${nm(x.k)}<span class="apct">${x.pct}%</span></div><div class="abar"><i style="width:${Math.min(100, x.pct * 3.2)}%;background:${dot(x.k)}"></i></div><div class="asub"><span class="tr">${esc(TRYB[x.tryb][0])}</span> ${esc(x.opis)}</div></div>`;
     }
     h += '<p class="small">% = szacowany udział mięśnia w napięciu/pracy w tej pozycji (suma = 100%) — oszacowanie edukacyjne, nie pomiar EMG.</p>';
-  } else if (a.tab === 'w') {
-    h += `<div class="legend aleg"><span><i class="dotc" style="background:#34c759"></i>kandydaci do wzmocnienia (zielone na modelu)</span></div>`;
-    for (const x of r.oslabione) h += `<div class="arow ${a.focus === x.k ? 'on' : ''}"><div class="atop">${nm(x.k, '#34c759')}</div><div class="asub">${esc(x.dlaczego)}</div><div class="aex">💪 ${esc(x.cwiczenie)}</div></div>`;
-    if (!r.oslabione.length) h += '<p class="small">Brak wskazań.</p>';
-  } else if (a.tab === 'r') {
-    h += `<div class="legend aleg"><span><i class="dotc" style="background:#4da3ff"></i>kandydaci do rozciągania (niebieskie na modelu)</span></div>`;
-    for (const x of r.rozciagac) h += `<div class="arow ${a.focus === x.k ? 'on' : ''}"><div class="atop">${nm(x.k, '#4da3ff')}</div><div class="aex">🧘 ${esc(x.jak)}</div></div>`;
-    if (!r.rozciagac.length) h += '<p class="small">Brak wskazań.</p>';
-  } else {
-    h += '<div class="subt">Możliwe przyczyny (od najbardziej prawdopodobnej)</div>';
-    for (const x of r.przyczyny) h += `<div class="arow"><b>${esc(x.t)}</b><div class="asub">${esc(x.dlaczego)}</div></div>`;
-    if (!r.przyczyny.length) h += '<p class="small">Brak wskazań.</p>';
   }
   if (r.alarm.length) h += `<div class="alarm"><b>⚠ Kiedy do lekarza:</b><ul>${r.alarm.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>`;
   h += '<p class="small">Narzędzie edukacyjne — nie jest diagnozą ani poradą medyczną. Przy bólu, który narasta, nie mija lub ma towarzyszące objawy, skonsultuj się z lekarzem lub fizjoterapeutą.</p>';
-  h += `<div class="btns"><button id="anaFocus">Przybliż</button><button id="anaNew">Nowa analiza</button>${r.src === 'wzorzec' ? '<button id="anaAI" title="Dokładniejsza analiza przez AI na Twoim opisie">Analiza AI</button>' : ''}<button id="anaClose2" class="pri">Zamknij analizę</button></div>`;
+  h += `<div class="btns"><button id="anaFocus">Przybliż</button><button id="anaNew">Nowa analiza</button><button id="anaClose2" class="pri">Zamknij analizę</button></div>`;
   infoEl.innerHTML = h; infoEl.classList.add('show'); if (keep) infoEl.scrollTop = st;
 }
 function closeAna() { S.ana = null; apply(); renderInfo(); markList(); }
 infoEl.addEventListener('click', (e) => { if (e.target.closest('#anaClose2')) closeAna(); });
-const anaInputHTML = (q = '', err = '') => `<h3>🔎 Analiza objawów</h3><p class="small">Opisz pozycję lub ruch i co czujesz: gdzie, kiedy, co przynosi ulgę. Zaznaczę mięśnie na modelu, oszacuję ich udział (%) oraz podpowiem, co wzmocnić, a co rozciągnąć.</p>${err ? `<div class="anote">${esc(err)}</div>` : ''}<textarea id="anaQ" rows="5" maxlength="1000" placeholder="np. Czuję napięcie w lędźwiach w pozycji dziecka; powolne zbliżanie kolan przynosi ulgę…">${esc(q)}</textarea><div class="btns"><button id="anaGo" class="pri">Analizuj</button></div><div class="small" style="margin:12px 0 6px">Przykłady (kliknij, aby wstawić):</div><div class="chips">${EXAMPLES.map((e) => `<button class="chip" data-aex="${esc(e.text)}">${esc(e.text)}</button>`).join('')}</div><p class="small">⚠ Narzędzie edukacyjne — nie jest diagnozą. Procenty to oszacowania.</p>`;
-function openAna(q = '', err = '') { showModal(anaInputHTML(q, err)); setTimeout(() => { const t = $('#anaQ'); if (t) { t.focus(); t.setSelectionRange(t.value.length, t.value.length); } }, 60); }
-async function showAna(raw, q, note) {
-  const res = anaNormalize(raw, (k) => !!G[k] && !OTHER.has(k));
-  if (!res.miesnie.length) { openAna(q, 'Nie udało się wskazać mięśni dla tego opisu — spróbuj opisać dokładniej (pozycja, okolica ciała, kiedy boli).'); return; }
-  exitMulti(true); S.sel = null; S.hidden.clear();
-  S.ana = { res, q, tab: 'm', focus: null, note: note || '' };
-  S.side = sideHint(q); $$('#sides button').forEach((b) => b.classList.toggle('on', b.dataset.s === S.side));
+
+// formularz: okolica + czynniki + strona + opis własnymi słowami
+const AF = { area: null, trig: new Set(), side: 'b', auto: false };
+const anaAreaOf = (id) => AREAS.find((x) => x.id === id);
+function anaFormHTML() {
+  const A = AF.area ? anaAreaOf(AF.area) : null;
+  return `<div class="subt">1. Gdzie boli?</div><div class="achips" id="anaAreas">${AREAS.map((a) => `<button class="achip ${AF.area === a.id ? 'on' : ''}" data-aarea="${a.id}">${a.e} ${esc(a.n)}</button>`).join('')}</div>
+  <div class="subt">2. Kiedy boli / co nasila? <small>(zaznacz wszystko, co pasuje)</small></div>
+  <div class="achips" id="anaTrig">${A ? A.tr.map((t) => `<button class="achip tr ${AF.trig.has(t) ? 'on' : ''}" data-atrig="${t}">${esc(TRIG[t][0])}</button>`).join('') : '<span class="small">Wybierz okolicę — pokażę pasujące czynniki.</span>'}</div>
+  <div class="subt">3. Strona</div><div class="achips" id="anaSide">${[['r', 'Prawa'], ['l', 'Lewa'], ['b', 'Obie']].map(([k, n]) => `<button class="achip ${AF.side === k ? 'on' : ''}" data-aside="${k}">${n}</button>`).join('')}</div>`;
+}
+function refreshForm() { const f = $('#anaForm'); if (f) f.innerHTML = anaFormHTML(); }
+const anaInputHTML = (q = '', err = '') => `<h3>🔎 Analiza objawów</h3><p class="small">Wybierz okolicę i zaznacz, co się dzieje — albo opisz ból własnymi słowami (rozpoznam okolicę i czynniki). Wynik: prawdopodobne przyczyny (%), mięśnie na modelu, co wzmocnić i co rozciągać. Działa w przeglądarce, bez AI.</p>${err ? `<div class="anote">${esc(err)}</div>` : ''}
+<div id="anaForm">${anaFormHTML()}</div>
+<div class="subt">Opis własnymi słowami <small>(opcjonalnie — uzupełni wybór powyżej)</small></div>
+<textarea id="anaQ" rows="3" maxlength="1000" placeholder="np. Boli mnie kolano przy schodzeniu po schodach i po długim siedzeniu…">${esc(q)}</textarea>
+<div class="btns"><button id="anaGo" class="pri">Analizuj</button></div>
+<details class="aex2"><summary>Przykłady (kliknij, aby wstawić)</summary><div class="achips">${SYMPTOM_EXAMPLES.map((t) => `<button class="achip ex" data-aex="${esc(t)}">${esc(t)}</button>`).join('')}</div><div class="subt">Pozycje i ruchy — rozkład pracy mięśni</div><div class="achips">${POS_EXAMPLES.map((x) => `<button class="achip ex" data-aex="${esc(x.text)}">${esc(x.text)}</button>`).join('')}</div></details>`;
+function openAna(q = '', err = '') { showModal(anaInputHTML(q, err)); setTimeout(() => { const t = $('#anaQ'); if (t && !AF.area) { t.focus(); t.setSelectionRange(t.value.length, t.value.length); } }, 60); }
+function fillFromText(txt, force) { // podgląd rozpoznanej okolicy i czynników
+  const p = parseText(txt);
+  if (force || AF.auto || !AF.area) { if (p.area !== AF.area) AF.trig = new Set(); AF.area = p.area; AF.auto = true; }
+  if (p.area && p.area === AF.area) for (const x of p.triggers) AF.trig.add(x);
+  if (p.side && p.side !== 'b') AF.side = p.side;
+  refreshForm();
+}
+let fillT = null;
+async function showAna(res, q) {
+  if (!res || !res.miesnie.length) { openAna(q, 'Nie udało się wskazać mięśni dla tego opisu — wybierz okolicę lub opisz dokładniej.'); return; }
+  exitMulti(true); S.sel = null; clearVis();
+  S.ana = { res, q, tab: 'p', cause: null, focus: null };
+  S.side = AF.side || 'b'; $$('#sides button').forEach((b) => b.classList.toggle('on', b.dataset.s === S.side));
   S.region = 'all'; $$('#regions button').forEach((x) => x.classList.toggle('on', x.dataset.r === 'all'));
   S.layers.muscles = true; S.layers.bones = true; $('#lMus').checked = true; $('#lBones').checked = true;
   const regs = new Set(anaAllKeys(S.ana).map((k) => G[k].region));
   if (regs.has('tulow') || regs.has('bark')) { S.layers.ctx = true; $('#lCtx').checked = true; }
   if (regs.has('glowa')) { S.layers.skull = true; $('#lSkull').checked = true; }
   modal.classList.remove('show'); renderList();
-  await Promise.all([regs.has('tulow') ? ensureTrunk() : null, regs.has('glowa') ? ensureAxial() : null]);
+  await Promise.all([regs.has('tulow') ? ensureTrunk() : null, regs.has('glowa') ? ensureAxial() : null, regs.has('podudzie') ? ensureLeg() : null]);
   if (!S.ana || S.ana.res !== res) return;
   apply(); renderInfo(); markList(); anaFly();
   if (window.innerWidth < 820) closeDrawer();
 }
-let anaBusy = false;
-async function runAnalysis(q, forceAI = false) {
-  q = String(q || '').trim();
-  if (q.length < 8) { openAna(q, 'Opisz objaw dokładniej (co robisz, gdzie czujesz napięcie lub ból).'); return; }
-  if (anaBusy) return;
-  const loc = forceAI ? null : matchLocal(q);
-  if (loc) { await showAna(loc.res, q); return; }
-  anaBusy = true;
-  showModal('<h3>🔎 Analiza objawów</h3><p class="small">Analizuję opis (AI, ok. 5–20 s)…</p><div class="ldbar"><i></i></div>');
-  try {
-    const keys = Object.entries(G).filter(([k]) => !OTHER.has(k)).map(([k, g]) => k + '|' + g.pl);
-    const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), 60000);
-    const r = await fetch('/api/anatomia/analyze', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ q, keys }), signal: ctl.signal }); clearTimeout(to);
-    const j = await r.json().catch(() => ({}));
-    if (!r.ok || !j.ok) throw new Error(j.code || String(r.status));
-    await showAna({ ...j.r, src: j.src }, q);
-  } catch (e) {
-    const fb = forceAI ? matchLocal(q) : null;
-    if (fb) await showAna(fb.res, q, 'Analiza AI chwilowo niedostępna — pokazuję wzorzec wbudowany.');
-    else openAna(q, { rate: 'Za dużo zapytań — spróbuj ponownie za godzinę.', no_key: 'Analiza AI nie jest jeszcze włączona na serwerze. Wzorce wbudowane obejmują przykłady poniżej.', ai_error: 'Analiza AI nie odpowiedziała poprawnie — spróbuj jeszcze raz lub użyj przykładu poniżej.' }[e.message] || 'Nie rozpoznano opisu i analiza AI jest teraz niedostępna. Użyj jednego z przykładów poniżej.');
-  } finally { anaBusy = false; }
+function runAnalysis() {
+  const q = ($('#anaQ') ? $('#anaQ').value : '').trim();
+  if (!AF.area) fillFromText(q, true);
+  if (!AF.area) { openAna(q, 'Wybierz okolicę, w której boli, albo opisz ból dokładniej (np. „ból kolana przy schodzeniu po schodach”).'); return; }
+  const res = runSym({ area: AF.area, triggers: AF.trig, side: AF.side, text: q }, (k) => !!G[k] && !OTHER.has(k));
+  showAna(res, q);
 }
 
 /* ---------- sterowanie ---------- */
@@ -814,11 +896,11 @@ $('#regions').innerHTML = DATA.regions.map(([k, n]) => `<button data-r="${k}" cl
 const selRegionOk = (s) => s.t === 'grp' ? regionOk(G[s.id].region) : s.t === 'part' ? regionOk(G[MUS.get(s.id).grp].region) : s.t === 'bone' ? (BON.get(s.id).kind === 'ctx' || regionOk(BON.get(s.id).region)) : s.t === 'joint' ? regionOk(JMAP.get(s.id).reg) : s.t === 'str' ? regionOk(STR.get(s.id).reg) : regionOk(BON.get(LMS.get(s.id).bone).region);
 function setRegion(r, after) {
   S.region = r; $$('#regions button').forEach((x) => x.classList.toggle('on', x.dataset.r === r));
-  S.hidden.clear(); if (S.sel && !selRegionOk(S.sel)) { S.sel = null; renderInfo(); }
+  clearVis(); if (S.sel && !selRegionOk(S.sel)) { S.sel = null; renderInfo(); }
   if (r === 'glowa') { S.layers.skull = true; $('#lSkull').checked = true; }
-  if (r === 'tulow') { S.layers.ctx = true; $('#lCtx').checked = true; }
+  if (r === 'tulow' || r === 'podudzie') { S.layers.ctx = true; $('#lCtx').checked = true; }
   renderList(); apply();
-  (r === 'glowa' ? ensureAxial() : r === 'tulow' ? ensureTrunk() : Promise.resolve()).then(() => { apply(); viewRegion('front'); if (after) after(); });
+  (r === 'glowa' ? ensureAxial() : r === 'tulow' ? ensureTrunk() : r === 'podudzie' ? ensureLeg() : Promise.resolve()).then(() => { apply(); viewRegion('front'); if (after) after(); });
 }
 $('#regions').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) setRegion(b.dataset.r); });
 const bindChk = (id, fn) => { const el = $('#' + id); el.addEventListener('change', () => { fn(el.checked); apply(); }); };
@@ -840,7 +922,7 @@ $('#views').addEventListener('click', (e) => {
   const b = e.target.closest('button'); if (!b || b.id === 'panelBtn' || b.id === 'multiBtn' || b.id === 'anaBtn' || b.id === 'bodyBtn') return;
   if (b.dataset.v === 'rot') { controls.autoRotate = !controls.autoRotate; b.classList.toggle('on', controls.autoRotate); dirty(); return; }
   if (b.dataset.v === 'reset') {
-    exitMulti(true); S.ana = null; S.hidden.clear(); S.sel = null; S.layers = LAYERS0(); S.muscleOpacity = 1; S.ghostBg = true; S.region = 'all';
+    exitMulti(true); S.ana = null; clearVis(); S.sel = null; S.layers = LAYERS0(); S.muscleOpacity = 1; S.ghostBg = true; S.region = 'all';
     $$('#regions button').forEach((x) => x.classList.toggle('on', x.dataset.r === 'all'));
     for (const [i, v] of [['lBones', 1], ['lMus', 1], ['lCtx', 0], ['lOther', 0], ['lAtt', 0], ['lJoints', 0], ['lCap', 0], ['lSkull', 0], ['lLig', 0], ['lNerv', 0], ['lVess', 0]]) $('#' + i).checked = !!v;
     $('#ghostBg').checked = true; $('#opa').value = 1; renderList(); apply(); renderInfo(); markList(); viewRegion('front'); return;
@@ -869,7 +951,7 @@ $('#menu').addEventListener('click', (e) => {
   const a = e.target.closest('button'); if (!a) return; $('#menu').classList.remove('show');
   if (a.dataset.m === 'about') showModal(`<h3>O autorze</h3><p><b>Anatomia</b> — wersja <b>v${VERSION}</b></p><p>Autor: <b>Michał Rzekiecki</b><br>Kontakt: <a href="mailto:michus@gmail.com">michus@gmail.com</a></p><hr><p class="small">Model 3D: <a href="https://www.z-anatomy.com" target="_blank" rel="noopener">Z-Anatomy</a> (CC BY-SA 4.0), oparty na BodyParts3D © The Database Center for Life Science (CC BY-SA 2.1 Japan). Nazwy łacińskie wg Terminologia Anatomica. Opisy mają charakter edukacyjny — w razie wątpliwości sprawdź w podręczniku anatomii.</p>`);
   if (a.dataset.m === 'sug') showModal(`<h3>Sugestie</h3><p class="small">Napisz, co sprawiłoby, że aplikacja będzie jeszcze lepsza.</p><textarea id="sugTxt" rows="6" placeholder="Twoja sugestia…"></textarea><div class="btns"><button id="sugSend" class="pri">Wyślij e-mailem</button><button id="sugCopy">Kopiuj</button></div><p class="small">Otworzy się Twój program pocztowy (adres: michus@gmail.com).</p>`);
-  if (a.dataset.m === 'help') showModal(`<h3>Obsługa</h3><ul class="small"><li><b>Obrót</b> — przeciągnij myszą / palcem; <b>przesuwanie</b> — prawy przycisk lub dwa palce; <b>zoom</b> — kółko / uszczypnięcie.</li><li><b>Klik</b> w strukturę — wybór; kolejny klik w mięsień wielogłowy — wybór konkretnej głowy.</li><li><b>Niebieski</b> = początek mięśnia, <b>pomarańczowy</b> = przyczep końcowy.</li><li><b>Prawa / Lewa / Obie</b> (u góry) — wybór strony ciała; lewa strona to lustrzane odbicie prawej (kości i mięśnie kończyny są symetryczne).</li><li><b>☑ Wiele mięśni</b> — zaznaczasz kilka mięśni naraz (na komputerze także Ctrl/Shift + klik). W karcie mięśnia: antagoniści i stawy, na które działa.</li><li><b>Stawy</b> — zakładka z typem, osiami, liczbą powierzchni i mięśniami (agoniści ⇄ antagoniści); kolor znacznika = typ stawu (Warstwy ▸ Stawy).</li><li><b>🔎 Analiza</b> — opisz pozycję lub ruch i dyskomfort (np. „ból w lędźwiach w pozycji dziecka”); zaznaczę mięśnie (główne, pomocnicze, stabilizatory) z szacunkowym udziałem %, podpowiem co wzmocnić i co rozciągnąć. To edukacja, nie diagnoza.</li><li><b>Tułów i biodro</b> — mięśnie grzbietu, brzucha, miednicy i uda oraz kości (kręgi lędźwiowe, kość krzyżowa, miednica, udowa).</li><li>Klawisz <b>/</b> — szukaj. Szukajka obejmuje nazwy polskie, łacińskie i angielskie.</li></ul>`);
+  if (a.dataset.m === 'help') showModal(`<h3>Obsługa</h3><ul class="small"><li><b>Obrót</b> — przeciągnij myszą / palcem; <b>przesuwanie</b> — prawy przycisk lub dwa palce; <b>zoom</b> — kółko / uszczypnięcie.</li><li><b>Klik</b> w strukturę — wybór; kolejny klik w mięsień wielogłowy — wybór konkretnej głowy.</li><li><b>Niebieski</b> = początek mięśnia, <b>pomarańczowy</b> = przyczep końcowy.</li><li><b>Najechanie</b> kursorem na mięsień wygasza resztę modelu o 40%. <b>Lista</b>: mały wybór przy mięśniu — Pokaż / Tło / Wyróżnij / Ukryj; kolor kropki = kolor mięśnia.</li><li><b>🔎 Analiza</b> działa bez internetu i bez AI: wybierz okolicę i czynniki albo opisz ból — dostaniesz przyczyny (%), mięśnie, ćwiczenia wzmacniające i rozciągające.</li><li><b>Prawa / Lewa / Obie</b> (u góry) — wybór strony ciała; lewa strona to lustrzane odbicie prawej (kości i mięśnie kończyny są symetryczne).</li><li><b>☑ Wiele mięśni</b> — zaznaczasz kilka mięśni naraz (na komputerze także Ctrl/Shift + klik). W karcie mięśnia: antagoniści i stawy, na które działa.</li><li><b>Stawy</b> — zakładka z typem, osiami, liczbą powierzchni i mięśniami (agoniści ⇄ antagoniści); kolor znacznika = typ stawu (Warstwy ▸ Stawy).</li><li><b>🔎 Analiza</b> — opisz pozycję lub ruch i dyskomfort (np. „ból w lędźwiach w pozycji dziecka”); zaznaczę mięśnie (główne, pomocnicze, stabilizatory) z szacunkowym udziałem %, podpowiem co wzmocnić i co rozciągnąć. To edukacja, nie diagnoza.</li><li><b>Tułów i biodro</b> — mięśnie grzbietu, brzucha, miednicy i uda oraz kości (kręgi lędźwiowe, kość krzyżowa, miednica, udowa).</li><li>Klawisz <b>/</b> — szukaj. Szukajka obejmuje nazwy polskie, łacińskie i angielskie.</li></ul>`);
 });
 modal.addEventListener('pointerdown', (e) => { if (e.target === modal) modal.classList.remove('show'); });
 modal.addEventListener('click', (e) => {
@@ -886,6 +968,8 @@ const BM_ZONES = [ // [region, kształt SVG (dla prawej kończyny osoby = lewa s
   ['ramie', '<rect x="49" y="104" width="23" height="84" rx="11" transform="rotate(11 60 146)"/>'],
   ['przedramie', '<rect x="30" y="190" width="21" height="78" rx="10" transform="rotate(6 40 229)"/>'],
   ['dlon', '<path d="M24 272h22l-2 22q-1 12-9 24-3 5-5 0-6-12-6-24z"/>'],
+  ['tulow', '<path d="M97 248h23l-3 84-3 5h-16q-3-40-1-89z"/>'],
+  ['podudzie', '<path d="M100 342h16l-1 62q-1 8 4 20h-24q4-12 3-20z"/>'],
 ];
 function bodyMapHTML() {
   const side = (sd, flip) => `<g ${flip ? 'transform="translate(240 0) scale(-1 1)"' : ''} data-side="${sd}">${BM_ZONES.map(([r, shape]) => `<g class="bz" data-r="${r}" data-sd="${sd}" tabindex="0" role="button" aria-label="${esc(REGION_NAME[r])} ${sd === 'r' ? 'prawy' : 'lewy'}">${shape}</g>`).join('')}</g>`;
@@ -893,12 +977,11 @@ function bodyMapHTML() {
   <svg id="bmsvg" viewBox="0 0 240 440" role="img" aria-label="Sylwetka człowieka">
     <g class="bz" data-r="glowa" data-sd="x" tabindex="0" role="button" aria-label="Głowa i szyja"><ellipse cx="120" cy="38" rx="23" ry="29"/><rect x="107" y="62" width="26" height="24" rx="6"/></g>
     <g class="bz" data-r="tulow" data-sd="x" tabindex="0" role="button" aria-label="Tułów i biodro"><path d="M96 92h48q8 6 6 30l-4 112q-2 12-26 12t-26-12l-4-112q-2-24 6-30z"/></g>
-    <g class="bz" data-r="tulow" data-sd="x" tabindex="0" role="button" aria-label="Biodro i udo"><path d="M95 244h50l-3 60-6 126h-14l-4-90-4 90h-14l-6-126z"/></g>
     ${side('r', false)}${side('l', true)}
-    <text x="120" y="190" class="bmt" text-anchor="middle">tułów</text><text x="120" y="268" class="bmt" text-anchor="middle">biodro</text><text x="120" y="282" class="bmt" text-anchor="middle">udo</text>
+    <text x="120" y="190" class="bmt" text-anchor="middle">tułów</text><text x="120" y="236" class="bmt" text-anchor="middle">biodro</text>
   </svg>
-  <div class="bmleg"><span><i class="bz-d on"></i>obszar dostępny</span><span><i class="bz-d"></i>wkrótce: podudzie i stopa</span></div>
-  <div class="btns"><button data-bm="all">Cała kończyna górna</button><button data-bm="both">Obie strony</button></div>`;
+  <div class="bmleg"><span><i class="bz-d on"></i>wybrany obszar</span><span>udo, kolano → „Tułów i biodro” / „Podudzie i stopa”</span></div>
+  <div class="btns"><button data-bm="all">Wszystko (kończyna górna)</button><button data-bm="both">Obie strony</button></div>`;
 }
 function markBodyMap() {
   $$('#bmsvg .bz[data-r]').forEach((z) => { const r = z.dataset.r, sd = z.dataset.sd; z.classList.toggle('on', (S.region === r) && (sd === 'x' || S.side === 'b' || S.side === sd)); });
@@ -915,10 +998,15 @@ mbody.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === '
 
 $('#anaBtn').addEventListener('click', () => openAna(S.ana ? S.ana.q : ''));
 mbody.addEventListener('click', (e) => {
-  const ex = e.target.closest('[data-aex]'); if (ex) { const t = $('#anaQ'); if (t) { t.value = ex.dataset.aex; t.focus(); } return; }
-  if (e.target.closest('#anaGo')) { const t = $('#anaQ'); runAnalysis(t ? t.value : ''); }
+  const t = e.target;
+  const ar = t.closest('[data-aarea]'); if (ar) { const id = ar.dataset.aarea; if (AF.area !== id) AF.trig = new Set(); AF.area = AF.area === id ? null : id; AF.auto = false; refreshForm(); return; }
+  const tg = t.closest('[data-atrig]'); if (tg) { const id = tg.dataset.atrig; AF.trig.has(id) ? AF.trig.delete(id) : AF.trig.add(id); tg.classList.toggle('on'); return; }
+  const sd = t.closest('[data-aside]'); if (sd) { AF.side = sd.dataset.aside; refreshForm(); return; }
+  const ex = t.closest('[data-aex]'); if (ex) { const q = $('#anaQ'); if (q) { q.value = ex.dataset.aex; AF.trig = new Set(); fillFromText(q.value, true); } return; }
+  if (t.closest('#anaGo')) runAnalysis();
 });
-mbody.addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && e.target.id === 'anaQ') runAnalysis(e.target.value); });
+mbody.addEventListener('input', (e) => { if (e.target.id === 'anaQ') { clearTimeout(fillT); fillT = setTimeout(() => fillFromText(e.target.value, false), 350); } });
+mbody.addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && e.target.id === 'anaQ') runAnalysis(); });
 
 
 /* ---------- pętla ---------- */
@@ -948,6 +1036,6 @@ ready.then(() => {
   apply();
   const b = boxOf(regionBox('all')); const c = b.getCenter(new THREE.Vector3()); const r = b.getSize(new THREE.Vector3()).length() / 2;
   controls.target.copy(c); camera.position.copy(c).add(new THREE.Vector3(0.12, 0.05, 1).normalize().multiplyScalar(fitDist(r) * 1.0)); controls.update(); dirty();
-  window.__anat = { STR, ensureStruct, S, select, G, DATA, objs, SIDE, camera, controls, apply, viewRegion, setSide, toggleMulti, setMulti, ensureAxial, JMAP };
+  window.__anat = { setRegion, setHover, openAna, AF, runAnalysis, ensureLeg, ensureTrunk, MUS, BON, setVis, STR, ensureStruct, S, select, G, DATA, objs, SIDE, camera, controls, apply, viewRegion, setSide, toggleMulti, setMulti, ensureAxial, JMAP };
 });
 requestAnimationFrame(frame);
