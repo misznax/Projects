@@ -3,7 +3,7 @@
 Dowolna liczba swobodnych paneli roboczych (start: 6) z pamięcią stanu: pliki tekstowe (kolorowanie Python/HTML/SQL), PDF i obrazy.
 Autor: Michał Rzekiecki · kontakt: kontakt@smialo.org
 
-- Pobierz: Releases → `startupboard-latest` → `StartupBoard_v1.43.zip`, rozpakuj i uruchom `StartupBoard.exe`.
+- Pobierz: Releases → `startupboard-latest` → `StartupBoard_v1.44.zip`, rozpakuj i uruchom `StartupBoard.exe`.
 - Źródła: `src/`, build: `python build_exe.py`, kopie wersji: `backup/`.
 - Stan zapisuje się w `%LOCALAPPDATA%\smialo\StartupBoard (v1.3 sama przenosi stan, który v1.1–1.2 zapisały w folderze „Startup Board” ze spacją)\` (menu Pomoc → „Folder z ustawieniami"): `state.json`, `zestawy\`, `obrazy\`, `startupboard.log`.
 
@@ -28,6 +28,9 @@ Autor: Michał Rzekiecki · kontakt: kontakt@smialo.org
 - Zamknięty program: zadanie w Harmonogramie zadań Windows uruchamia go na czas przypomnienia (`--alarm`).
 - Ctrl+Tab / Ctrl+PgDn przełączają panele niezależnie od fokusu; pasek kart wysuwa się też przy pasku tytułu/menu.
 - Drugie uruchomienie wyciąga działające okno. Przypomnienia ze starego folderu stanu są dołączane; dzienna kopia stanu w `kopie_stanu\`.
+
+## v1.44
+- **Przenoszenie paneli między ekranami**: Plik (lub prawy przycisk na panelu) → „Przenieś panel na ekran” → wybrany ekran albo „Nowy ekran z tym panelem”. Zawartość (plik, folder, przypomnienia…) jest zapisywana i ląduje w pierwszym wolnym miejscu tamtego ekranu.
 
 ## v1.43
 - **Menu pod Alt**: pasek menu jest domyślnie ukryty; stuknięcie Alt wysuwa go na chwilę (znika po wyborze polecenia, Esc, drugim Alt albo po ok. 4 s bez użycia). Na stałe: Ctrl+M lub Ustawienia. Wszystkie skróty działają także przy ukrytym menu.

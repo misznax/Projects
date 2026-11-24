@@ -136,7 +136,7 @@ CHECK = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10.5 4 4 8-9" f
 ARROW = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h11m-4-5 5 5-5 5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
 
 
-EXTRA = {'startupboard': ('Użytkownicy komputerów, którzy codziennie otwierają te same pliki.', 'Windows 10 / 11 · bez instalacji · pliki nie są wysyłane do internetu', '1.43'), 'nawyk': ('Sportowcy, osoby pracujące zdalnie, mówcy i trenerzy.', 'Komputer · tablet · telefon', '1.03'), 'esencja': ('Studenci, osoby uczące się języków i zapracowani.', 'Komputer · tablet · telefon', '0.05'), 'notatnik': ('Studenci i uczestnicy szkoleń.', 'Komputer · tablet · telefon', '0.34'), 'anatomia': ('Studenci medycyny i fizjoterapii, trenerzy i masażyści.', 'Komputer · tablet · telefon', '0.05')}
+EXTRA = {'startupboard': ('Użytkownicy komputerów, którzy codziennie otwierają te same pliki.', 'Windows 10 / 11 · bez instalacji · pliki nie są wysyłane do internetu', '1.44'), 'nawyk': ('Sportowcy, osoby pracujące zdalnie, mówcy i trenerzy.', 'Komputer · tablet · telefon', '1.03'), 'esencja': ('Studenci, osoby uczące się języków i zapracowani.', 'Komputer · tablet · telefon', '0.05'), 'notatnik': ('Studenci i uczestnicy szkoleń.', 'Komputer · tablet · telefon', '0.34'), 'anatomia': ('Studenci medycyny i fizjoterapii, trenerzy i masażyści.', 'Komputer · tablet · telefon', '0.05')}
 
 
 def render_app(a, i):

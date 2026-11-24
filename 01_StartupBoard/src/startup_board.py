@@ -46,7 +46,7 @@ from PySide6.QtCore import QDate, QDateTime, QDir, QFile, QTime
 from PySide6.QtWidgets import QDateEdit, QTimeEdit, QToolTip
 
 APP_NAME = "Startup Board"
-APP_VERSION = "v1.43"  # zmieniać tylko na polecenie autora
+APP_VERSION = "v1.44"  # zmieniać tylko na polecenie autora
 APP_AUTHOR = "Michał Rzekiecki"
 APP_CONTACT = "kontakt@smialo.org"
 
@@ -4726,6 +4726,8 @@ class MainWindow(QMainWindow):
         m.addAction(self.act_saveimg)
         m.addSeparator()
         m.addAction(self._act("Zamknij plik w panelu", lambda: self.current.close_file(), "Ctrl+W"))
+        self.mv_menu = m.addMenu("Przenieś panel na ekran")
+        self.mv_menu.aboutToShow.connect(self._fill_mv_menu)
         m.addSeparator()
         m.addAction(self._act("Zakończ", self.close, "Ctrl+Q"))
 
@@ -5372,6 +5374,60 @@ class MainWindow(QMainWindow):
         self.screens[i]["snap"] = None  # żywy ekran: stan bierze się z paneli
         self._screens_refresh()
         self.tabs.refresh()
+        self.schedule_save()
+
+    def _fill_mv_menu(self):
+        self.mv_menu.clear()
+        for i, sc in enumerate(self.screens):
+            a = self.mv_menu.addAction(f"{i + 1}  {sc['name']}", lambda k=i: self.move_pane_to_screen(self.current, k))
+            a.setEnabled(i != self.scr_cur)
+        if len(self.screens) < MAX_SCREENS:
+            self.mv_menu.addSeparator()
+            self.mv_menu.addAction("Nowy ekran z tym panelem", lambda: self.move_pane_to_screen(self.current, -1))
+
+    @staticmethod
+    def _empty_state(st: dict) -> bool:
+        return not any(st.get(k) for k in ("path", "untitled", "reminders", "clips"))
+
+    def move_pane_to_screen(self, p, i: int):
+        """Przenosi zawartość panelu na inny (śpiący) ekran; i = -1: na nowy ekran. Plik zostaje zapisany."""
+        if not self._ready:
+            return
+        if i == -1:
+            if len(self.screens) >= MAX_SCREENS:
+                return
+            self.screens.append({"name": f"Ekran {len(self.screens) + 1}", "color": self._free_screen_color(), "snap": None})
+            i = len(self.screens) - 1
+        if not (0 <= i < len(self.screens)) or i == self.scr_cur:
+            return
+        if self._empty_state(p.state()):
+            QMessageBox.information(self, APP_NAME, "Ten panel jest pusty – nie ma czego przenosić.")
+            return
+        if not p.confirm_close():
+            return
+        st = p.state()
+        p.clear_content()
+        empty = p.state()
+        if len(self.panes) > 1:
+            idx = self.panes.index(p)
+            was_current = p is self.current
+            self.canvas.remove_pane(p)
+            if was_current:
+                self.set_current(self.panes[min(idx, len(self.panes) - 1)])
+        sn = self.screens[i].get("snap")
+        if not sn:
+            sn = {"rects": [], "z": [], "current": 0, "panes": [dict(empty) for _ in range(DEFAULT_PANES)]}
+        panes = sn["panes"]
+        slot = next((k for k, x in enumerate(panes) if isinstance(x, dict) and self._empty_state(x)), None)
+        if slot is None:
+            panes.append(st)
+            if len(sn.get("rects", [])) == len(panes) - 1:
+                sn["rects"].append([0.2, 0.2, 0.5, 0.5])
+        else:
+            panes[slot] = st
+        sn["panes"] = panes
+        self.screens[i]["snap"] = sn
+        self._screens_refresh()
         self.schedule_save()
 
     def add_screen(self):
