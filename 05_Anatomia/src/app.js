@@ -141,6 +141,7 @@ const toastEl = $('#toast'); let toastT = 0;
 const toast = (t, act) => { // act: { label, fn } — przycisk w komunikacie (np. „Cofnij”)
   clearTimeout(toastT); toastEl.textContent = t;
   if (t && act) { const b = document.createElement('button'); b.textContent = act.label; b.addEventListener('click', () => { act.fn(); toast(''); }); toastEl.append(' ', b); toastT = setTimeout(() => toast(''), 7000); }
+  else if (t) toastT = setTimeout(() => toast(''), /^Wczytywanie/.test(t) ? 30000 : 3500); // każdy komunikat sam znika (wcześniej zostawał na dole i zasłaniał pasek paneli)
   toastEl.classList.toggle('show', !!t);
 };
 
@@ -833,7 +834,13 @@ function togglePanel(id, v) {
   savePanels(); layoutPanels();
 }
 const showPanel = (id) => { if (!PS[id].on) togglePanel(id, true); else { PS[id].min = false; layoutPanels(); } };
-function updHintTop() { const v = $('#views'); if (v) panelsRoot.style.setProperty('--vh', Math.round(v.offsetHeight + 24) + 'px'); }
+function updHintTop() { // panele prawe zaczynają się pod paskiem widoków tylko wtedy, gdy by go zasłoniły (wąskie okno)
+  const v = $('#views'); if (!v) return; const h = Math.round(v.offsetHeight + 24) + 'px', zr = $('#zoneR');
+  panelsRoot.style.setProperty('--vh', h);
+  const over = zr && innerWidth > 820 && v.getBoundingClientRect().right > zr.getBoundingClientRect().left - 8;
+  panelsRoot.style.setProperty('--vr', over ? h : '12px');
+}
+addEventListener('resize', () => updHintTop());
 const panelsRoot = infoEl;
 new ResizeObserver(updHintTop).observe($('#views'));
 window.addEventListener('resize', () => layoutPanels());
@@ -841,6 +848,7 @@ infoEl.addEventListener('click', (e) => {
   const b = e.target.closest('[data-pa]'); if (b) { const id = b.closest('.pnl').dataset.p, a = b.dataset.pa, p = PS[id]; if (a === 'min') p.min = !p.min; else if (a === 'zone') p.zone = p.zone === 'r' ? 'l' : 'r'; else if (a === 'off') { togglePanel(id, false); return; } savePanels(); layoutPanels(); return; }
   const ph = e.target.closest('.ph'); if (ph && !e.target.closest('button')) { const p = PS[ph.parentNode.dataset.p]; p.min = !p.min; savePanels(); layoutPanels(); }
 });
+dockEl.addEventListener('wheel', (e) => { if (dockEl.scrollWidth > dockEl.clientWidth + 2) { dockEl.scrollLeft += e.deltaY || e.deltaX; e.preventDefault(); } }, { passive: false });
 dockEl.addEventListener('click', (e) => { const b = e.target.closest('[data-dk]'); if (!b) return; if (b.dataset.dk === '_help') { showHelp(); return; } const id = b.dataset.dk; if (PD[id].auto && !panelVisible(id) && PS[id].on) { togglePanel(id, false); return; } togglePanel(id, panelVisible(id) && (!isMobile() || id === mobActive) ? false : true); });
 
 layoutPanels();
