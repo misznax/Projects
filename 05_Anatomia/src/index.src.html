@@ -32,7 +32,7 @@
     <div id="pinlabel"></div><div id="tip"></div><div id="toast"></div>
     <div id="views">
       <button data-v="front">Przód</button><button data-v="back">Tył</button><button data-v="lat">Bok zewn.</button><button data-v="med">Bok wewn.</button><button data-v="top">Góra</button>
-      <span class="sep"></span><button data-v="rot" title="Automatyczny obrót">⟳ Obrót</button><button data-v="reset">Reset</button><span class="sep"></span><button id="bodyBtn" title="Wybierz obszar ciała na sylwetce">🧍 Ciało</button><button id="anaBtn" title="Analiza objawów: opisz ruch lub ból, a zaznaczę mięśnie, ich udział % i co wzmocnić lub rozciągnąć">🔎 Analiza</button><button id="multiBtn" title="Zaznaczanie kilku mięśni naraz: klikaj mięśnie na modelu lub liście (Ctrl/Shift + klik na komputerze)">☑ Wiele mięśni</button><button id="panelBtn">Warstwy ▾</button>
+      <span class="sep"></span><button data-v="rot" title="Automatyczny obrót">⟳ Obrót</button><button data-v="reset">Reset</button><span class="sep"></span><button id="bodyBtn" title="Wybierz obszar ciała na sylwetce">🧍 Ciało</button><button id="anaBtn" title="Analiza objawów: opisz ruch lub ból, a zaznaczę mięśnie, ich udział % i co wzmocnić lub rozciągnąć">🔎 Analiza</button><button id="multiBtn" title="Zaznaczanie kilku mięśni naraz: klikaj mięśnie na modelu lub liście (na komputerze także Ctrl + klik)">☑ Wiele mięśni</button><button id="panelBtn">Warstwy ▾</button>
     </div>
     <div id="layers">
       <label><input type="checkbox" id="lMus" checked> Mięśnie</label>
@@ -50,8 +50,10 @@
       <label class="rng">Przezroczystość mięśni<input type="range" id="opa" min="0.15" max="1" step="0.05" value="1"></label>
       <div class="lg" id="legendJ"></div>
     </div>
-    <div id="info"></div>
-    <div class="hint">LPM obrót · PPM przesuwanie · kółko zoom · klik = wybór</div>
+    <div id="ctx"></div>
+    <div id="panels"><div id="zoneL" class="zone"></div><div id="zoneR" class="zone"></div></div>
+    <div id="dock"></div>
+    <div class="hint">LPM obrót · PPM przeciągnij = przesuwanie · PPM klik = menu · kółko zoom · klik = wybór · Ctrl+klik = wiele · Shift+klik = ukryj</div>
   </main>
   <div id="modal"><div class="mcard"><button id="mclose" aria-label="Zamknij">×</button><div id="mbody"></div></div></div>
 </div>

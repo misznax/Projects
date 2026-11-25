@@ -4,6 +4,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { TRYB, ROLA } from './analysis.js';
+import { createPose, DOF, REST } from './pose.js';
 import { AREAS, TRIG, SYMPTOM_EXAMPLES, POS_EXAMPLES, parseText, run as runSym } from './symptoms.js';
 
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
@@ -110,7 +111,7 @@ for (const k of Object.keys(G)) {
 const LAYERS0 = () => ({ bones: true, muscles: true, ctx: false, other: false, att: false, joints: false, cap: false, skull: false, lig: false, nerv: false, vess: false });
 const S = {
   region: 'all', tab: 'mus', layers: LAYERS0(), side: 'r',
-  hidden: new Set(), ghosted: new Set(), focused: new Set(), hov: null, sel: null, // {t:'grp'|'part'|'bone'|'lm'|'joint', id, side?}
+  hidden: new Set(), ghosted: new Set(), focused: new Set(), hiddenB: new Set(), undo: [], hov: null, sel: null, // {t:'grp'|'part'|'bone'|'lm'|'joint', id, side?}
   multiMode: false, multi: new Map(), // klucz grupy -> indeks koloru
   ghostBg: true, showPins: false, muscleOpacity: 1, axial: false, trunk: false, leg: false, ana: null,
 };
@@ -134,8 +135,23 @@ for (const k of Object.keys(STRC)) {
 const defSide = () => (S.side === 'l' ? 'l' : 'r');
 const O = (kind, id, side) => (SIDE[side] || SIDE[defSide()])[kind].get(id);
 const activeSides = () => (S.side === 'b' ? [SIDE.r, SIDE.l] : [SIDE[defSide()]]);
-const lmPos = (id, side) => { const p = objs.lm.get(id); if (!p) return null; return (side || defSide()) === 'l' ? new THREE.Vector3(2 * MIDX - p.x, p.y, p.z) : p; };
-const toastEl = $('#toast'); const toast = (t) => { toastEl.textContent = t; toastEl.classList.toggle('show', !!t); };
+const lmPos = (id, side) => { let p = objs.lm.get(id); if (!p) return null; const l = LMS.get(id); if (l && !POSE.isRest()) p = POSE.xp(POSE.segOfBone(l.bone), p); return (side || defSide()) === 'l' ? new THREE.Vector3(2 * MIDX - p.x, p.y, p.z) : p; };
+const toastEl = $('#toast'); let toastT = 0;
+const toast = (t, act) => { // act: { label, fn } — przycisk w komunikacie (np. „Cofnij”)
+  clearTimeout(toastT); toastEl.textContent = t;
+  if (t && act) { const b = document.createElement('button'); b.textContent = act.label; b.addEventListener('click', () => { act.fn(); toast(''); }); toastEl.append(' ', b); toastT = setTimeout(() => toast(''), 7000); }
+  toastEl.classList.toggle('show', !!t);
+};
+
+/* ---------- poza: silnik ruchu stawów (pose.js) ---------- */
+const JSEG = { J_scj: 'thx', J_acj: 'scap', J_ghj: 'scap', J_lok: 'uln', J_hu: 'uln', J_hr: 'rad', J_pru: 'uln', J_dru: 'uln' }; // reszta stawów dłoni → 'hand'
+const jointSegIdx = (jid) => { const j = JMAP.get(jid); const n = JSEG[jid] || (j && j.reg === 'dlon' ? 'hand' : 'thx'); return POSE.segIndex(n); };
+const markerRest = new Map();
+function poseChanged() { updateMarkers(); updatePins(); dirty(); syncPoseUI(); }
+const POSE = createPose({ onPose: poseChanged });
+function updateMarkers() {
+  for (const m of markerMeshes) { const r = markerRest.get(m); if (!r) continue; const p = POSE.isRest() ? r.p : POSE.xp(jointSegIdx(r.j), r.p); m.position.set(m.userData.side === 'l' ? 2 * MIDX - p.x : p.x, p.y, p.z); }
+}
 
 /* ---------- ładowanie ---------- */
 const loadEl = $('#loading'); const loadTxt = $('#loadtxt'); const loadBar = $('#loadbar');
@@ -176,10 +192,14 @@ const ready = Promise.all([loadGLB('muscles.glb', 'a'), loadGLB('bones.glb', 'b'
   // znaczniki stawów (kolor wg typu stawu)
   for (const j of JN) {
     const mat = new THREE.MeshBasicMaterial({ color: SHP[j.shape].c, transparent: true, opacity: 0.45, depthTest: false, depthWrite: false }); j.mat = mat;
-    const mk = (m, side) => { const x = side === 'l' ? 2 * MIDX - m.p[0] : m.p[0]; const s = new THREE.Mesh(SPH, mat); s.position.set(x, m.p[1], m.p[2]); s.scale.setScalar(m.r * 0.6); s.renderOrder = 6; s.visible = false; s.userData = { kind: 'joint', id: j.id, side }; scene.add(s); markerMeshes.push(s); return s; };
+    const mk = (m, side) => { const x = side === 'l' ? 2 * MIDX - m.p[0] : m.p[0]; const s = new THREE.Mesh(SPH, mat); s.position.set(x, m.p[1], m.p[2]); s.scale.setScalar(m.r * 0.6); s.renderOrder = 6; s.visible = false; s.userData = { kind: 'joint', id: j.id, side }; scene.add(s); markerMeshes.push(s); markerRest.set(s, { p: new THREE.Vector3(m.p[0], m.p[1], m.p[2]), j: j.id }); return s; };
     SIDE.r.mk.set(j.id, j.marks.map((m) => mk(m, 'r')));
     if (!j.mid) L.mk.set(j.id, j.marks.map((m) => mk(m, 'l')));
   }
+  for (const [id, o] of objs.mus) POSE.skinned('muscles', id, [o, L.mus.get(id)]);
+  for (const [id, o] of objs.bone) { const c = L.bone.get(id); POSE.rigid(c && c !== o ? [o, c] : [o], () => POSE.segOfBone(id)); }
+  for (const [id, o] of objs.patch) POSE.rigid([o, L.patch.get(id)], () => POSE.segOfBone(patchBone(id)));
+  for (const [id, o] of SIDE.r.cap) { const c = L.cap.get(id); POSE.rigid(c ? [o, c] : [o], () => jointSegIdx(capOwn.get(id)[0].id)); }
   S.box = box;
   for (const SDx of [SIDE.r, SIDE.l]) for (const o of [...SDx.mus.values(), ...SDx.bone.values()]) if (!pickables.includes(o)) pickables.push(o);
   loadEl.classList.add('hide'); setTimeout(() => loadEl.remove(), 500);
@@ -211,7 +231,7 @@ function ensureTrunk() {
     g.updateMatrixWorld(true); const ml = [], bl = [];
     g.traverse((o) => { if (!o.isMesh) return; if (MUS.has(o.name)) ml.push(o); else if (BON.has(o.name)) bl.push(o); });
     const cl2 = (o) => { const c = new THREE.Mesh(o.geometry, o.material); c.position.copy(o.position); c.quaternion.copy(o.quaternion); c.scale.copy(o.scale); c.userData = { ...o.userData, side: 'l' }; c.visible = false; rootL.add(c); return c; };
-    for (const o of ml) { const m = MUS.get(o.name); o.userData = { kind: 'mus', id: m.id, grp: m.grp, side: 'r' }; o.material = grpMat[m.grp]; o.geometry.computeBoundsTree(); o.visible = false; root.attach(o); objs.mus.set(m.id, o); const c = cl2(o); SIDE.l.mus.set(m.id, c); pickables.push(o, c); }
+    for (const o of ml) { const m = MUS.get(o.name); o.userData = { kind: 'mus', id: m.id, grp: m.grp, side: 'r' }; o.material = grpMat[m.grp]; o.geometry.computeBoundsTree(); o.visible = false; root.attach(o); objs.mus.set(m.id, o); const c = cl2(o); SIDE.l.mus.set(m.id, c); pickables.push(o, c); POSE.skinned('trunk', m.id, [o, c]); }
     for (const o of bl) { const b = BON.get(o.name); o.userData = { kind: 'bone', id: b.id, side: 'r' }; o.material = MAT.bone; o.geometry.computeBoundsTree(); o.visible = false; root.attach(o); objs.bone.set(b.id, o); pickables.push(o); if (MIDB.has(b.id)) SIDE.l.bone.set(b.id, o); else { const c = cl2(o); SIDE.l.bone.set(b.id, c); pickables.push(c); } }
     S.trunk = true; toast(''); apply();
   }).catch((e) => { toast('Nie udało się wczytać tułowia: ' + e.message); trunkP = null; });
@@ -246,7 +266,7 @@ function ensureStruct(f) { // f: 'lig' | 'nerv' | 'vess'
       const m = STR.get(o.name); o.userData = { kind: 'str', id: m.id, side: 'r' }; o.material = STRMAT[m.t]; o.geometry.computeBoundsTree(); o.visible = false; root.attach(o);
       SIDE.r.str.set(m.id, o); objs.str.set(m.id, o);
       const c = new THREE.Mesh(o.geometry, o.material); c.position.copy(o.position); c.quaternion.copy(o.quaternion); c.scale.copy(o.scale); c.userData = { ...o.userData, side: 'l' }; c.visible = false; rootL.add(c); SIDE.l.str.set(m.id, c);
-      pickables.push(o, c);
+      pickables.push(o, c); POSE.skinned(f, m.id, [o, c]);
     }
     toast(''); apply();
   }).catch((e) => { toast('Nie udało się wczytać: ' + e.message); structP[f] = null; });
@@ -318,10 +338,10 @@ function apply() {
       const b = BON.get(id), mid = MIDB.has(id); if (SD.k === 'l' && mid) continue;
       const sideOn = mid || on, ctxLayer = b.kind === 'ctx', ax = b.kind === 'axial', tr = b.kind === 'trunk', lg = b.kind === 'leg';
       const legCtx = LEGXB.has(id) && (S.region === 'podudzie' || !!(anaRegs && anaRegs.has('podudzie')));
-      let vis = bonesOn && sideOn && (ctxLayer ? (S.layers.ctx || need.has(id)) : ax ? (S.layers.skull || S.region === 'glowa') : tr ? (S.region === 'tulow' || !!(anaRegs && anaRegs.has('tulow')) || legCtx) : lg ? (S.region === 'podudzie' || !!(anaRegs && anaRegs.has('podudzie'))) : true);
+      let vis = bonesOn && sideOn && !S.hiddenB.has(id) && (ctxLayer ? (S.layers.ctx || need.has(id)) : ax ? (S.layers.skull || S.region === 'glowa') : tr ? (S.region === 'tulow' || !!(anaRegs && anaRegs.has('tulow')) || legCtx) : lg ? (S.region === 'podudzie' || !!(anaRegs && anaRegs.has('podudzie'))) : true);
       let ghost = false;
       if (!ctxLayer && !ax && !tr && !lg && !regionOk(b.region)) { if (S.ghostBg && bonesOn && sideOn) { vis = true; ghost = true; } else vis = false; }
-      if ((need.has(id) || selBone === id || jb.has(id)) && sideOn) { vis = true; ghost = false; }
+      if ((need.has(id) || selBone === id || jb.has(id)) && sideOn && (!S.hiddenB.has(id) || selBone === id)) { vis = true; ghost = false; }
       o.visible = vis;
       let mat = ctxLayer ? MAT.ctx : MAT.bone;
       if (selBone === id) mat = MAT.hiBone;
@@ -345,7 +365,7 @@ function apply() {
       j.mat.opacity = sj ? (isSel ? (j.caps.length ? 0.4 : 0.62) : 0.2) : 0.5;
     }
   }
-  applyHover(); updatePins(); dirty();
+  applyHover(); updatePins(); dirty(); POSE.sync();
 }
 function applyHover() { // najechany mięsień / kość zostaje w pełni widoczny, reszta modelu ma o 40% mniejsze krycie
   const h = S.hov; if (!h) return;
@@ -445,6 +465,7 @@ function select(sel, opts = {}) {
   if (sel && needTrunk(sel) && !S.trunk) { ensureTrunk().then(() => select(sel, opts)); return; }
   if (sel && needLeg(sel) && !S.leg) { ensureLeg().then(() => select(sel, opts)); return; }
   if (sel && (sel.t === 'grp' || sel.t === 'part')) { const k = grpOf(sel); S.hidden.delete(k); S.ghosted.delete(k); } // klik w nazwę nigdy nie chowa mięśnia
+  if (sel && sel.t === 'bone') S.hiddenB.delete(sel.id);
   if (sel && sel.t === 'str') { const f = STRK[STR.get(sel.id).t]; if (!SIDE.r.str.has(sel.id)) { S.layers[f] = true; const el = $('#l' + ({ lig: 'Lig', nerv: 'Nerv', vess: 'Vess' })[f]); if (el) el.checked = true; ensureStruct(f).then(() => select(sel, opts)); return; } if (STR.get(sel.id).reg === 'glowa' && !S.axial) { ensureAxial(); } }
   S.sel = sel;
   apply(); renderInfo(); markList();
@@ -491,13 +512,27 @@ function pick(ev) {
   const vis = pickables.filter((o) => o.visible && !o.userData.gh);
   const h = ray.intersectObjects(vis, false); return h.length ? { obj: h[0].object } : null;
 }
-let down = null;
-canvas.addEventListener('pointerdown', (e) => { down = { x: e.clientX, y: e.clientY, t: performance.now() }; anim = null; });
+let down = null; let lpT = 0; let lpFired = false;
+const ctxEl = $('#ctx');
+canvas.addEventListener('pointerdown', (e) => {
+  down = { x: e.clientX, y: e.clientY, t: performance.now(), b: e.button }; anim = null; lpFired = false; closeCtx();
+  if (e.pointerType === 'touch') { clearTimeout(lpT); const ev = { clientX: e.clientX, clientY: e.clientY }; lpT = setTimeout(() => { if (down) { lpFired = true; openCtx(ev); } }, 550); }
+});
+canvas.addEventListener('pointermove', (e) => { if (down && lpT) { const dx = e.clientX - down.x, dy = e.clientY - down.y; if (dx * dx + dy * dy > 64) clearTimeout(lpT); } });
+canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 canvas.addEventListener('pointerup', (e) => {
-  if (!down) return; const dx = e.clientX - down.x, dy = e.clientY - down.y; const moved = dx * dx + dy * dy > 25; down = null; if (moved) return;
+  clearTimeout(lpT);
+  if (!down) return; const dx = e.clientX - down.x, dy = e.clientY - down.y; const moved = dx * dx + dy * dy > 25; const btn = down.b; down = null; if (moved || lpFired) return;
+  if (btn === 2) { openCtx(e); return; }
+  if (btn !== 0) return;
   const h = pick(e); if (!h) { if (S.sel) select(null); return; }
   if (h.pin) { select({ t: 'lm', id: h.pin.id, side: S.sel && S.sel.side }); return; }
-  const u = h.obj.userData; const multiKey = e.ctrlKey || e.metaKey || e.shiftKey;
+  const u = h.obj.userData;
+  if (e.shiftKey) { // Shift+klik = ukryj to, co jest pod kursorem (odsłania struktury głębsze)
+    if (u.kind === 'mus') hideMuscle(u.grp); else if (u.kind === 'bone') hideBone(u.id); else toast('Shift+klik ukrywa mięśnie i kości; warstwy struktur wyłączysz w menu „Warstwy”.');
+    return;
+  }
+  const multiKey = e.ctrlKey || e.metaKey; // Ctrl / ⌘ + klik = dodaj lub usuń z wyboru wielu mięśni
   if (u.kind === 'mus') {
     const g = G[u.grp];
     if (S.multiMode || multiKey) { toggleMulti(u.grp); return; }
@@ -507,9 +542,80 @@ canvas.addEventListener('pointerup', (e) => {
   else if (u.kind === 'joint') select({ t: 'joint', id: u.id, side: u.side });
   else if (u.kind === 'str') { if (!S.multiMode) select({ t: 'str', id: u.id, side: u.side }); }
 });
+/* ---------- ukrywanie na modelu: Shift+klik, menu PPM / długie przytrzymanie, H, Ctrl+Z ---------- */
+function pushUndo(fn, label) { S.undo.push({ fn, label }); if (S.undo.length > 60) S.undo.shift(); }
+function dropFromSel(k) {
+  let ch = false;
+  if (S.sel && (S.sel.t === 'grp' || S.sel.t === 'part') && grpOf(S.sel) === k) { S.sel = null; ch = true; }
+  if (S.multi.has(k)) { S.multi.delete(k); ch = true; }
+  S.focused.delete(k); S.ghosted.delete(k); return ch;
+}
+function hideMuscle(k) {
+  if (!G[k] || S.hidden.has(k)) return;
+  const was = { g: S.ghosted.has(k), f: S.focused.has(k) };
+  dropFromSel(k); S.hidden.add(k);
+  pushUndo(() => { S.hidden.delete(k); if (was.g) S.ghosted.add(k); if (was.f) S.focused.add(k); }, G[k].pl);
+  afterVisChange(); toast(`Ukryto: ${G[k].pl}`, { label: 'Cofnij', fn: undoVis });
+}
+function hideBone(id) {
+  if (S.hiddenB.has(id)) return; const b = BON.get(id);
+  if (S.sel && S.sel.t === 'bone' && S.sel.id === id) S.sel = null;
+  S.hiddenB.add(id); pushUndo(() => S.hiddenB.delete(id), b.pl);
+  afterVisChange(); toast(`Ukryto kość: ${b.pl}`, { label: 'Cofnij', fn: undoVis });
+}
+function undoVis() { const u = S.undo.pop(); if (!u) { toast('Nie ma czego cofać.'); return; } u.fn(); afterVisChange(); toast(`Przywrócono: ${u.label}`); }
+function showAllHidden() {
+  const n = S.hidden.size + S.hiddenB.size; if (!n) return; const h = [...S.hidden], hb = [...S.hiddenB];
+  S.hidden.clear(); S.hiddenB.clear(); pushUndo(() => { h.forEach((k) => S.hidden.add(k)); hb.forEach((k) => S.hiddenB.add(k)); }, `${n} ukrytych`);
+  afterVisChange(); toast(`Pokazano wszystkie ukryte (${n})`, { label: 'Cofnij', fn: undoVis });
+}
+function restoreOne(kind, id) {
+  if (kind === 'm') S.hidden.delete(id); else S.hiddenB.delete(id);
+  afterVisChange();
+}
+function afterVisChange() { syncVis(); apply(); renderInfo(); markList(); if (typeof renderVisPanel === 'function') renderVisPanel(); setHover(null); tip.classList.remove('show'); }
+const hiddenCount = () => S.hidden.size + S.hiddenB.size;
+
+function closeCtx() { ctxEl.classList.remove('show'); }
+function openCtx(e) {
+  const h = pick(e); if (!h || !h.obj) { closeCtx(); return; } const u = h.obj.userData; let items = [], title = '';
+  if (u.kind === 'mus') {
+    const k = u.grp, g = G[k]; title = g.pl;
+    items = [['sel', 'Zaznacz'], ['hide', 'Ukryj (odsłoń głębsze)'], ['ghost', 'Tło (półprzezroczysty)'], ['focus', 'Wyróżnij'], ['only', 'Pokaż tylko ten'], ['multi', 'Dodaj do wyboru wielu'], ['pose', 'Pokaż w ruchu…']];
+    ctxEl.dataset.k = k; ctxEl.dataset.kind = 'm';
+  } else if (u.kind === 'bone') {
+    const b = BON.get(u.id); title = b.pl; items = [['sel', 'Zaznacz'], ['hideb', 'Ukryj kość']]; ctxEl.dataset.k = u.id; ctxEl.dataset.kind = 'b';
+  } else { closeCtx(); return; }
+  ctxEl.innerHTML = `<div class="ct">${esc(title)}</div>` + items.map(([a, n]) => `<button data-a="${a}">${esc(n)}</button>`).join('') + (hiddenCount() ? `<button data-a="all">Pokaż wszystkie ukryte (${hiddenCount()})</button>` : '');
+  ctxEl.classList.add('show'); tip.classList.remove('show');
+  const r = canvas.parentElement.getBoundingClientRect(); const w = ctxEl.offsetWidth, hh = ctxEl.offsetHeight;
+  ctxEl.style.left = Math.max(4, Math.min(r.width - w - 4, e.clientX - r.left)) + 'px'; ctxEl.style.top = Math.max(4, Math.min(r.height - hh - 4, e.clientY - r.top)) + 'px';
+}
+ctxEl.addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-a]'); if (!b) return; const a = b.dataset.a, k = ctxEl.dataset.k, kind = ctxEl.dataset.kind; closeCtx();
+  if (a === 'all') { showAllHidden(); return; }
+  if (kind === 'b') { if (a === 'sel') select({ t: 'bone', id: k }); else if (a === 'hideb') hideBone(k); return; }
+  if (a === 'sel') select({ t: 'grp', id: k });
+  else if (a === 'hide') hideMuscle(k);
+  else if (a === 'ghost') { setVis(k, 'g'); dropFromSel(k) && (apply(), renderInfo()); }
+  else if (a === 'focus') setVis(k, 'f');
+  else if (a === 'only') { clearVis(); for (const x of Object.keys(G)) if (x !== k) S.hidden.add(x); S.hiddenB.clear(); afterVisChange(); }
+  else if (a === 'multi') toggleMulti(k);
+  else if (a === 'pose') showMusclePose(k);
+});
+document.addEventListener('pointerdown', (e) => { if (!e.target.closest('#ctx') && e.target !== canvas) closeCtx(); });
+window.addEventListener('keydown', (e) => {
+  if (/input|textarea|select/i.test(document.activeElement.tagName)) return;
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); undoVis(); return; }
+  if (e.key === 'Escape') { closeCtx(); return; }
+  if ((e.key === 'h' || e.key === 'H' || e.key === 'Delete') && !e.ctrlKey && !e.metaKey) {
+    if (e.shiftKey && e.key.toLowerCase() === 'h') { showAllHidden(); return; }
+    const s = S.sel; if (s && (s.t === 'grp' || s.t === 'part')) hideMuscle(grpOf(s)); else if (s && s.t === 'bone') hideBone(s.id);
+  }
+});
 const tip = $('#tip'); let lastMove = 0;
 canvas.addEventListener('pointermove', (e) => {
-  const now = performance.now(); if (now - lastMove < 60 || (e.buttons & 1) || e.pointerType === 'touch') return; lastMove = now;
+  const now = performance.now(); if (now - lastMove < 60 || (e.buttons & 1) || e.pointerType === 'touch' || ctxEl.classList.contains('show')) return; lastMove = now;
   const h = pick(e);
   if (!h || !h.obj) setHover(null); else { const u = h.obj.userData; setHover(u.kind === 'mus' ? { t: 'grp', id: u.grp } : u.kind === 'bone' ? { t: 'bone', id: u.id } : null); }
   if (!h) { tip.classList.remove('show'); canvas.style.cursor = 'grab'; return; }
@@ -532,18 +638,18 @@ const sdot = (j) => `<i class="sdot" style="background:${SHP[j.shape].c}"></i>`;
 const VIS_OPT = [['v', 'Pokaż'], ['g', 'Tło'], ['f', 'Wyróżnij'], ['h', 'Ukryj']];
 const visOf = (k) => (S.hidden.has(k) ? 'h' : S.ghosted.has(k) ? 'g' : S.focused.has(k) ? 'f' : 'v');
 const visSel = (k) => `<select class="vsel" data-vsel="${k}" data-v="${visOf(k)}" title="Widoczność mięśnia: widoczny / tło (półprzezroczysty) / wyróżniony / ukryty" aria-label="Widoczność mięśnia">${VIS_OPT.map(([x, n]) => `<option value="${x}"${x === visOf(k) ? ' selected' : ''}>${n}</option>`).join('')}</select>`;
-const clearVis = () => { S.hidden.clear(); S.ghosted.clear(); S.focused.clear(); };
+const clearVis = () => { S.hidden.clear(); S.ghosted.clear(); S.focused.clear(); S.hiddenB.clear(); S.undo.length = 0; };
 function setVis(k, v) {
   S.hidden.delete(k); S.ghosted.delete(k); S.focused.delete(k);
   if (v === 'h') S.hidden.add(k); else if (v === 'g') S.ghosted.add(k); else if (v === 'f') S.focused.add(k);
-  syncVis(); apply();
+  syncVis(); apply(); if (PS.wid.on) renderVisPanel(); else layoutPanels();
 }
 function syncVis() { $$('select.vsel', listEl).forEach((el) => { const v = visOf(el.dataset.vsel); el.value = v; el.dataset.v = v; }); }
 function renderList() {
   const regs = S.region === 'all' ? REG_ORDER : [S.region];
   let h = '';
   let tipOff = false; try { tipOff = localStorage.getItem('anatomia.tipMulti') === '1'; } catch (e) {}
-  if (S.tab === 'mus' && !tipOff) h += '<div class="tip"><span>💡 <b>Kilka mięśni naraz:</b> przycisk <b>☑ Wiele mięśni</b> nad modelem (na komputerze także <b>Ctrl / Shift + klik</b>). Każdy dostaje inny kolor; w karcie mięśnia znajdziesz antagonistów.</span><button data-tipx aria-label="Ukryj podpowiedź">×</button></div>';
+  if (S.tab === 'mus' && !tipOff) h += '<div class="tip"><span>💡 <b>Ctrl + klik</b> = dodaj do wyboru wielu mięśni · <b>Shift + klik</b> = ukryj mięsień (odsłania głębsze) · <b>PPM</b> lub długie przytrzymanie = menu · <b>Ctrl+Z</b> cofa.</span><button data-tipx aria-label="Ukryj podpowiedź">×</button></div>';
   if (S.tab === 'mus') {
     for (const r of regs) {
       const gs = Object.values(G).filter((g) => g.region === r).sort((a, b) => a.pl.localeCompare(b.pl, 'pl'));
@@ -615,7 +721,9 @@ listEl.addEventListener('click', (e) => {
   const car = e.target.closest('[data-car],[data-lcar]');
   if (car) { const p = $(`[data-parts="${car.dataset.car}"],[data-lparts="${car.dataset.lcar}"]`, listEl); p && p.classList.toggle('open'); e.stopPropagation(); return; }
   const row = e.target.closest('.row'); if (!row) return;
-  if ((e.ctrlKey || e.metaKey || e.shiftKey) && row.dataset.t === 'grp') { toggleMulti(row.dataset.id); return; }
+  if ((e.ctrlKey || e.metaKey) && row.dataset.t === 'grp') { toggleMulti(row.dataset.id); return; }
+  if (e.shiftKey && row.dataset.t === 'grp') { hideMuscle(row.dataset.id); return; }
+  if (e.shiftKey && row.dataset.t === 'bone') { hideBone(row.dataset.id); return; }
   select({ t: row.dataset.t, id: row.dataset.id });
 });
 
@@ -665,69 +773,136 @@ resEl.addEventListener('click', (e) => {
 });
 window.addEventListener('keydown', (e) => { if (e.key === '/' && document.activeElement !== searchEl && !/input|textarea/i.test(document.activeElement.tagName)) { e.preventDefault(); openDrawer(); searchEl.focus(); } });
 
-/* ---------- panel informacyjny ---------- */
-const infoEl = $('#info');
+/* ---------- panele informacyjne (każdy temat osobno: włącz / zwiń / przenieś / zamknij) ---------- */
+const PDEF = [
+  { id: 'karta', t: 'Karta', ico: 'ℹ️', zone: 'r', on: true, auto: true, tip: 'Opis wybranej struktury: przyczepy, czynność, unerwienie' },
+  { id: 'pow', t: 'Powiązania', ico: '🔗', zone: 'l', on: true, auto: true, tip: 'Antagoniści, części, kości, stawy, więzadła' },
+  { id: 'ruchy', t: 'Ruchy', ico: '↔️', zone: 'l', on: true, auto: true, tip: 'Ruchy w stawach i pracujące mięśnie (antagoniści)' },
+  { id: 'poza', t: 'Poza', ico: '🦾', zone: 'r', on: false, tip: 'Ruchome stawy: suwaki z zakresami ruchu zdrowego człowieka' },
+  { id: 'wid', t: 'Widoczność', ico: '👁', zone: 'l', on: false, tip: 'Ukryte, tło i wyróżnione mięśnie; przywracanie' },
+  { id: 'ana', t: 'Analiza', ico: '🔎', zone: 'r', on: false, tip: 'Analiza objawów (offline): przyczyny %, mięśnie, co wzmocnić' },
+];
+const PD = Object.fromEntries(PDEF.map((d) => [d.id, d]));
+const PS = {}; let mobActive = null;
+{ let sv = {}; try { sv = JSON.parse(localStorage.getItem('anatomia.panels') || '{}'); } catch (e) {}
+  for (const d of PDEF) { const o = sv[d.id] || {}; PS[d.id] = { on: typeof o.on === 'boolean' ? o.on : d.on, min: !!o.min, zone: o.zone === 'l' || o.zone === 'r' ? o.zone : d.zone, html: null }; } }
+const infoEl = $('#panels'), dockEl = $('#dock'); const zoneEl = { l: $('#zoneL'), r: $('#zoneR') };
+const isMobile = () => window.innerWidth < 820;
+const savePanels = () => { try { localStorage.setItem('anatomia.panels', JSON.stringify(Object.fromEntries(PDEF.map((d) => [d.id, { on: PS[d.id].on, min: PS[d.id].min, zone: PS[d.id].zone }])))); } catch (e) {} };
+const pEl = {};
+for (const d of PDEF) { const e = document.createElement('section'); e.className = 'pnl'; e.dataset.p = d.id; e.hidden = true; e.innerHTML = `<div class="ph" title="Kliknij, aby zwinąć / rozwinąć"><b class="pt">${d.ico} ${d.t}</b><span class="pbs"><button data-pa="min" title="Zwiń / rozwiń" aria-label="Zwiń">–</button><button data-pa="zone" title="Przenieś na drugą stronę ekranu" aria-label="Przenieś">⇆</button><button data-pa="off" title="Wyłącz panel (włączysz go ponownie na dolnym pasku)" aria-label="Zamknij panel">×</button></span></div><div class="pb"></div>`; pEl[d.id] = e; }
+const PLACEHOLDER = { poza: '', wid: '', ana: '<p class="small">Opisz ból lub ruch, a zaznaczę mięśnie, ich udział % i co wzmocnić lub rozciągnąć.</p><div class="btns"><button id="anaNew" class="pri">🔎 Nowa analiza</button></div>' };
+const panelVisible = (id) => { const p = PS[id]; if (!p.on) return false; if (PD[id].auto) return p.html != null; return true; };
+function layoutPanels() {
+  const mob = isMobile();
+  if (mob) { if (!mobActive || !panelVisible(mobActive)) mobActive = PDEF.map((d) => d.id).find(panelVisible) || null; }
+  const want = { l: [], r: [] };
+  for (const d of PDEF) {
+    const e = pEl[d.id], p = PS[d.id], show = panelVisible(d.id) && (!mob || d.id === mobActive);
+    e.hidden = !show; e.classList.toggle('min', p.min);
+    (mob ? want.r : want[p.zone]).push(e);
+  }
+  for (const z of ['l', 'r']) { const cur = [...zoneEl[z].children]; if (cur.length !== want[z].length || cur.some((c, i) => c !== want[z][i])) { for (const e of want[z]) zoneEl[z].appendChild(e); } }
+  // dolny pasek (dock)
+  dockEl.innerHTML = PDEF.map((d) => {
+    const vis = panelVisible(d.id) && (!mob || d.id === mobActive), armed = PS[d.id].on && !vis && PD[d.id].auto && !mob;
+    const bd = d.id === 'wid' && hiddenCount() ? `<i class="bd">${hiddenCount()}</i>` : d.id === 'poza' && POSE.ready && !POSE.isRest() ? '<i class="bd">●</i>' : '';
+    return `<button class="dk${vis ? ' on' : ''}${armed ? ' armed' : ''}${d.auto && PS[d.id].html == null ? ' empty' : ''}" data-dk="${d.id}" title="${esc(d.tip)}${armed ? ' — włączony, pojawi się po wyborze struktury' : ''}" aria-pressed="${vis}"><span class="ck">${vis ? '☑' : '☐'}</span><span class="di">${d.ico}</span><span class="dl">${d.t}</span>${bd}</button>`;
+  }).join('') + '<button class="dk help" data-dk="_help" title="Skróty i obsługa">?</button>';
+  updHintTop(); measureInsets();
+}
+let panelInset = { l: 0, r: 0, b: 0 };
+function measureInsets() {
+  const mob = isMobile(); let l = 0, r = 0, b = 0;
+  if (mob) { const e = mobActive && pEl[mobActive]; if (e && !e.hidden) b = Math.min(e.offsetHeight, e.parentElement.offsetHeight) + 74; }
+  else for (const z of ['l', 'r']) { if ([...zoneEl[z].children].some((e) => !e.hidden)) { const w = zoneEl[z].offsetWidth + 12; if (z === 'l') l = w; else r = w; } }
+  panelInset = { l, r, b };
+}
+function setPanel(id, html, opts = {}) { // html === null → brak treści (panele „auto” znikają)
+  const p = PS[id], body = $('.pb', pEl[id]), st = body.scrollTop; p.html = html;
+  body.innerHTML = html != null ? html : (PLACEHOLDER[id] ?? ''); if (opts.keep) body.scrollTop = st; else body.scrollTop = 0;
+  if (html != null && p.on && isMobile() && !opts.quiet) mobActive = id;
+  layoutPanels();
+}
+function togglePanel(id, v) {
+  const p = PS[id]; p.on = v === undefined ? !p.on : v;
+  if (p.on) { p.min = false; if (isMobile()) mobActive = id; if (id === 'poza' && typeof renderPose === 'function') renderPose(); if (id === 'wid') renderVisPanel(); if (id === 'ana' && !S.ana) setPanel('ana', null, { quiet: true }); }
+  else if (id === 'ana' && S.ana) { S.ana = null; apply(); renderInfo(); markList(); }
+  savePanels(); layoutPanels();
+}
+const showPanel = (id) => { if (!PS[id].on) togglePanel(id, true); else { PS[id].min = false; layoutPanels(); } };
+function updHintTop() { const v = $('#views'); if (v) panelsRoot.style.setProperty('--vh', Math.round(v.offsetHeight + 24) + 'px'); }
+const panelsRoot = infoEl;
+new ResizeObserver(updHintTop).observe($('#views'));
+window.addEventListener('resize', () => layoutPanels());
+infoEl.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-pa]'); if (b) { const id = b.closest('.pnl').dataset.p, a = b.dataset.pa, p = PS[id]; if (a === 'min') p.min = !p.min; else if (a === 'zone') p.zone = p.zone === 'r' ? 'l' : 'r'; else if (a === 'off') { togglePanel(id, false); return; } savePanels(); layoutPanels(); return; }
+  const ph = e.target.closest('.ph'); if (ph && !e.target.closest('button')) { const p = PS[ph.parentNode.dataset.p]; p.min = !p.min; savePanels(); layoutPanels(); }
+});
+dockEl.addEventListener('click', (e) => { const b = e.target.closest('[data-dk]'); if (!b) return; if (b.dataset.dk === '_help') { showHelp(); return; } const id = b.dataset.dk; if (PD[id].auto && !panelVisible(id) && PS[id].on) { togglePanel(id, false); return; } togglePanel(id, panelVisible(id) && (!isMobile() || id === mobActive) ? false : true); });
+
+layoutPanels();
 function chip(pl, la, t, id, cls = '', dot = '') { return `<button class="chip ${cls}" data-t="${t}" data-id="${id}">${dot}${esc(pl)} <small>(${esc(la)})</small></button>`; }
 const gchip = (k, cls = '') => chip(G[k].pl, G[k].la, 'grp', k, cls);
 const mchips = (arr) => arr.map((m) => (isG(m) ? gchip(m) : `<span class="chip txt">${esc(m)}</span>`)).join('');
-const head = (pl, la, tag) => `<div class="ihead"><div><div class="itag">${esc(tag)}</div><h2>${esc(pl)}</h2><div class="ila">(${esc(la)})</div></div><button class="x" id="ix" aria-label="Zamknij">×</button></div>`;
+const head = (pl, la, tag) => `<div class="ihead"><div><div class="itag">${esc(tag)}</div><h2>${esc(pl)}</h2><div class="ila">(${esc(la)})</div></div></div>`;
 const PIET = 'Staw piętrowy (dwujamowy / dwukomorowy): krążek lub łąkotka dzieli jamę stawową na dwa piętra, w których zachodzą różne ruchy.';
 function renderMulti() {
   const keys = [...S.multi.keys()];
-  let h = head(`Wybrane mięśnie (${keys.length})`, 'wybór wielokrotny', 'Tryb wielu mięśni');
-  if (!keys.length) h += '<p class="desc">Klikaj mięśnie na modelu albo na liście, aby dodać lub usunąć je z zaznaczenia. Na komputerze działa też <b>Ctrl</b> / <b>Shift</b> + klik.</p>';
+  let h = head(`Wybrane mięśnie (${keys.length})`, 'wybór wielokrotny', 'Tryb wielu mięśni'), pw = '';
+  if (!keys.length) h += '<p class="desc">Klikaj mięśnie na modelu albo na liście, aby dodać lub usunąć je z zaznaczenia. Na komputerze działa też <b>Ctrl</b> + klik. <b>Shift</b> + klik ukrywa mięsień.</p>';
   else {
     h += `<div class="chips mt">${keys.map((k) => `<span class="chip sel"><i class="dotc" style="background:${G[k].col}"></i><button class="cn" data-t="grp" data-id="${k}">${esc(G[k].pl)} <small>(${esc(G[k].la)})</small></button><button class="rm" data-rm="${k}" aria-label="Usuń">×</button></span>`).join('')}</div>`;
     const rel = []; const seen = new Set();
     for (const a of keys) for (const b of ANT.get(a) || []) if (S.multi.has(b) && S.multi.get(a) !== S.multi.get(b)) { const id = [a, b].sort().join('|'); if (!seen.has(id)) { seen.add(id); rel.push([a, b]); } }
-    if (rel.length) h += `<div class="subt">Antagoniści w zaznaczeniu</div><ul class="rel">${rel.map(([a, b]) => `<li>${esc(G[a].pl)} <b>⇄</b> ${esc(G[b].pl)}</li>`).join('')}</ul>`;
+    if (rel.length) pw += `<div class="subt">Antagoniści w zaznaczeniu</div><ul class="rel">${rel.map(([a, b]) => `<li>${esc(G[a].pl)} <b>⇄</b> ${esc(G[b].pl)}</li>`).join('')}</ul>`;
     const allAnt = new Set(); for (const k of keys) for (const b of ANT.get(k) || []) if (!S.multi.has(b)) allAnt.add(b);
-    if (allAnt.size) h += `<div class="subt">Antagoniści spoza zaznaczenia</div><div class="chips">${[...allAnt].sort((a, b) => G[a].pl.localeCompare(G[b].pl, 'pl')).map((k) => gchip(k)).join('')}</div>`;
+    if (allAnt.size) pw += `<div class="subt">Antagoniści spoza zaznaczenia</div><div class="chips">${[...allAnt].sort((a, b) => G[a].pl.localeCompare(G[b].pl, 'pl')).map((k) => gchip(k)).join('')}</div>`;
     if (patchesByGrp.size) h += `<div class="legend"><span><i class="o"></i>początki</span><span><i class="i"></i>przyczepy końcowe</span></div>`;
   }
   h += `<div class="btns">${keys.length ? '<button id="bMultiFocus">Przybliż</button>' : ''}${keys.length && [...ANT.keys()].some((k) => S.multi.has(k)) ? '<button id="bAddAnt">Dodaj antagonistów</button>' : ''}${keys.length ? '<button id="bMultiClear">Wyczyść</button>' : ''}<button id="bMultiOff" class="pri">Zakończ wybór wielu</button></div>`;
-  infoEl.innerHTML = h; infoEl.classList.add('show');
+  setPanel('karta', h); setPanel('pow', pw || null); setPanel('ruchy', null);
 }
 function renderInfo() {
   if (S.multiMode) { renderMulti(); return; }
-  const s = S.sel; if (!s) { if (S.ana) { renderAna(); return; } infoEl.classList.remove('show'); return; }
-  let h = S.ana ? '<button class="abackb" id="anaBack">← Wróć do analizy</button>' : '';
+  const s = S.sel; if (!s) { setPanel('karta', null); setPanel('pow', null); setPanel('ruchy', null); return; }
+  let h = '', pw = '', rv = '';
   if (s.t === 'grp' || s.t === 'part') {
     const gk = grpOf(s); const g = G[gk]; const part = s.t === 'part' ? MUS.get(s.id) : null;
     h += head(part ? `${g.pl} — ${part.pl.toLowerCase()}` : g.pl, part ? `${g.la}, ${part.la.toLowerCase()}` : g.la, OTHER.has(gk) ? 'Powięź / troczek · ' + REGION_NAME[g.region].toLowerCase() : 'Mięsień · ' + REGION_NAME[g.region].toLowerCase());
     h += `<dl><dt>Początek</dt><dd>${esc(g.org)}</dd><dt>Przyczep końcowy</dt><dd>${esc(g.ins)}</dd><dt>Czynność</dt><dd>${esc(g.fn)}</dd><dt>Unerwienie</dt><dd>${esc(g.inn)}</dd></dl>`;
     if (patchesByGrp.get(gk)) h += `<div class="legend"><span><i class="o"></i>początek</span><span><i class="i"></i>przyczep końcowy</span><em>zaznaczone na kościach (orientacyjnie, wg modelu)</em></div>`;
-    const an = ANT.get(gk); if (an && an.size) h += `<div class="subt">Antagoniści</div><div class="chips">${[...an].sort((a, b) => G[a].pl.localeCompare(G[b].pl, 'pl')).map((k) => gchip(k)).join('')}</div>`;
-    const mj = MJ.get(gk); if (mj && mj.length) h += `<div class="subt">Działa na stawy</div><div class="chips">${mj.map((x) => chip(JMAP.get(x.j).pl, x.ruch, 'joint', x.j, '', sdot(JMAP.get(x.j)))).join('')}</div>`;
-    if (g.parts.length > 1) { h += '<div class="subt">Części</div><div class="chips">'; for (const p of g.parts) h += chip(p.pl, p.la, 'part', p.id, part && part.id === p.id ? 'on' : ''); h += '</div>'; }
+    const an = ANT.get(gk); if (an && an.size) pw += `<div class="subt">Antagoniści</div><div class="chips">${[...an].sort((a, b) => G[a].pl.localeCompare(G[b].pl, 'pl')).map((k) => gchip(k)).join('')}</div>`;
+    if (g.parts.length > 1) { pw += '<div class="subt">Części</div><div class="chips">'; for (const p of g.parts) pw += chip(p.pl, p.la, 'part', p.id, part && part.id === p.id ? 'on' : ''); pw += '</div>'; }
+    const mj = MJ.get(gk); if (mj && mj.length) { rv += '<div class="subt">Działa na stawy — kliknij ruch, aby zobaczyć go na modelu</div><div class="chips">'; for (const x of mj) { const dof = typeof poseMoveFor === 'function' ? poseMoveFor(x.j, x.ruch) : null; rv += dof ? `<button class="chip mvp" data-mvp="${x.j}|${esc(x.ruch)}|${gk}" title="Pokaż ten ruch na modelu">▶ ${esc(x.ruch)} <small>(${esc(JMAP.get(x.j).pl)})</small></button>` : chip(JMAP.get(x.j).pl, x.ruch, 'joint', x.j, '', sdot(JMAP.get(x.j))); } rv += '</div>'; }
   } else if (s.t === 'bone') {
     const b = BON.get(s.id); const ls = lmsByBone.get(b.id) || [];
     h += head(b.pl, b.la, b.kind === 'ctx' ? 'Kość · kontekst' : 'Kość · ' + REGION_NAME[b.region].toLowerCase());
     h += `<p class="desc">${esc(b.d)}</p>`;
+    if (ls.length) h += `<label class="chk"><input type="checkbox" id="pinsToggle" ${S.showPins ? 'checked' : ''}> Pokaż punkty kostne na modelu (${ls.length})</label>`;
     const ps = patchesByBone.get(b.id) || [];
     if (ps.length) {
       const byG = new Map(); for (const p of ps) { const k = p.grp; if (!byG.has(k) || p.role === 'o') byG.set(k, p.role); }
       const og = [...byG].filter(([, r]) => r === 'o').map(([k]) => k), ig = [...byG].filter(([, r]) => r === 'i').map(([k]) => k);
       const mk = (arr) => arr.sort((a, b) => G[a].pl.localeCompare(G[b].pl, 'pl')).map((k) => gchip(k)).join('');
-      if (og.length) h += `<div class="subt"><i class="dot o"></i>Początki mięśni</div><div class="chips">${mk(og)}</div>`;
-      if (ig.length) h += `<div class="subt"><i class="dot i"></i>Przyczepy końcowe mięśni</div><div class="chips">${mk(ig)}</div>`;
+      if (og.length) pw += `<div class="subt"><i class="dot o"></i>Początki mięśni</div><div class="chips">${mk(og)}</div>`;
+      if (ig.length) pw += `<div class="subt"><i class="dot i"></i>Przyczepy końcowe mięśni</div><div class="chips">${mk(ig)}</div>`;
     }
     const js = JN.filter((j) => j.bones.includes(b.id));
-    if (js.length) h += `<div class="subt">Stawy z udziałem kości</div><div class="chips">${js.map((j) => chip(j.pl, j.la, 'joint', j.id, '', sdot(j))).join('')}</div>`;
-    if (ls.length) h += `<label class="chk"><input type="checkbox" id="pinsToggle" ${S.showPins ? 'checked' : ''}> Pokaż punkty kostne na modelu (${ls.length})</label>`;
-    if (ls.length) h += `<div class="subt">Punkty kostne</div><div class="chips">${[...ls].sort((a, b) => a.pl.localeCompare(b.pl, 'pl')).map((l) => chip(l.pl, l.la, 'lm', l.id)).join('')}</div>`;
+    if (js.length) pw += `<div class="subt">Stawy z udziałem kości</div><div class="chips">${js.map((j) => chip(j.pl, j.la, 'joint', j.id, '', sdot(j))).join('')}</div>`;
+    if (ls.length) pw += `<div class="subt">Punkty kostne</div><div class="chips">${[...ls].sort((a, b) => a.pl.localeCompare(b.pl, 'pl')).map((l) => chip(l.pl, l.la, 'lm', l.id)).join('')}</div>`;
   } else if (s.t === 'lm') {
     const l = LMS.get(s.id), b = BON.get(l.bone);
     h += head(l.pl, l.la, 'Punkt kostny');
     if (l.d) h += `<p class="desc">${esc(l.d)}</p>`;
-    h += `<div class="subt">Kość</div><div class="chips">${chip(b.pl, b.la, 'bone', b.id)}</div>`;
+    pw += `<div class="subt">Kość</div><div class="chips">${chip(b.pl, b.la, 'bone', b.id)}</div>`;
   } else if (s.t === 'str') {
     const x = STR.get(s.id);
     h += head(x.pl, x.la, `${STRTYP[x.t]} · ${REGION_NAME[x.reg].toLowerCase()}`);
     h += `<p class="desc">${esc(x.d)}</p>`;
-    if (x.j && x.j.length) h += `<div class="subt">Staw</div><div class="chips">${x.j.map((id) => chip(JMAP.get(id).pl, JMAP.get(id).la, 'joint', id, '', sdot(JMAP.get(id)))).join('')}</div>`;
+    if (x.j && x.j.length) pw += `<div class="subt">Staw</div><div class="chips">${x.j.map((id) => chip(JMAP.get(id).pl, JMAP.get(id).la, 'joint', id, '', sdot(JMAP.get(id)))).join('')}</div>`;
     const sib = DATA.structs.filter((y) => y.t === x.t && y.reg === x.reg && y.id !== x.id && y.pl.split(' ')[0] === x.pl.split(' ')[0]).slice(0, 8);
-    if (sib.length) h += `<div class="subt">Podobne struktury</div><div class="chips">${sib.map((y) => chip(y.pl, y.la, 'str', y.id)).join('')}</div>`;
+    if (sib.length) pw += `<div class="subt">Podobne struktury</div><div class="chips">${sib.map((y) => chip(y.pl, y.la, 'str', y.id)).join('')}</div>`;
   } else if (s.t === 'joint') {
     const j = JMAP.get(s.id), sh = SHP[j.shape];
     h += head(j.pl, j.la, 'Staw · ' + REGION_NAME[j.reg].toLowerCase());
@@ -735,31 +910,35 @@ function renderInfo() {
     h += `<dt>Liczba osi ruchu</dt><dd>${esc(j.osie)}</dd><dt>Powierzchnie stawowe</dt><dd><b>${j.n}</b> — ${esc(j.pow)}</dd>`;
     if (j.piet) h += `<dt>Piętrowy / dwujamowy</dt><dd><b>tak</b><div class="small">${PIET}</div></dd>`;
     h += `<dt>Cechy</dt><dd>${esc(j.cechy)}</dd></dl>`;
-    if (j.children && j.children.length) h += `<div class="subt">Stawy składowe</div><div class="chips">${j.children.map((c) => chip(JMAP.get(c).pl, JMAP.get(c).la, 'joint', c, '', sdot(JMAP.get(c)))).join('')}</div>`;
-    if (j.parent) h += `<div class="subt">Część stawu złożonego</div><div class="chips">${chip(JMAP.get(j.parent).pl, JMAP.get(j.parent).la, 'joint', j.parent, '', sdot(JMAP.get(j.parent)))}</div>`;
-    h += `<div class="subt">Kości</div><div class="chips">${j.bones.map((b) => chip(BON.get(b).pl, BON.get(b).la, 'bone', b)).join('')}</div>`;
+    if (j.children && j.children.length) pw += `<div class="subt">Stawy składowe</div><div class="chips">${j.children.map((c) => chip(JMAP.get(c).pl, JMAP.get(c).la, 'joint', c, '', sdot(JMAP.get(c)))).join('')}</div>`;
+    if (j.parent) pw += `<div class="subt">Część stawu złożonego</div><div class="chips">${chip(JMAP.get(j.parent).pl, JMAP.get(j.parent).la, 'joint', j.parent, '', sdot(JMAP.get(j.parent)))}</div>`;
+    pw += `<div class="subt">Kości</div><div class="chips">${j.bones.map((b) => chip(BON.get(b).pl, BON.get(b).la, 'bone', b)).join('')}</div>`;
+    const lg = (DATA.structs || []).filter((x) => x.j && x.j.includes(j.id)); if (lg.length) pw += `<div class="subt">Więzadła i struktury stawu (${lg.length})</div><div class="chips">${lg.map((x) => chip(x.pl, x.la, 'str', x.id, '', `<i class="sdot" style="background:${STRCSS[x.t]}"></i>`)).join('')}</div>`;
     if (j.pairs.length) {
-      h += '<div class="subt">Ruchy i mięśnie (antagoniści ⇄)</div>';
-      j.pairs.forEach((pr, i) => { h += `<div class="mv"><button class="mvb" data-mv="${j.id}|${i}" title="Zaznacz oba zespoły mięśni">${esc(pr[0])} <b>⇄</b> ${esc(pr[2])}</button><div class="mvr"><span class="mvl">${esc(pr[0])}</span>${mchips(pr[1])}</div><div class="mvr"><span class="mvl">${esc(pr[2])}</span>${mchips(pr[3])}</div></div>`; });
-    } else h += '<p class="small">Ruchomość znikoma — brak wyodrębnionych ruchów czynnych.</p>';
-    const lg = (DATA.structs || []).filter((x) => x.j && x.j.includes(j.id)); if (lg.length) h += `<div class="subt">Więzadła i struktury stawu (${lg.length})</div><div class="chips">${lg.map((x) => chip(x.pl, x.la, 'str', x.id, '', `<i class="sdot" style="background:${STRCSS[x.t]}"></i>`)).join('')}</div>`;
+      rv += '<div class="subt">Ruchy i mięśnie (antagoniści ⇄)</div>';
+      j.pairs.forEach((pr, i) => { rv += `<div class="mv"><button class="mvb" data-mv="${j.id}|${i}" title="Zaznacz oba zespoły mięśni">${esc(pr[0])} <b>⇄</b> ${esc(pr[2])}</button><div class="mvr"><span class="mvl">${esc(pr[0])}</span>${mchips(pr[1])}</div><div class="mvr"><span class="mvl">${esc(pr[2])}</span>${mchips(pr[3])}</div></div>`; });
+      const pj = typeof poseJointInfo === 'function' ? poseJointInfo(j.id) : null; if (pj) rv += `<div class="btns"><button id="bPoseJ" data-j="${j.id}">🦾 Poruszaj tym stawem</button></div>`;
+    } else rv += '<p class="small">Ruchomość znikoma — brak wyodrębnionych ruchów czynnych.</p>';
     h += '<div class="legend"><em>znacznik stawu jest półprzezroczysty, widoczny przez kości; torebka i krążek — w kolorze typu stawu</em></div>';
   }
   const jm = s.t === 'joint' && JMAP.get(s.id).pairs.some((p) => p[1].some(isG) || p[3].some(isG));
-  h += `<div class="btns"><button id="bFocus">Przybliż</button>${s.t === 'grp' || s.t === 'part' ? '<button id="bIso">Ukryj resztę</button>' : ''}${(s.t === 'grp' || s.t === 'part') && ANT.has(grpOf(s)) ? '<button id="bAnt">Z antagonistami</button>' : ''}${jm ? '<button id="bJm">Pokaż mięśnie stawu</button>' : ''}<button id="bClear">Odznacz</button></div>`;
-  infoEl.innerHTML = h; infoEl.classList.add('show');
+  const isM = s.t === 'grp' || s.t === 'part';
+  h += `<div class="btns"><button id="bFocus">Przybliż</button>${isM ? '<button id="bHide" title="Ukryj ten mięsień, aby dotrzeć do głębszych (Shift+klik lub H)">Ukryj mięsień</button><button id="bIso">Ukryj resztę</button>' : ''}${s.t === 'bone' ? '<button id="bHide" title="Ukryj kość (Shift+klik lub H)">Ukryj kość</button>' : ''}${isM && ANT.has(grpOf(s)) ? '<button id="bAnt">Z antagonistami</button>' : ''}${jm ? '<button id="bJm">Pokaż mięśnie stawu</button>' : ''}<button id="bClear">Odznacz</button></div>`;
+  setPanel('karta', h); setPanel('pow', pw || null); setPanel('ruchy', rv || null);
 }
 infoEl.addEventListener('click', (e) => {
   const t = e.target;
-  const at = t.closest('[data-at]'); if (at && S.ana) { S.ana.tab = at.dataset.at; S.ana.focus = null; S.ana.cause = null; apply(); renderInfo(); anaFly(); return; }
+  const at = t.closest('[data-at]'); if (at && S.ana) { S.ana.tab = at.dataset.at; S.ana.focus = null; S.ana.cause = null; apply(); renderAna(); anaFly(); return; }
   const ac = t.closest('[data-ac]'); if (ac && S.ana) { const i = +ac.dataset.ac; S.ana.cause = S.ana.cause === i ? null : i; S.ana.focus = null; apply(); renderAna(true); anaFly(); return; }
   const ak = t.closest('[data-ak]'); if (ak && S.ana) { S.ana.focus = ak.dataset.ak; apply(); renderAna(true); const o = G[ak.dataset.ak].ids.map((i) => O('mus', i, defSide())); focusObjects(o, null, 0.14); return; }
   const ai = t.closest('[data-ai]'); if (ai) { select({ t: 'grp', id: ai.dataset.ai }); return; }
   if (t.closest('#anaClose')) { closeAna(); return; }
   if (t.closest('#anaNew')) { openAna(S.ana ? S.ana.q : ''); return; }
   if (t.closest('#anaFocus')) { anaFly(); return; }
-  if (t.closest('#anaBack')) { S.sel = null; apply(); renderInfo(); markList(); return; }
-  if (t.closest('#ix') || t.closest('#bClear')) { select(null); return; }
+  if (t.closest('#bClear')) { select(null); return; }
+  if (t.closest('#bHide')) { const s0 = S.sel; if (s0 && s0.t === 'bone') hideBone(s0.id); else if (s0) hideMuscle(grpOf(s0)); return; }
+  const mvp = t.closest('[data-mvp]'); if (mvp) { const [jid, ruch, gk] = mvp.dataset.mvp.split('|'); if (typeof poseDemo === 'function') poseDemo(jid, ruch, gk); return; }
+  if (t.closest('#bPoseJ')) { if (typeof poseOpenJoint === 'function') poseOpenJoint(t.closest('#bPoseJ').dataset.j); return; }
   if (t.closest('#bFocus')) { const s = S.sel; S.sel = null; select(s); return; }
   if (t.closest('#bIso')) { S.ghostBg = false; S.layers.bones = true; const s = S.sel; $('#ghostBg').checked = false; const gk = grpOf(s); clearVis(); for (const k of Object.keys(G)) if (k !== gk) S.hidden.add(k); renderList(); apply(); return; }
   if (t.closest('#bAnt')) { const k = grpOf(S.sel); setMulti([[k, 0], ...[...ANT.get(k)].map((a) => [a, 1])]); return; }
@@ -773,6 +952,103 @@ infoEl.addEventListener('click', (e) => {
   const c = t.closest('[data-t]'); if (c && (c.classList.contains('chip') || c.classList.contains('cn'))) { if (S.multiMode && c.dataset.t === 'grp') { if (!S.multi.has(c.dataset.id)) toggleMulti(c.dataset.id, undefined, { noFly: true }); return; } select({ t: c.dataset.t, id: c.dataset.id }); return; }
 });
 infoEl.addEventListener('change', (e) => { if (e.target.id === 'pinsToggle') { S.showPins = e.target.checked; updatePins(); dirty(); } });
+
+
+/* ---------- panel „Poza”: suwaki stawów w zakresach ruchu zdrowego człowieka ---------- */
+const PRESETS = [
+  ['Pozycja anatomiczna', {}],
+  ['Ręka w górze — zgięcie 180°', { F: 180 }],
+  ['Ręka w górze — odwodzenie 180°', { A: 180 }],
+  ['Ramię w bok 90°', { A: 90 }],
+  ['Ramię do przodu 90°', { F: 90 }],
+  ['Łokieć 90° — płaszczyzna strzałkowa', { E: 90 }],
+  ['Łokieć 90° — płaszczyzna poprzeczna', { A: 90, R: 27, E: 90 }],
+  ['Ręka w górze, łokieć 90° („stop”)', { A: 90, E: 90 }],
+  ['Dłoń do barku', { E: 145, F: 20 }],
+  ['Ręka za plecami (wyprost)', { F: -55, R: 40 }],
+];
+const fmtDeg = (d, v) => { const a = Math.round(Math.abs(v)); if (a === 0) return '0°'; return `${a}° ${v >= 0 ? d.pos : d.neg}`; };
+let poseBuilt = false;
+function renderPose() {
+  let h = '<p class="small">Poruszaj stawami w zakresach ruchu zdrowego człowieka. <b>0° = pozycja anatomiczna modelu.</b> Mięśnie odkształcają się razem z kośćmi (przybliżenie: skinning wg odległości od kości). Poza działa symetrycznie na obie ręce.</p>';
+  h += `<label class="chk"><input type="checkbox" id="pRhythm" ${POSE.rhythm ? 'checked' : ''}> Rytm łopatkowo-ramienny (łopatka i obojczyk podążają za ramieniem)</label>`;
+  h += `<div class="subt">Gotowe pozy</div><div class="chips">${PRESETS.map(([n], i) => `<button class="chip" data-preset="${i}">${esc(n)}</button>`).join('')}</div>`;
+  let g = '';
+  for (const d of DOF) {
+    if (d.g !== g) { g = d.g; h += `<div class="subt pg" data-pg="${esc(g)}">${esc(g)}</div>`; }
+    h += `<div class="prow" data-k="${d.k}"><div class="pl"><b>${esc(d.n)}</b><span class="pv" id="pv-${d.k}"></span></div><input type="range" class="psl" data-k="${d.k}" min="${d.min}" max="${d.max}" step="1" value="${POSE.vals[d.k]}" aria-label="${esc(d.n)}"><div class="pe"><span>◀ ${esc(d.neg)} ${Math.abs(d.min)}°</span><span>${esc(d.pos)} ${d.max}° ▶</span></div><div class="pn">norma: ${esc(d.norm)}</div></div>`;
+  }
+  h += '<div class="btns"><button id="pReset" class="pri">Reset pozy</button><button id="pLat" title="Widok z boku — dobry do zgięcia i wyprostu">Widok z boku</button><button id="pFront" title="Widok z przodu — dobry do odwodzenia">Widok z przodu</button></div>';
+  h += '<p class="small">Zakresy: AAOS / Kapandji, zdrowy dorosły (ruch czynny). Obojczyk i łopatka poruszają się automatycznie (rytm ok. 2:1) lub ręcznie suwakami „Obręcz barkowa”. Palce pozostają w spoczynku.</p>';
+  setPanel('poza', h, { keep: true, quiet: true }); poseBuilt = true; syncPoseUI();
+}
+function syncPoseUI() {
+  if (!poseBuilt) { layoutPanels(); return; }
+  const root = pEl.poza; if (!root) return;
+  for (const d of DOF) {
+    const sl = $(`input.psl[data-k="${d.k}"]`, root), v = POSE.vals[d.k]; if (!sl) continue;
+    if (document.activeElement !== sl) sl.value = v; const pv = $(`#pv-${d.k}`, root); if (pv) pv.textContent = fmtDeg(d, v);
+  }
+  const rb = $('#pRhythm', root); if (rb) rb.checked = POSE.rhythm;
+  layoutPanels();
+}
+infoEl.addEventListener('input', (e) => { const sl = e.target.closest('input.psl'); if (!sl) return; POSE.set({ [sl.dataset.k]: +sl.value }); const d = DOF.find((x) => x.k === sl.dataset.k); const pv = $(`#pv-${d.k}`, pEl.poza); if (pv) pv.textContent = fmtDeg(d, +sl.value); });
+infoEl.addEventListener('change', (e) => { if (e.target.id === 'pRhythm') POSE.setRhythm(e.target.checked); });
+infoEl.addEventListener('click', (e) => {
+  const t = e.target; const pr = t.closest('[data-preset]');
+  if (pr) { const p = PRESETS[+pr.dataset.preset]; POSE.animateTo({ ...REST, ...p[1] }, 900); toast(p[0]); return; }
+  if (t.closest('#pReset')) { POSE.animateTo({ ...REST }, 700); return; }
+  if (t.closest('#pLat')) { viewRegion('lat'); return; } if (t.closest('#pFront')) { viewRegion('front'); return; }
+});
+// powiązanie mięśni i stawów z ruchem: nazwa ruchu → docelowe kąty
+function poseMoveFor(j, ruch) {
+  const r = norm(ruch), has = (x) => r.includes(x);
+  const gh = ['J_ghj'], el = ['J_lok', 'J_hu', 'J_hr'], pr = ['J_pru', 'J_dru', 'J_lok', 'J_hr'], wr = ['J_rcj', 'J_mcj'], gd = ['J_scj', 'J_acj'];
+  if (gh.includes(j)) { if (has('zgiecie')) return { F: 140 }; if (has('wyprost')) return { F: -45 }; if (has('odwodz')) return { A: 120 }; if (has('przywodz')) return { A: -25 }; if (has('zewn')) return { R: -70, E: 90 }; if (has('wewn')) return { R: 55, E: 90 }; }
+  if (has('nawroc') || has('pronac')) return pr.includes(j) ? { E: 90, Pr: 55 } : null;
+  if (has('odwroc') || has('supinac')) return pr.includes(j) ? { E: 90, Pr: -90 } : null;
+  if (el.includes(j)) { if (has('zgiecie')) return { E: 125 }; if (has('wyprost')) return { E: 0 }; }
+  if (wr.includes(j)) { if (has('dloniow')) return { wFE: 65 }; if (has('grzbiet') || has('wyprost')) return { wFE: -55 }; if (has('promien')) return { wDev: -15 }; if (has('lokciow')) return { wDev: 25 }; }
+  if (gd.includes(j)) { if (has('unoszen')) return { gElev: 30 }; if (has('opuszcz')) return { gElev: -8 }; if (has('protrak')) return { gProt: 22 }; if (has('retrak')) return { gProt: -16 }; }
+  return null;
+}
+const poseJointInfo = (jid) => (['J_ghj', 'J_lok', 'J_hu', 'J_hr', 'J_pru', 'J_dru', 'J_rcj', 'J_mcj', 'J_scj', 'J_acj'].includes(jid) ? true : null);
+function poseDemo(jid, ruch, gk) {
+  const tg = poseMoveFor(jid, ruch); if (!tg) { toast('Ten ruch nie ma jeszcze animacji.'); return; }
+  showPanel('poza'); renderPose();
+  if (gk && G[gk]) { S.sel = { t: 'grp', id: gk }; S.hidden.delete(gk); apply(); renderInfo(); markList(); }
+  POSE.animateTo({ ...REST, ...tg }, 900); toast(`${ruch} (${JMAP.get(jid).pl})`);
+  const side = /zgiecie|wyprost|protrak|retrak/.test(norm(ruch)) ? 'lat' : /odwodz|przywodz|unoszen|opuszcz/.test(norm(ruch)) ? 'front' : null; if (side && S.box) viewRegion(side);
+}
+function poseOpenJoint(jid) {
+  showPanel('poza'); renderPose();
+  const g = ({ J_ghj: 'Staw ramienny', J_lok: 'Łokieć', J_hu: 'Łokieć', J_hr: 'Łokieć', J_pru: 'Przedramię', J_dru: 'Przedramię', J_rcj: 'Nadgarstek', J_mcj: 'Nadgarstek', J_scj: 'Obręcz barkowa', J_acj: 'Obręcz barkowa' })[jid];
+  const el = g && $(`[data-pg="${g}"]`, pEl.poza); if (el) el.scrollIntoView({ block: 'start', behavior: 'smooth' });
+}
+function showMusclePose(k) {
+  const mj = MJ.get(k) || []; for (const x of mj) if (poseMoveFor(x.j, x.ruch)) { poseDemo(x.j, x.ruch, k); return; }
+  toast('Dla tego mięśnia nie ma jeszcze animacji ruchu (obejmuje kończynę górną).');
+}
+
+/* ---------- panel Widoczność ---------- */
+function renderVisPanel() {
+  const row = (kind, id, pl, la, col) => `<div class="vrow"><i class="dotc" style="background:${col}"></i><span class="vn">${esc(pl)} <small>(${esc(la)})</small></span><button data-vr="${kind}|${id}" title="Pokaż ponownie">Pokaż</button></div>`;
+  const hm = [...S.hidden].sort((a, b) => G[a].pl.localeCompare(G[b].pl, 'pl')), hb = [...S.hiddenB].sort((a, b) => BON.get(a).pl.localeCompare(BON.get(b).pl, 'pl'));
+  const gh = [...S.ghosted], fo = [...S.focused];
+  let h = `<p class="small"><b>Shift + klik</b> na modelu ukrywa mięsień pod kursorem — odsłaniasz głębszy. <b>PPM</b> = menu, <b>H</b> ukrywa zaznaczony, <b>Ctrl+Z</b> cofa.</p>`;
+  h += `<div class="btns"><button id="vUndo"${S.undo.length ? '' : ' disabled'}>↶ Cofnij</button><button id="vAll"${hiddenCount() ? '' : ' disabled'}>Pokaż wszystkie ukryte</button><button id="vReset"${hiddenCount() + gh.length + fo.length ? '' : ' disabled'}>Reset widoczności</button></div>`;
+  h += `<div class="subt">Ukryte mięśnie (${hm.length})</div>${hm.length ? hm.map((k) => row('m', k, G[k].pl, G[k].la, OTHER.has(k) ? '#d9c39a' : G[k].col)).join('') : '<p class="small">Brak — kliknij mięsień z Shiftem, aby go ukryć.</p>'}`;
+  if (hb.length) h += `<div class="subt">Ukryte kości (${hb.length})</div>${hb.map((k) => row('b', k, BON.get(k).pl, BON.get(k).la, '#e9e0c9')).join('')}`;
+  if (gh.length) h += `<div class="subt">Tło — półprzezroczyste (${gh.length})</div><div class="chips">${gh.map((k) => `<button class="chip" data-vset="${k}|v" title="Przywróć">${esc(G[k].pl)} ✕</button>`).join('')}</div>`;
+  if (fo.length) h += `<div class="subt">Wyróżnione (${fo.length})</div><div class="chips">${fo.map((k) => `<button class="chip" data-vset="${k}|v" title="Zdejmij wyróżnienie">${esc(G[k].pl)} ✕</button>`).join('')}</div>`;
+  setPanel('wid', h, { keep: true, quiet: true }); layoutPanels();
+}
+infoEl.addEventListener('click', (e) => {
+  const t = e.target; const vr = t.closest('[data-vr]'); if (vr) { const [kind, id] = vr.dataset.vr.split('|'); restoreOne(kind, id); return; }
+  const vs = t.closest('[data-vset]'); if (vs) { const [k, v] = vs.dataset.vset.split('|'); setVis(k, v); renderVisPanel(); return; }
+  if (t.closest('#vUndo')) { undoVis(); return; } if (t.closest('#vAll')) { showAllHidden(); return; }
+  if (t.closest('#vReset')) { clearVis(); afterVisChange(); return; }
+});
 
 /* ---------- analiza objawów (offline, bez AI) ---------- */
 const anaAllKeys = (a) => [...new Set([...a.res.miesnie, ...a.res.oslabione, ...a.res.rozciagac, ...(a.res.poz ? a.res.poz.miesnie : []), ...a.res.przyczyny.flatMap((c) => (c.m || []).map(([k]) => ({ k })))].map((x) => x.k))];
@@ -797,11 +1073,11 @@ function anaFly() {
 }
 const LAB = (p) => (p >= 40 ? 'bardzo prawdopodobne' : p >= 22 ? 'prawdopodobne' : 'możliwe');
 function renderAna(keep) {
-  const a = S.ana, r = a.res, st = infoEl.scrollTop;
+  const a = S.ana, r = a.res;
   const tabs = [['p', 'Przyczyny'], ['m', 'Mięśnie'], ['w', `Wzmocnić (${r.oslabione.length})`], ['r', `Rozciągać (${r.rozciagac.length})`]]; if (r.poz) tabs.push(['z', 'Pozycja']);
   const dot = (k) => (OTHER.has(k) ? '#d9c39a' : G[k].col);
   const nm = (k) => `<button class="an" data-ak="${k}"><i class="dotc" style="background:${dot(k)}"></i>${esc(G[k].pl)} <small>(${esc(G[k].la)})</small></button><button class="ai" data-ai="${k}" title="Karta mięśnia" aria-label="Karta mięśnia">ⓘ</button>`;
-  let h = `<div class="ihead"><div><div class="itag">Analiza objawów · działa offline, bez AI</div><h2>${esc(r.pozycja)}</h2><div class="ila">${esc(r.okolica)}</div></div><button class="x" id="anaClose" aria-label="Zamknij analizę">×</button></div>`;
+  let h = `<div class="ihead"><div><div class="itag">Analiza objawów · działa offline, bez AI</div><h2>${esc(r.pozycja)}</h2><div class="ila">${esc(r.okolica)}</div></div></div>`;
   h += `<p class="desc">${esc(r.podsumowanie)}</p><div class="atabs">${tabs.map(([k, n]) => `<button data-at="${k}" class="${a.tab === k ? 'on' : ''}">${esc(n)}</button>`).join('')}</div>`;
   if (a.tab === 'p') {
     h += '<div class="subt">Możliwe przyczyny — prawdopodobieństwo</div><p class="small">Kliknij przyczynę, aby zobaczyć jej mięśnie na modelu.</p>';
@@ -834,9 +1110,9 @@ function renderAna(keep) {
   if (r.alarm.length) h += `<div class="alarm"><b>⚠ Kiedy do lekarza:</b><ul>${r.alarm.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>`;
   h += '<p class="small">Narzędzie edukacyjne — nie jest diagnozą ani poradą medyczną. Przy bólu, który narasta, nie mija lub ma towarzyszące objawy, skonsultuj się z lekarzem lub fizjoterapeutą.</p>';
   h += `<div class="btns"><button id="anaFocus">Przybliż</button><button id="anaNew">Nowa analiza</button><button id="anaClose2" class="pri">Zamknij analizę</button></div>`;
-  infoEl.innerHTML = h; infoEl.classList.add('show'); if (keep) infoEl.scrollTop = st;
+  setPanel('ana', h, { keep: !!keep });
 }
-function closeAna() { S.ana = null; apply(); renderInfo(); markList(); }
+function closeAna() { S.ana = null; PS.ana.on = false; savePanels(); setPanel('ana', null, { quiet: true }); apply(); renderInfo(); markList(); }
 infoEl.addEventListener('click', (e) => { if (e.target.closest('#anaClose2')) closeAna(); });
 
 // formularz: okolica + czynniki + strona + opis własnymi słowami
@@ -878,7 +1154,7 @@ async function showAna(res, q) {
   modal.classList.remove('show'); renderList();
   await Promise.all([regs.has('tulow') ? ensureTrunk() : null, regs.has('glowa') ? ensureAxial() : null, regs.has('podudzie') ? ensureLeg() : null]);
   if (!S.ana || S.ana.res !== res) return;
-  apply(); renderInfo(); markList(); anaFly();
+  PS.ana.on = true; savePanels(); apply(); renderInfo(); renderAna(); markList(); anaFly();
   if (window.innerWidth < 820) closeDrawer();
 }
 function runAnalysis() {
@@ -951,7 +1227,7 @@ $('#menu').addEventListener('click', (e) => {
   const a = e.target.closest('button'); if (!a) return; $('#menu').classList.remove('show');
   if (a.dataset.m === 'about') showModal(`<h3>O autorze</h3><p><b>Anatomia</b> — wersja <b>v${VERSION}</b></p><p>Autor: <b>Michał Rzekiecki</b><br>Kontakt: <a href="mailto:michus@gmail.com">michus@gmail.com</a></p><hr><p class="small">Model 3D: <a href="https://www.z-anatomy.com" target="_blank" rel="noopener">Z-Anatomy</a> (CC BY-SA 4.0), oparty na BodyParts3D © The Database Center for Life Science (CC BY-SA 2.1 Japan). Nazwy łacińskie wg Terminologia Anatomica. Opisy mają charakter edukacyjny — w razie wątpliwości sprawdź w podręczniku anatomii.</p>`);
   if (a.dataset.m === 'sug') showModal(`<h3>Sugestie</h3><p class="small">Napisz, co sprawiłoby, że aplikacja będzie jeszcze lepsza.</p><textarea id="sugTxt" rows="6" placeholder="Twoja sugestia…"></textarea><div class="btns"><button id="sugSend" class="pri">Wyślij e-mailem</button><button id="sugCopy">Kopiuj</button></div><p class="small">Otworzy się Twój program pocztowy (adres: michus@gmail.com).</p>`);
-  if (a.dataset.m === 'help') showModal(`<h3>Obsługa</h3><ul class="small"><li><b>Obrót</b> — przeciągnij myszą / palcem; <b>przesuwanie</b> — prawy przycisk lub dwa palce; <b>zoom</b> — kółko / uszczypnięcie.</li><li><b>Klik</b> w strukturę — wybór; kolejny klik w mięsień wielogłowy — wybór konkretnej głowy.</li><li><b>Niebieski</b> = początek mięśnia, <b>pomarańczowy</b> = przyczep końcowy.</li><li><b>Najechanie</b> kursorem na mięsień wygasza resztę modelu o 40%. <b>Lista</b>: mały wybór przy mięśniu — Pokaż / Tło / Wyróżnij / Ukryj; kolor kropki = kolor mięśnia.</li><li><b>🔎 Analiza</b> działa bez internetu i bez AI: wybierz okolicę i czynniki albo opisz ból — dostaniesz przyczyny (%), mięśnie, ćwiczenia wzmacniające i rozciągające.</li><li><b>Prawa / Lewa / Obie</b> (u góry) — wybór strony ciała; lewa strona to lustrzane odbicie prawej (kości i mięśnie kończyny są symetryczne).</li><li><b>☑ Wiele mięśni</b> — zaznaczasz kilka mięśni naraz (na komputerze także Ctrl/Shift + klik). W karcie mięśnia: antagoniści i stawy, na które działa.</li><li><b>Stawy</b> — zakładka z typem, osiami, liczbą powierzchni i mięśniami (agoniści ⇄ antagoniści); kolor znacznika = typ stawu (Warstwy ▸ Stawy).</li><li><b>🔎 Analiza</b> — opisz pozycję lub ruch i dyskomfort (np. „ból w lędźwiach w pozycji dziecka”); zaznaczę mięśnie (główne, pomocnicze, stabilizatory) z szacunkowym udziałem %, podpowiem co wzmocnić i co rozciągnąć. To edukacja, nie diagnoza.</li><li><b>Tułów i biodro</b> — mięśnie grzbietu, brzucha, miednicy i uda oraz kości (kręgi lędźwiowe, kość krzyżowa, miednica, udowa).</li><li>Klawisz <b>/</b> — szukaj. Szukajka obejmuje nazwy polskie, łacińskie i angielskie.</li></ul>`);
+  if (a.dataset.m === 'help') showHelp();
 });
 modal.addEventListener('pointerdown', (e) => { if (e.target === modal) modal.classList.remove('show'); });
 modal.addEventListener('click', (e) => {
@@ -961,6 +1237,21 @@ modal.addEventListener('click', (e) => {
   if (e.target.id === 'sugCopy') { navigator.clipboard?.writeText(t()); e.target.textContent = 'Skopiowano'; }
 });
 
+
+function showHelp() {
+  showModal(`<h3>Obsługa</h3><ul class="small">
+<li><b>Obrót</b> — przeciągnij myszą / palcem; <b>przesuwanie</b> — prawy przycisk (przeciągnij) lub dwa palce; <b>zoom</b> — kółko / uszczypnięcie.</li>
+<li><b>Klik</b> — wybór; kolejny klik w mięsień wielogłowy wybiera konkretną głowę. <b>Niebieski</b> = początek, <b>pomarańczowy</b> = przyczep końcowy.</li>
+<li><b>Ctrl + klik</b> (⌘ na Mac) — dodaje mięsień do wyboru wielu (jak przycisk ☑ Wiele mięśni).</li>
+<li><b>Shift + klik</b> — <b>ukrywa</b> mięsień lub kość pod kursorem, więc możesz sięgnąć do głębszych warstw. <b>PPM</b> (kliknięcie bez przeciągania) albo długie przytrzymanie na telefonie — menu: ukryj, tło, wyróżnij, pokaż tylko ten. <b>H</b> ukrywa zaznaczony, <b>Shift+H</b> pokazuje wszystkie, <b>Ctrl+Z</b> cofa.</li>
+<li><b>Dolny pasek paneli</b> — włączasz i wyłączasz panele tematyczne: Karta, Powiązania, Ruchy, Poza, Widoczność, Analiza. Każdy panel można zwinąć (–), przenieść na drugą stronę (⇆) lub zamknąć (×); układ jest zapamiętywany.</li>
+<li><b>🦾 Poza</b> — poruszaj stawami kończyny górnej suwakami w zakresach ruchu zdrowego człowieka; mięśnie odkształcają się razem z kośćmi. Gotowe pozy: ręka w górze, łokieć 90° w płaszczyźnie strzałkowej i poprzecznej.</li>
+<li><b>Najechanie</b> na mięsień wygasza resztę modelu o 40%. <b>Lista</b>: mały wybór przy mięśniu — Pokaż / Tło / Wyróżnij / Ukryj; kolor kropki = kolor mięśnia.</li>
+<li><b>🔎 Analiza</b> działa bez internetu i bez AI: wybierz okolicę i czynniki albo opisz ból lub pozycję (np. „ból w lędźwiach w pozycji dziecka”) — dostaniesz przyczyny (%), mięśnie z udziałem %, co wzmocnić i co rozciągnąć. To edukacja, nie diagnoza.</li>
+<li><b>Prawa / Lewa / Obie</b> — strona ciała; lewa to lustrzane odbicie prawej (poza obejmuje obie strony symetrycznie).</li>
+<li><b>Stawy</b> — typ, osie, powierzchnie i mięśnie (agoniści ⇄ antagoniści). <b>Tułów i biodro</b> — mięśnie grzbietu, brzucha, miednicy i uda oraz kości.</li>
+<li>Klawisz <b>/</b> — szukaj (nazwy polskie, łacińskie i angielskie).</li></ul>`);
+}
 
 /* ---------- mapa ciała: wybór obszaru ---------- */
 const BM_ZONES = [ // [region, kształt SVG (dla prawej kończyny osoby = lewa strona rysunku)]
@@ -1015,17 +1306,20 @@ function resize() {
   const w = canvas.parentElement.clientWidth, h = canvas.parentElement.clientHeight; renderer.setSize(w, h, false); camera.aspect = w / h; camera.clearViewOffset(); shiftX = shiftY = 0; camera.updateProjectionMatrix(); dirty();
 }
 new ResizeObserver(resize).observe(canvas.parentElement); resize();
+let zoomNow = 1;
 function applyShift() {
   const w = canvas.parentElement.clientWidth, h = canvas.parentElement.clientHeight, mobile = window.innerWidth < 820;
-  const hasInfo = S.sel || S.ana; const tx = hasInfo && !mobile ? 195 : 0, ty = hasInfo && mobile ? h * 0.2 : 0;
-  if (Math.abs(shiftX - tx) < 0.5 && Math.abs(shiftY - ty) < 0.5) { if (shiftX === tx && shiftY === ty) return; shiftX = tx; shiftY = ty; }
-  else { shiftX += (tx - shiftX) * 0.16; shiftY += (ty - shiftY) * 0.16; }
+  const tx = mobile ? 0 : (panelInset.r - panelInset.l) / 2, ty = mobile ? panelInset.b / 2 : 0;
+  const tz = mobile ? Math.max(0.55, Math.min(1, (h - panelInset.b) / h)) : 1; // na telefonie panel dolny zasłania połowę ekranu: oddal model, by mieścił się w wolnej części
+  if (Math.abs(shiftX - tx) < 0.5 && Math.abs(shiftY - ty) < 0.5 && Math.abs(zoomNow - tz) < 0.004) { if (shiftX === tx && shiftY === ty && zoomNow === tz) return; shiftX = tx; shiftY = ty; zoomNow = tz; }
+  else { shiftX += (tx - shiftX) * 0.16; shiftY += (ty - shiftY) * 0.16; zoomNow += (tz - zoomNow) * 0.16; }
+  camera.zoom = zoomNow;
   if (Math.abs(shiftX) < 0.5 && Math.abs(shiftY) < 0.5) camera.clearViewOffset(); else camera.setViewOffset(w, h, shiftX, shiftY, w, h);
   camera.updateProjectionMatrix(); dirty();
 }
 function frame(now) {
   requestAnimationFrame(frame);
-  stepAnim(now); applyShift();
+  stepAnim(now); applyShift(); POSE.tick(now); POSE.flush();
   const ch = controls.update(); if (ch || needsRender) {
     headlight.position.copy(camera.position); headlight.target.position.copy(controls.target);
     renderer.render(scene, camera); needsRender = controls.autoRotate; placeLabel();
@@ -1036,6 +1330,6 @@ ready.then(() => {
   apply();
   const b = boxOf(regionBox('all')); const c = b.getCenter(new THREE.Vector3()); const r = b.getSize(new THREE.Vector3()).length() / 2;
   controls.target.copy(c); camera.position.copy(c).add(new THREE.Vector3(0.12, 0.05, 1).normalize().multiplyScalar(fitDist(r) * 1.0)); controls.update(); dirty();
-  window.__anat = { setRegion, setHover, openAna, AF, runAnalysis, ensureLeg, ensureTrunk, MUS, BON, setVis, STR, ensureStruct, S, select, G, DATA, objs, SIDE, camera, controls, apply, viewRegion, setSide, toggleMulti, setMulti, ensureAxial, JMAP };
+  window.__anat = { setRegion, setHover, openAna, AF, runAnalysis, ensureLeg, ensureTrunk, MUS, BON, setVis, STR, ensureStruct, S, select, G, DATA, objs, SIDE, camera, controls, apply, viewRegion, setSide, toggleMulti, setMulti, ensureAxial, JMAP, POSE, renderPose };
 });
 requestAnimationFrame(frame);

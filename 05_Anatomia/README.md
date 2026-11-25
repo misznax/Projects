@@ -1,10 +1,18 @@
-# 05 Anatomia — v0.07
+# 05 Anatomia — v0.08
 
 Interaktywny model 3D **kończyny górnej, głowy i szyi, tułowia, miednicy, uda oraz podudzia i stopy** (prawa / lewa = lustro / obie): 32 kości, 67 siatek mięśniowych (51 mięśni), 109 punktów kostnych, **22 stawy** (typ, osie, powierzchnie, antagoniści, torebki) oraz czaszka i kręgi szyjne (wczytywane na żądanie). Nazwy polskie (duże) i łacińskie (pod spodem, w nawiasie), wyszukiwarka po wszystkich nazwach (PL/łac./ang.), regiony (bark · ramię · przedramię · dłoń), obrót modelu, początki (niebieski) i przyczepy końcowe (pomarańczowy) mięśni na kościach.
 
 - Adres: https://anatomia.smialo.org/ (domena Workera podpięta 2026-11-16, tymczasowo do 2026-12-31) oraz https://projects.michus.workers.dev/05/ (stały). Żaden z nich nie jest za Cloudflare Access.
-- Technologia: three.js (WebGL) + three-mesh-bvh; jeden `index.html` + dwa pliki GLB (`public/`).
+- Technologia: three.js (WebGL) + three-mesh-bvh; jeden `index.html` + pliki GLB i dane pozy (`public/`).
 - Dane: `data/data.json` (nazwy, opisy, przyczepy, pozycje punktów).
+
+## v0.08
+- **🦾 Poza — model ruchomy w stawach**: suwaki w zakresach ruchu zdrowego dorosłego (AAOS / Kapandji): ramię zgięcie/wyprost (−60…180°), odwodzenie/przywodzenie (−30…180°), rotacja (−90…70°), łokieć (0…145°), nawrócenie/odwrócenie (−90…85°), nadgarstek (−70…80°, odchylenie −20…30°), obojczyk i łopatka (unoszenie, protrakcja) + **rytm łopatkowo-ramienny** (≈2:1, włączany). Gotowe pozy: ręka w górze (zgięcie/odwodzenie 180°), ramię w bok/do przodu 90°, łokieć 90° w płaszczyźnie strzałkowej i poprzecznej, „stop”, dłoń do barku, ręka za plecami. Pozycja 0° = pozycja anatomiczna modelu. Chipy w panelu „Ruchy” oraz PPM → „Pokaż w ruchu…” ustawiają pozę dla wybranego mięśnia.
+- **Jak to działa**: kości i płytki sztywne (segmenty: tułów, obojczyk, łopatka, ramię, łokieć/kość łokciowa, promień, dłoń); mięśnie, więzadła, nerwy i naczynia odkształcają się przez skinning liniowy (4 wpływy, wagi wg odległości od kości, offline: `tools/pose_*.py` → `public/pose.json`, `skin_*.bin`). Wybieranie myszą działa na pozie (BVH odświeżany). Pozycja jest symetryczna dla obu rąk; palce, szyja i kończyna dolna na razie nieruchome. To przybliżenie wizualne — nie symulacja biomechaniczna; zakresy z literatury do weryfikacji przez fizjoterapeutę.
+- **Panele tematyczne zamiast jednego panelu po prawej**: Karta · Powiązania · Ruchy · Poza · Widoczność · Analiza — włączane/wyłączane pasek-dokiem u dołu (z odznakami), zwijane, przenoszone lewo↔prawo, zamykane; układ pamiętany. Kamera przesuwa model w wolne miejsce (na telefonie panel jest dolną szufladą).
+- **Ukrywanie na modelu (dostęp do mięśni głębszych)**: `Shift + klik` ukrywa mięsień/kość pod kursorem, kolejny klik w to samo miejsce odsłania warstwę niżej; `PPM` / długie przytrzymanie → menu (Zaznacz · Ukryj · Tło · Wyróżnij · Pokaż tylko ten · Dodaj do wyboru · Pokaż w ruchu); `H` / `Delete` ukrywa zaznaczony, `Shift+H` pokazuje wszystkie, `Ctrl+Z` cofa; panel „Widoczność” i licznik ukrytych z przywracaniem pojedynczo.
+- **`Ctrl` ≠ `Shift`**: Ctrl (⌘) + klik = dodaj do wyboru wielu mięśni; Shift + klik = ukryj.
+- Karta mięśnia podzielona na zakładki (karta / powiązania / ruchy), Analiza objawów we własnym panelu.
 
 ## v0.07
 - **Kolory**: każdy mięsień ma własny kolor (`data.groups[k].col`, 113 odcieni rozłożonych tak, by sąsiadujące mięśnie się różniły — `tools/colors.py`: graf sąsiedztwa z siatek 3D + kolorowanie DSATUR w przestrzeni Lab).
