@@ -970,8 +970,9 @@ const PRESETS = [
 const fmtDeg = (d, v) => { const a = Math.round(Math.abs(v)); if (a === 0) return '0°'; return `${a}° ${v >= 0 ? d.pos : d.neg}`; };
 let poseBuilt = false;
 function renderPose() {
-  let h = '<p class="small">Poruszaj stawami w zakresach ruchu zdrowego człowieka. <b>0° = pozycja anatomiczna modelu.</b> Mięśnie odkształcają się razem z kośćmi (przybliżenie: skinning wg odległości od kości). Poza działa symetrycznie na obie ręce.</p>';
+  let h = '<p class="small">Poruszaj stawami w zakresach ruchu zdrowego człowieka. <b>0° = pozycja anatomiczna modelu.</b> Mięśnie odkształcają się razem z kośćmi (skinning z zachowaniem grubości, wagi rozłożone wzdłuż mięśnia, owijanie wokół kości). Poza działa symetrycznie na obie ręce.</p>';
   h += `<label class="chk"><input type="checkbox" id="pRhythm" ${POSE.rhythm ? 'checked' : ''}> Rytm łopatkowo-ramienny (łopatka i obojczyk podążają za ramieniem)</label>`;
+  h += `<label class="chk"><input type="checkbox" id="pWrap" ${POSE.st.wrap ? 'checked' : ''}> Owijanie mięśni wokół kości (kolizje z główką kości ramiennej, łopatką, żebrami)</label>`;
   h += `<div class="subt">Gotowe pozy</div><div class="chips">${PRESETS.map(([n], i) => `<button class="chip" data-preset="${i}">${esc(n)}</button>`).join('')}</div>`;
   let g = '';
   for (const d of DOF) {
@@ -993,7 +994,7 @@ function syncPoseUI() {
   layoutPanels();
 }
 infoEl.addEventListener('input', (e) => { const sl = e.target.closest('input.psl'); if (!sl) return; POSE.set({ [sl.dataset.k]: +sl.value }); const d = DOF.find((x) => x.k === sl.dataset.k); const pv = $(`#pv-${d.k}`, pEl.poza); if (pv) pv.textContent = fmtDeg(d, +sl.value); });
-infoEl.addEventListener('change', (e) => { if (e.target.id === 'pRhythm') POSE.setRhythm(e.target.checked); });
+infoEl.addEventListener('change', (e) => { if (e.target.id === 'pRhythm') POSE.setRhythm(e.target.checked); else if (e.target.id === 'pWrap') POSE.setWrap(e.target.checked); });
 infoEl.addEventListener('click', (e) => {
   const t = e.target; const pr = t.closest('[data-preset]');
   if (pr) { const p = PRESETS[+pr.dataset.preset]; POSE.animateTo({ ...REST, ...p[1] }, 900); toast(p[0]); return; }

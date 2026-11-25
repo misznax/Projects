@@ -1,10 +1,18 @@
-# 05 Anatomia — v0.08
+# 05 Anatomia — v0.09
 
 Interaktywny model 3D **kończyny górnej, głowy i szyi, tułowia, miednicy, uda oraz podudzia i stopy** (prawa / lewa = lustro / obie): 32 kości, 67 siatek mięśniowych (51 mięśni), 109 punktów kostnych, **22 stawy** (typ, osie, powierzchnie, antagoniści, torebki) oraz czaszka i kręgi szyjne (wczytywane na żądanie). Nazwy polskie (duże) i łacińskie (pod spodem, w nawiasie), wyszukiwarka po wszystkich nazwach (PL/łac./ang.), regiony (bark · ramię · przedramię · dłoń), obrót modelu, początki (niebieski) i przyczepy końcowe (pomarańczowy) mięśni na kościach.
 
 - Adres: https://anatomia.smialo.org/ (domena Workera podpięta 2026-11-16, tymczasowo do 2026-12-31) oraz https://projects.michus.workers.dev/05/ (stały). Żaden z nich nie jest za Cloudflare Access.
 - Technologia: three.js (WebGL) + three-mesh-bvh; jeden `index.html` + pliki GLB i dane pozy (`public/`).
 - Dane: `data/data.json` (nazwy, opisy, przyczepy, pozycje punktów).
+
+## v0.09
+- **Mięśnie w ruchu — zawijanie i fizyka (poprawka po v0.08)**: w v0.08 mięśnie przy dużych kątach (ręka w górze) zapadały się do osi lub rozciągały w cienkie „nitki”, a główka kości ramiennej przebijała mięśnie. Teraz:
+  1. **Skinning „oś + obrócona delta”** (`src/dqs.js`, `skinDelta`): siatka mięśnia dzielona offline na wygładzoną „oś” (Laplace ×100) i deltę (grubość/szczegóły, `public/dlt_*.bin`); oś jest skinowana liniowo (cięciwa jak napięty mięsień), delta obracana mieszanym kwaternionem — grubość zachowana, bez zapadania (test: przy 200° LBS zostawia 17% promienia, tu 100%) i bez „pompowania” czystego dual-quaternion. Kwaterniony ciągłe względem parametrów pozy (bez przeskoku półkuli powyżej 180°).
+  2. **Wagi harmoniczne** (`tools/pose_build.py`, `harmonic`): wierzchołki przy przyczepach stałe, odcinek swobodny między nimi = rozwiązanie równania Laplace'a po siatce → rozciąganie rozłożone równomiernie wzdłuż mięśnia.
+  3. **Owijanie / kolizje z kośćmi** (`public/pose_sdf.bin`, `col_*.bin`, `tools/pose_sdf.py`): pola odległości (SDF 3–6 mm) obojczyka, łopatki, kości ramiennej, łokciowej, promieniowej i klatki piersiowej; po skinningu wierzchołki wypychane z kości (min. odstęp = odstęp spoczynkowy ≤ 2 mm) — najszerszy grzbietu, piersiowy większy i obły zawijają się przed główką kości ramiennej. Przełącznik „Owijanie mięśni wokół kości” w panelu Poza.
+  Dane pozy (~9 MB) doczytywane przy pierwszym ruchu, nie przy starcie. Ograniczenia: brak kolizji mięsień–mięsień (drobne przebicia), SDF powłok kości (łopatka, obojczyk) przybliżony.
+- Panel Poza na telefonie: dolna szuflada ograniczona do 46% wysokości, model oddala się i mieści nad nią.
 
 ## v0.08
 - **🦾 Poza — model ruchomy w stawach**: suwaki w zakresach ruchu zdrowego dorosłego (AAOS / Kapandji): ramię zgięcie/wyprost (−60…180°), odwodzenie/przywodzenie (−30…180°), rotacja (−90…70°), łokieć (0…145°), nawrócenie/odwrócenie (−90…85°), nadgarstek (−70…80°, odchylenie −20…30°), obojczyk i łopatka (unoszenie, protrakcja) + **rytm łopatkowo-ramienny** (≈2:1, włączany). Gotowe pozy: ręka w górze (zgięcie/odwodzenie 180°), ramię w bok/do przodu 90°, łokieć 90° w płaszczyźnie strzałkowej i poprzecznej, „stop”, dłoń do barku, ręka za plecami. Pozycja 0° = pozycja anatomiczna modelu. Chipy w panelu „Ruchy” oraz PPM → „Pokaż w ruchu…” ustawiają pozę dla wybranego mięśnia.

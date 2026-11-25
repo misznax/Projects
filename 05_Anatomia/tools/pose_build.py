@@ -3,7 +3,7 @@ public/skin_<plik>.bin (wagi skinningu mięśni/więzadeł/nerwów/naczyń wzgl�
 Uruchamiać: cd /tmp && python3 -I /home/claude/work/app/tools/pose_build.py"""
 import sys, json
 sys.path.insert(0, '/home/claude/work/app/tools')
-import numpy as np, glbread as g, pose_geom as pg
+import numpy as np, glbread as g, pose_geom as pg, pose_sdf as sdfm
 from scipy.spatial import cKDTree
 import scipy.sparse as sp
 
@@ -32,6 +32,22 @@ for src in (TR, AX):
 trees = {s: cKDTree(np.vstack(v)) for s, v in clouds.items()}
 print({s: len(t.data) for s, t in trees.items()})
 
+# ---------- pola odległości kości (owijanie / kolizje) ----------
+def tris(src, pred):
+    L = []
+    for k, m in src.items():
+        if pred(k): L.append((g.world(m), m['idx']))
+    return L
+SDFS = {}
+SD_SEGS = ['thx', 'clav', 'scap', 'hum', 'uln', 'rad']
+SDFS['clav'] = sdfm.build(tris(B, lambda k: segOf.get(k) == 'clav'), 0.003, name='clav')
+SDFS['scap'] = sdfm.build(tris(B, lambda k: segOf.get(k) == 'scap'), 0.003, name='scap')
+SDFS['hum'] = sdfm.build(tris(B, lambda k: segOf.get(k) == 'hum'), 0.003, name='hum')
+SDFS['uln'] = sdfm.build(tris(B, lambda k: segOf.get(k) == 'uln'), 0.003, name='uln')
+SDFS['rad'] = sdfm.build(tris(B, lambda k: segOf.get(k) == 'rad'), 0.003, name='rad')
+thx_t = tris(B, lambda k: k in bones and bones[k]['kind'] == 'ctx') + tris(TR, lambda k: k in bones and bones[k]['kind'] == 'trunk') + tris(AX, lambda k: k in bones and bones[k]['kind'] == 'axial')
+SDFS['thx'] = sdfm.build(thx_t, 0.006, bbox=([-0.42, 1.02, -0.26], [0.06, 1.62, 0.26]), name='thx')
+
 # ---------- wagi ----------
 EPS, POW = 0.006, 4.0
 def weights(P, idx):
@@ -46,6 +62,48 @@ def weights(P, idx):
         w /= w.sum(1, keepdims=True)
     return w
 
+def smooth_delta(P, idx, iters=100, lam=0.5):
+    """delta = P − (P po wielokrotnym wygładzaniu Laplace'a). Wygładzona siatka ≈ „oś” mięśnia (przekrój kurczy się do osi),
+    delta niesie grubość i szczegóły. Wierzchołki o tej samej pozycji (szwy) są sklejane na czas wygładzania."""
+    if idx is None or len(P) < 4: return np.zeros_like(P)
+    key = np.rint(P * 1e5).astype(np.int64)
+    _, first, inv = np.unique(key, axis=0, return_index=True, return_inverse=True)
+    inv = inv.ravel(); U = P[first]; T = inv[idx]
+    n = len(U); e = np.r_[T[:, [0, 1]], T[:, [1, 2]], T[:, [0, 2]]]; e = e[e[:, 0] != e[:, 1]]
+    A = sp.coo_matrix((np.ones(len(e)), (e[:, 0], e[:, 1])), shape=(n, n)); A = ((A + A.T) > 0).astype(float).tocsr()
+    deg = np.asarray(A.sum(1)).ravel(); isol = deg == 0; deg[isol] = 1
+    X = U.copy()
+    for _ in range(iters):
+        X = (1 - lam) * X + lam * (A @ X) / deg[:, None]
+        X[isol] = U[isol]
+    return P - X[inv]
+
+import scipy.sparse.linalg as spl
+def harmonic(P, w, idx, thr=0.8, eps=1e-4):
+    """Wagi „harmoniczne”: wierzchołki silnie przypisane do kości (w >= thr) są stałe, reszta (odcinek swobodny między przyczepami)
+    dostaje wagi z równania Laplace'a po siatce -> rozciąganie rozłożone równomiernie wzdłuż mięśnia zamiast skupionego w wąskim pasie
+    (to tworzyło cienkie „nitki”)."""
+    if idx is None or len(P) < 8: return w
+    key = np.rint(P * 1e5).astype(np.int64)
+    _, first, inv = np.unique(key, axis=0, return_index=True, return_inverse=True); inv = inv.ravel()
+    n = len(first); T = inv[idx]
+    cnt = np.bincount(inv, minlength=n).astype(float)
+    wu = np.zeros((n, w.shape[1])); np.add.at(wu, inv, w); wu /= cnt[:, None]
+    e = np.r_[T[:, [0, 1]], T[:, [1, 2]], T[:, [0, 2]]]; e = e[e[:, 0] != e[:, 1]]
+    A = sp.coo_matrix((np.ones(len(e)), (e[:, 0], e[:, 1])), shape=(n, n)); A = ((A + A.T) > 0).astype(float).tocsr()
+    seed = wu.max(1) >= thr
+    if seed.sum() == 0 or len(set(wu[seed].argmax(1))) < 2: return w
+    free = np.where(~seed)[0]; sd = np.where(seed)[0]
+    if len(free) == 0: return w
+    deg = np.asarray(A.sum(1)).ravel()
+    Lff = sp.diags(deg[free]) - A[free][:, free] + eps * sp.eye(len(free))
+    rhs = A[free][:, sd] @ wu[sd] + eps * wu[free]
+    X = spl.spsolve(Lff.tocsc(), rhs)
+    if X.ndim == 1: X = X[:, None]
+    out = wu.copy(); out[free] = np.clip(X, 0, None)
+    out /= out.sum(1, keepdims=True)
+    return out[inv]
+
 def top4(w):
     ids = np.argsort(-w, 1)[:, :4]; ww = np.take_along_axis(w, ids, 1)
     ww[ww < 0.04] = 0; ww /= ww.sum(1, keepdims=True)
@@ -56,18 +114,30 @@ def top4(w):
 
 meta = {}
 def run(fn, key, namefilter):
-    M = g.meshes(PUB + fn); ent = []; blob = []; off = 0; stat = 0
+    M = g.meshes(PUB + fn); ent = []; blob = []; cblob = []; dblob = []; ncol = 0; off = 0; stat = 0
     for name, m in M.items():
         if not namefilter(name): continue
-        P = g.world(m); w = weights(P, m['idx'])
+        P = g.world(m); w = weights(P, m['idx']); w = harmonic(P, w, m['idx'])
         if (1 - w[:, 0]).max() < 0.10: stat += 1; continue
         ids, q = top4(w)
         blob.append(np.concatenate([ids, q], 1).astype(np.uint8).tobytes())
+        cand = []  # (d0, seg) dla każdego segmentu-kolidera
+        for sn in SD_SEGS:
+            d0 = sdfm.sample(SDFS[sn], P); ws = w[:, SI[sn]]
+            cand.append(np.where((d0 < 0.03) & (ws < 0.9), d0, 9.0))
+        cand = np.stack(cand, 1); o2 = np.argsort(cand, 1)[:, :2]; d2 = np.take_along_axis(cand, o2, 1)
+        col = np.zeros((len(P), 4), np.int8)
+        for j in range(2):
+            okj = d2[:, j] < 9.0
+            col[okj, 2 * j] = np.array([SI[SD_SEGS[i]] for i in o2[okj, j]], np.int8)
+            col[okj, 2 * j + 1] = np.clip(np.rint(np.minimum(d2[okj, j], 0.004) / 0.0005), -100, 100).astype(np.int8)
+        cblob.append(col.tobytes()); ncol += int((col[:, 0] != 0).sum())
+        dl = smooth_delta(P, m['idx']); dblob.append(np.clip(np.rint(dl / 1e-4), -32000, 32000).astype('<i2').tobytes())
         ent.append({'n': name, 'off': off, 'cnt': int(len(P)), 'mx': float(1 - w[:, 0].min())})
         off += len(P)
-    open(PUB + f'skin_{key}.bin', 'wb').write(b''.join(blob))
+    open(PUB + f'skin_{key}.bin', 'wb').write(b''.join(blob)); open(PUB + f'col_{key}.bin', 'wb').write(b''.join(cblob)); open(PUB + f'dlt_{key}.bin', 'wb').write(b''.join(dblob))
     meta[key] = ent
-    print(key, 'meshy z wagami:', len(ent), 'statyczne:', stat, 'wierzchołków:', off, 'bajtów:', off * 8)
+    print(key, 'meshy z wagami:', len(ent), 'statyczne:', stat, 'wierzchołków:', off, 'kolidujących:', ncol)
 
 MUSIDS = {m['id'] for m in D['muscles']}; STRIDS = {s['id'] for s in D.get('structs', [])}
 run('muscles.glb', 'muscles', lambda n: n in MUSIDS)
@@ -107,6 +177,10 @@ dev = np.cross(fe, u)
 J['wr_dev'] = sgn_axis(o['wr'], dev, o['tip'], X)           # odchylenie łokciowe: palce przyśrodkowo (+x)
 r = {k: [round(float(x), 5) for x in v] for k, v in J.items()}
 r['gh_r'] = round(float(o['gh_r']), 4)
-pose = {'segs': SEGS, 'joint': r, 'bone': {k: SI[v] for k, v in segOf.items()}, 'skin': meta}
+blob = []; off = 0; sdfmeta = {}
+for sn in SD_SEGS:
+    S = SDFS[sn]; blob.append(S['data'].tobytes()); sdfmeta[str(SI[sn])] = {'o': [round(float(x), 5) for x in S['o']], 'h': S['h'], 'n': [int(x) for x in S['n']], 'off': off}; off += S['data'].size
+open(PUB + 'pose_sdf.bin', 'wb').write(b''.join(blob)); print('pose_sdf.bin', off * 2, 'B')
+pose = {'segs': SEGS, 'joint': r, 'bone': {k: SI[v] for k, v in segOf.items()}, 'skin': meta, 'sdf': sdfmeta}
 json.dump(pose, open(PUB + 'pose.json', 'w'), separators=(',', ':'))
 for k, v in r.items(): print(k, v)
