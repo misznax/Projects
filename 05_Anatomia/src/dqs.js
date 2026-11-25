@@ -72,18 +72,18 @@ export function sdfSample(S, x, y, z) {
   return G;
 }
 
-/* Wypychanie z kości: C = Int8Array 4 B/wierzchołek [seg1, c1, seg2, c2] (c w jednostkach 0.5 mm = wymagany odstęp od kości);
+/* Wypychanie z kości: C = Int8Array 8 B/wierzchołek [seg1, c1, … seg4, c4] (c w jednostkach 0.5 mm = wymagany odstęp od kości);
    INV[s] = 12 liczb (odwrotność macierzy segmentu), ROT[s] = 9 liczb (część obrotowa segmentu) */
 export function collide(cnt, C, SDF, INV, ROT, P, passes = 2) {
   let moved = 0;
   for (let pass = 0; pass < passes; pass++) {
     for (let i = 0; i < cnt; i++) {
-      for (let j = 0; j < 2; j++) {
-        const s = C[i * 4 + 2 * j]; if (!s) continue; const S = SDF[s]; if (!S) continue;
+      for (let j = 0; j < 4; j++) {
+        const s = C[i * 8 + 2 * j]; if (!s) continue; const S = SDF[s]; if (!S) continue;
         const i3 = i * 3, X = P[i3], Y = P[i3 + 1], Z = P[i3 + 2], m = INV[s];
         const g = sdfSample(S, m[0] * X + m[3] * Y + m[6] * Z + m[9], m[1] * X + m[4] * Y + m[7] * Z + m[10], m[2] * X + m[5] * Y + m[8] * Z + m[11]);
         if (!g) continue;
-        const need = C[i * 4 + 2 * j + 1] * 0.0005; if (g.d >= need) continue;
+        const need = C[i * 8 + 2 * j + 1] * 0.0005; if (g.d >= need) continue;
         const gl = Math.hypot(g.gx, g.gy, g.gz); if (gl < 1e-6) continue;
         const push = Math.min(0.06, need - g.d) / gl, r = ROT[s];
         const lx = g.gx * push, ly = g.gy * push, lz = g.gz * push;

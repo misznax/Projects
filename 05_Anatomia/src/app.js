@@ -4,7 +4,8 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { TRYB, ROLA } from './analysis.js';
-import { createPose, DOF, REST } from './pose.js';
+import { createPose, DOF, REST, natR, limits } from './pose.js';
+import { TESTS, TEST_ZONES, TEST_INTRO, TEST_DISCLAIMER } from './tests.js';
 import { AREAS, TRIG, SYMPTOM_EXAMPLES, POS_EXAMPLES, parseText, run as runSym } from './symptoms.js';
 
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
@@ -779,6 +780,7 @@ const PDEF = [
   { id: 'pow', t: 'Powiązania', ico: '🔗', zone: 'l', on: true, auto: true, tip: 'Antagoniści, części, kości, stawy, więzadła' },
   { id: 'ruchy', t: 'Ruchy', ico: '↔️', zone: 'l', on: true, auto: true, tip: 'Ruchy w stawach i pracujące mięśnie (antagoniści)' },
   { id: 'poza', t: 'Poza', ico: '🦾', zone: 'r', on: false, tip: 'Ruchome stawy: suwaki z zakresami ruchu zdrowego człowieka' },
+  { id: 'testy', t: 'Testy', ico: '🩺', zone: 'r', on: false, tip: 'Testy ruchowe: ustaw pozycję i sprawdź, które mięśnie mogą boleć' },
   { id: 'wid', t: 'Widoczność', ico: '👁', zone: 'l', on: false, tip: 'Ukryte, tło i wyróżnione mięśnie; przywracanie' },
   { id: 'ana', t: 'Analiza', ico: '🔎', zone: 'r', on: false, tip: 'Analiza objawów (offline): przyczyny %, mięśnie, co wzmocnić' },
 ];
@@ -826,7 +828,7 @@ function setPanel(id, html, opts = {}) { // html === null → brak treści (pane
 }
 function togglePanel(id, v) {
   const p = PS[id]; p.on = v === undefined ? !p.on : v;
-  if (p.on) { p.min = false; if (isMobile()) mobActive = id; if (id === 'poza' && typeof renderPose === 'function') renderPose(); if (id === 'wid') renderVisPanel(); if (id === 'ana' && !S.ana) setPanel('ana', null, { quiet: true }); }
+  if (p.on) { p.min = false; if (isMobile()) mobActive = id; if (id === 'poza' && typeof renderPose === 'function') renderPose(); if (id === 'testy' && typeof renderTests === 'function') renderTests(); if (id === 'wid') renderVisPanel(); if (id === 'ana' && !S.ana) setPanel('ana', null, { quiet: true }); }
   else if (id === 'ana' && S.ana) { S.ana = null; apply(); renderInfo(); markList(); }
   savePanels(); layoutPanels();
 }
@@ -962,12 +964,22 @@ const PRESETS = [
   ['Ramię w bok 90°', { A: 90 }],
   ['Ramię do przodu 90°', { F: 90 }],
   ['Łokieć 90° — płaszczyzna strzałkowa', { E: 90 }],
-  ['Łokieć 90° — płaszczyzna poprzeczna', { A: 90, R: 27, E: 90 }],
+  ['Łokieć 90° — płaszczyzna poprzeczna', { A: 90, R: 0, E: 90 }],
   ['Ręka w górze, łokieć 90° („stop”)', { A: 90, E: 90 }],
   ['Dłoń do barku', { E: 145, F: 20 }],
   ['Ręka za plecami (wyprost)', { F: -55, R: 40 }],
 ];
+const poseTarget = (p) => { const t = { ...REST, ...p }; if (!('R' in p)) delete t.R; return t; }; // bez jawnego R: skręt naturalny (liczy silnik)
 const fmtDeg = (d, v) => { const a = Math.round(Math.abs(v)); if (a === 0) return '0°'; return `${a}° ${v >= 0 ? d.pos : d.neg}`; };
+const HATCH = 'repeating-linear-gradient(45deg,#272c37,#272c37 3px,#5b6372 3px,#5b6372 5px)';
+function trackBg(d, L) { // zielone = norma, bursztynowe = do maksymalnego zdrowego zakresu, szare = niedostępne w tej pozie, kreska = 0°
+  const pc = (x) => ((x - d.min) / (d.max - d.min) * 100).toFixed(2), z = pc(0);
+  const base = `linear-gradient(90deg,#d8a13a ${pc(d.nmin)}%,#4da96a ${pc(d.nmin)}%,#4da96a ${pc(d.nmax)}%,#d8a13a ${pc(d.nmax)}%)`;
+  const zero = `linear-gradient(90deg,transparent calc(${z}% - 1px),#000c calc(${z}% - 1px),#000c calc(${z}% + 1px),transparent calc(${z}% + 1px))`;
+  if (!L) return `${zero},${base}`;
+  const lw = Math.max(0, pc(L[0])), rw = Math.max(0, 100 - pc(L[1]));
+  return `${HATCH} left/${lw}% 100% no-repeat,${HATCH} right/${rw}% 100% no-repeat,${zero},${base}`;
+}
 let poseBuilt = false;
 function renderPose() {
   let h = '<p class="small">Poruszaj stawami w zakresach ruchu zdrowego człowieka. <b>0° = pozycja anatomiczna modelu.</b> Mięśnie odkształcają się razem z kośćmi (skinning z zachowaniem grubości, wagi rozłożone wzdłuż mięśnia, owijanie wokół kości). Poza działa symetrycznie na obie ręce.</p>';
@@ -977,10 +989,11 @@ function renderPose() {
   let g = '';
   for (const d of DOF) {
     if (d.g !== g) { g = d.g; h += `<div class="subt pg" data-pg="${esc(g)}">${esc(g)}</div>`; }
-    h += `<div class="prow" data-k="${d.k}"><div class="pl"><b>${esc(d.n)}</b><span class="pv" id="pv-${d.k}"></span></div><input type="range" class="psl" data-k="${d.k}" min="${d.min}" max="${d.max}" step="1" value="${POSE.vals[d.k]}" aria-label="${esc(d.n)}"><div class="pe"><span>◀ ${esc(d.neg)} ${Math.abs(d.min)}°</span><span>${esc(d.pos)} ${d.max}° ▶</span></div><div class="pn">norma: ${esc(d.norm)}</div></div>`;
+    const maxl = `${esc(d.neg)} ${Math.abs(d.min)}° · ${esc(d.pos)} ${d.max}°`;
+    h += `<div class="prow" data-k="${d.k}"><div class="pl"><b>${esc(d.n)}</b><span class="pv" id="pv-${d.k}"></span></div><input type="range" class="psl" data-k="${d.k}" min="${d.min}" max="${d.max}" step="1" value="${POSE.vals[d.k]}" aria-label="${esc(d.n)}" style="--bg:${trackBg(d)}"><div class="pe"><span>◀ ${esc(d.neg)} ${Math.abs(d.min)}°</span><span>${esc(d.pos)} ${d.max}° ▶</span></div><div class="pn">🟩 norma: ${esc(d.norm)}<br>🟧 maks. zdrowy: ${maxl}${d.k === 'R' || d.k === 'A' ? ' <i>(zależny od pozycji — szare pola = niedostępne teraz)</i>' : ''}</div></div>`;
   }
   h += '<div class="btns"><button id="pReset" class="pri">Reset pozy</button><button id="pLat" title="Widok z boku — dobry do zgięcia i wyprostu">Widok z boku</button><button id="pFront" title="Widok z przodu — dobry do odwodzenia">Widok z przodu</button></div>';
-  h += '<p class="small">Zakresy: AAOS / Kapandji, zdrowy dorosły (ruch czynny). Obojczyk i łopatka poruszają się automatycznie (rytm ok. 2:1) lub ręcznie suwakami „Obręcz barkowa”. Palce pozostają w spoczynku.</p>';
+  h += '<p class="small"><b>Zielone</b> pole suwaka = norma (typowy zdrowy dorosły), <b>bursztynowe</b> = do maksymalnego zdrowego zakresu (AAOS / Kapandji, ruch bierny do końca). Granice rotacji i przywiedzenia zależą od pozycji ramienia (szare pola). Obojczyk i łopatka poruszają się automatycznie (rytm ok. 2:1) lub ręcznie suwakami „Obręcz barkowa”. Palce pozostają w spoczynku.</p>';
   setPanel('poza', h, { keep: true, quiet: true }); poseBuilt = true; syncPoseUI();
 }
 function syncPoseUI() {
@@ -990,16 +1003,46 @@ function syncPoseUI() {
     const sl = $(`input.psl[data-k="${d.k}"]`, root), v = POSE.vals[d.k]; if (!sl) continue;
     if (document.activeElement !== sl) sl.value = v; const pv = $(`#pv-${d.k}`, root); if (pv) pv.textContent = fmtDeg(d, v);
   }
+  const L = POSE.limits(); for (const k of ['R', 'A']) { const d = DOF.find((x) => x.k === k), sl = $(`input.psl[data-k="${k}"]`, root); if (sl) sl.style.setProperty('--bg', trackBg(d, L[k])); }
   const rb = $('#pRhythm', root); if (rb) rb.checked = POSE.rhythm;
   layoutPanels();
 }
-infoEl.addEventListener('input', (e) => { const sl = e.target.closest('input.psl'); if (!sl) return; POSE.set({ [sl.dataset.k]: +sl.value }); const d = DOF.find((x) => x.k === sl.dataset.k); const pv = $(`#pv-${d.k}`, pEl.poza); if (pv) pv.textContent = fmtDeg(d, +sl.value); });
+infoEl.addEventListener('input', (e) => { const sl = e.target.closest('input.psl'); if (!sl) return; POSE.set({ [sl.dataset.k]: +sl.value }); const d = DOF.find((x) => x.k === sl.dataset.k); const v = POSE.vals[d.k]; sl.value = v; const pv = $(`#pv-${d.k}`, pEl.poza); if (pv) pv.textContent = fmtDeg(d, v); });
 infoEl.addEventListener('change', (e) => { if (e.target.id === 'pRhythm') POSE.setRhythm(e.target.checked); else if (e.target.id === 'pWrap') POSE.setWrap(e.target.checked); });
 infoEl.addEventListener('click', (e) => {
   const t = e.target; const pr = t.closest('[data-preset]');
-  if (pr) { const p = PRESETS[+pr.dataset.preset]; POSE.animateTo({ ...REST, ...p[1] }, 900); toast(p[0]); return; }
+  if (pr) { const p = PRESETS[+pr.dataset.preset]; POSE.animateTo(poseTarget(p[1]), 900); toast(p[0]); return; }
   if (t.closest('#pReset')) { POSE.animateTo({ ...REST }, 700); return; }
   if (t.closest('#pLat')) { viewRegion('lat'); return; } if (t.closest('#pFront')) { viewRegion('front'); return; }
+});
+/* ---------- panel „Testy”: ruch → pozycja → podejrzane mięśnie przy bólu ---------- */
+let testZone = 'all', testOpen = null;
+const TKIND = { 'z oporem': 'z oporem (izometrycznie)', czynny: 'ruch czynny', bierny: 'ruch bierny' };
+function renderTests() {
+  const list = TESTS.filter((t) => testZone === 'all' || t.zones.includes(testZone));
+  let h = `<p class="small">${TEST_INTRO}</p><div class="subt">Gdzie boli?</div><div class="chips">${TEST_ZONES.map(([k, n]) => `<button class="chip${k === testZone ? ' sel' : ''}" data-tz="${k}">${esc(n)}</button>`).join('')}</div>`;
+  h += `<div class="subt">${list.length} ${list.length === 1 ? 'test' : 'testów'}</div>`;
+  let g = '';
+  for (const t of list) {
+    if (t.g !== g) { g = t.g; h += `<div class="subt pg">${esc(g)}</div>`; }
+    h += `<details class="tcard" data-test="${t.id}"${testOpen === t.id ? ' open' : ''}><summary><b>${esc(t.n)}</b><span class="tk">${esc(TKIND[t.kind] || t.kind)}</span></summary><div class="tb">`
+      + `<p class="small"><b>Jak wykonać:</b> ${esc(t.how)}</p>`
+      + `<div class="btns"><button class="pri" data-tpose="${t.id}">▶ Pokaż w pozie</button><button data-tmus="${t.id}">🎯 Same mięśnie</button></div>`
+      + `<div class="subt">Jeśli boli — podejrzane mięśnie</div><div class="chips">${t.main.map((k) => gchip(k, 'sel')).join('')}${t.sec.map((k) => gchip(k)).join('')}</div>`
+      + `<p class="small"><b>Główne</b> (wypełnione) i <b>współpracujące</b>.</p><p class="small">${esc(t.pain)}</p>`
+      + (t.alt ? `<p class="small"><b>Pomyśl też o:</b> ${esc(t.alt)}</p>` : '') + '</div></details>';
+  }
+  h += `<p class="small">${esc(TEST_DISCLAIMER)}</p>`;
+  setPanel('testy', h, { keep: true, quiet: true });
+}
+const testMuscles = (t, fly) => setMulti([...t.main.map((k) => [k, 0]), ...t.sec.filter((k) => !t.main.includes(k)).map((k) => [k, 1])], fly);
+infoEl.addEventListener('click', (e) => {
+  const t = e.target, z = t.closest('[data-tz]');
+  if (z) { testZone = z.dataset.tz; renderTests(); return; }
+  const dtl = t.closest('.tcard'); if (dtl) testOpen = dtl.dataset.test;
+  const bp = t.closest('[data-tpose]'), bm = t.closest('[data-tmus]');
+  if (bp) { const x = TESTS.find((q) => q.id === bp.dataset.tpose); testMuscles(x, false); POSE.animateTo(poseTarget(x.pose), 900); toast(x.n); if (S.box || true) setTimeout(() => viewRegion(x.view || 'front'), 60); return; }
+  if (bm) { testMuscles(TESTS.find((q) => q.id === bm.dataset.tmus), true); return; }
 });
 // powiązanie mięśni i stawów z ruchem: nazwa ruchu → docelowe kąty
 function poseMoveFor(j, ruch) {
@@ -1018,7 +1061,7 @@ function poseDemo(jid, ruch, gk) {
   const tg = poseMoveFor(jid, ruch); if (!tg) { toast('Ten ruch nie ma jeszcze animacji.'); return; }
   showPanel('poza'); renderPose();
   if (gk && G[gk]) { S.sel = { t: 'grp', id: gk }; S.hidden.delete(gk); apply(); renderInfo(); markList(); }
-  POSE.animateTo({ ...REST, ...tg }, 900); toast(`${ruch} (${JMAP.get(jid).pl})`);
+  POSE.animateTo(poseTarget(tg), 900); toast(`${ruch} (${JMAP.get(jid).pl})`);
   const side = /zgiecie|wyprost|protrak|retrak/.test(norm(ruch)) ? 'lat' : /odwodz|przywodz|unoszen|opuszcz/.test(norm(ruch)) ? 'front' : null; if (side && S.box) viewRegion(side);
 }
 function poseOpenJoint(jid) {
@@ -1229,6 +1272,7 @@ $('#menu').addEventListener('click', (e) => {
   if (a.dataset.m === 'about') showModal(`<h3>O autorze</h3><p><b>Anatomia</b> — wersja <b>v${VERSION}</b></p><p>Autor: <b>Michał Rzekiecki</b><br>Kontakt: <a href="mailto:michus@gmail.com">michus@gmail.com</a></p><hr><p class="small">Model 3D: <a href="https://www.z-anatomy.com" target="_blank" rel="noopener">Z-Anatomy</a> (CC BY-SA 4.0), oparty na BodyParts3D © The Database Center for Life Science (CC BY-SA 2.1 Japan). Nazwy łacińskie wg Terminologia Anatomica. Opisy mają charakter edukacyjny — w razie wątpliwości sprawdź w podręczniku anatomii.</p>`);
   if (a.dataset.m === 'sug') showModal(`<h3>Sugestie</h3><p class="small">Napisz, co sprawiłoby, że aplikacja będzie jeszcze lepsza.</p><textarea id="sugTxt" rows="6" placeholder="Twoja sugestia…"></textarea><div class="btns"><button id="sugSend" class="pri">Wyślij e-mailem</button><button id="sugCopy">Kopiuj</button></div><p class="small">Otworzy się Twój program pocztowy (adres: michus@gmail.com).</p>`);
   if (a.dataset.m === 'help') showHelp();
+  if (a.dataset.m === 'testy') { showPanel('testy'); renderTests(); }
 });
 modal.addEventListener('pointerdown', (e) => { if (e.target === modal) modal.classList.remove('show'); });
 modal.addEventListener('click', (e) => {
@@ -1244,6 +1288,7 @@ function showHelp() {
 <li><b>Obrót</b> — przeciągnij myszą / palcem; <b>przesuwanie</b> — prawy przycisk (przeciągnij) lub dwa palce; <b>zoom</b> — kółko / uszczypnięcie.</li>
 <li><b>Klik</b> — wybór; kolejny klik w mięsień wielogłowy wybiera konkretną głowę. <b>Niebieski</b> = początek, <b>pomarańczowy</b> = przyczep końcowy.</li>
 <li><b>Ctrl + klik</b> (⌘ na Mac) — dodaje mięsień do wyboru wielu (jak przycisk ☑ Wiele mięśni).</li>
+<li><b>Testy</b> (dolny pasek lub Menu) — ruchy, które możesz wykonać, i mięśnie podejrzane, gdy dany ruch boli; „Pokaż w pozie” ustawia model i podświetla mięśnie.</li>
 <li><b>Shift + klik</b> — <b>ukrywa</b> mięsień lub kość pod kursorem, więc możesz sięgnąć do głębszych warstw. <b>PPM</b> (kliknięcie bez przeciągania) albo długie przytrzymanie na telefonie — menu: ukryj, tło, wyróżnij, pokaż tylko ten. <b>H</b> ukrywa zaznaczony, <b>Shift+H</b> pokazuje wszystkie, <b>Ctrl+Z</b> cofa.</li>
 <li><b>Dolny pasek paneli</b> — włączasz i wyłączasz panele tematyczne: Karta, Powiązania, Ruchy, Poza, Widoczność, Analiza. Każdy panel można zwinąć (–), przenieść na drugą stronę (⇆) lub zamknąć (×); układ jest zapamiętywany.</li>
 <li><b>🦾 Poza</b> — poruszaj stawami kończyny górnej suwakami w zakresach ruchu zdrowego człowieka; mięśnie odkształcają się razem z kośćmi. Gotowe pozy: ręka w górze, łokieć 90° w płaszczyźnie strzałkowej i poprzecznej.</li>

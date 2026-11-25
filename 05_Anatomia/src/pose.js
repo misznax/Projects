@@ -6,25 +6,37 @@ import * as THREE from 'three';
 import { segDQ, skinDQ, skinLBS, skinDelta, collide } from './dqs.js';
 const D2R = Math.PI / 180;
 
-// zakresy ruchu zdrowego dorosłego (wartości wg piśmiennictwa: AAOS / Kapandji), w stopniach
+// zakresy ruchu zdrowego dorosłego, w stopniach.
+// min/max = MAKSYMALNY zdrowy zakres (górna granica piśmiennictwa: AAOS / Kapandji / Norkin & White, ruch bierny do końca zakresu),
+// nmin/nmax = zakres typowy ("norma", ruch czynny, WHO / Luttgens & Hamilton). Zielone na suwaku = norma, bursztynowe = do maksimum.
 export const DOF = [
-  { k: 'gElev', g: 'Obręcz barkowa', n: 'Unoszenie ⟷ opuszczanie', neg: 'opuszczanie', pos: 'unoszenie', min: -10, max: 35, norm: 'unoszenie do ok. 35°, opuszczanie do ok. 10°' },
-  { k: 'gProt', g: 'Obręcz barkowa', n: 'Protrakcja ⟷ retrakcja', neg: 'retrakcja', pos: 'protrakcja', min: -20, max: 25, norm: 'protrakcja do ok. 25°, retrakcja do ok. 20°' },
-  { k: 'F', g: 'Staw ramienny', n: 'Zgięcie ⟷ wyprost', neg: 'wyprost', pos: 'zgięcie', min: -60, max: 180, norm: 'zgięcie 0–180°, wyprost 0–60°' },
-  { k: 'A', g: 'Staw ramienny', n: 'Odwodzenie ⟷ przywodzenie', neg: 'przywodzenie', pos: 'odwodzenie', min: -30, max: 180, norm: 'odwodzenie 0–180°, przywodzenie do ok. 30°' },
-  { k: 'R', g: 'Staw ramienny', n: 'Rotacja wewn. ⟷ zewn.', neg: 'zewnętrzna', pos: 'wewnętrzna', min: -90, max: 70, norm: 'rotacja zewnętrzna do 90°, wewnętrzna do 70°' },
-  { k: 'E', g: 'Łokieć', n: 'Zgięcie łokcia', neg: 'wyprost', pos: 'zgięcie', min: 0, max: 145, norm: 'zgięcie 0–145° (wyprost 0°)' },
-  { k: 'Pr', g: 'Przedramię', n: 'Odwrót ⟷ nawrót', neg: 'odwrót (supinacja)', pos: 'nawrót (pronacja)', min: -90, max: 85, norm: 'supinacja do 90°, pronacja do 85° (0° = kciuk do góry)' },
-  { k: 'wFE', g: 'Nadgarstek', n: 'Wyprost ⟷ zgięcie dłoniowe', neg: 'wyprost (grzbietowo)', pos: 'zgięcie dłoniowe', min: -70, max: 80, norm: 'zgięcie dłoniowe 80°, grzbietowe (wyprost) 70°' },
-  { k: 'wDev', g: 'Nadgarstek', n: 'Odchylenie promieniowe ⟷ łokciowe', neg: 'promieniowe', pos: 'łokciowe', min: -20, max: 30, norm: 'promieniowe 20°, łokciowe 30°' },
+  { k: 'gElev', g: 'Obręcz barkowa', n: 'Unoszenie ⟷ opuszczanie', neg: 'opuszczanie', pos: 'unoszenie', min: -10, max: 35, nmin: -10, nmax: 35, norm: 'unoszenie do ok. 35°, opuszczanie do ok. 10°' },
+  { k: 'gProt', g: 'Obręcz barkowa', n: 'Protrakcja ⟷ retrakcja', neg: 'retrakcja', pos: 'protrakcja', min: -20, max: 25, nmin: -20, nmax: 25, norm: 'protrakcja do ok. 25°, retrakcja do ok. 20°' },
+  { k: 'F', g: 'Staw ramienny', n: 'Zgięcie ⟷ wyprost', neg: 'wyprost', pos: 'zgięcie', min: -60, max: 180, nmin: -45, nmax: 170, norm: 'zgięcie 170–180°, wyprost 45–60°' },
+  { k: 'A', g: 'Staw ramienny', n: 'Odwodzenie ⟷ przywodzenie', neg: 'przywodzenie', pos: 'odwodzenie', min: -50, max: 180, nmin: -30, nmax: 170, norm: 'odwodzenie 170–180°, przywodzenie 30–50° (tylko z lekkim zgięciem — przed tułowiem)' },
+  { k: 'R', g: 'Staw ramienny', n: 'Rotacja wewn. ⟷ zewn.', neg: 'zewnętrzna', pos: 'wewnętrzna', min: -100, max: 90, nmin: -90, nmax: 70, norm: 'zewnętrzna 90° (maks. ok. 100° przy ramieniu odwiedzionym), wewnętrzna 70° (maks. ok. 90°) — zakres zależy od uniesienia ramienia' },
+  { k: 'E', g: 'Łokieć', n: 'Zgięcie łokcia', neg: 'przeprost', pos: 'zgięcie', min: -10, max: 150, nmin: 0, nmax: 140, norm: 'zgięcie 140–150°, wyprost 0° (przeprost do 10° bywa fizjologiczny)' },
+  { k: 'Pr', g: 'Przedramię', n: 'Odwrót ⟷ nawrót', neg: 'odwrót (supinacja)', pos: 'nawrót (pronacja)', min: -90, max: 90, nmin: -80, nmax: 80, norm: 'supinacja 80–90°, pronacja 80–90° (0° = kciuk do góry)' },
+  { k: 'wFE', g: 'Nadgarstek', n: 'Wyprost ⟷ zgięcie dłoniowe', neg: 'wyprost (grzbietowo)', pos: 'zgięcie dłoniowe', min: -70, max: 80, nmin: -60, nmax: 60, norm: 'zgięcie dłoniowe 60–80°, grzbietowe (wyprost) 60–70°' },
+  { k: 'wDev', g: 'Nadgarstek', n: 'Odchylenie promieniowe ⟷ łokciowe', neg: 'promieniowe', pos: 'łokciowe', min: -20, max: 30, nmin: -20, nmax: 30, norm: 'promieniowe 20°, łokciowe 30°' },
 ];
 export const REST = { gElev: 0, gProt: 0, F: 0, A: 0, R: 0, E: 0, Pr: -90, wFE: 0, wDev: 0 };
-const COUPLING = 0.30; // naturalny skręt zewnętrzny ramienia przy odwodzeniu (paradoks Codmana)
+const COUPLING = 0.30; // naturalny skręt zewnętrzny ramienia przy odwodzeniu (paradoks Codmana) — dodawany do suwaka R automatycznie
+// rotacja „naturalna” dla danego uniesienia (suwak R pokazuje rzeczywisty skręt kości ramiennej względem pozycji neutralnej w danej płaszczyźnie)
+export function natR(F, A) { const e = Math.hypot(F, A); if (e < 1e-9) return 0; const p = Math.atan2(F, A); return -COUPLING * Math.max(0, Math.cos(p)) * e; }
+// zakresy zależne od pozycji (maksymalny zdrowy zakres): rotacja zależy od uniesienia ramienia, przywiedzenie od zgięcia (ramię przed tułowiem)
+export function limits(v) {
+  const e = Math.hypot(v.F, v.A), s = Math.sin(Math.min(e, 90) * D2R), t = e > 90 ? (e - 90) / 90 : 0;
+  const er = e <= 90 ? 90 + 10 * s : 100 - 10 * t, ir = e <= 90 ? 70 + 20 * s : 90 - 30 * t;
+  const amin = -(ADD0 + (50 - ADD0) * Math.min(1, Math.max(0, v.F) / 45));
+  return { R: [-er, ir], A: [amin, 180] };
+}
+const ADD0 = 12; // przywiedzenie przy ramieniu opuszczonym (dalej ramię wchodziłoby w tułów)
 
 export function createPose({ onPose, base = '' }) {
   const st = { ready: false, J: null, segs: [], boneSeg: new Map(), vals: { ...REST }, rhythm: true, queue: [], rigid: [], skinned: [], meta: {}, bins: {}, cols: {}, sdf: [], sdfMeta: null, sdfP: null, mode: 'delta', alpha: 0.4, wrap: true, dlts: {}, lazy: [], lazyN: 0, dirty: false, M: null, anim: null };
-  const QR = new Float32Array(28), QD = new Float32Array(28), MA = new Float32Array(84), INV = [], ROT = [];
-  for (let i = 0; i < 7; i++) { INV.push(new Float32Array(12)); ROT.push(new Float32Array(9)); }
+  const NSEG = 9, QR = new Float32Array(NSEG * 4), QD = new Float32Array(NSEG * 4), MA = new Float32Array(NSEG * 12), INV = [], ROT = [];
+  for (let i = 0; i < NSEG; i++) { INV.push(new Float32Array(12)); ROT.push(new Float32Array(9)); }
   const V = (a) => new THREE.Vector3(a[0], a[1], a[2]);
   const rotAbout = (pivot, axis, deg) => { // obrót o deg wokół osi przechodzącej przez pivot (współrzędne spoczynkowe)
     const m = new THREE.Matrix4(); if (!deg) return m;
@@ -36,10 +48,11 @@ export function createPose({ onPose, base = '' }) {
     const o = { ...v };
     for (const d of DOF) o[d.k] = clamp(+o[d.k] || 0, d.min, d.max);
     const e = Math.hypot(o.F, o.A); if (e > 180) { o.F *= 180 / e; o.A *= 180 / e; }
+    const L = limits(o); o.A = clamp(o.A, L.A[0], L.A[1]); o.R = clamp(o.R, L.R[0], L.R[1]);
     return o;
   }
   function compute(v) {
-    const J = st.J, M = Array.from({ length: 7 }, () => new THREE.Matrix4());
+    const J = st.J, M = Array.from({ length: NSEG }, () => new THREE.Matrix4());
     const gh = V(J.gh), el = V(J.el), sc = J.sc, ac = J.ac;
     const vd = el.clone().sub(gh).normalize(), u = vd.clone().negate();
     const l = new THREE.Vector3(-1, 0, 0); l.addScaledVector(u, -l.dot(u)).normalize();
@@ -48,7 +61,7 @@ export function createPose({ onPose, base = '' }) {
     const h = l.clone().multiplyScalar(Math.cos(p)).addScaledVector(a, Math.sin(p));
     const k = new THREE.Vector3().crossVectors(vd, h); if (k.lengthSq() < 1e-12) k.copy(a); k.normalize();
     const Qs = new THREE.Quaternion().setFromAxisAngle(k, e * D2R);
-    const tw = v.R - COUPLING * Math.max(0, Math.cos(p)) * e;
+    const tw = v.R;
     const Qt = new THREE.Quaternion().setFromAxisAngle(u, tw * D2R);
     const Qh = Qs.clone().multiply(Qt); // kwaternion ciągły względem parametrów (bez zmiany półkuli) — potrzebny do mieszania > 180°
     const Rh = new THREE.Matrix4().makeRotationFromQuaternion(Qh);
@@ -66,7 +79,9 @@ export function createPose({ onPose, base = '' }) {
     const Mw = Mr.clone().multiply(rotAbout(J.wr, J.wr_dev, v.wDev)).multiply(rotAbout(J.wr, J.wr_fe, v.wFE));
     const Qw = Qr.clone().multiply(qa(J.wr_dev, v.wDev)).multiply(qa(J.wr_fe, v.wFE));
     M[1] = Mcl; M[2] = Msc; M[3] = Mh; M[4] = Mu; M[5] = Mr; M[6] = Mw;
-    M.q = [new THREE.Quaternion(), Qcl, Qsc, Qh, Qu, Qr, Qw];
+    // pomocnicze segmenty skrętu przedramienia: 1/3 i 2/3 nawrócenia (tkanki skręcają się wzdłuż przedramienia)
+    M[7] = Mu.clone().multiply(rotAbout(J.pr_p, J.pr_axis, (v.Pr + 90) / 3)); M[8] = Mu.clone().multiply(rotAbout(J.pr_p, J.pr_axis, (v.Pr + 90) * 2 / 3));
+    M.q = [new THREE.Quaternion(), Qcl, Qsc, Qh, Qu, Qr, Qw, Qu.clone().multiply(qa(J.pr_axis, (v.Pr + 90) / 3)), Qu.clone().multiply(qa(J.pr_axis, (v.Pr + 90) * 2 / 3))];
     return M;
   }
   const isRest = () => DOF.every((d) => Math.abs(st.vals[d.k] - REST[d.k]) < 1e-6);
@@ -122,7 +137,7 @@ export function createPose({ onPose, base = '' }) {
       const pw0 = new Float32Array(cnt * 3), nw0 = nor0 ? new Float32Array(cnt * 3) : null, v = new THREE.Vector3(), nm = new THREE.Matrix3().getNormalMatrix(N0);
       for (let i = 0; i < cnt; i++) { v.set(pos0[i * 3], pos0[i * 3 + 1], pos0[i * 3 + 2]).applyMatrix4(N0); pw0[i * 3] = v.x; pw0[i * 3 + 1] = v.y; pw0[i * 3 + 2] = v.z; if (nor0) { v.set(nor0[i * 3], nor0[i * 3 + 1], nor0[i * 3 + 2]).applyMatrix3(nm).normalize(); nw0[i * 3] = v.x; nw0[i * 3 + 1] = v.y; nw0[i * 3 + 2] = v.z; } }
       const ident = N0.equals(new THREE.Matrix4());
-      const s = { name, objs, geom, W: bin.subarray(ent.off * 8, (ent.off + ent.cnt) * 8), C: col ? col.subarray(ent.off * 4, (ent.off + ent.cnt) * 4) : null, D: dl ? dl.subarray(ent.off * 3, (ent.off + ent.cnt) * 3) : null, cnt, N0, N0i, ident, nm: new THREE.Matrix3().getNormalMatrix(N0i), pos0, nor0, pw0, nw0, Pw: new Float32Array(cnt * 3), Nw: nor0 ? new Float32Array(cnt * 3) : null, stale: false };
+      const s = { name, objs, geom, W: bin.subarray(ent.off * 8, (ent.off + ent.cnt) * 8), C: col ? col.subarray(ent.off * 8, (ent.off + ent.cnt) * 8) : null, D: dl ? dl.subarray(ent.off * 3, (ent.off + ent.cnt) * 3) : null, cnt, N0, N0i, ident, nm: new THREE.Matrix3().getNormalMatrix(N0i), pos0, nor0, pw0, nw0, Pw: new Float32Array(cnt * 3), Nw: nor0 ? new Float32Array(cnt * 3) : null, stale: false };
       st.skinned.push(s);
       if (!isRest()) { s.stale = true; sync(); }
     };
@@ -131,7 +146,7 @@ export function createPose({ onPose, base = '' }) {
   /* przygotowanie klatki: kwaternion + translacja każdego segmentu, macierze odwrotne do kolizji */
   function prepFrame(M) {
     const q = M.q || [];
-    for (let i = 0; i < 7; i++) {
+    for (let i = 0; i < NSEG; i++) {
       const e = M[i].elements; segDQ(QR, QD, i, q[i] || { x: 0, y: 0, z: 0, w: 1 }, [e[12], e[13], e[14]]);
       const o = i * 12; for (let c = 0; c < 3; c++) for (let r = 0; r < 3; r++) MA[o + c * 3 + r] = e[c * 4 + r]; MA[o + 9] = e[12]; MA[o + 10] = e[13]; MA[o + 11] = e[14];
       const R = ROT[i]; for (let c = 0; c < 3; c++) for (let r = 0; r < 3; r++) R[c * 3 + r] = e[c * 4 + r];
@@ -179,7 +194,10 @@ export function createPose({ onPose, base = '' }) {
     onPose();
   }
   const mark = () => { st.dirty = true; };
-  function set(patch) { st.vals = clampVals({ ...st.vals, ...patch }); mark(); activateAll(); if (st.wrap) loadSdf(); }
+  function withNat(prev, patch) { // ruch F/A bez jawnego R: ramię skręca się naturalnie (zewn. przy odwodzeniu)
+    const q = { ...patch }; if (!('R' in q) && ('F' in q || 'A' in q)) { const f = 'F' in q ? q.F : prev.F, a = 'A' in q ? q.A : prev.A; q.R = prev.R + natR(f, a) - natR(prev.F, prev.A); } return q;
+  }
+  function set(patch) { st.vals = clampVals({ ...st.vals, ...withNat(st.vals, patch) }); mark(); activateAll(); if (st.wrap) loadSdf(); }
   function setMode(a) { st.mode = a === 'delta' ? 'delta' : 'mix'; st.alpha = a === 'lbs' ? 0 : a === 'dqs' ? 1 : a === 'delta' ? st.alpha : +a; for (const q of st.skinned) q.stale = true; mark(); }
   function setWrap(on) { st.wrap = !!on; for (const q of st.skinned) q.stale = true; mark(); if (on) loadSdf(); }
   function reset() { st.anim = null; st.vals = { ...REST }; mark(); }
@@ -187,7 +205,9 @@ export function createPose({ onPose, base = '' }) {
   function ease(t) { return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; }
   function animateTo(target, ms = 800, done) {
     activateAll(); if (st.wrap) loadSdf();
-    const from = { ...st.vals }, to = clampVals({ ...st.vals, ...target }), t0 = performance.now();
+    const from = { ...st.vals }; let tg = { ...target };
+    if (!('R' in tg)) { const f = 'F' in tg ? tg.F : from.F, a = 'A' in tg ? tg.A : from.A; tg.R = natR(f, a); } // bez jawnego R: skręt naturalny
+    const to = clampVals({ ...from, ...tg }), t0 = performance.now();
     st.anim = { from, to, t0, ms, done };
   }
   function tick(now) { // wołane z pętli renderowania; zwraca true, gdy trwa animacja
@@ -207,5 +227,5 @@ export function createPose({ onPose, base = '' }) {
     st.ready = true; st.M = compute(st.vals);
     const q = st.queue; st.queue = []; for (const f of q) f();
   }).catch((e) => { console.warn('pose.json', e); });
-  return { st, ready, rigid, skinned, sync, flush, set, reset, setMode, setWrap, loadSdf, setRhythm, animateTo, tick, xp, segOfBone, get vals() { return st.vals; }, get rhythm() { return st.rhythm; }, isRest, get active() { return !!st.anim; }, segIndex: (n) => st.segs.indexOf(n) };
+  return { st, ready, rigid, skinned, sync, flush, set, reset, setMode, setWrap, loadSdf, setRhythm, animateTo, tick, xp, segOfBone, get vals() { return st.vals; }, get rhythm() { return st.rhythm; }, isRest, get active() { return !!st.anim; }, limits: () => limits(st.vals), segIndex: (n) => st.segs.indexOf(n) };
 }

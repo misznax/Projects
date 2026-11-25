@@ -1,10 +1,17 @@
-# 05 Anatomia — v0.09
+# 05 Anatomia — v0.10
 
 Interaktywny model 3D **kończyny górnej, głowy i szyi, tułowia, miednicy, uda oraz podudzia i stopy** (prawa / lewa = lustro / obie): 32 kości, 67 siatek mięśniowych (51 mięśni), 109 punktów kostnych, **22 stawy** (typ, osie, powierzchnie, antagoniści, torebki) oraz czaszka i kręgi szyjne (wczytywane na żądanie). Nazwy polskie (duże) i łacińskie (pod spodem, w nawiasie), wyszukiwarka po wszystkich nazwach (PL/łac./ang.), regiony (bark · ramię · przedramię · dłoń), obrót modelu, początki (niebieski) i przyczepy końcowe (pomarańczowy) mięśni na kościach.
 
 - Adres: https://anatomia.smialo.org/ (domena Workera podpięta 2026-11-16, tymczasowo do 2026-12-31) oraz https://projects.michus.workers.dev/05/ (stały). Żaden z nich nie jest za Cloudflare Access.
 - Technologia: three.js (WebGL) + three-mesh-bvh; jeden `index.html` + pliki GLB i dane pozy (`public/`).
 - Dane: `data/data.json` (nazwy, opisy, przyczepy, pozycje punktów).
+
+## v0.10
+- **Zakresy ruchu = maksymalny zdrowy zakres + zaznaczona norma**: suwaki w panelu Poza mają pasek: 🟩 zielone = norma (typowy zdrowy dorosły, WHO / Luttgens), 🟧 bursztynowe = do maksymalnego zdrowego zakresu (AAOS / Kapandji, ruch bierny do końca), kreska = 0°; szare (kreskowane) pola = niedostępne w tej pozie. Nowe maksima: rotacja zewnętrzna 100°, wewnętrzna 90°, przywiedzenie 50°, zgięcie łokcia 150° (przeprost −10°), nawrót/odwrót ±90°.
+- **Rotacja barku zależna od pozycji**: dozwolony zakres rotacji zewn. 90→100° i wewn. 70→90° rośnie z uniesieniem ramienia (do 90°) i maleje powyżej; przywiedzenie 12° przy ramieniu opuszczonym do 50° przy ramieniu przed tułowiem. Suwak R pokazuje teraz **rzeczywisty skręt** kości ramiennej (naturalny skręt zewnętrzny przy odwodzeniu — paradoks Codmana — dodawany automatycznie do R przy ruchu F/A; wcześniej był ukryty w modelu, przez co granice rotacji w uniesieniu były błędne).
+- **🩺 Testy** (menu + dolny pasek): 31 testów ruchowych (bark, obręcz barkowa, łokieć, przedramię, nadgarstek: rotacje z oporem, test puszki, łuk bolesny, Hawkins–Kennedy, Neer, przywodzenie, Gerber, Hornblower, Speed, Yergason, Cozen, Mills, Maudsley, łokieć golfisty, Finkelstein…). Każdy: jak wykonać, rodzaj (czynny / bierny / z oporem), „Pokaż w pozie” (ustawia model, widok i podświetla mięśnie: główne i współpracujące), podejrzane mięśnie przy bólu, „pomyśl też o”. Filtr „Gdzie boli?” (11 okolic). Dane: `src/tests.js`. Materiał edukacyjny — nie diagnoza.
+- **Zawijanie przy łopatce / skrajne pozy**: warstwy mięśni zachowują odstęp od kości (do 35 mm, 4 kolidery na wierzchołek); przedramię skręca się wzdłuż długości (segmenty pomocnicze tw1/tw2) — koniec z pętlą zginacza promieniowego i „konfetti” przy nawrocie; wagi harmoniczne z przyczepami wg grup kinematycznych; kolizje przez zawias łokcia/nadgarstka tylko symboliczne (bez „szrapneli” przy zgięciu 120–150°).
+- Ograniczenia: brak kolizji mięsień–mięsień (drobne przebicia), zgięcie łokcia >130° marszczy tkanki w zgięciu łokciowym; rotacja zależna od pozycji jest uproszczeniem (funkcja stopnia uniesienia), wartości do weryfikacji przez fizjoterapeutę.
 
 ## v0.09
 - **Mięśnie w ruchu — zawijanie i fizyka (poprawka po v0.08)**: w v0.08 mięśnie przy dużych kątach (ręka w górze) zapadały się do osi lub rozciągały w cienkie „nitki”, a główka kości ramiennej przebijała mięśnie. Teraz:

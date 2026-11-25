@@ -8,7 +8,9 @@ from scipy.spatial import cKDTree
 import scipy.sparse as sp
 
 PUB = pg.PUB; D = pg.D
-SEGS = ['thx', 'clav', 'scap', 'hum', 'uln', 'rad', 'hand']
+SEGS = ['thx', 'clav', 'scap', 'hum', 'uln', 'rad', 'hand', 'tw1', 'tw2']   # tw1/tw2 = pomocnicze segmenty skrętu przedramienia (1/3 i 2/3 nawrócenia)
+BSEGS = SEGS[:7]
+CLUS = [[0], [1, 2], [3], [4, 5], [6]]   # grupy kinematyczne do wyznaczania przyczepów: tułów, obręcz, ramię, przedramię (łokieć+promień), dłoń
 bones = {b['id']: b for b in D['bones']}
 segOf = {'B002': 'clav', 'B033': 'scap', 'B017': 'hum', 'B045': 'uln', 'B031': 'rad'}
 for b in D['bones']:
@@ -22,7 +24,7 @@ def dense(P, idx):
 
 # ---------- chmury punktów segmentów (świat) ----------
 B = g.meshes(PUB + 'bones.glb'); TR = g.meshes(PUB + 'trunk.glb'); AX = g.meshes(PUB + 'axial.glb')
-clouds = {s: [] for s in SEGS}
+clouds = {s: [] for s in BSEGS}
 for k, m in B.items():
     if k in segOf: clouds[segOf[k]].append(dense(g.world(m), m['idx']))
     elif k in bones and bones[k]['kind'] == 'ctx': clouds['thx'].append(dense(g.world(m), m['idx']))
@@ -31,6 +33,7 @@ for src in (TR, AX):
         if k in bones and bones[k]['kind'] in ('trunk', 'axial'): clouds['thx'].append(dense(g.world(m), m['idx']))
 trees = {s: cKDTree(np.vstack(v)) for s, v in clouds.items()}
 print({s: len(t.data) for s, t in trees.items()})
+o0, W0 = pg.compute()
 
 # ---------- pola odległości kości (owijanie / kolizje) ----------
 def tris(src, pred):
@@ -51,7 +54,7 @@ SDFS['thx'] = sdfm.build(thx_t, 0.006, bbox=([-0.42, 1.02, -0.26], [0.06, 1.62, 
 # ---------- wagi ----------
 EPS, POW = 0.006, 4.0
 def weights(P, idx):
-    d = np.stack([trees[s].query(P, k=1)[0] for s in SEGS], 1)
+    d = np.stack([trees[s].query(P, k=1)[0] for s in BSEGS], 1)
     w = 1.0 / (d + EPS) ** POW
     w /= w.sum(1, keepdims=True)
     if idx is not None and len(P) > 4:  # wygładzenie po siatce (3 iteracje)
@@ -91,8 +94,9 @@ def harmonic(P, w, idx, thr=0.8, eps=1e-4):
     wu = np.zeros((n, w.shape[1])); np.add.at(wu, inv, w); wu /= cnt[:, None]
     e = np.r_[T[:, [0, 1]], T[:, [1, 2]], T[:, [0, 2]]]; e = e[e[:, 0] != e[:, 1]]
     A = sp.coo_matrix((np.ones(len(e)), (e[:, 0], e[:, 1])), shape=(n, n)); A = ((A + A.T) > 0).astype(float).tocsr()
-    seed = wu.max(1) >= thr
-    if seed.sum() == 0 or len(set(wu[seed].argmax(1))) < 2: return w
+    wc = np.stack([wu[:, c].sum(1) for c in CLUS], 1)
+    seed = wc.max(1) >= thr
+    if seed.sum() == 0 or len(set(wc[seed].argmax(1))) < 2: return w
     free = np.where(~seed)[0]; sd = np.where(seed)[0]
     if len(free) == 0: return w
     deg = np.asarray(A.sum(1)).ravel()
@@ -103,6 +107,21 @@ def harmonic(P, w, idx, thr=0.8, eps=1e-4):
     out = wu.copy(); out[free] = np.clip(X, 0, None)
     out /= out.sum(1, keepdims=True)
     return out[inv]
+
+
+def forearm_twist(P, w):
+    """Skręt przedramienia: tkanki w strefie przedramienia dostają udział segmentów uln→tw1→tw2→rad wg położenia wzdłuż osi łokieć→nadgarstek
+    (zamiast przypisania do najbliższej z dwóch kości, co rozrywało mięśnie przy nawróceniu)."""
+    w9 = np.zeros((len(P), len(SEGS))); w9[:, :7] = w
+    el = np.array(o0['el']); wr = np.array(o0['wr']); ax = wr - el
+    t = ((P - el) @ ax) / (ax @ ax)
+    sh = w[:, 4] + w[:, 5]
+    m = (sh >= 0.3) & (t > -0.05) & (t < 1.2)
+    r = np.clip(t, 0, 1) * 3; k = np.minimum(np.floor(r).astype(int), 2); f = r - k
+    ws = np.zeros((len(P), 4)); ws[np.arange(len(P)), k] = 1 - f; ws[np.arange(len(P)), k + 1] = f
+    ids = [4, 7, 8, 5]
+    for j, sg in enumerate(ids): w9[m, sg] = (sh[:, None] * ws)[m, j]
+    return w9
 
 def top4(w):
     ids = np.argsort(-w, 1)[:, :4]; ww = np.take_along_axis(w, ids, 1)
@@ -119,18 +138,26 @@ def run(fn, key, namefilter):
         if not namefilter(name): continue
         P = g.world(m); w = weights(P, m['idx']); w = harmonic(P, w, m['idx'])
         if (1 - w[:, 0]).max() < 0.10: stat += 1; continue
+        w = forearm_twist(P, w)
         ids, q = top4(w)
         blob.append(np.concatenate([ids, q], 1).astype(np.uint8).tobytes())
         cand = []  # (d0, seg) dla każdego segmentu-kolidera
         for sn in SD_SEGS:
             d0 = sdfm.sample(SDFS[sn], P); ws = w[:, SI[sn]]
-            cand.append(np.where((d0 < 0.03) & (ws < 0.9), d0, 9.0))
-        cand = np.stack(cand, 1); o2 = np.argsort(cand, 1)[:, :2]; d2 = np.take_along_axis(cand, o2, 1)
-        col = np.zeros((len(P), 4), np.int8)
-        for j in range(2):
+            cand.append(np.where((d0 < 0.035) & (ws < 0.9), d0, 9.0))
+        cand = np.stack(cand, 1); o2 = np.argsort(cand, 1)[:, :4]; d2 = np.take_along_axis(cand, o2, 1)
+        dom = np.argmax(w, 1)
+        col = np.zeros((len(P), 8), np.int8)   # 4 kolidery: [seg, wymagany odstęp w 0.5 mm]
+        for j in range(4):
             okj = d2[:, j] < 9.0
             col[okj, 2 * j] = np.array([SI[SD_SEGS[i]] for i in o2[okj, j]], np.int8)
-            col[okj, 2 * j + 1] = np.clip(np.rint(np.minimum(d2[okj, j], 0.004) / 0.0005), -100, 100).astype(np.int8)
+            # zachowaj odstęp spoczynkowy od kości (do 35 mm) — warstwy mięśni nie zamieniają się miejscami względem kości;
+            # po drugiej stronie zawiasu (łokieć, nadgarstek) tkanka się ściska przy zgięciu, więc odstęp tylko symboliczny (0,5 mm: bez wnikania w kość)
+            cap = np.full(len(P), 0.035)
+            cn = np.array([SD_SEGS[i] for i in o2[:, j]])
+            cross = ((cn == 'hum') & np.isin(dom, [4, 5, 6, 7, 8])) | (np.isin(cn, ['uln', 'rad']) & np.isin(dom, [3, 6]))
+            cap[cross] = 0.0035
+            col[okj, 2 * j + 1] = np.clip(np.rint((np.minimum(d2[okj, j], cap[okj]) - 0.003) / 0.0005), -100, 127).astype(np.int8)
         cblob.append(col.tobytes()); ncol += int((col[:, 0] != 0).sum())
         dl = smooth_delta(P, m['idx']); dblob.append(np.clip(np.rint(dl / 1e-4), -32000, 32000).astype('<i2').tobytes())
         ent.append({'n': name, 'off': off, 'cnt': int(len(P)), 'mx': float(1 - w[:, 0].min())})
