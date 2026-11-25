@@ -794,8 +794,16 @@ const isMobile = () => window.innerWidth < 820;
 const savePanels = () => { try { localStorage.setItem('anatomia.panels', JSON.stringify(Object.fromEntries(PDEF.map((d) => [d.id, { on: PS[d.id].on, min: PS[d.id].min, zone: PS[d.id].zone }])))); } catch (e) {} };
 const pEl = {};
 for (const d of PDEF) { const e = document.createElement('section'); e.className = 'pnl'; e.dataset.p = d.id; e.hidden = true; e.innerHTML = `<div class="ph" title="Kliknij, aby zwinąć / rozwinąć"><b class="pt">${d.ico} ${d.t}</b><span class="pbs"><button data-pa="min" title="Zwiń / rozwiń" aria-label="Zwiń">–</button><button data-pa="zone" title="Przenieś na drugą stronę ekranu" aria-label="Przenieś">⇆</button><button data-pa="off" title="Wyłącz panel (włączysz go ponownie na dolnym pasku)" aria-label="Zamknij panel">×</button></span></div><div class="pb"></div>`; pEl[d.id] = e; }
-const PLACEHOLDER = { poza: '', wid: '', ana: '<p class="small">Opisz ból lub ruch, a zaznaczę mięśnie, ich udział % i co wzmocnić lub rozciągnąć.</p><div class="btns"><button id="anaNew" class="pri">🔎 Nowa analiza</button></div>' };
-const panelVisible = (id) => { const p = PS[id]; if (!p.on) return false; if (PD[id].auto) return p.html != null; return true; };
+const PLACEHOLDER = {
+  karta: '<p class="small">Zaznacz mięsień, kość lub staw (klik w model albo na liście po lewej) — tu pojawi się jego opis: przyczepy, czynność, unerwienie.</p>',
+  pow: '<p class="small">Po zaznaczeniu struktury pojawią się tu antagoniści, części, kości, stawy i więzadła.</p>',
+  ruchy: '<p class="small">Po zaznaczeniu struktury pojawią się tu ruchy w stawach i pracujące mięśnie.</p>',
+  poza: '', wid: '', ana: '<p class="small">Opisz ból lub ruch, a zaznaczę mięśnie, ich udział % i co wzmocnić lub rozciągnąć.</p><div class="btns"><button id="anaNew" class="pri">🔎 Nowa analiza</button></div>' };
+for (const d of PDEF) if (d.auto) $('.pb', pEl[d.id]).innerHTML = PLACEHOLDER[d.id];
+const panelVisible = (id) => { const p = PS[id]; if (!p.on) return false; if (PD[id].auto) return p.html != null || !!p.pin; return true; };
+// dolny pasek budowany raz — potem tylko aktualizowany w miejscu (przebudowa w trakcie kliknięcia gubiła kliknięcie)
+dockEl.innerHTML = PDEF.map((d) => `<button class="dk" data-dk="${d.id}" aria-pressed="false"><span class="ck">☐</span><span class="di">${d.ico}</span><span class="dl">${d.t}</span><i class="bd" hidden></i></button>`).join('') + '<button class="dk help" data-dk="_help" title="Skróty i obsługa">?</button>';
+const dkEl = Object.fromEntries(PDEF.map((d) => [d.id, dockEl.querySelector(`[data-dk="${d.id}"]`)]));
 function layoutPanels() {
   const mob = isMobile();
   if (mob) { if (!mobActive || !panelVisible(mobActive)) mobActive = PDEF.map((d) => d.id).find(panelVisible) || null; }
@@ -806,12 +814,18 @@ function layoutPanels() {
     (mob ? want.r : want[p.zone]).push(e);
   }
   for (const z of ['l', 'r']) { const cur = [...zoneEl[z].children]; if (cur.length !== want[z].length || cur.some((c, i) => c !== want[z][i])) { for (const e of want[z]) zoneEl[z].appendChild(e); } }
-  // dolny pasek (dock)
-  dockEl.innerHTML = PDEF.map((d) => {
-    const vis = panelVisible(d.id) && (!mob || d.id === mobActive), armed = PS[d.id].on && !vis && PD[d.id].auto && !mob;
-    const bd = d.id === 'wid' && hiddenCount() ? `<i class="bd">${hiddenCount()}</i>` : d.id === 'poza' && POSE.ready && !POSE.isRest() ? '<i class="bd">●</i>' : '';
-    return `<button class="dk${vis ? ' on' : ''}${armed ? ' armed' : ''}${d.auto && PS[d.id].html == null ? ' empty' : ''}" data-dk="${d.id}" title="${esc(d.tip)}${armed ? ' — włączony, pojawi się po wyborze struktury' : ''}" aria-pressed="${vis}"><span class="ck">${vis ? '☑' : '☐'}</span><span class="di">${d.ico}</span><span class="dl">${d.t}</span>${bd}</button>`;
-  }).join('') + '<button class="dk help" data-dk="_help" title="Skróty i obsługa">?</button>';
+  // dolny pasek (dock) — aktualizacja w miejscu
+  for (const d of PDEF) {
+    const b = dkEl[d.id], vis = panelVisible(d.id) && (!mob || d.id === mobActive), armed = PS[d.id].on && !vis && PD[d.id].auto && !mob;
+    const bt = d.id === 'wid' && hiddenCount() ? String(hiddenCount()) : d.id === 'poza' && POSE.ready && !POSE.isRest() ? '●' : '';
+    const cls = 'dk' + (vis ? ' on' : '') + (armed ? ' armed' : '') + (d.auto && PS[d.id].html == null ? ' empty' : '');
+    if (b.className !== cls) b.className = cls;
+    const ti = d.tip + (armed ? ' — kliknij, aby pokazać panel (wypełni się po wyborze struktury)' : '');
+    if (b.title !== ti) b.title = ti;
+    const ap = String(vis); if (b.getAttribute('aria-pressed') !== ap) b.setAttribute('aria-pressed', ap);
+    const ck = b.firstChild, ct = vis ? '☑' : '☐'; if (ck.textContent !== ct) ck.textContent = ct;
+    const bd = b.lastChild; if (bd.textContent !== bt) { bd.textContent = bt; bd.hidden = !bt; }
+  }
   updHintTop(); measureInsets();
 }
 let panelInset = { l: 0, r: 0, b: 0 };
@@ -829,6 +843,7 @@ function setPanel(id, html, opts = {}) { // html === null → brak treści (pane
 }
 function togglePanel(id, v) {
   const p = PS[id]; p.on = v === undefined ? !p.on : v;
+  if (PD[id].auto) p.pin = p.on && p.html == null; // jawnie otwarty pusty panel pokazuje podpowiedź zamiast znikać
   if (p.on) { p.min = false; if (isMobile()) mobActive = id; if (id === 'poza' && typeof renderPose === 'function') renderPose(); if (id === 'testy' && typeof renderTests === 'function') renderTests(); if (id === 'wid') renderVisPanel(); if (id === 'ana' && !S.ana) setPanel('ana', null, { quiet: true }); }
   else if (id === 'ana' && S.ana) { S.ana = null; apply(); renderInfo(); markList(); }
   savePanels(); layoutPanels();
@@ -849,7 +864,7 @@ infoEl.addEventListener('click', (e) => {
   const ph = e.target.closest('.ph'); if (ph && !e.target.closest('button')) { const p = PS[ph.parentNode.dataset.p]; p.min = !p.min; savePanels(); layoutPanels(); }
 });
 dockEl.addEventListener('wheel', (e) => { if (dockEl.scrollWidth > dockEl.clientWidth + 2) { dockEl.scrollLeft += e.deltaY || e.deltaX; e.preventDefault(); } }, { passive: false });
-dockEl.addEventListener('click', (e) => { const b = e.target.closest('[data-dk]'); if (!b) return; if (b.dataset.dk === '_help') { showHelp(); return; } const id = b.dataset.dk; if (PD[id].auto && !panelVisible(id) && PS[id].on) { togglePanel(id, false); return; } togglePanel(id, panelVisible(id) && (!isMobile() || id === mobActive) ? false : true); });
+dockEl.addEventListener('click', (e) => { const b = e.target.closest('[data-dk]'); if (!b) return; if (b.dataset.dk === '_help') { showHelp(); return; } const id = b.dataset.dk; togglePanel(id, panelVisible(id) && (!isMobile() || id === mobActive) ? false : true); });
 
 layoutPanels();
 function chip(pl, la, t, id, cls = '', dot = '') { return `<button class="chip ${cls}" data-t="${t}" data-id="${id}">${dot}${esc(pl)} <small>(${esc(la)})</small></button>`; }
@@ -988,7 +1003,7 @@ function trackBg(d, L) { // zielone = norma, bursztynowe = do maksymalnego zdrow
   const lw = Math.max(0, pc(L[0])), rw = Math.max(0, 100 - pc(L[1]));
   return `${HATCH} left/${lw}% 100% no-repeat,${HATCH} right/${rw}% 100% no-repeat,${zero},${base}`;
 }
-let poseBuilt = false;
+let poseBuilt = false, poseBadge = null;
 function renderPose() {
   let h = '<p class="small">Poruszaj stawami w zakresach ruchu zdrowego człowieka. <b>0° = pozycja anatomiczna modelu.</b> Mięśnie odkształcają się razem z kośćmi (skinning z zachowaniem grubości, wagi rozłożone wzdłuż mięśnia, owijanie wokół kości). Poza działa symetrycznie na obie ręce.</p>';
   h += `<label class="chk"><input type="checkbox" id="pRhythm" ${POSE.rhythm ? 'checked' : ''}> Rytm łopatkowo-ramienny (łopatka i obojczyk podążają za ramieniem)</label>`;
