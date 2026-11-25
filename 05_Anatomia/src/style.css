@@ -131,7 +131,7 @@ dd .small{margin-top:3px}
 #panels{position:absolute;inset:0;pointer-events:none;z-index:7;--vh:64px}
 .zone{position:absolute;display:flex;flex-direction:column;gap:10px;pointer-events:none;width:min(360px,42%);min-height:0;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;padding-bottom:2px}
 #zoneR{right:12px;top:var(--vr,12px);bottom:84px}#zoneL{left:12px;top:var(--vh);bottom:84px}
-.pnl{pointer-events:auto;background:#161b24f2;backdrop-filter:blur(10px);border:1px solid var(--line);border-radius:14px;display:flex;flex-direction:column;min-height:0;flex:0 0 auto;max-height:100%;box-shadow:0 12px 40px #0009;overflow:hidden}
+.pnl{pointer-events:auto;background:#161b24f2;backdrop-filter:blur(10px);border:1px solid var(--line);border-radius:14px;display:flex;flex-direction:column;min-height:112px;flex:0 1 auto;max-height:100%;box-shadow:0 12px 40px #0009;overflow:hidden}.pnl.min{min-height:0;flex:none}.ph{flex:none}
 .pnl[hidden]{display:none}
 .ph{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 6px 4px 14px;cursor:pointer;flex:none;user-select:none}
 .ph .pt{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--acc)}
