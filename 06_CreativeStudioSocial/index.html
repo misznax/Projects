@@ -86,7 +86,7 @@ table.qc td{vertical-align:top}
 #m-video{grid-template-columns:280px 1fr 310px;grid-template-rows:1fr 340px;grid-template-areas:"l c r" "t t t"}
 @media (min-height:960px){#m-video{grid-template-rows:1fr 430px}}
 #v-left{grid-area:l}#v-center{grid-area:c;display:flex;flex-direction:column;min-height:0;min-width:0}#v-right{grid-area:r}#v-tl{grid-area:t;background:var(--p1);border-top:1px solid var(--bd);display:flex;flex-direction:column;min-height:0}
-.tl-bar{display:flex;gap:6px;padding:6px 10px;align-items:center;border-bottom:1px solid var(--bd);flex-wrap:wrap}.tl-bar .time{font-variant-numeric:tabular-nums;font-weight:700;color:var(--acc);min-width:96px}
+.tl-bar{display:flex;gap:6px;padding:6px 10px;align-items:center;border-bottom:1px solid var(--bd);flex-wrap:wrap}.tl-tempo{display:flex;align-items:center;gap:6px;font-size:12px;padding:2px 8px;border:1px solid var(--bd);border-radius:8px;background:var(--p3);white-space:nowrap}.tl-tempo input{width:96px;margin:0}.tl-tempo b{min-width:34px;text-align:right;color:var(--acc)}.tl-tempo.off{opacity:.5}.pipbar label b,.tl-tempo b.tmv{color:var(--acc)}.tl-bar .time{font-variant-numeric:tabular-nums;font-weight:700;color:var(--acc);min-width:96px}
 .tl-wrap{flex:1;display:flex;min-height:0;overflow:hidden}.tl-names{width:132px;flex:none;border-right:1px solid var(--bd);background:var(--p1);overflow:hidden}.tl-names div{height:30px;display:flex;align-items:center;padding:0 8px;font-size:12px;color:var(--mut);border-bottom:1px solid var(--bd)}
 .tl-scroll{flex:1;overflow:auto;position:relative}.tl-inner{position:relative}.tl-ruler{height:24px;position:sticky;top:0;z-index:5;background:var(--p2);border-bottom:1px solid var(--bd);cursor:pointer}.tl-ruler i{position:absolute;top:0;bottom:0;border-left:1px solid var(--bd);font-style:normal;font-size:10px;color:var(--mut);padding-left:3px}
 .tl-track{height:30px;border-bottom:1px solid var(--bd);position:relative}.tl-track:nth-child(even){background:rgba(255,255,255,.025)}
@@ -562,7 +562,7 @@ const DSP = (function () {
 if (typeof module !== 'undefined') module.exports = DSP;
 
 /* Creative Studio Social — rdzeń: narzędzia, magazyn (IndexedDB), projekt, historia, UI-pomocniki */
-const APP = { name: 'Creative Studio Social', ver: 'v0.06', author: 'Michał Rzekiecki', mail: 'michus@gmail.com' };
+const APP = { name: 'Creative Studio Social', ver: 'v0.07', author: 'Michał Rzekiecki', mail: 'michus@gmail.com' };
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const uid = (p = 'x') => p + Math.random().toString(36).slice(2, 9);
@@ -974,13 +974,24 @@ function drawText(ctx, l, st) {
   });
 }
 function coverRect(iw, ih, w, h, fit, k) { const s = (fit === 'contain' ? Math.min(w / iw, h / ih) : Math.max(w / iw, h / ih)) * (k || 1); return [-iw * s / 2, -ih * s / 2, iw * s, ih * s]; }
+const _bd = { a: null, b: null };
+function drawBackdrop(ctx, el, iw, ih, w, h) { // rozmyty podkład z tego samego obrazu pod oddalonym kadrem (bez ctx.filter: dwa zmniejszenia + wygładzone powiększenie, działa też w Safari i w eksporcie)
+  if (!_bd.a) { _bd.a = document.createElement('canvas'); _bd.b = document.createElement('canvas'); }
+  const k = Math.max(w, h), aw = Math.max(8, Math.round(160 * w / k)), ah = Math.max(8, Math.round(160 * h / k)), bw = Math.max(4, Math.round(aw / 4)), bh = Math.max(4, Math.round(ah / 4));
+  const A = _bd.a, B = _bd.b; if (A.width !== aw || A.height !== ah) { A.width = aw; A.height = ah; } if (B.width !== bw || B.height !== bh) { B.width = bw; B.height = bh; }
+  const a = A.getContext('2d'), b = B.getContext('2d'); a.imageSmoothingQuality = 'high'; b.imageSmoothingQuality = 'high';
+  const s = Math.max(aw / iw, ah / ih) * 1.15; a.clearRect(0, 0, aw, ah); a.drawImage(el, (aw - iw * s) / 2, (ah - ih * s) / 2, iw * s, ih * s); b.clearRect(0, 0, bw, bh); b.drawImage(A, 0, 0, bw, bh);
+  ctx.save(); ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high'; ctx.drawImage(B, -w / 2, -h / 2, w, h); ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.fillRect(-w / 2, -h / 2, w, h); ctx.restore();
+}
 function drawMedia(ctx, el, iw, ih, l, cfg, st) {
   const w = l.w, h = l.h; ctx.save(); rr(ctx, -w / 2, -h / 2, w, h, cfg.r || 0); ctx.clip();
   const f = []; if (cfg.b != null && cfg.b !== 1) f.push(`brightness(${cfg.b})`); if (cfg.c != null && cfg.c !== 1) f.push(`contrast(${cfg.c})`); if (cfg.s != null && cfg.s !== 1) f.push(`saturate(${cfg.s})`); if (cfg.blur) f.push(`blur(${cfg.blur}px)`);
   if (f.length) ctx.filter = (ctx.filter && ctx.filter !== 'none' ? ctx.filter + ' ' : '') + f.join(' ');
   if (cfg.flipX) ctx.scale(-1, 1); let [x, y, rw, rh] = coverRect(iw, ih, w, h, cfg.fit, st.kb);
   const z = cfg.zoom || 1; if (z !== 1 || cfg.ox || cfg.oy) { const cx = x + rw / 2 + (cfg.flipX ? -1 : 1) * (cfg.ox || 0) * w, cy = y + rh / 2 + (cfg.oy || 0) * h; rw *= z; rh *= z; x = cx - rw / 2; y = cy - rh / 2; } // przybliżenie i przesunięcie kadru (twarz w kole)
-  ctx.drawImage(el, x + (st.kbx || 0), y + (st.kby || 0), rw, rh); ctx.restore();
+  const X = x + (st.kbx || 0), Y = y + (st.kby || 0);
+  if (cfg.bd && (X > -w / 2 + 0.5 || X + rw < w / 2 - 0.5 || Y > -h / 2 + 0.5 || Y + rh < h / 2 - 0.5)) drawBackdrop(ctx, el, iw, ih, w, h); // oddalony kadr nie wypełnia kształtu
+  ctx.drawImage(el, X, Y, rw, rh); ctx.restore();
 }
 function videoRadius(l) { const c = l.video; return c.shape === 'circle' ? Math.min(l.w, l.h) / 2 : Math.min(c.r || 0, Math.min(l.w, l.h) / 2); }
 // poświata bez czarnego podkładu: kształt rysowany poza płótnem, widoczny tylko jego cień (rozmiar cienia liczony w jednostkach warstwy, więc podgląd = eksport)
@@ -990,7 +1001,7 @@ function glowShape(ctx, x, y, w, h, rad, color, blur) {
 }
 const _vf = { key: '', mask: null, work: null };
 function drawVideoFrame(ctx, l, el, st) { // wideo w kole / prostokącie z obramowaniem, poświatą i miękkimi krawędziami (gadająca głowa)
-  const c = l.video, w = l.w, h = l.h, rad = videoRadius(l), ready = el && el.readyState >= 2 && el.videoWidth, f = Math.min(Math.max(0, c.feather || 0), Math.min(w, h) * 0.25);
+  const c = l.video, w = l.w, h = l.h, rad = videoRadius(l), bdf = c.bd != null ? !!c.bd : l.track === 'head', ready = el && el.readyState >= 2 && el.videoWidth, f = Math.min(Math.max(0, c.feather || 0), Math.min(w, h) * 0.25);
   if (c.glow > 0) glowShape(ctx, -w / 2, -h / 2, w, h, rad, c.bc || '#FFA000', c.glow);
   if (f >= 1 && ready && w * h <= 4.2e6) { // miękka krawędź: wideo × maska z rozmytym brzegiem (cień przesunięty poza płótno, działa też w Safari)
     const W = Math.ceil(w), H = Math.ceil(h), key = [W, H, Math.round(rad), Math.round(f)].join('|');
@@ -1000,11 +1011,11 @@ function drawVideoFrame(ctx, l, el, st) { // wideo w kole / prostokącie z obram
       mx.shadowColor = '#fff'; mx.shadowBlur = f * 0.8; mx.shadowOffsetX = BIG; mx.fillStyle = '#fff'; mx.translate(W / 2 - BIG, H / 2); rr(mx, -w / 2 + ins, -h / 2 + ins, w - 2 * ins, h - 2 * ins, Math.max(0, rad - ins)); mx.fill(); _vf.key = key;
     }
     const wk = _vf.work; if (wk.width !== W || wk.height !== H) { wk.width = W; wk.height = H; } const wx = wk.getContext('2d'); wx.setTransform(1, 0, 0, 1, 0, 0); wx.globalCompositeOperation = 'source-over'; wx.clearRect(0, 0, W, H);
-    wx.save(); wx.translate(W / 2, H / 2); drawMedia(wx, el, el.videoWidth, el.videoHeight, l, Object.assign({}, c, { r: rad }), st); wx.restore();
+    wx.save(); wx.translate(W / 2, H / 2); drawMedia(wx, el, el.videoWidth, el.videoHeight, l, Object.assign({}, c, { r: rad, bd: bdf }), st); wx.restore();
     wx.globalCompositeOperation = 'destination-in'; wx.drawImage(_vf.mask, 0, 0); wx.globalCompositeOperation = 'source-over';
     ctx.drawImage(wk, -w / 2, -h / 2, w, h); return;
   }
-  if (ready) drawMedia(ctx, el, el.videoWidth, el.videoHeight, l, Object.assign({}, c, { r: rad }), st); else { ctx.fillStyle = '#222'; rr(ctx, -w / 2, -h / 2, w, h, rad); ctx.fill(); }
+  if (ready) drawMedia(ctx, el, el.videoWidth, el.videoHeight, l, Object.assign({}, c, { r: rad, bd: bdf }), st); else { ctx.fillStyle = '#222'; rr(ctx, -w / 2, -h / 2, w, h, rad); ctx.fill(); }
   if (c.bw > 0) { ctx.save(); ctx.strokeStyle = c.bc || '#FFA000'; ctx.lineWidth = c.bw; rr(ctx, -w / 2 + c.bw / 2, -h / 2 + c.bw / 2, w - c.bw, h - c.bw, Math.max(0, rad - c.bw / 2)); ctx.stroke(); ctx.restore(); }
 }
 function linGrad(ctx, x, y, w, h, angle, stops) { const a = (angle || 0) * Math.PI / 180, cx = x + w / 2, cy = y + h / 2, L = Math.abs(w * Math.cos(a)) / 2 + Math.abs(h * Math.sin(a)) / 2, g = ctx.createLinearGradient(cx - Math.cos(a) * L, cy - Math.sin(a) * L, cx + Math.cos(a) * L, cy + Math.sin(a) * L); for (const [o, c] of stops) g.addColorStop(o, c); return g; }
@@ -1111,20 +1122,31 @@ function transQuick(l, redo) { // jedno przejście dla wejścia i wyjścia (osob
   return h('div', { class: 'fld' }, h('label', {}, 'Przejście (wejście i wyjście)'), h('div', { class: 'row' }, sel, d, h('span', { class: 'hint' }, 's')));
 }
 // Tempo wideo i mowy: suwak 0,5–2×, klip skraca się lub wydłuża, dźwięk rozciągany bez zmiany wysokości głosu
-function tempoQuick(l, redo) {
-  const c = l.video, sp = c.speed || 1, span = (l.t1 - l.t0) * sp, fx = (v) => (+v).toFixed(2).replace(/0$/, '').replace(/\.0$/, '') + '×';
-  const lab = h('div', { class: 'hint', style: { margin: '2px 0 4px' } }), show = (v) => { lab.textContent = fx(v) + ' · klip ' + (span / v).toFixed(1) + ' s (z ' + span.toFixed(1) + ' s materiału)'; }; show(sp);
+const fxTempo = (v) => (+v).toFixed(2).replace(/0$/, '').replace(/\.0$/, '') + '×';
+function tempoQuick(l, redo, compact) {
+  const c = l.video, sp = c.speed || 1, span = (l.t1 - l.t0) * sp;
+  const lab = h('div', { class: 'hint', style: { margin: '2px 0 4px' } }), val = h('b', { class: 'tmv' }), show = (v) => { val.textContent = fxTempo(v); lab.textContent = fxTempo(v) + ' · klip ' + (span / v).toFixed(1) + ' s (z ' + span.toFixed(1) + ' s materiału)'; }; show(sp);
   const set = (v) => { if (Video.setSpeed(l, v)) redo(); };
   const rg = h('input', { type: 'range', min: 0.5, max: 2, step: 0.05, value: Math.min(2, Math.max(0.5, sp)), 'aria-label': 'Tempo', oninput: (e) => show(+e.target.value), onchange: (e) => set(+e.target.value) });
-  return h('div', { class: 'fld' }, h('label', {}, 'Tempo wideo i mowy (bez zmiany tonu głosu)'), rg, lab, h('div', { class: 'seg' }, [0.8, 1, 1.15, 1.25, 1.5, 2].map((v) => h('button', { class: Math.abs(sp - v) < 0.005 ? 'on' : '', title: 'Ustaw tempo ' + fx(v), onclick: () => set(v) }, fx(v)))));
+  if (compact) return h('div', { class: 'fld' }, h('label', {}, h('span', {}, '⏩ Tempo wideo i mowy '), val), rg, h('div', { class: 'seg' }, [0.8, 1, 1.25, 1.5].map((v) => h('button', { class: Math.abs(sp - v) < 0.005 ? 'on' : '', title: 'Ustaw tempo ' + fxTempo(v), onclick: () => set(v) }, fxTempo(v)))));
+  return h('div', { class: 'fld' }, h('label', {}, 'Tempo wideo i mowy (bez zmiany tonu głosu)'), rg, lab, h('div', { class: 'seg' }, [0.8, 1, 1.15, 1.25, 1.5, 2].map((v) => h('button', { class: Math.abs(sp - v) < 0.005 ? 'on' : '', title: 'Ustaw tempo ' + fxTempo(v), onclick: () => set(v) }, fxTempo(v)))));
+}
+// Kadr: oddalanie (0,35–1×, puste miejsca w kształcie wypełnia rozmyty obraz) i przybliżanie (do 3×); „Cały obraz” = całe wideo mieści się w kształcie
+function zoomQuick(l, cb, redo, compact) {
+  const c = l.video, V = Video.vids && Video.vids.get(l.id), el = V && V.el, whole = () => { const iw = el && el.videoWidth, ih = el && el.videoHeight; if (!iw || !ih) return null; const w = l.w, hh = l.h; return Math.min(w / iw, hh / ih) / Math.max(w / iw, hh / ih); };
+  const val = h('b', { class: 'tmv' }), show = (v) => { val.textContent = (+v).toFixed(2).replace(/0$/, '').replace(/\.0$/, '') + '×'; }; show(c.zoom || 1);
+  const rg = h('input', { type: 'range', min: 0.35, max: 3, step: 0.01, value: c.zoom || 1, 'aria-label': 'Przybliżenie kadru', oninput: (e) => { show(+e.target.value); c.zoom = +e.target.value; cb('live'); }, onchange: (e) => { c.zoom = +e.target.value; cb('commit'); } });
+  const put = (v) => { c.zoom = v; rg.value = v; show(v); cb('live'); cb('commit'); };
+  return h('div', { class: 'fld' }, h('label', {}, h('span', {}, 'Kadr: oddal ← → przybliż '), val), rg, h('div', { class: 'seg' },
+    h('button', { title: 'Całe wideo mieści się w kształcie, puste miejsca wypełnia rozmyty obraz', onclick: () => { const z = whole(); if (z) put(Math.max(0.35, Math.min(1, Math.round(z * 100) / 100))); else toast('Wideo jeszcze się wczytuje.', 'warn'); } }, '⤢ Cały obraz'),
+    h('button', { title: 'Twarz i otoczenie', onclick: () => put(0.75) }, '0,75×'), h('button', { title: 'Wypełnij kształt (bez oddalenia)', onclick: () => put(1) }, '1×'), h('button', { title: 'Zbliżenie na twarz', onclick: () => put(1.5) }, '1,5×')));
 }
 function videoQuick(l, cb, redo) { // pasek nad podglądem
   const pip = (o) => Video.applyPip(l, o);
   return [
     pipSeg(l, 'Kształt', 'shape', PIP_SHAPES.map(([v, n, t]) => [v, n.split(' ')[0], t || n.slice(2)]), (v) => pip({ shape: v }), redo),
     pipSeg(l, 'Rozmiar', 'size', [['s', 'S'], ['m', 'M'], ['l', 'L'], ['xl', 'XL']], (v) => pip({ size: v }), redo),
-    tempoQuick(l, redo),
-    fld({ k: 'video.zoom', t: 'range', label: 'Przybliżenie kadru', min: 1, max: 3, step: 0.01, unit: '×' }, l, cb),
+    zoomQuick(l, cb, redo, true),
     fld({ k: 'video.feather', t: 'range', label: 'Miękkie krawędzie', min: 0, max: 80, step: 1 }, l, cb),
     transQuick(l, redo)];
 }
@@ -1149,16 +1171,17 @@ function layerFields(l, cb) {
     out.push(h('div', { class: 'ph' }, 'Kształt'), h('div', { class: 'sec' }, fld({ k: 'shape.kind', t: 'sel', label: 'Rodzaj', opts: [['rect', 'Prostokąt'], ['ellipse', 'Elipsa'], ['line', 'Pasek']] }, l, cb), fld({ k: 'shape.fill', t: 'color', label: 'Wypełnienie' }, l, cb), fld({ k: 'shape.fill2', t: 'color', label: 'Drugi kolor (gradient, puste = brak)' }, l, cb), fld({ k: 'shape.gAngle', t: 'num', label: 'Kąt gradientu °' }, l, cb), fld({ k: 'shape.r', t: 'range', label: 'Zaokrąglenie', min: 0, max: 400, step: 1 }, l, cb), rowOf(fld({ k: 'shape.stroke.w', t: 'num', label: 'Obrys', min: 0 }, l, cb), fld({ k: 'shape.stroke.c', t: 'color', label: 'Kolor obrysu' }, l, cb)), fld({ k: 'shape.shadow.on', t: 'chk', label: 'Cień' }, l, cb)));
   } else if (l.type === 'video') {
     const c = l.video, redo = () => { cb('live'); cb('commit'); }, segB = (label, key, opts, onpick) => pipSeg(l, label, key, opts, onpick, redo);
-    out.unshift(h('div', { class: 'ph' }, l.track === 'head' ? 'Gadająca głowa' : 'Wideo'), h('div', { class: 'sec' },
+    out.unshift(
+      h('div', { class: 'ph' }, 'Tempo i dźwięk'), h('div', { class: 'sec' }, fld({ k: 'video.in', t: 'num', label: 'Start w pliku (s)', min: 0, step: 0.1 }, l, cb), tempoQuick(l, redo), fld({ k: 'video.vol', t: 'range', label: 'Głośność dźwięku z wideo', min: -30, max: 12, step: 0.5, unit: ' dB' }, l, cb), fld({ k: 'video.mute', t: 'chk', label: 'Wycisz dźwięk z wideo' }, l, cb),
+        h('div', { class: 'hint', html: rich('Dźwięk z pliku trafia na ścieżkę „Głos” (przesuwa się razem z klipem; przy zmianie tempa jest rozciągany bez zmiany wysokości głosu).') })),
+      h('div', { class: 'ph' }, l.track === 'head' ? 'Gadająca głowa' : 'Wideo'), h('div', { class: 'sec' },
       l.track === 'head' ? headPresetRow(l, redo) : null,
       segB('Kształt', 'shape', PIP_SHAPES, (v) => Video.applyPip(l, { shape: v })),
       segB('Rozmiar', 'size', [['s', 'S'], ['m', 'M'], ['l', 'L'], ['xl', 'XL']], (v) => Video.applyPip(l, { size: v })),
       h('div', { class: 'fld' }, h('label', {}, 'Miejsce (w bezpiecznej strefie)'), h('div', { class: 'pipgrid' }, [['tl', '↖'], ['tc', '↑'], ['tr', '↗'], ['ml', '←'], ['mc', '•'], ['mr', '→'], ['bl', '↙'], ['bc', '↓'], ['br', '↘']].map(([v, n]) => h('button', { class: c.pos === v ? 'on' : '', title: 'Ustaw w tym miejscu', onclick: (e) => { Video.applyPip(l, { pos: v }); redo(); [...e.currentTarget.parentNode.children].forEach((b) => b.classList.remove('on')); e.currentTarget.classList.add('on'); } }, n)))),
-      fld({ k: 'video.fit', t: 'seg', label: 'Dopasowanie', opts: [['cover', 'Wypełnij'], ['contain', 'Zmieść']] }, l, cb), fld({ k: 'video.zoom', t: 'range', label: 'Przybliżenie kadru', min: 1, max: 3, step: 0.01, unit: '×' }, l, cb), rowOf(fld({ k: 'video.ox', t: 'range', label: 'Kadr: w prawo', min: -0.5, max: 0.5, step: 0.01 }, l, cb), fld({ k: 'video.oy', t: 'range', label: 'Kadr: w dół', min: -0.5, max: 0.5, step: 0.01 }, l, cb)), fld({ k: 'video.flipX', t: 'chk', label: 'Lustro (odbicie poziome)' }, l, cb)),
+      fld({ k: 'video.fit', t: 'seg', label: 'Dopasowanie', opts: [['cover', 'Wypełnij'], ['contain', 'Zmieść']] }, l, cb), zoomQuick(l, cb, redo), rowOf(fld({ k: 'video.ox', t: 'range', label: 'Kadr: w prawo', min: -0.5, max: 0.5, step: 0.01 }, l, cb), fld({ k: 'video.oy', t: 'range', label: 'Kadr: w dół', min: -0.5, max: 0.5, step: 0.01 }, l, cb)), fld({ k: 'video.flipX', t: 'chk', label: 'Lustro (odbicie poziome)' }, l, cb)),
       h('div', { class: 'ph' }, 'Przejście i krawędzie'), h('div', { class: 'sec' }, transQuick(l, redo), fld({ k: 'video.feather', t: 'range', label: 'Miękkie krawędzie (rozmycie brzegu, bez ramki)', min: 0, max: 80, step: 1 }, l, cb)),
-      h('div', { class: 'ph' }, 'Ramka i poświata'), h('div', { class: 'sec' }, rowOf(fld({ k: 'video.bw', t: 'range', label: 'Grubość ramki', min: 0, max: 30, step: 1 }, l, cb), fld({ k: 'video.bc', t: 'color', label: 'Kolor ramki i poświaty' }, l, cb)), fld({ k: 'video.glow', t: 'range', label: 'Poświata', min: 0, max: 80, step: 1 }, l, cb), (c.shape === 'rect' || c.shape === 'round' || !c.shape) ? fld({ k: 'video.r', t: 'range', label: 'Zaokrąglenie rogów', min: 0, max: 540, step: 1 }, l, cb) : null),
-      h('div', { class: 'ph' }, 'Czas i dźwięk'), h('div', { class: 'sec' }, fld({ k: 'video.in', t: 'num', label: 'Start w pliku (s)', min: 0, step: 0.1 }, l, cb), tempoQuick(l, redo), fld({ k: 'video.vol', t: 'range', label: 'Głośność dźwięku z wideo', min: -30, max: 12, step: 0.5, unit: ' dB' }, l, cb), fld({ k: 'video.mute', t: 'chk', label: 'Wycisz dźwięk z wideo' }, l, cb),
-        h('div', { class: 'hint', html: rich('Dźwięk z pliku trafia na ścieżkę „Głos” (przesuwa się razem z klipem; przy zmianie tempa jest rozciągany bez zmiany wysokości głosu).') })));
+      h('div', { class: 'ph' }, 'Ramka i poświata'), h('div', { class: 'sec' }, rowOf(fld({ k: 'video.bw', t: 'range', label: 'Grubość ramki', min: 0, max: 30, step: 1 }, l, cb), fld({ k: 'video.bc', t: 'color', label: 'Kolor ramki i poświaty' }, l, cb)), fld({ k: 'video.glow', t: 'range', label: 'Poświata', min: 0, max: 80, step: 1 }, l, cb), (c.shape === 'rect' || c.shape === 'round' || !c.shape) ? fld({ k: 'video.r', t: 'range', label: 'Zaokrąglenie rogów', min: 0, max: 540, step: 1 }, l, cb) : null));
   } else if (l.type === 'fx') {
     out.push(h('div', { class: 'ph' }, 'Animacja tła'), h('div', { class: 'sec' }, fld({ k: 'fx.kind', t: 'sel', label: 'Rodzaj', opts: [['agrad', 'Płynący gradient'], ['orbs', 'Rozmyte kule'], ['particles', 'Cząsteczki'], ['confetti', 'Konfetti'], ['stripes', 'Pasy'], ['bar', 'Pasek postępu']] }, l, cb), rowOf(fld({ k: 'fx.c1', t: 'color', label: 'Kolor 1' }, l, cb), fld({ k: 'fx.c2', t: 'color', label: 'Kolor 2' }, l, cb), fld({ k: 'fx.c3', t: 'color', label: 'Kolor 3' }, l, cb)), rowOf(fld({ k: 'fx.n', t: 'num', label: 'Ilość', min: 1, max: 80 }, l, cb), fld({ k: 'fx.spd', t: 'num', label: 'Szybkość', step: 0.1, min: 0.1, max: 5 }, l, cb))));
   }
@@ -1797,7 +1820,7 @@ const newReel = (name) => { const F = FORMATS.story; return { id: uid('r'), name
 // ── Schematy gadającej głowy: miejsce, kształt i wygląd zapisane raz i stosowane do każdej nowej głowy (localStorage przeglądarki, wspólne dla wszystkich projektów) ──
 const HeadPre = {
   KEY: 'css-head-presets',
-  STD: { id: 'std', name: 'Koło u dołu (standard)', shape: 'circle', size: 'm', pos: 'bc', bw: 8, glow: 28, feather: 0, zoom: 1, ox: 0, oy: 0, flipX: false },
+  STD: { id: 'std', name: 'Koło u dołu (standard)', shape: 'circle', size: 'm', pos: 'bc', bw: 8, glow: 28, feather: 0, zoom: 0.8, ox: 0, oy: 0, flipX: false },
   load() { try { const d = JSON.parse(localStorage.getItem(this.KEY) || 'null'); if (d && Array.isArray(d.list)) return d; } catch (e) { /* brak zapisu */ } return { list: [], def: 'std' }; },
   save(d) { try { localStorage.setItem(this.KEY, JSON.stringify(d)); } catch (e) { toast('Nie udało się zapisać schematu w przeglądarce.', 'warn'); } },
   all() { return [this.STD, ...this.load().list]; },
@@ -1887,14 +1910,21 @@ const Video = {
     this.playBtn = b('▶ Odtwarzaj', () => this.play(), 'Odtwarzaj od kursora (Spacja)', 'pri'); this.pauseBtn = b('⏸ Pauza', () => this.pause(), 'Wstrzymaj (Spacja)'); this.stopBtn = b('⏹ Stop', () => this.stop(), 'Zatrzymaj i wróć na początek');
     this.timeEl = h('span', { class: 'time', style: { fontVariantNumeric: 'tabular-nums', fontWeight: 700, color: 'var(--acc)', minWidth: '104px', textAlign: 'center' } });
     this.loopBtn = b('⟲ Pętla', () => { this.loop = !this.loop; this.loopBtn.classList.toggle('on', this.loop); }, 'Zapętl odtwarzanie');
+    this.tmVal = h('b', {}, '—'); this.tmRg = h('input', { type: 'range', min: 0.5, max: 2, step: 0.05, value: 1, disabled: true, 'aria-label': 'Tempo zaznaczonego wideo', oninput: (e) => { this.tmVal.textContent = fxTempo(+e.target.value); }, onchange: (e) => this.tlTempo(+e.target.value) });
+    this.tmBox = h('label', { class: 'tl-tempo off', title: 'Tempo zaznaczonego wideo lub gadającej głowy: mowa przyspiesza bez zmiany tonu głosu. Zaznacz klip wideo (albo jego dźwięk).' }, h('span', {}, '⏩ Tempo'), this.tmRg, this.tmVal);
     this.snapBtn = b('Przyciąganie', () => { this.snap = !this.snap; this.snapBtn.classList.toggle('on', this.snap); }, 'Przyciągaj krawędzie klipów do kursora i innych klipów', 'on');
     this.tlBar.append(b('⏮', () => this.seek(0), 'Na początek (Home)'), this.playBtn, this.pauseBtn, this.stopBtn, this.timeEl, this.loopBtn, sep(),
       b('－', () => this.setZoom(this.zoom / 1.4), 'Oddal oś czasu'), b('＋', () => this.setZoom(this.zoom * 1.4), 'Przybliż oś czasu'), b('Dopasuj', () => this.setZoom(1), 'Cała rolka w widoku'), this.snapBtn, sep(),
-      b('🔊 Wyrównaj poziomy', () => this.autoLevel(), 'Wyrównuje głośność: głos do jednego poziomu, muzyka pod głosem, efekty obok. Potem eksport normalizuje całość do celu LUFS z ustawień rolki.'), sep(),
+      b('🔊 Wyrównaj poziomy', () => this.autoLevel(), 'Wyrównuje głośność: głos do jednego poziomu, muzyka pod głosem, efekty obok. Potem eksport normalizuje całość do celu LUFS z ustawień rolki.'), this.tmBox, sep(),
       b('✂ Przetnij (S)', () => this.split(), 'Przetnij zaznaczony klip w miejscu kursora'), b('⧉ Duplikuj', () => this.dupSel(), 'Duplikuj zaznaczony klip (Ctrl+D)'), b('🗑 Usuń', () => this.delSel(), 'Usuń zaznaczony klip (Delete)', 'bad'),
       h('span', { style: { flex: 1 } }), h('span', { class: 'fine' }, 'Klip: przeciągnij = czas i ścieżka, krawędź = przytnij'));
     this.setPlayUi();
   },
+  tempoTarget() { const l = this.selLayer; if (l && l.type === 'video') return l; const a = this.selAudio, r = this.reel; return a && a.link && r ? r.layers.find((x) => x.id === a.link && x.type === 'video') || null : null; },
+  tempoUi() { // suwak tempa na pasku osi czasu: aktywny, gdy zaznaczono wideo / głowę (lub ich dźwięk)
+    if (!this.tmBox) return; const l = this.tempoTarget(), sp = l ? l.video.speed || 1 : 1; this.tmRg.disabled = !l; this.tmBox.classList.toggle('off', !l); this.tmRg.value = Math.min(2, Math.max(0.5, sp)); this.tmVal.textContent = l ? fxTempo(sp) : '—';
+  },
+  tlTempo(v) { const l = this.tempoTarget(); if (!l) return; if (this.setSpeed(l, v)) { this.commit(); this.stage.render(); } this.tempoUi(); },
   setPlayUi() { if (this.playBtn) { this.playBtn.classList.toggle('on', !!this.playing); this.playBtn.textContent = this.playing ? '▶ Gra…' : '▶ Odtwarzaj'; } if (this.pauseBtn) this.pauseBtn.disabled = !this.playing; },
   show() {
     if (!this.built) this.build(); const p = P.cur;
@@ -1904,12 +1934,12 @@ const Video = {
   hide() { this.pause(); },
 
   // ── Panele ──
-  panels() { this.leftPanel(); this.rightPanel(); this.ctxBar(); this.updTime(); },
+  panels() { this.leftPanel(); this.rightPanel(); this.ctxBar(); this.tempoUi(); this.updTime(); },
   // pasek nad podglądem: pojawia się po zaznaczeniu wideo / gadającej głowy (kształt, rozmiar, przybliżenie, miękkość, przejście)
   ctxBar() {
     const B = this.ctxEl, l = this.selLayer; if (!B) return; B.innerHTML = ''; if (!l || l.type !== 'video') { B.style.display = 'none'; return; } B.style.display = ''; const head = l.track === 'head', redo = () => { this.commit(); this.stage.render(); };
     B.append(h('div', { class: 'pip-hd' }, h('b', {}, head ? '🗣 Gadająca głowa' : l.track === 'bg' ? '🏞 Wideo w tle' : '🎬 Wideo'), h('button', { class: 'btn sm', title: this.ctxOff ? 'Rozwiń' : 'Zwiń', onclick: () => { this.ctxOff = !this.ctxOff; this.ctxBar(); } }, this.ctxOff ? '▸' : '▾')));
-    if (!this.ctxOff) B.append(...[trackSeg(l, redo), head ? headPresetRow(l, redo) : null, ...videoQuick(l, (k) => { this.stage.render(); if (k === 'commit') this.commit(); }, redo), h('div', { class: 'hint' }, head ? 'Przeciągnij głowę na podglądzie, rogi = rozmiar. „Zapamiętaj to miejsce” = każda nowa głowa startuje tu.' : 'Przeciągnij klip na osi czasu między ścieżkami: Tło / Wideo / Głowa.')].filter(Boolean));
+    if (!this.ctxOff) B.append(...[...videoQuick(l, (k) => { this.stage.render(); if (k === 'commit') this.commit(); }, redo), trackSeg(l, redo), head ? headPresetRow(l, redo) : null, h('div', { class: 'hint' }, head ? 'Przeciągnij głowę na podglądzie, rogi = rozmiar. „Zapamiętaj to miejsce” = każda nowa głowa startuje tu.' : 'Przeciągnij klip na osi czasu między ścieżkami: Tło / Wideo / Głowa.')].filter(Boolean));
   },
   panelsLive() { const l = this.selLayer; if (!l) return; for (const k of ['x', 'y', 'w', 'h', 'rot']) { const i = $(`input[data-pk="${k}"]`, this.right); if (i && document.activeElement !== i) i.value = rnd(l[k], 1); } },
   leftPanel() {
@@ -1978,8 +2008,8 @@ const Video = {
   },
 
   // ── Zaznaczanie / commit ──
-  select(kind, id) { this.selKind = kind; this.selId = id; this.rightPanel(); this.ctxBar(); this.updTime(); this.layersList(); this.stage.render(); this.tlMarks(); },
-  commit(audio) { this.syncVideoAudio(); if (this.hist) this.hist.mark(); if (audio) this.mc = null; touch(); this.tl(); this.rightPanelSoft(); this.layersList(); this.stage.render(); this.ensureVideos().then((n) => { if (n) { this.syncVideos(this.t, false); this.stage.render(); } }); },
+  select(kind, id) { this.selKind = kind; this.selId = id; this.tempoUi(); this.rightPanel(); this.ctxBar(); this.updTime(); this.layersList(); this.stage.render(); this.tlMarks(); },
+  commit(audio) { this.syncVideoAudio(); if (this.hist) this.hist.mark(); if (audio) this.mc = null; touch(); this.tl(); this.tempoUi(); this.rightPanelSoft(); this.layersList(); this.stage.render(); this.ensureVideos().then((n) => { if (n) { this.syncVideos(this.t, false); this.stage.render(); } }); },
   rightPanelSoft() { const a = document.activeElement, typing = (el) => a && el && el.contains(a) && /INPUT|TEXTAREA|SELECT/.test(a.tagName); if (!typing(this.right)) this.rightPanel(); if (!typing(this.ctxEl)) this.ctxBar(); },
   undo() { if (this.hist && this.hist.undo()) { this.selId = null; this.mc = null; this.panels(); this.tl(); this.stage.render(); touch(); this.ensureVideos().then((n) => { if (n) this.stage.render(); }); } },
   redo() { if (this.hist && this.hist.redo()) { this.selId = null; this.mc = null; this.panels(); this.tl(); this.stage.render(); touch(); this.ensureVideos().then((n) => { if (n) this.stage.render(); }); } },

@@ -1,4 +1,4 @@
-# Creative Studio Social · v0.06
+# Creative Studio Social · v0.07
 
 Studio treści na social media w przeglądarce: marka → grafiki (karuzele) → wideo (rolki 9:16) → audio → publikacja na Instagram, YouTube Shorts, TikTok i Facebook Reels.
 Autor: Michał Rzekiecki · kontakt: michus@gmail.com · adres: https://projects.michus.workers.dev/06/
@@ -44,6 +44,12 @@ Autor: Michał Rzekiecki · kontakt: michus@gmail.com · adres: https://projects
 1. Analiza w przeglądarce (canvas, bez kluczy): poświaty (kolor i pozycja), pasek postępu, stopka, bloki tekstu, zdjęcie, akcenty → „DNA” układu, które steruje wszystkimi szablonami.
 2. Wzorzec domyślny: karuzela „Po kontuzji” (v4). Własny materiał (obrazy lub wideo rolki) nadpisuje DNA w projekcie; rodzaje slajdów są rozpoznawane zgrubnie.
 
+## Zmiany v0.07 (kadr głowy i widoczny suwak tempa)
+
+1. **Suwak tempa na pasku osi czasu** („⏩ Tempo” obok „Wyrównaj poziomy”): zawsze w widoku, aktywny po zaznaczeniu wideo, gadającej głowy albo ich dźwięku. Wcześniej leżał na dole długich paneli i na laptopie (1366×768) wypadał poza ekran. W panelu po prawej sekcja „Tempo i dźwięk” jest teraz pierwsza.
+2. **Oddalanie kadru głowy**: suwak „Kadr” 0,35–3× (wcześniej tylko 1–3×), przyciski „⤢ Cały obraz” (całe wideo w kształcie), 0,75×, 1×, 1,5×. Puste miejsca w kole wypełnia rozmyty, przyciemniony obraz z tego samego wideo (podgląd = eksport, bez `ctx.filter`). Domyślny schemat „Koło u dołu” startuje z 0,8× (twarz plus otoczenie). Tło z rozmytego obrazu dotyczy ścieżki Głowa.
+3. Pływający panel nad podglądem: kolejność Kształt, Rozmiar, Kadr, Miękkie krawędzie, Przejście, potem Ścieżka i Schemat miejsca (krótszy, mniej przewijania).
+
 ## Zmiany v0.06 (dźwięk i tempo)
 
 1. **Dodawanie muzyki i efektów**: przy każdej ścieżce na osi czasu jest przycisk ＋, puste paski mają podpowiedź, a **dwuklik** w pusty pasek dodaje klip w tym miejscu (dźwięk: okno wyboru źródła, reszta: menu). W lewym panelu są osobne przyciski „🎙 Głos", „🎵 Muzyka", „🔔 Efekt". Muzyka może pochodzić z Audio Studio, biblioteki, Drive, linku lub pliku.
@@ -72,7 +78,7 @@ Autor: Michał Rzekiecki · kontakt: michus@gmail.com · adres: https://projects
 
 ## Ograniczenia v0.02 (uczciwie)
 
-1. Rolki tylko 9:16. Wideo HEVC/H.265 (domyślny format iPhone'a) Chrome zwykle nie odczyta: aplikacja pokazuje komunikat; nagrywaj w trybie „Najbardziej zgodny” (H.264).
+1. Rolki tylko 9:16. Wideo HEVC/H.265 (domyślny format iPhone'a) Chrome zwykle nie odczyta (widać wtedy tylko ramkę, a dźwięk gra): aplikacja pokazuje komunikat; nagrywaj w trybie „Najbardziej zgodny” (H.264).
 2. Obrazy AI: FLUX generuje 1024×1024, aplikacja kadruje do formatu; brak zachowania tożsamości osoby.
 3. AAC zależy od przeglądarki (Windows i macOS: tak; Linux headless: Opus). Nie sprawdzono jeszcze na prawdziwym Chrome z AAC.
 4. Zmiana tempa/tonu bez Rubber Band (licencja GPL); własny WSOLA, jakość dobra dla mowy, słabsza dla muzyki przy skrajnych wartościach.
@@ -84,6 +90,6 @@ Autor: Michał Rzekiecki · kontakt: michus@gmail.com · adres: https://projects
 
 ## Plan
 
-1. v0.07: R2 (chmura projektów i publiczne adresy mediów) + adapter Metricool (planowanie wpisów); nagrywanie gadającej głowy kamerą w aplikacji.
-2. v0.08: bezpośrednie API (YouTube, Meta, TikTok), format 4:5 w wideo.
+1. v0.08: R2 (chmura projektów i publiczne adresy mediów) + adapter Metricool (planowanie wpisów); nagrywanie gadającej głowy kamerą w aplikacji.
+2. v0.09: bezpośrednie API (YouTube, Meta, TikTok), format 4:5 w wideo.
 3. v1.0 po zatwierdzeniu; od tej wersji kopie w `backup/`.

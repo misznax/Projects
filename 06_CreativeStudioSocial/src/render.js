@@ -170,13 +170,24 @@ function drawText(ctx, l, st) {
   });
 }
 function coverRect(iw, ih, w, h, fit, k) { const s = (fit === 'contain' ? Math.min(w / iw, h / ih) : Math.max(w / iw, h / ih)) * (k || 1); return [-iw * s / 2, -ih * s / 2, iw * s, ih * s]; }
+const _bd = { a: null, b: null };
+function drawBackdrop(ctx, el, iw, ih, w, h) { // rozmyty podkład z tego samego obrazu pod oddalonym kadrem (bez ctx.filter: dwa zmniejszenia + wygładzone powiększenie, działa też w Safari i w eksporcie)
+  if (!_bd.a) { _bd.a = document.createElement('canvas'); _bd.b = document.createElement('canvas'); }
+  const k = Math.max(w, h), aw = Math.max(8, Math.round(160 * w / k)), ah = Math.max(8, Math.round(160 * h / k)), bw = Math.max(4, Math.round(aw / 4)), bh = Math.max(4, Math.round(ah / 4));
+  const A = _bd.a, B = _bd.b; if (A.width !== aw || A.height !== ah) { A.width = aw; A.height = ah; } if (B.width !== bw || B.height !== bh) { B.width = bw; B.height = bh; }
+  const a = A.getContext('2d'), b = B.getContext('2d'); a.imageSmoothingQuality = 'high'; b.imageSmoothingQuality = 'high';
+  const s = Math.max(aw / iw, ah / ih) * 1.15; a.clearRect(0, 0, aw, ah); a.drawImage(el, (aw - iw * s) / 2, (ah - ih * s) / 2, iw * s, ih * s); b.clearRect(0, 0, bw, bh); b.drawImage(A, 0, 0, bw, bh);
+  ctx.save(); ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high'; ctx.drawImage(B, -w / 2, -h / 2, w, h); ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.fillRect(-w / 2, -h / 2, w, h); ctx.restore();
+}
 function drawMedia(ctx, el, iw, ih, l, cfg, st) {
   const w = l.w, h = l.h; ctx.save(); rr(ctx, -w / 2, -h / 2, w, h, cfg.r || 0); ctx.clip();
   const f = []; if (cfg.b != null && cfg.b !== 1) f.push(`brightness(${cfg.b})`); if (cfg.c != null && cfg.c !== 1) f.push(`contrast(${cfg.c})`); if (cfg.s != null && cfg.s !== 1) f.push(`saturate(${cfg.s})`); if (cfg.blur) f.push(`blur(${cfg.blur}px)`);
   if (f.length) ctx.filter = (ctx.filter && ctx.filter !== 'none' ? ctx.filter + ' ' : '') + f.join(' ');
   if (cfg.flipX) ctx.scale(-1, 1); let [x, y, rw, rh] = coverRect(iw, ih, w, h, cfg.fit, st.kb);
   const z = cfg.zoom || 1; if (z !== 1 || cfg.ox || cfg.oy) { const cx = x + rw / 2 + (cfg.flipX ? -1 : 1) * (cfg.ox || 0) * w, cy = y + rh / 2 + (cfg.oy || 0) * h; rw *= z; rh *= z; x = cx - rw / 2; y = cy - rh / 2; } // przybliżenie i przesunięcie kadru (twarz w kole)
-  ctx.drawImage(el, x + (st.kbx || 0), y + (st.kby || 0), rw, rh); ctx.restore();
+  const X = x + (st.kbx || 0), Y = y + (st.kby || 0);
+  if (cfg.bd && (X > -w / 2 + 0.5 || X + rw < w / 2 - 0.5 || Y > -h / 2 + 0.5 || Y + rh < h / 2 - 0.5)) drawBackdrop(ctx, el, iw, ih, w, h); // oddalony kadr nie wypełnia kształtu
+  ctx.drawImage(el, X, Y, rw, rh); ctx.restore();
 }
 function videoRadius(l) { const c = l.video; return c.shape === 'circle' ? Math.min(l.w, l.h) / 2 : Math.min(c.r || 0, Math.min(l.w, l.h) / 2); }
 // poświata bez czarnego podkładu: kształt rysowany poza płótnem, widoczny tylko jego cień (rozmiar cienia liczony w jednostkach warstwy, więc podgląd = eksport)
@@ -186,7 +197,7 @@ function glowShape(ctx, x, y, w, h, rad, color, blur) {
 }
 const _vf = { key: '', mask: null, work: null };
 function drawVideoFrame(ctx, l, el, st) { // wideo w kole / prostokącie z obramowaniem, poświatą i miękkimi krawędziami (gadająca głowa)
-  const c = l.video, w = l.w, h = l.h, rad = videoRadius(l), ready = el && el.readyState >= 2 && el.videoWidth, f = Math.min(Math.max(0, c.feather || 0), Math.min(w, h) * 0.25);
+  const c = l.video, w = l.w, h = l.h, rad = videoRadius(l), bdf = c.bd != null ? !!c.bd : l.track === 'head', ready = el && el.readyState >= 2 && el.videoWidth, f = Math.min(Math.max(0, c.feather || 0), Math.min(w, h) * 0.25);
   if (c.glow > 0) glowShape(ctx, -w / 2, -h / 2, w, h, rad, c.bc || '#FFA000', c.glow);
   if (f >= 1 && ready && w * h <= 4.2e6) { // miękka krawędź: wideo × maska z rozmytym brzegiem (cień przesunięty poza płótno, działa też w Safari)
     const W = Math.ceil(w), H = Math.ceil(h), key = [W, H, Math.round(rad), Math.round(f)].join('|');
@@ -196,11 +207,11 @@ function drawVideoFrame(ctx, l, el, st) { // wideo w kole / prostokącie z obram
       mx.shadowColor = '#fff'; mx.shadowBlur = f * 0.8; mx.shadowOffsetX = BIG; mx.fillStyle = '#fff'; mx.translate(W / 2 - BIG, H / 2); rr(mx, -w / 2 + ins, -h / 2 + ins, w - 2 * ins, h - 2 * ins, Math.max(0, rad - ins)); mx.fill(); _vf.key = key;
     }
     const wk = _vf.work; if (wk.width !== W || wk.height !== H) { wk.width = W; wk.height = H; } const wx = wk.getContext('2d'); wx.setTransform(1, 0, 0, 1, 0, 0); wx.globalCompositeOperation = 'source-over'; wx.clearRect(0, 0, W, H);
-    wx.save(); wx.translate(W / 2, H / 2); drawMedia(wx, el, el.videoWidth, el.videoHeight, l, Object.assign({}, c, { r: rad }), st); wx.restore();
+    wx.save(); wx.translate(W / 2, H / 2); drawMedia(wx, el, el.videoWidth, el.videoHeight, l, Object.assign({}, c, { r: rad, bd: bdf }), st); wx.restore();
     wx.globalCompositeOperation = 'destination-in'; wx.drawImage(_vf.mask, 0, 0); wx.globalCompositeOperation = 'source-over';
     ctx.drawImage(wk, -w / 2, -h / 2, w, h); return;
   }
-  if (ready) drawMedia(ctx, el, el.videoWidth, el.videoHeight, l, Object.assign({}, c, { r: rad }), st); else { ctx.fillStyle = '#222'; rr(ctx, -w / 2, -h / 2, w, h, rad); ctx.fill(); }
+  if (ready) drawMedia(ctx, el, el.videoWidth, el.videoHeight, l, Object.assign({}, c, { r: rad, bd: bdf }), st); else { ctx.fillStyle = '#222'; rr(ctx, -w / 2, -h / 2, w, h, rad); ctx.fill(); }
   if (c.bw > 0) { ctx.save(); ctx.strokeStyle = c.bc || '#FFA000'; ctx.lineWidth = c.bw; rr(ctx, -w / 2 + c.bw / 2, -h / 2 + c.bw / 2, w - c.bw, h - c.bw, Math.max(0, rad - c.bw / 2)); ctx.stroke(); ctx.restore(); }
 }
 function linGrad(ctx, x, y, w, h, angle, stops) { const a = (angle || 0) * Math.PI / 180, cx = x + w / 2, cy = y + h / 2, L = Math.abs(w * Math.cos(a)) / 2 + Math.abs(h * Math.sin(a)) / 2, g = ctx.createLinearGradient(cx - Math.cos(a) * L, cy - Math.sin(a) * L, cx + Math.cos(a) * L, cy + Math.sin(a) * L); for (const [o, c] of stops) g.addColorStop(o, c); return g; }

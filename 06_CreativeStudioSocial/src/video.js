@@ -15,7 +15,7 @@ const newReel = (name) => { const F = FORMATS.story; return { id: uid('r'), name
 // ── Schematy gadającej głowy: miejsce, kształt i wygląd zapisane raz i stosowane do każdej nowej głowy (localStorage przeglądarki, wspólne dla wszystkich projektów) ──
 const HeadPre = {
   KEY: 'css-head-presets',
-  STD: { id: 'std', name: 'Koło u dołu (standard)', shape: 'circle', size: 'm', pos: 'bc', bw: 8, glow: 28, feather: 0, zoom: 1, ox: 0, oy: 0, flipX: false },
+  STD: { id: 'std', name: 'Koło u dołu (standard)', shape: 'circle', size: 'm', pos: 'bc', bw: 8, glow: 28, feather: 0, zoom: 0.8, ox: 0, oy: 0, flipX: false },
   load() { try { const d = JSON.parse(localStorage.getItem(this.KEY) || 'null'); if (d && Array.isArray(d.list)) return d; } catch (e) { /* brak zapisu */ } return { list: [], def: 'std' }; },
   save(d) { try { localStorage.setItem(this.KEY, JSON.stringify(d)); } catch (e) { toast('Nie udało się zapisać schematu w przeglądarce.', 'warn'); } },
   all() { return [this.STD, ...this.load().list]; },
@@ -105,14 +105,21 @@ const Video = {
     this.playBtn = b('▶ Odtwarzaj', () => this.play(), 'Odtwarzaj od kursora (Spacja)', 'pri'); this.pauseBtn = b('⏸ Pauza', () => this.pause(), 'Wstrzymaj (Spacja)'); this.stopBtn = b('⏹ Stop', () => this.stop(), 'Zatrzymaj i wróć na początek');
     this.timeEl = h('span', { class: 'time', style: { fontVariantNumeric: 'tabular-nums', fontWeight: 700, color: 'var(--acc)', minWidth: '104px', textAlign: 'center' } });
     this.loopBtn = b('⟲ Pętla', () => { this.loop = !this.loop; this.loopBtn.classList.toggle('on', this.loop); }, 'Zapętl odtwarzanie');
+    this.tmVal = h('b', {}, '—'); this.tmRg = h('input', { type: 'range', min: 0.5, max: 2, step: 0.05, value: 1, disabled: true, 'aria-label': 'Tempo zaznaczonego wideo', oninput: (e) => { this.tmVal.textContent = fxTempo(+e.target.value); }, onchange: (e) => this.tlTempo(+e.target.value) });
+    this.tmBox = h('label', { class: 'tl-tempo off', title: 'Tempo zaznaczonego wideo lub gadającej głowy: mowa przyspiesza bez zmiany tonu głosu. Zaznacz klip wideo (albo jego dźwięk).' }, h('span', {}, '⏩ Tempo'), this.tmRg, this.tmVal);
     this.snapBtn = b('Przyciąganie', () => { this.snap = !this.snap; this.snapBtn.classList.toggle('on', this.snap); }, 'Przyciągaj krawędzie klipów do kursora i innych klipów', 'on');
     this.tlBar.append(b('⏮', () => this.seek(0), 'Na początek (Home)'), this.playBtn, this.pauseBtn, this.stopBtn, this.timeEl, this.loopBtn, sep(),
       b('－', () => this.setZoom(this.zoom / 1.4), 'Oddal oś czasu'), b('＋', () => this.setZoom(this.zoom * 1.4), 'Przybliż oś czasu'), b('Dopasuj', () => this.setZoom(1), 'Cała rolka w widoku'), this.snapBtn, sep(),
-      b('🔊 Wyrównaj poziomy', () => this.autoLevel(), 'Wyrównuje głośność: głos do jednego poziomu, muzyka pod głosem, efekty obok. Potem eksport normalizuje całość do celu LUFS z ustawień rolki.'), sep(),
+      b('🔊 Wyrównaj poziomy', () => this.autoLevel(), 'Wyrównuje głośność: głos do jednego poziomu, muzyka pod głosem, efekty obok. Potem eksport normalizuje całość do celu LUFS z ustawień rolki.'), this.tmBox, sep(),
       b('✂ Przetnij (S)', () => this.split(), 'Przetnij zaznaczony klip w miejscu kursora'), b('⧉ Duplikuj', () => this.dupSel(), 'Duplikuj zaznaczony klip (Ctrl+D)'), b('🗑 Usuń', () => this.delSel(), 'Usuń zaznaczony klip (Delete)', 'bad'),
       h('span', { style: { flex: 1 } }), h('span', { class: 'fine' }, 'Klip: przeciągnij = czas i ścieżka, krawędź = przytnij'));
     this.setPlayUi();
   },
+  tempoTarget() { const l = this.selLayer; if (l && l.type === 'video') return l; const a = this.selAudio, r = this.reel; return a && a.link && r ? r.layers.find((x) => x.id === a.link && x.type === 'video') || null : null; },
+  tempoUi() { // suwak tempa na pasku osi czasu: aktywny, gdy zaznaczono wideo / głowę (lub ich dźwięk)
+    if (!this.tmBox) return; const l = this.tempoTarget(), sp = l ? l.video.speed || 1 : 1; this.tmRg.disabled = !l; this.tmBox.classList.toggle('off', !l); this.tmRg.value = Math.min(2, Math.max(0.5, sp)); this.tmVal.textContent = l ? fxTempo(sp) : '—';
+  },
+  tlTempo(v) { const l = this.tempoTarget(); if (!l) return; if (this.setSpeed(l, v)) { this.commit(); this.stage.render(); } this.tempoUi(); },
   setPlayUi() { if (this.playBtn) { this.playBtn.classList.toggle('on', !!this.playing); this.playBtn.textContent = this.playing ? '▶ Gra…' : '▶ Odtwarzaj'; } if (this.pauseBtn) this.pauseBtn.disabled = !this.playing; },
   show() {
     if (!this.built) this.build(); const p = P.cur;
@@ -122,12 +129,12 @@ const Video = {
   hide() { this.pause(); },
 
   // ── Panele ──
-  panels() { this.leftPanel(); this.rightPanel(); this.ctxBar(); this.updTime(); },
+  panels() { this.leftPanel(); this.rightPanel(); this.ctxBar(); this.tempoUi(); this.updTime(); },
   // pasek nad podglądem: pojawia się po zaznaczeniu wideo / gadającej głowy (kształt, rozmiar, przybliżenie, miękkość, przejście)
   ctxBar() {
     const B = this.ctxEl, l = this.selLayer; if (!B) return; B.innerHTML = ''; if (!l || l.type !== 'video') { B.style.display = 'none'; return; } B.style.display = ''; const head = l.track === 'head', redo = () => { this.commit(); this.stage.render(); };
     B.append(h('div', { class: 'pip-hd' }, h('b', {}, head ? '🗣 Gadająca głowa' : l.track === 'bg' ? '🏞 Wideo w tle' : '🎬 Wideo'), h('button', { class: 'btn sm', title: this.ctxOff ? 'Rozwiń' : 'Zwiń', onclick: () => { this.ctxOff = !this.ctxOff; this.ctxBar(); } }, this.ctxOff ? '▸' : '▾')));
-    if (!this.ctxOff) B.append(...[trackSeg(l, redo), head ? headPresetRow(l, redo) : null, ...videoQuick(l, (k) => { this.stage.render(); if (k === 'commit') this.commit(); }, redo), h('div', { class: 'hint' }, head ? 'Przeciągnij głowę na podglądzie, rogi = rozmiar. „Zapamiętaj to miejsce” = każda nowa głowa startuje tu.' : 'Przeciągnij klip na osi czasu między ścieżkami: Tło / Wideo / Głowa.')].filter(Boolean));
+    if (!this.ctxOff) B.append(...[...videoQuick(l, (k) => { this.stage.render(); if (k === 'commit') this.commit(); }, redo), trackSeg(l, redo), head ? headPresetRow(l, redo) : null, h('div', { class: 'hint' }, head ? 'Przeciągnij głowę na podglądzie, rogi = rozmiar. „Zapamiętaj to miejsce” = każda nowa głowa startuje tu.' : 'Przeciągnij klip na osi czasu między ścieżkami: Tło / Wideo / Głowa.')].filter(Boolean));
   },
   panelsLive() { const l = this.selLayer; if (!l) return; for (const k of ['x', 'y', 'w', 'h', 'rot']) { const i = $(`input[data-pk="${k}"]`, this.right); if (i && document.activeElement !== i) i.value = rnd(l[k], 1); } },
   leftPanel() {
@@ -196,8 +203,8 @@ const Video = {
   },
 
   // ── Zaznaczanie / commit ──
-  select(kind, id) { this.selKind = kind; this.selId = id; this.rightPanel(); this.ctxBar(); this.updTime(); this.layersList(); this.stage.render(); this.tlMarks(); },
-  commit(audio) { this.syncVideoAudio(); if (this.hist) this.hist.mark(); if (audio) this.mc = null; touch(); this.tl(); this.rightPanelSoft(); this.layersList(); this.stage.render(); this.ensureVideos().then((n) => { if (n) { this.syncVideos(this.t, false); this.stage.render(); } }); },
+  select(kind, id) { this.selKind = kind; this.selId = id; this.tempoUi(); this.rightPanel(); this.ctxBar(); this.updTime(); this.layersList(); this.stage.render(); this.tlMarks(); },
+  commit(audio) { this.syncVideoAudio(); if (this.hist) this.hist.mark(); if (audio) this.mc = null; touch(); this.tl(); this.tempoUi(); this.rightPanelSoft(); this.layersList(); this.stage.render(); this.ensureVideos().then((n) => { if (n) { this.syncVideos(this.t, false); this.stage.render(); } }); },
   rightPanelSoft() { const a = document.activeElement, typing = (el) => a && el && el.contains(a) && /INPUT|TEXTAREA|SELECT/.test(a.tagName); if (!typing(this.right)) this.rightPanel(); if (!typing(this.ctxEl)) this.ctxBar(); },
   undo() { if (this.hist && this.hist.undo()) { this.selId = null; this.mc = null; this.panels(); this.tl(); this.stage.render(); touch(); this.ensureVideos().then((n) => { if (n) this.stage.render(); }); } },
   redo() { if (this.hist && this.hist.redo()) { this.selId = null; this.mc = null; this.panels(); this.tl(); this.stage.render(); touch(); this.ensureVideos().then((n) => { if (n) this.stage.render(); }); } },
