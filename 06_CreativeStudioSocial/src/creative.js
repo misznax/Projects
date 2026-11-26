@@ -21,7 +21,7 @@ const Creative = {
     const b = (t, fn, cls, title) => h('button', { class: 'btn ' + (cls || ''), onclick: fn, title: title || '' }, t);
     this.safeBtn = b('Strefy', () => { this.stage.safe = !this.stage.safe; this.safeBtn.classList.toggle('on', this.stage.safe); this.stage.overlay(); }, '', 'Pokaż strefy zasłaniane przez interfejs aplikacji');
     T.append(b('T  Tekst', () => this.addText()), b('▭ Kształt', (e) => popMenu(e.currentTarget, [{ t: 'Prostokąt', i: '▭', fn: () => this.addShape('rect') }, { t: 'Elipsa', i: '◯', fn: () => this.addShape('ellipse') }, { t: 'Linia / pasek', i: '▬', fn: () => this.addShape('line') }])),
-      b('🖼 Obraz', (e) => popMenu(e.currentTarget, [{ t: 'Z komputera…', i: '📁', fn: () => this.addImageFile() }, { t: 'Z biblioteki zasobów…', i: '🗂', fn: () => this.addImageLib() }, { t: 'Wygeneruj obraz AI…', i: '🪄', fn: () => this.aiImage() }])),
+      b('🖼 Obraz', (e) => popMenu(e.currentTarget, [{ t: 'Z komputera…', i: '📁', fn: () => this.addImageFile() }, { t: 'Biblioteka / Drive / link…', i: '🗂', fn: () => this.addImageLib() }, { t: 'Wygeneruj obraz AI…', i: '🪄', fn: () => this.aiImage() }])),
       h('span', { class: 'sep' }), b('↶', () => this.undo(), '', 'Cofnij (Ctrl+Z)'), b('↷', () => this.redo(), '', 'Ponów (Ctrl+Y)'), this.safeBtn, h('span', { class: 'sep' }),
       b('✨ Z tematu', () => this.aiCarousel(), 'sea', 'AI układa karuzelę ze slajdów'), h('span', { style: { flex: 1 } }),
       b('Eksport ▾', (e) => popMenu(e.currentTarget, [{ t: 'Bieżący slajd (PNG)', i: '🖼', fn: () => this.exportOne('png') }, { t: 'Bieżący slajd (JPG)', i: '🖼', fn: () => this.exportOne('jpg') }, { t: 'Wszystkie slajdy (ZIP z PNG)', i: '📦', fn: () => this.exportAll() }, '-', { t: 'Użyj bieżącego slajdu jako okładki publikacji', i: '📌', fn: () => this.useAsCover() }]), 'pri'));
@@ -75,10 +75,10 @@ const Creative = {
   addText() { const s = this.slide, b = P.cur.brand; const l = mkLayer('text', { x: s.w / 2, y: s.h / 2, w: s.w * 0.7 }); l.text.font = b.bodyFont; l.text.color = readable(s.bg.c1 || '#fff'); l.text.size = Math.round(s.w * 0.06); this.add(l); },
   addShape(kind) { const s = this.slide, l = mkLayer('shape', { x: s.w / 2, y: s.h / 2, w: kind === 'line' ? s.w * 0.4 : s.w * 0.3, h: kind === 'line' ? 12 : s.w * 0.3 }); l.shape.kind = kind; l.shape.fill = P.cur.brand.colors.accent; l.name = { rect: 'Prostokąt', ellipse: 'Elipsa', line: 'Pasek' }[kind]; this.add(l); },
   async addImageFile() { const fs = await pickFiles('image/*', true); for (const f of fs) { const id = await Assets.add(f, 'image'); this.addImageAsset(id); } },
-  async addImageLib() { const a = await assetPicker(['image', 'ai', 'logo'], 'Wstaw obraz z biblioteki'); if (a) this.addImageAsset(a.id); },
+  async addImageLib() { const a = await assetPicker(['image', 'ai', 'logo'], 'Importuj obraz'); if (a) this.addImageAsset(a.id); },
   async addImageAsset(id) { const rec = await Assets.rec(id), s = this.slide, ar = (rec.w || 1) / (rec.h || 1), w = Math.min(s.w * 0.8, rec.w || 600), l = mkLayer('image', { x: s.w / 2, y: s.h / 2, w, h: w / ar }); l.img.assetId = id; l.name = rec.name.slice(0, 22); IMGS.set(id, await Assets.img(id)); this.add(l); },
   async replaceImage() { const l = this.sel; const fs = await pickFiles('image/*', false); if (!fs[0]) return; const id = await Assets.add(fs[0], 'image'); l.img.assetId = id; IMGS.set(id, await Assets.img(id)); this.commit(); this.stage.render(); },
-  async bgImage() { const a = await assetPicker(['image', 'ai'], 'Obraz tła'); let id = a && a.id; if (!a) { const fs = await pickFiles('image/*'); if (!fs[0]) return; id = await Assets.add(fs[0], 'image'); } this.slide.bg.assetId = id; IMGS.set(id, await Assets.img(id)); this.commit(); this.stage.render(); },
+  async bgImage() { const a = await assetPicker(['image', 'ai'], 'Obraz tła'); if (!a) return; const id = a.id; this.slide.bg.assetId = id; IMGS.set(id, await Assets.img(id)); this.commit(); this.stage.render(); },
   async removeBg() {
     const l = this.sel; try {
       const im = await Assets.img(l.img.assetId), c = document.createElement('canvas'); c.width = im.naturalWidth; c.height = im.naturalHeight; const x = c.getContext('2d', { willReadFrequently: true }); x.drawImage(im, 0, 0); const d = x.getImageData(0, 0, c.width, c.height), px = d.data, W = c.width, H = c.height;

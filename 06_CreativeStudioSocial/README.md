@@ -1,4 +1,4 @@
-# Creative Studio Social · v0.03
+# Creative Studio Social · v0.04
 
 Studio treści na social media w przeglądarce: marka → grafiki (karuzele) → wideo (rolki 9:16) → audio → publikacja na Instagram, YouTube Shorts, TikTok i Facebook Reels.
 Autor: Michał Rzekiecki · kontakt: michus@gmail.com · adres: https://projects.michus.workers.dev/06/
@@ -11,7 +11,7 @@ Autor: Michał Rzekiecki · kontakt: michus@gmail.com · adres: https://projects
 4. Jedna warstwa modelu (tekst, obraz, kształt, wideo, efekt, animacje wejścia/wyjścia/pętla, klatki kluczowe) i jedna funkcja `drawScene` dla edycji, podglądu i eksportu.
 5. Dźwięk: własny silnik DSP w czystym JS (`src/dsp.js`): WSOLA (tempo), zmiana wysokości tonu, redukcja szumu STFT, usuwanie trzasków, korektor, kompresor, de-esser, usuwanie ciszy, głośność BS.1770 (LUFS), true peak, limiter, ducking, miks. Podgląd rolki gra dokładnie ten sam miks, który trafia do eksportu.
 6. Eksport wideo: WebCodecs (H.264 + AAC) + mp4-muxer → MP4. Gdy brak AAC w przeglądarce: Opus w MP4 z ostrzeżeniem; gdy brak WebCodecs: WebM (MediaRecorder).
-7. AI przez Worker (klucze tylko jako sekrety): `/api/n/claude` (Claude, a bez klucza Llama), `/api/n/stt` (Whisper), `/api/s/img` (FLUX.1 schnell, Workers AI), `/api/s/status` (uczciwy stan integracji), `/api/s/drive/list|get` (folder Google Drive udostępniony linkiem: lista i pobranie nagrań, bez kluczy).
+7. AI przez Worker (klucze tylko jako sekrety): `/api/n/claude` (Claude, a bez klucza Llama), `/api/n/stt` (Whisper), `/api/s/img` (FLUX.1 schnell, Workers AI), `/api/s/status` (uczciwy stan integracji), `/api/s/drive/list|get` (folder Google Drive udostępniony linkiem: lista i pobranie plików, bez kluczy), `/api/s/link?url=` (pobranie pliku z linku Drive / GitHub / Dropbox; inne hosty odrzucone, brak otwartego proxy), `/api/s/doc?id=` (tekst Dokumentu Google udostępnionego linkiem, np. „Rolki” z Agent John).
 
 ## Moduły (zakładki)
 
@@ -20,7 +20,8 @@ Autor: Michał Rzekiecki · kontakt: michus@gmail.com · adres: https://projects
 | Marka | karta „Marka z automatu” (kolory, fonty, uchwyt, zasady z repo marki; odśwież / odepnij), ręczna edycja, logo, referencje, 12 szablonów |
 | Pomysły | pomysły z Drive + posty z Instagrama → plan rolki lub karuzeli, ostrzeżenia o powtórkach, balans formatów, slot „materiał instruktażowy” (uczenie stylu z karuzeli / rolki) |
 | Grafiki | karuzele i posty: slajdy, warstwy, tło, usuwanie tła, obrazy AI, eksport PNG/JPG/ZIP |
-| Wideo | oś czasu (9 ścieżek), sceny z szablonów, animacje, klatki kluczowe, napisy z nagrania, miks, eksport MP4 |
+| Wideo | oś czasu (9 ścieżek), sceny z szablonów, animacje, klatki kluczowe, napisy z nagrania, miks, eksport MP4; **🗣 Gadająca głowa** (wideo w kole / zaokrąglonym / prostokącie / pełnym ekranie, 4 rozmiary, 9 pozycji w bezpiecznej strefie, ramka, poświata, kadr, lustro; dźwięk idzie na ścieżkę „Głos” i jest miksowany); **📥 Rolka z dokumentu (Agent John)**: wklejony tekst dokumentu „Rolki” albo link → rolka z kartami w czasie, skrypt do telepromptera i opis |
+| Import materiałów | jedno okno w każdym miejscu, gdzie dodajesz obraz / wideo / dźwięk: 🗂 biblioteka (też materiały z innych projektów aplikacji), ☁ folder Google Drive (z podfolderami), 🔗 link do pliku (Drive, GitHub, Dropbox), 📁 plik z urządzenia. Materiały z innych czatów i projektów Claude: zapis na Drive → folder udostępniony linkiem → wybór z listy |
 | Audio | import nagrań z telefonu z Google Drive („☁ Z Drive”: folder Creative Studio > Audio Input udostępniony linkiem, link wklejany raz), nagrywanie z teleprompterem (okno rozciągalne i przeciągane, edytowalny tekst, wolne przewijanie w słowach/min, czcionka, szerokość, położenie, lustro, pełny ekran), edycja nieniszcząca (oryginał zostaje), łańcuch obróbki, raport jakości (LUFS, true peak, clipping, DC) |
 | Publikacja | walidacja pod 4 sieci, opisy i hashtagi, bramka zatwierdzenia (6 kroków), FINAL PUBLISH, dziennik, kalendarz (ICS) |
 | Asystent | z jednego pomysłu: koncepcja, hook, scenariusz → rolka lub karuzela + opis |
@@ -56,7 +57,7 @@ Autor: Michał Rzekiecki · kontakt: michus@gmail.com · adres: https://projects
 
 ## Ograniczenia v0.02 (uczciwie)
 
-1. Rolki tylko 9:16; dźwięk z klipów wideo nie jest miksowany (tylko ścieżki głos/muzyka/efekty).
+1. Rolki tylko 9:16. Wideo HEVC/H.265 (domyślny format iPhone'a) Chrome zwykle nie odczyta: aplikacja pokazuje komunikat; nagrywaj w trybie „Najbardziej zgodny” (H.264).
 2. Obrazy AI: FLUX generuje 1024×1024, aplikacja kadruje do formatu; brak zachowania tożsamości osoby.
 3. AAC zależy od przeglądarki (Windows i macOS: tak; Linux headless: Opus). Nie sprawdzono jeszcze na prawdziwym Chrome z AAC.
 4. Zmiana tempa/tonu bez Rubber Band (licencja GPL); własny WSOLA, jakość dobra dla mowy, słabsza dla muzyki przy skrajnych wartościach.
@@ -67,6 +68,6 @@ Autor: Michał Rzekiecki · kontakt: michus@gmail.com · adres: https://projects
 
 ## Plan
 
-1. v0.03: R2 (chmura projektów i publiczne adresy mediów) + adapter Metricool (planowanie wpisów).
-2. v0.04: bezpośrednie API (YouTube, Meta, TikTok), dźwięk klipów w miksie, format 4:5 w wideo.
+1. v0.05: R2 (chmura projektów i publiczne adresy mediów) + adapter Metricool (planowanie wpisów); nagrywanie gadającej głowy kamerą w aplikacji.
+2. v0.06: bezpośrednie API (YouTube, Meta, TikTok), format 4:5 w wideo.
 3. v1.0 po zatwierdzeniu; od tej wersji kopie w `backup/`.

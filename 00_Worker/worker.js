@@ -275,8 +275,7 @@ async function driveList(id) {
   if (!files.length && /ServiceLogin|Sign in|Zaloguj/.test(html)) return J({ code: 'private' }, 403);
   return J({ files });
 }
-async function driveGet(id) {
-  let r; try { r = await fetch('https://drive.usercontent.google.com/download?id=' + id + '&export=download&confirm=t', { headers: { 'user-agent': DRV_UA } }); } catch (e) { return J({ code: 'net', msg: String(e.message || e).slice(0, 160) }, 502); }
+function passFile(r) { // odpowiedź pliku z Drive/GitHub/Dropbox → strumień do przeglądarki (z nazwą pliku w nagłówku)
   if (/accounts\.google\.com/.test(r.url)) return J({ code: 'private' }, 403);
   if (r.status === 404) return J({ code: 'not_found' }, 404);
   if (!r.ok) return J({ code: 'drive', msg: 'HTTP ' + r.status }, 502);
@@ -286,7 +285,35 @@ async function driveGet(id) {
   if (len > 250e6) return J({ code: 'too_big' }, 413);
   const h = new Headers({ 'content-type': ct || 'application/octet-stream', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' });
   if (len && !r.headers.get('content-encoding')) h.set('content-length', String(len));
+  const cd = r.headers.get('content-disposition') || '', m = cd.match(/filename\*=UTF-8''([^;]+)/i) || cd.match(/filename="?([^";]+)"?/i);
+  if (m) { let nm = m[1]; try { nm = decodeURIComponent(nm); } catch { /* zostaw */ } h.set('x-filename', encodeURIComponent(nm)); }
   return new Response(r.body, { status: 200, headers: h });
+}
+async function driveGet(id) {
+  let r; try { r = await fetch('https://drive.usercontent.google.com/download?id=' + id + '&export=download&confirm=t', { headers: { 'user-agent': DRV_UA } }); } catch (e) { return J({ code: 'net', msg: String(e.message || e).slice(0, 160) }, 502); }
+  return passFile(r);
+}
+// Link do pliku: Google Drive, GitHub (raw/blob), Dropbox. Inne adresy odrzucone (bezpieczeństwo: brak otwartego proxy).
+async function linkGet(raw) {
+  let u; try { u = new URL(raw); } catch { return J({ code: 'bad' }, 400); } if (u.protocol !== 'https:') return J({ code: 'bad' }, 400);
+  const host = u.hostname.toLowerCase();
+  if (host === 'drive.google.com' || host === 'drive.usercontent.google.com' || host === 'docs.google.com') { const m = u.pathname.match(/\/(?:file\/d|d)\/([\w-]{10,})/), id = m ? m[1] : u.searchParams.get('id'); return id && /^[\w-]{10,100}$/.test(id) ? driveGet(id) : J({ code: 'bad' }, 400); }
+  let target = null;
+  if (host === 'raw.githubusercontent.com') target = u.href;
+  else if (host === 'github.com') { const m = u.pathname.match(/^\/([^/]+)\/([^/]+)\/(?:blob|raw)\/(.+)$/); if (m) target = 'https://raw.githubusercontent.com/' + m[1] + '/' + m[2] + '/' + m[3]; }
+  else if (host === 'www.dropbox.com' || host === 'dropbox.com' || host === 'dl.dropboxusercontent.com') { u.hostname = 'dl.dropboxusercontent.com'; u.searchParams.delete('dl'); target = u.href; }
+  if (!target) return J({ code: 'host', msg: host }, 400);
+  let r; try { r = await fetch(target, { headers: { 'user-agent': DRV_UA } }); } catch (e) { return J({ code: 'net', msg: String(e.message || e).slice(0, 160) }, 502); }
+  return passFile(r);
+}
+async function docText(id) { // Dokument Google udostępniony linkiem → zwykły tekst (do importu rolki z projektu Agent John)
+  let r; try { r = await fetch('https://docs.google.com/document/d/' + id + '/export?format=txt', { headers: { 'user-agent': DRV_UA } }); } catch (e) { return J({ code: 'net', msg: String(e.message || e).slice(0, 160) }, 502); }
+  if (/accounts\.google\.com|ServiceLogin/.test(r.url) || r.status === 401 || r.status === 403) return J({ code: 'private' }, 403);
+  if (r.status === 404) return J({ code: 'not_found' }, 404);
+  if (!r.ok) return J({ code: 'drive', msg: 'HTTP ' + r.status }, 502);
+  if (/text\/html/i.test(r.headers.get('content-type') || '')) return J({ code: 'private' }, 403);
+  const t = (await r.text()).replace(/^﻿/, ''); if (t.length > 400000) return J({ code: 'too_big' }, 413);
+  return J({ text: t });
 }
 
 export default {
@@ -315,6 +342,16 @@ export default {
         const prompt = String(b.prompt || '').slice(0, 2000); if (!prompt) return J({ code: 'bad' }, 400);
         try { const o = await env.AI.run('@cf/black-forest-labs/flux-1-schnell', { prompt, steps: Math.min(8, Math.max(1, +b.steps || 4)) }); if (!o || !o.image) throw new Error('brak obrazu w odpowiedzi modelu'); return J({ image: o.image, mime: 'image/jpeg' }); }
         catch (e) { return J({ code: 'ai_error', msg: String(e.message || e).slice(0, 200) }, 502); }
+      }
+      if (url.pathname === '/api/s/doc') {
+        const id = url.searchParams.get('id') || '';
+        if (!/^[\w-]{10,100}$/.test(id)) return J({ code: 'bad' }, 400);
+        if (!(await rl(request, env, 'drive', 300))) return J({ code: 'rate' }, 429);
+        return docText(id);
+      }
+      if (url.pathname === '/api/s/link') {
+        if (!(await rl(request, env, 'drive', 300))) return J({ code: 'rate' }, 429);
+        return linkGet(url.searchParams.get('url') || '');
       }
       if (url.pathname === '/api/s/drive/list' || url.pathname === '/api/s/drive/get') {
         const id = url.searchParams.get('id') || '';

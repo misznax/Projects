@@ -1,5 +1,5 @@
 /* Creative Studio Social — rdzeń: narzędzia, magazyn (IndexedDB), projekt, historia, UI-pomocniki */
-const APP = { name: 'Creative Studio Social', ver: 'v0.03', author: 'Michał Rzekiecki', mail: 'michus@gmail.com' };
+const APP = { name: 'Creative Studio Social', ver: 'v0.04', author: 'Michał Rzekiecki', mail: 'michus@gmail.com' };
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const uid = (p = 'x') => p + Math.random().toString(36).slice(2, 9);
@@ -79,9 +79,11 @@ const DBI = {
 };
 
 // ── Zasoby (blob w IndexedDB + cache dekodowania) ──
+const EXT_TYPE = { mp4: 'video/mp4', m4v: 'video/mp4', mov: 'video/quicktime', webm: 'video/webm', mkv: 'video/x-matroska', avi: 'video/x-msvideo', '3gp': 'video/3gpp', mp3: 'audio/mpeg', m4a: 'audio/mp4', wav: 'audio/wav', aac: 'audio/aac', ogg: 'audio/ogg', opus: 'audio/ogg', flac: 'audio/flac', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', gif: 'image/gif' };
 const Assets = {
   c: new Map(),
   async add(file, kind, extra) {
+    const ty0 = file.type || EXT_TYPE[String(file.name || '').split('.').pop().toLowerCase()] || ''; if (ty0 && ty0 !== file.type) file = new File([file], file.name || (kind + '.bin'), { type: ty0 }); // telefony/Drive często podają pusty typ MIME
     const id = uid('a'), rec = { id, name: file.name || (kind + id), type: file.type || '', size: file.size, kind, created: Date.now(), blob: file, pid: P.cur ? P.cur.id : null, ...(extra || {}) };
     try {
       if ((file.type || '').startsWith('image/')) { const im = await this.imgFromBlob(file); rec.w = im.naturalWidth; rec.h = im.naturalHeight; }
@@ -95,7 +97,16 @@ const Assets = {
   async url(id) { const c = this.c.get(id) || {}; if (c.url) return c.url; const b = await this.blob(id); if (!b) return null; c.url = URL.createObjectURL(b); this.c.set(id, c); return c.url; },
   imgFromBlob(b) { return new Promise((res, rej) => { const u = URL.createObjectURL(b), i = new Image(); i.onload = () => { res(i); }; i.onerror = () => rej(new Error('Nie można odczytać obrazu')); i.src = u; }); },
   async img(id) { const c = this.c.get(id) || {}; if (c.img) return c.img; const b = await this.blob(id); if (!b) return null; c.img = await this.imgFromBlob(b); this.c.set(id, c); return c.img; },
-  videoMeta(b) { return new Promise((res, rej) => { const v = document.createElement('video'); v.preload = 'metadata'; v.muted = true; v.onloadedmetadata = () => res({ w: v.videoWidth, h: v.videoHeight, dur: v.duration }); v.onerror = () => rej(new Error('Nie można odczytać wideo')); v.src = URL.createObjectURL(b); }); },
+  videoMeta(b) {
+    const HINT = ' Nagraj w telefonie w formacie „Najbardziej zgodny” (H.264) albo przekonwertuj plik do MP4 H.264.';
+    return new Promise((res, rej) => {
+      const v = document.createElement('video'), u = URL.createObjectURL(b); let done = false; v.preload = 'metadata'; v.muted = true; v.playsInline = true;
+      const fin = (f, x) => { if (done) return; done = true; clearTimeout(tm); URL.revokeObjectURL(u); v.removeAttribute('src'); try { v.load(); } catch (e) { /* nic */ } f(x); };
+      const tm = setTimeout(() => fin(rej, new Error('Przeglądarka nie odczytała pliku wideo w 15 s (zwykle kodek HEVC/H.265 z telefonu albo uszkodzony plik).' + HINT)), 15000);
+      v.onloadedmetadata = () => (v.videoWidth ? fin(res, { w: v.videoWidth, h: v.videoHeight, dur: v.duration }) : fin(rej, new Error('Przeglądarka nie potrafi odczytać obrazu z tego pliku (kodek, np. HEVC/H.265).' + HINT)));
+      v.onerror = () => fin(rej, new Error('Nie można odczytać wideo (nieobsługiwany format lub kodek).' + HINT)); v.src = u;
+    });
+  },
   async video(id) { const c = this.c.get(id) || {}; if (c.vid) return c.vid; const u = await this.url(id); if (!u) return null; const v = document.createElement('video'); v.muted = true; v.playsInline = true; v.preload = 'auto'; v.src = u; await new Promise((r) => { v.onloadeddata = r; v.onerror = r; }); c.vid = v; this.c.set(id, c); return v; },
   async decode(blobOrBuf) { const buf = blobOrBuf instanceof ArrayBuffer ? blobOrBuf : await blobOrBuf.arrayBuffer(); const ctx = new OfflineAudioContext(2, 1, 48000); const ab = await ctx.decodeAudioData(buf.slice(0)); const chs = []; for (let i = 0; i < Math.min(2, ab.numberOfChannels); i++) chs.push(Float32Array.from(ab.getChannelData(i))); if (chs.length === 1) chs.push(Float32Array.from(chs[0])); return { chs, fs: ab.sampleRate }; },
   async audio(id) { const c = this.c.get(id) || {}; if (c.aud) return c.aud; const b = await this.blob(id); if (!b) return null; c.aud = await this.decode(b); this.c.set(id, c); return c.aud; },

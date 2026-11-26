@@ -58,6 +58,7 @@ textarea{resize:vertical;min-height:60px}
 h3{margin:14px 0 6px;font-size:15px}.fine{font-size:12px;color:var(--mut)}
 
 
+.imp{min-width:min(560px,84vw)}.imptabs{margin-bottom:10px}.imptabs button{padding:7px 4px;font-size:13px}.impv{min-height:150px}.impgrid{max-height:46vh;overflow:auto}.pipgrid{display:grid;grid-template-columns:repeat(3,36px);gap:4px}.pipgrid button{height:30px;border:1px solid var(--bd);background:var(--p3);color:inherit;border-radius:8px;cursor:pointer;font-size:15px}.pipgrid button.on{background:var(--acc);border-color:var(--acc);color:#fff}
 /* nagrywanie: prompter */
 .rec-back{background:transparent!important;pointer-events:none;display:block!important}
 .rec-win{pointer-events:auto;position:fixed;display:flex!important;flex-direction:column;gap:8px;padding:10px 12px!important;overflow:hidden!important;resize:both;min-width:440px;min-height:420px;max-width:99vw;max-height:98vh!important;box-shadow:0 24px 80px rgba(0,0,0,.8),0 0 0 1px rgba(139,108,255,.55)!important;background:radial-gradient(120% 90% at 100% 0%,rgba(139,108,255,.16),transparent 55%),var(--p1)!important}
@@ -556,7 +557,7 @@ const DSP = (function () {
 if (typeof module !== 'undefined') module.exports = DSP;
 
 /* Creative Studio Social — rdzeń: narzędzia, magazyn (IndexedDB), projekt, historia, UI-pomocniki */
-const APP = { name: 'Creative Studio Social', ver: 'v0.03', author: 'Michał Rzekiecki', mail: 'michus@gmail.com' };
+const APP = { name: 'Creative Studio Social', ver: 'v0.04', author: 'Michał Rzekiecki', mail: 'michus@gmail.com' };
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const uid = (p = 'x') => p + Math.random().toString(36).slice(2, 9);
@@ -636,9 +637,11 @@ const DBI = {
 };
 
 // ── Zasoby (blob w IndexedDB + cache dekodowania) ──
+const EXT_TYPE = { mp4: 'video/mp4', m4v: 'video/mp4', mov: 'video/quicktime', webm: 'video/webm', mkv: 'video/x-matroska', avi: 'video/x-msvideo', '3gp': 'video/3gpp', mp3: 'audio/mpeg', m4a: 'audio/mp4', wav: 'audio/wav', aac: 'audio/aac', ogg: 'audio/ogg', opus: 'audio/ogg', flac: 'audio/flac', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', gif: 'image/gif' };
 const Assets = {
   c: new Map(),
   async add(file, kind, extra) {
+    const ty0 = file.type || EXT_TYPE[String(file.name || '').split('.').pop().toLowerCase()] || ''; if (ty0 && ty0 !== file.type) file = new File([file], file.name || (kind + '.bin'), { type: ty0 }); // telefony/Drive często podają pusty typ MIME
     const id = uid('a'), rec = { id, name: file.name || (kind + id), type: file.type || '', size: file.size, kind, created: Date.now(), blob: file, pid: P.cur ? P.cur.id : null, ...(extra || {}) };
     try {
       if ((file.type || '').startsWith('image/')) { const im = await this.imgFromBlob(file); rec.w = im.naturalWidth; rec.h = im.naturalHeight; }
@@ -652,7 +655,16 @@ const Assets = {
   async url(id) { const c = this.c.get(id) || {}; if (c.url) return c.url; const b = await this.blob(id); if (!b) return null; c.url = URL.createObjectURL(b); this.c.set(id, c); return c.url; },
   imgFromBlob(b) { return new Promise((res, rej) => { const u = URL.createObjectURL(b), i = new Image(); i.onload = () => { res(i); }; i.onerror = () => rej(new Error('Nie można odczytać obrazu')); i.src = u; }); },
   async img(id) { const c = this.c.get(id) || {}; if (c.img) return c.img; const b = await this.blob(id); if (!b) return null; c.img = await this.imgFromBlob(b); this.c.set(id, c); return c.img; },
-  videoMeta(b) { return new Promise((res, rej) => { const v = document.createElement('video'); v.preload = 'metadata'; v.muted = true; v.onloadedmetadata = () => res({ w: v.videoWidth, h: v.videoHeight, dur: v.duration }); v.onerror = () => rej(new Error('Nie można odczytać wideo')); v.src = URL.createObjectURL(b); }); },
+  videoMeta(b) {
+    const HINT = ' Nagraj w telefonie w formacie „Najbardziej zgodny” (H.264) albo przekonwertuj plik do MP4 H.264.';
+    return new Promise((res, rej) => {
+      const v = document.createElement('video'), u = URL.createObjectURL(b); let done = false; v.preload = 'metadata'; v.muted = true; v.playsInline = true;
+      const fin = (f, x) => { if (done) return; done = true; clearTimeout(tm); URL.revokeObjectURL(u); v.removeAttribute('src'); try { v.load(); } catch (e) { /* nic */ } f(x); };
+      const tm = setTimeout(() => fin(rej, new Error('Przeglądarka nie odczytała pliku wideo w 15 s (zwykle kodek HEVC/H.265 z telefonu albo uszkodzony plik).' + HINT)), 15000);
+      v.onloadedmetadata = () => (v.videoWidth ? fin(res, { w: v.videoWidth, h: v.videoHeight, dur: v.duration }) : fin(rej, new Error('Przeglądarka nie potrafi odczytać obrazu z tego pliku (kodek, np. HEVC/H.265).' + HINT)));
+      v.onerror = () => fin(rej, new Error('Nie można odczytać wideo (nieobsługiwany format lub kodek).' + HINT)); v.src = u;
+    });
+  },
   async video(id) { const c = this.c.get(id) || {}; if (c.vid) return c.vid; const u = await this.url(id); if (!u) return null; const v = document.createElement('video'); v.muted = true; v.playsInline = true; v.preload = 'auto'; v.src = u; await new Promise((r) => { v.onloadeddata = r; v.onerror = r; }); c.vid = v; this.c.set(id, c); return v; },
   async decode(blobOrBuf) { const buf = blobOrBuf instanceof ArrayBuffer ? blobOrBuf : await blobOrBuf.arrayBuffer(); const ctx = new OfflineAudioContext(2, 1, 48000); const ab = await ctx.decodeAudioData(buf.slice(0)); const chs = []; for (let i = 0; i < Math.min(2, ab.numberOfChannels); i++) chs.push(Float32Array.from(ab.getChannelData(i))); if (chs.length === 1) chs.push(Float32Array.from(chs[0])); return { chs, fs: ab.sampleRate }; },
   async audio(id) { const c = this.c.get(id) || {}; if (c.aud) return c.aud; const b = await this.blob(id); if (!b) return null; c.aud = await this.decode(b); this.c.set(id, c); return c.aud; },
@@ -816,7 +828,7 @@ function mkLayer(type, o) {
     text: { text: { s: 'Twój tekst', font: P.cur ? P.cur.brand.headingFont : 'Georgia', size: 84, weight: 700, italic: false, color: '#ffffff', align: 'center', lh: 1.15, ls: 0, upper: false, stroke: { w: 0, c: '#000000' }, shadow: { on: false, x: 0, y: 6, b: 16, c: 'rgba(0,0,0,.45)' }, bg: { on: false, c: '#000000', pad: 28, r: 18 }, pad: 0 }, autoH: true },
     image: { img: { assetId: null, fit: 'cover', r: 0, flipX: false, b: 1, c: 1, s: 1, blur: 0 }, w: 600, h: 600 },
     shape: { shape: { kind: 'rect', fill: '#ffffff', fill2: '', gAngle: 90, r: 0, stroke: { w: 0, c: '#ffffff' }, shadow: { on: false, x: 0, y: 8, b: 20, c: 'rgba(0,0,0,.35)' } }, w: 400, h: 400 },
-    video: { video: { assetId: null, in: 0, speed: 1, vol: 0, mute: false, fit: 'cover', r: 0 }, w: 1080, h: 1920 },
+    video: { video: { assetId: null, in: 0, speed: 1, vol: 0, mute: false, fit: 'cover', r: 0, shape: 'rect', zoom: 1, ox: 0, oy: 0, flipX: false, bw: 0, bc: '#FFA000', glow: 0 }, w: 1080, h: 1920 },
     fx: { fx: { kind: 'orbs', c1: '#ffffff', c2: '#888888', c3: '#444444', n: 24, spd: 1 }, w: 1080, h: 1920 },
   }[type];
   return Object.assign(base, jclone(d), o || {});
@@ -960,7 +972,16 @@ function drawMedia(ctx, el, iw, ih, l, cfg, st) {
   const w = l.w, h = l.h; ctx.save(); rr(ctx, -w / 2, -h / 2, w, h, cfg.r || 0); ctx.clip();
   const f = []; if (cfg.b != null && cfg.b !== 1) f.push(`brightness(${cfg.b})`); if (cfg.c != null && cfg.c !== 1) f.push(`contrast(${cfg.c})`); if (cfg.s != null && cfg.s !== 1) f.push(`saturate(${cfg.s})`); if (cfg.blur) f.push(`blur(${cfg.blur}px)`);
   if (f.length) ctx.filter = (ctx.filter && ctx.filter !== 'none' ? ctx.filter + ' ' : '') + f.join(' ');
-  if (cfg.flipX) ctx.scale(-1, 1); const [x, y, rw, rh] = coverRect(iw, ih, w, h, cfg.fit, st.kb); ctx.drawImage(el, x + (st.kbx || 0), y + (st.kby || 0), rw, rh); ctx.restore();
+  if (cfg.flipX) ctx.scale(-1, 1); let [x, y, rw, rh] = coverRect(iw, ih, w, h, cfg.fit, st.kb);
+  const z = cfg.zoom || 1; if (z !== 1 || cfg.ox || cfg.oy) { const cx = x + rw / 2 + (cfg.flipX ? -1 : 1) * (cfg.ox || 0) * w, cy = y + rh / 2 + (cfg.oy || 0) * h; rw *= z; rh *= z; x = cx - rw / 2; y = cy - rh / 2; } // przybliżenie i przesunięcie kadru (twarz w kole)
+  ctx.drawImage(el, x + (st.kbx || 0), y + (st.kby || 0), rw, rh); ctx.restore();
+}
+function videoRadius(l) { const c = l.video; return c.shape === 'circle' ? Math.min(l.w, l.h) / 2 : Math.min(c.r || 0, Math.min(l.w, l.h) / 2); }
+function drawVideoFrame(ctx, l, el, st) { // wideo w kole / prostokącie z obramowaniem i poświatą (gadająca głowa)
+  const c = l.video, w = l.w, h = l.h, rad = videoRadius(l);
+  if (c.glow > 0) { ctx.save(); ctx.shadowColor = c.bc || '#FFA000'; ctx.shadowBlur = c.glow; ctx.fillStyle = '#000'; rr(ctx, -w / 2, -h / 2, w, h, rad); ctx.fill(); ctx.restore(); }
+  if (el && el.readyState >= 2 && el.videoWidth) drawMedia(ctx, el, el.videoWidth, el.videoHeight, l, Object.assign({}, c, { r: rad }), st); else { ctx.fillStyle = '#222'; rr(ctx, -w / 2, -h / 2, w, h, rad); ctx.fill(); }
+  if (c.bw > 0) { ctx.save(); ctx.strokeStyle = c.bc || '#FFA000'; ctx.lineWidth = c.bw; rr(ctx, -w / 2 + c.bw / 2, -h / 2 + c.bw / 2, w - c.bw, h - c.bw, Math.max(0, rad - c.bw / 2)); ctx.stroke(); ctx.restore(); }
 }
 function linGrad(ctx, x, y, w, h, angle, stops) { const a = (angle || 0) * Math.PI / 180, cx = x + w / 2, cy = y + h / 2, L = Math.abs(w * Math.cos(a)) / 2 + Math.abs(h * Math.sin(a)) / 2, g = ctx.createLinearGradient(cx - Math.cos(a) * L, cy - Math.sin(a) * L, cx + Math.cos(a) * L, cy + Math.sin(a) * L); for (const [o, c] of stops) g.addColorStop(o, c); return g; }
 function shapeFill(ctx, s, w, h) {
@@ -1014,7 +1035,7 @@ function drawLayer(ctx, l, t, W, H, opts) {
     if (l.type === 'text') drawText(ctx, l, st);
     else if (l.type === 'image') { const im = IMGS.get(l.img.assetId); if (im) drawMedia(ctx, im, im.naturalWidth, im.naturalHeight, l, l.img, st); else { ctx.fillStyle = 'rgba(128,128,128,.25)'; ctx.fillRect(-l.w / 2, -l.h / 2, l.w, l.h); } }
     else if (l.type === 'shape') drawShape(ctx, l);
-    else if (l.type === 'video') { const v = opts && opts.video ? opts.video(l, t) : null; if (v && v.readyState >= 2 && v.videoWidth) drawMedia(ctx, v, v.videoWidth, v.videoHeight, l, l.video, st); else { ctx.fillStyle = '#222'; ctx.fillRect(-l.w / 2, -l.h / 2, l.w, l.h); } }
+    else if (l.type === 'video') drawVideoFrame(ctx, l, opts && opts.video ? opts.video(l, t) : null, st);
     else if (l.type === 'fx') drawFx(ctx, l, t, t - l.t0);
   } catch (e) { console.warn('drawLayer', l.type, e); }
   ctx.restore();
@@ -1051,15 +1072,8 @@ function fld(spec, obj, cb) { // spec: {k,t,label,min,max,step,opts,unit,tip}; c
 const rowOf = (...f) => h('div', { class: 'row' }, ...f);
 function section(title, ...kids) { return [h('div', { class: 'ph' }, title), h('div', { class: 'sec' }, ...kids)]; }
 function pickFiles(accept, multi) { return new Promise((res) => { const i = h('input', { type: 'file', accept, multiple: !!multi }); i.onchange = () => res([...i.files]); i.oncancel = () => res([]); i.click(); }); }
-// wybór zasobu z biblioteki (obrazy / audio / wideo)
-async function assetPicker(kinds, title) {
-  const list = (await Assets.list()).filter((a) => !kinds || kinds.includes(a.kind) || (kinds.includes('image') && (a.type || '').startsWith('image/') && a.kind !== 'font')); if (!list.length) { toast('Biblioteka zasobów jest pusta.', 'warn'); return null; }
-  return new Promise((res) => {
-    const grid = h('div', { class: 'cards' }); let done = false; const fin = (v) => { if (!done) { done = true; res(v); } };
-    const m = modal(title || 'Biblioteka zasobów', grid, [{ t: 'Anuluj', fn: () => { fin(null); } }]);
-    for (const a of list) { const isImg = (a.type || '').startsWith('image/'); grid.append(h('div', { class: 'card', style: { cursor: 'pointer' }, onclick: () => { fin(a); m.close(); } }, isImg ? imgThumbEl(a.id) : h('div', { style: { padding: '26px 6px', textAlign: 'center' } }, (a.type || '').startsWith('audio') ? '🎧' : '🎬'), h('div', { class: 'cap' }, h('span', {}, a.name.slice(0, 22)), h('span', {}, a.kind)))); }
-  });
-}
+// wybór zasobu: biblioteka (wszystkie projekty) / folder Drive / link / urządzenie → patrz import.js
+function assetPicker(kinds, title) { return Importer.pick(kinds, title); }
 
 // Wspólny panel właściwości warstwy (Creative + Video): pozycja + pola zależne od typu
 function layerFields(l, cb) {
@@ -1080,8 +1094,15 @@ function layerFields(l, cb) {
   } else if (l.type === 'shape') {
     out.push(h('div', { class: 'ph' }, 'Kształt'), h('div', { class: 'sec' }, fld({ k: 'shape.kind', t: 'sel', label: 'Rodzaj', opts: [['rect', 'Prostokąt'], ['ellipse', 'Elipsa'], ['line', 'Pasek']] }, l, cb), fld({ k: 'shape.fill', t: 'color', label: 'Wypełnienie' }, l, cb), fld({ k: 'shape.fill2', t: 'color', label: 'Drugi kolor (gradient, puste = brak)' }, l, cb), fld({ k: 'shape.gAngle', t: 'num', label: 'Kąt gradientu °' }, l, cb), fld({ k: 'shape.r', t: 'range', label: 'Zaokrąglenie', min: 0, max: 400, step: 1 }, l, cb), rowOf(fld({ k: 'shape.stroke.w', t: 'num', label: 'Obrys', min: 0 }, l, cb), fld({ k: 'shape.stroke.c', t: 'color', label: 'Kolor obrysu' }, l, cb)), fld({ k: 'shape.shadow.on', t: 'chk', label: 'Cień' }, l, cb)));
   } else if (l.type === 'video') {
-    out.push(h('div', { class: 'ph' }, 'Wideo'), h('div', { class: 'sec' }, fld({ k: 'video.fit', t: 'seg', label: 'Dopasowanie', opts: [['cover', 'Wypełnij'], ['contain', 'Zmieść']] }, l, cb), rowOf(fld({ k: 'video.in', t: 'num', label: 'Start w pliku (s)', min: 0, step: 0.1 }, l, cb), fld({ k: 'video.speed', t: 'num', label: 'Prędkość ×', min: 0.25, max: 4, step: 0.05 }, l, cb)), fld({ k: 'video.r', t: 'range', label: 'Zaokrąglenie rogów', min: 0, max: 540, step: 1 }, l, cb),
-      h('div', { class: 'hint', html: rich('Dźwięk z pliku wideo nie jest miksowany (v0.01). (Wgraj ścieżkę jako audio, jeśli jest potrzebna.)') })));
+    const c = l.video, redo = () => { cb('live'); cb('commit'); }, segB = (label, key, opts, onpick) => h('div', { class: 'fld' }, h('label', {}, label), h('div', { class: 'seg' }, opts.map(([v, n, tip]) => h('button', { class: String(c[key] || (key === 'shape' ? 'rect' : '')) === String(v) ? 'on' : '', title: tip || '', onclick: (e) => { onpick(v); redo(); [...e.currentTarget.parentNode.children].forEach((b) => b.classList.remove('on')); e.currentTarget.classList.add('on'); } }, n))));
+    out.push(h('div', { class: 'ph' }, 'Gadająca głowa / wideo'), h('div', { class: 'sec' },
+      segB('Kształt', 'shape', [['circle', '⬤ Koło', 'Wideo w kole'], ['round', '▢ Zaokrąglony'], ['rect', '▭ Prostokąt'], ['full', '⛶ Pełny ekran']], (v) => Video.applyPip(l, { shape: v })),
+      segB('Rozmiar', 'size', [['s', 'S'], ['m', 'M'], ['l', 'L'], ['xl', 'XL']], (v) => Video.applyPip(l, { size: v })),
+      h('div', { class: 'fld' }, h('label', {}, 'Miejsce (w bezpiecznej strefie)'), h('div', { class: 'pipgrid' }, [['tl', '↖'], ['tc', '↑'], ['tr', '↗'], ['ml', '←'], ['mc', '•'], ['mr', '→'], ['bl', '↙'], ['bc', '↓'], ['br', '↘']].map(([v, n]) => h('button', { class: c.pos === v ? 'on' : '', title: 'Ustaw w tym miejscu', onclick: (e) => { Video.applyPip(l, { pos: v }); redo(); [...e.currentTarget.parentNode.children].forEach((b) => b.classList.remove('on')); e.currentTarget.classList.add('on'); } }, n)))),
+      fld({ k: 'video.fit', t: 'seg', label: 'Dopasowanie', opts: [['cover', 'Wypełnij'], ['contain', 'Zmieść']] }, l, cb), fld({ k: 'video.zoom', t: 'range', label: 'Przybliżenie kadru', min: 1, max: 3, step: 0.01, unit: '×' }, l, cb), rowOf(fld({ k: 'video.ox', t: 'range', label: 'Kadr: w prawo', min: -0.5, max: 0.5, step: 0.01 }, l, cb), fld({ k: 'video.oy', t: 'range', label: 'Kadr: w dół', min: -0.5, max: 0.5, step: 0.01 }, l, cb)), fld({ k: 'video.flipX', t: 'chk', label: 'Lustro (odbicie poziome)' }, l, cb)),
+      h('div', { class: 'ph' }, 'Ramka i poświata'), h('div', { class: 'sec' }, rowOf(fld({ k: 'video.bw', t: 'range', label: 'Grubość ramki', min: 0, max: 30, step: 1 }, l, cb), fld({ k: 'video.bc', t: 'color', label: 'Kolor ramki i poświaty' }, l, cb)), fld({ k: 'video.glow', t: 'range', label: 'Poświata', min: 0, max: 80, step: 1 }, l, cb), (c.shape === 'rect' || c.shape === 'round' || !c.shape) ? fld({ k: 'video.r', t: 'range', label: 'Zaokrąglenie rogów', min: 0, max: 540, step: 1 }, l, cb) : null),
+      h('div', { class: 'ph' }, 'Czas i dźwięk'), h('div', { class: 'sec' }, rowOf(fld({ k: 'video.in', t: 'num', label: 'Start w pliku (s)', min: 0, step: 0.1 }, l, cb), fld({ k: 'video.speed', t: 'num', label: 'Prędkość ×', min: 0.25, max: 4, step: 0.05 }, l, cb)), fld({ k: 'video.vol', t: 'range', label: 'Głośność dźwięku z wideo', min: -30, max: 12, step: 0.5, unit: ' dB' }, l, cb), fld({ k: 'video.mute', t: 'chk', label: 'Wycisz dźwięk z wideo' }, l, cb),
+        h('div', { class: 'hint', html: rich('Dźwięk z pliku trafia na ścieżkę „Głos” (przesuwa się razem z klipem; przy prędkości innej niż 1× jest wyciszony).') })));
   } else if (l.type === 'fx') {
     out.push(h('div', { class: 'ph' }, 'Animacja tła'), h('div', { class: 'sec' }, fld({ k: 'fx.kind', t: 'sel', label: 'Rodzaj', opts: [['agrad', 'Płynący gradient'], ['orbs', 'Rozmyte kule'], ['particles', 'Cząsteczki'], ['confetti', 'Konfetti'], ['stripes', 'Pasy'], ['bar', 'Pasek postępu']] }, l, cb), rowOf(fld({ k: 'fx.c1', t: 'color', label: 'Kolor 1' }, l, cb), fld({ k: 'fx.c2', t: 'color', label: 'Kolor 2' }, l, cb), fld({ k: 'fx.c3', t: 'color', label: 'Kolor 3' }, l, cb)), rowOf(fld({ k: 'fx.n', t: 'num', label: 'Ilość', min: 1, max: 80 }, l, cb), fld({ k: 'fx.spd', t: 'num', label: 'Szybkość', step: 0.1, min: 0.1, max: 5 }, l, cb))));
   }
@@ -1589,7 +1610,7 @@ const Creative = {
     const b = (t, fn, cls, title) => h('button', { class: 'btn ' + (cls || ''), onclick: fn, title: title || '' }, t);
     this.safeBtn = b('Strefy', () => { this.stage.safe = !this.stage.safe; this.safeBtn.classList.toggle('on', this.stage.safe); this.stage.overlay(); }, '', 'Pokaż strefy zasłaniane przez interfejs aplikacji');
     T.append(b('T  Tekst', () => this.addText()), b('▭ Kształt', (e) => popMenu(e.currentTarget, [{ t: 'Prostokąt', i: '▭', fn: () => this.addShape('rect') }, { t: 'Elipsa', i: '◯', fn: () => this.addShape('ellipse') }, { t: 'Linia / pasek', i: '▬', fn: () => this.addShape('line') }])),
-      b('🖼 Obraz', (e) => popMenu(e.currentTarget, [{ t: 'Z komputera…', i: '📁', fn: () => this.addImageFile() }, { t: 'Z biblioteki zasobów…', i: '🗂', fn: () => this.addImageLib() }, { t: 'Wygeneruj obraz AI…', i: '🪄', fn: () => this.aiImage() }])),
+      b('🖼 Obraz', (e) => popMenu(e.currentTarget, [{ t: 'Z komputera…', i: '📁', fn: () => this.addImageFile() }, { t: 'Biblioteka / Drive / link…', i: '🗂', fn: () => this.addImageLib() }, { t: 'Wygeneruj obraz AI…', i: '🪄', fn: () => this.aiImage() }])),
       h('span', { class: 'sep' }), b('↶', () => this.undo(), '', 'Cofnij (Ctrl+Z)'), b('↷', () => this.redo(), '', 'Ponów (Ctrl+Y)'), this.safeBtn, h('span', { class: 'sep' }),
       b('✨ Z tematu', () => this.aiCarousel(), 'sea', 'AI układa karuzelę ze slajdów'), h('span', { style: { flex: 1 } }),
       b('Eksport ▾', (e) => popMenu(e.currentTarget, [{ t: 'Bieżący slajd (PNG)', i: '🖼', fn: () => this.exportOne('png') }, { t: 'Bieżący slajd (JPG)', i: '🖼', fn: () => this.exportOne('jpg') }, { t: 'Wszystkie slajdy (ZIP z PNG)', i: '📦', fn: () => this.exportAll() }, '-', { t: 'Użyj bieżącego slajdu jako okładki publikacji', i: '📌', fn: () => this.useAsCover() }]), 'pri'));
@@ -1643,10 +1664,10 @@ const Creative = {
   addText() { const s = this.slide, b = P.cur.brand; const l = mkLayer('text', { x: s.w / 2, y: s.h / 2, w: s.w * 0.7 }); l.text.font = b.bodyFont; l.text.color = readable(s.bg.c1 || '#fff'); l.text.size = Math.round(s.w * 0.06); this.add(l); },
   addShape(kind) { const s = this.slide, l = mkLayer('shape', { x: s.w / 2, y: s.h / 2, w: kind === 'line' ? s.w * 0.4 : s.w * 0.3, h: kind === 'line' ? 12 : s.w * 0.3 }); l.shape.kind = kind; l.shape.fill = P.cur.brand.colors.accent; l.name = { rect: 'Prostokąt', ellipse: 'Elipsa', line: 'Pasek' }[kind]; this.add(l); },
   async addImageFile() { const fs = await pickFiles('image/*', true); for (const f of fs) { const id = await Assets.add(f, 'image'); this.addImageAsset(id); } },
-  async addImageLib() { const a = await assetPicker(['image', 'ai', 'logo'], 'Wstaw obraz z biblioteki'); if (a) this.addImageAsset(a.id); },
+  async addImageLib() { const a = await assetPicker(['image', 'ai', 'logo'], 'Importuj obraz'); if (a) this.addImageAsset(a.id); },
   async addImageAsset(id) { const rec = await Assets.rec(id), s = this.slide, ar = (rec.w || 1) / (rec.h || 1), w = Math.min(s.w * 0.8, rec.w || 600), l = mkLayer('image', { x: s.w / 2, y: s.h / 2, w, h: w / ar }); l.img.assetId = id; l.name = rec.name.slice(0, 22); IMGS.set(id, await Assets.img(id)); this.add(l); },
   async replaceImage() { const l = this.sel; const fs = await pickFiles('image/*', false); if (!fs[0]) return; const id = await Assets.add(fs[0], 'image'); l.img.assetId = id; IMGS.set(id, await Assets.img(id)); this.commit(); this.stage.render(); },
-  async bgImage() { const a = await assetPicker(['image', 'ai'], 'Obraz tła'); let id = a && a.id; if (!a) { const fs = await pickFiles('image/*'); if (!fs[0]) return; id = await Assets.add(fs[0], 'image'); } this.slide.bg.assetId = id; IMGS.set(id, await Assets.img(id)); this.commit(); this.stage.render(); },
+  async bgImage() { const a = await assetPicker(['image', 'ai'], 'Obraz tła'); if (!a) return; const id = a.id; this.slide.bg.assetId = id; IMGS.set(id, await Assets.img(id)); this.commit(); this.stage.render(); },
   async removeBg() {
     const l = this.sel; try {
       const im = await Assets.img(l.img.assetId), c = document.createElement('canvas'); c.width = im.naturalWidth; c.height = im.naturalHeight; const x = c.getContext('2d', { willReadFrequently: true }); x.drawImage(im, 0, 0); const d = x.getImageData(0, 0, c.width, c.height), px = d.data, W = c.width, H = c.height;
@@ -1766,16 +1787,18 @@ const Video = {
       h('button', { class: 'btn sm', onclick: () => { const c = jclone(r); c.id = uid('r'); c.name = r.name + ' (wariant)'; c.layers.forEach((l) => { l.id = uid('l'); }); c.audio.forEach((a) => { a.id = uid('au'); }); p.reels.push(c); p.curReel = c.id; touch(); this.show(); toast('Utworzono wariant rolki', 'ok'); } }, 'Duplikuj'),
       h('button', { class: 'btn sm', onclick: (e) => popMenu(e.currentTarget, [{ t: 'Zmień nazwę…', i: '✎', fn: () => { const n = prompt('Nazwa:', r.name); if (n) { r.name = n; touch(); this.leftPanel(); } } }, { t: 'Usuń rolkę', i: '🗑', fn: () => { if (!confirm('Usunąć „' + r.name + '”?')) return; p.reels = p.reels.filter((x) => x !== r); p.curReel = p.reels[0] ? p.reels[0].id : null; touch(); this.show(); } }]) }, '⋯')),
       h('div', { class: 'fine', style: { marginTop: '6px' } }, 'Format 9:16 (1080×1920), ' + r.fps + ' fps, ' + fmtTime(r.dur))));
+    L.append(h('div', { class: 'ph' }, 'Import rolki'), h('div', { class: 'sec' }, h('button', { class: 'btn', style: { width: '100%' }, title: 'Skrypt rolki z dokumentu „Rolki” (projekt Agent John): tekst na ekranie z czasami, skrypt lektora, opis', onclick: () => Rolka.dialog() }, '📥 Rolka z dokumentu (Agent John)')));
     L.append(h('div', { class: 'ph' }, 'Dodaj na oś czasu'), h('div', { class: 'sec' }, h('div', { class: 'row' },
       h('button', { class: 'btn', onclick: (e) => popMenu(e.currentTarget, TPL_KINDS.map(([k, n]) => ({ t: n, i: '＋', fn: () => this.addScene(k) }))) }, '＋ Scena z szablonu'),
       h('button', { class: 'btn', onclick: () => this.addLayer('text') }, 'T Tekst')), h('div', { class: 'row', style: { marginTop: '6px' } },
       h('button', { class: 'btn', onclick: (e) => popMenu(e.currentTarget, [{ t: 'Prostokąt', i: '▭', fn: () => this.addLayer('shape', 'rect') }, { t: 'Elipsa', i: '◯', fn: () => this.addLayer('shape', 'ellipse') }, { t: 'Pasek', i: '▬', fn: () => this.addLayer('shape', 'line') }]) }, '▭ Kształt'),
-      h('button', { class: 'btn', onclick: (e) => popMenu(e.currentTarget, [{ t: 'Obraz z komputera…', i: '🖼', fn: () => this.addMedia('image', false) }, { t: 'Obraz z biblioteki…', i: '🗂', fn: () => this.addMedia('image', true) }, { t: 'Wideo z komputera…', i: '🎬', fn: () => this.addMedia('video', false) }, { t: 'Wideo z biblioteki…', i: '🗂', fn: () => this.addMedia('video', true) }]) }, '🖼 Obraz / wideo')),
+      h('button', { class: 'btn', onclick: (e) => popMenu(e.currentTarget, [{ t: 'Obraz z komputera…', i: '🖼', fn: () => this.addMedia('image', false) }, { t: 'Obraz: biblioteka / Drive / link…', i: '🗂', fn: () => this.addMedia('image', true) }, { t: 'Wideo z komputera…', i: '🎬', fn: () => this.addMedia('video', false) }, { t: 'Wideo: biblioteka / Drive / link…', i: '🗂', fn: () => this.addMedia('video', true) }]) }, '🖼 Obraz / wideo')),
+      h('div', { class: 'row', style: { marginTop: '6px' } }, h('button', { class: 'btn pri', title: 'Wideo z Twoją twarzą w kole lub prostokącie (z dźwiękiem)', onclick: (e) => popMenu(e.currentTarget, [{ t: 'Importuj: biblioteka / Drive / link…', i: '🗂', fn: () => this.addMedia('video', true, { pip: true }) }, { t: 'Plik z komputera / telefonu…', i: '📁', fn: () => this.addMedia('video', false, { pip: true }) }]) }, '🗣 Gadająca głowa')),
       h('div', { class: 'row', style: { marginTop: '6px' } }, h('button', { class: 'btn', onclick: (e) => popMenu(e.currentTarget, [['agrad', 'Płynący gradient'], ['orbs', 'Rozmyte kule'], ['particles', 'Cząsteczki'], ['confetti', 'Konfetti'], ['stripes', 'Pasy'], ['bar', 'Pasek postępu']].map(([k, n]) => ({ t: n, i: '✦', fn: () => this.addLayer('fx', k) }))) }, '✦ Animowane tło'),
         h('button', { class: 'btn', onclick: (e) => popMenu(e.currentTarget, [{ t: 'Głos / lektor…', i: '🎙', fn: () => this.addAudio('voice') }, { t: 'Muzyka…', i: '🎵', fn: () => this.addAudio('music') }, { t: 'Efekt dźwiękowy…', i: '🔔', fn: () => this.addAudio('sfx') }]) }, '🎧 Dźwięk')),
       h('div', { class: 'hint', style: { marginTop: '8px' }, html: rich('Klip trafia w miejsce kursora (czerwona linia). (Nagrywanie i obróbka głosu: zakładka Audio.)') })));
     L.append(h('div', { class: 'ph' }, 'Napisy'), h('div', { class: 'sec' }, h('button', { class: 'btn', style: { width: '100%' }, onclick: () => this.subtitlesDialog() }, 'Napisy z nagrania głosu (Whisper)'), h('div', { class: 'hint', style: { marginTop: '6px' }, html: rich('Rozpoznaje mowę z klipów na ścieżce „Głos” i układa napisy w bezpiecznej strefie. (Wymaga działania Workera AI.)') })));
-    const m = r.meta || {}; if (m.concept || m.hook) L.append(h('div', { class: 'ph' }, 'Z asystenta'), h('div', { class: 'sec hint', html: rich((m.hook ? '„' + m.hook + '” ' : '') + (m.concept ? m.concept : '')) + (m.music ? '<br>' + rich('Muzyka: ' + m.music) : '') }));
+    const m = r.meta || {}; if (m.concept || m.hook) L.append(h('div', { class: 'ph' }, m.source || 'Z asystenta'), h('div', { class: 'sec hint', html: rich((m.hook ? '„' + m.hook + '” ' : '') + (m.concept ? m.concept : '')) + (m.music ? '<br>' + rich('Muzyka: ' + m.music) : '') + (m.shots ? '<br>' + rich('Ujęcia: ' + m.shots) : '') + (m.how ? '<br>' + rich('Jak mówić: ' + m.how) : '') + (m.caution ? '<br>' + rich('Zastrzeżenia: ' + m.caution) : '') }));
   },
   rightPanel() {
     const R = this.right, r = this.reel; R.innerHTML = ''; if (!r) return; const cb = (k) => { this.stage.render(); if (k === 'commit') this.commit(); };
@@ -1810,7 +1833,7 @@ const Video = {
 
   // ── Zaznaczanie / commit ──
   select(kind, id) { this.selKind = kind; this.selId = id; this.panels(); this.stage.render(); this.tlMarks(); },
-  commit(audio) { if (this.hist) this.hist.mark(); if (audio) this.mc = null; touch(); this.tl(); this.rightPanelSoft(); this.stage.render(); },
+  commit(audio) { this.syncVideoAudio(); if (this.hist) this.hist.mark(); if (audio) this.mc = null; touch(); this.tl(); this.rightPanelSoft(); this.stage.render(); },
   rightPanelSoft() { const a = document.activeElement; if (a && this.right.contains(a) && /INPUT|TEXTAREA|SELECT/.test(a.tagName)) return; this.rightPanel(); },
   undo() { if (this.hist && this.hist.undo()) { this.selId = null; this.mc = null; this.panels(); this.tl(); this.stage.render(); touch(); } },
   redo() { if (this.hist && this.hist.redo()) { this.selId = null; this.mc = null; this.panels(); this.tl(); this.stage.render(); touch(); } },
@@ -1831,23 +1854,53 @@ const Video = {
     if (type === 'fx') { l.fx.kind = kind; l.w = r.w; l.h = r.h; Object.assign(l.fx, { c1: P.cur.brand.colors.accent, c2: P.cur.brand.colors.primary, c3: mix(P.cur.brand.colors.accent, '#ffffff', 0.4) }); if (kind === 'bar') { l.w = r.w * 0.7; l.h = 18; l.y = r.h - SAFE.bottom + 30; } l.t0 = 0; l.t1 = r.dur; l.track = 'anim'; }
     animateLayers([l], r.style, 4); this.ensureDur(l.t1); r.layers.push(l); this.afterAdd(l);
   },
-  async addMedia(kind, lib) {
-    let id; try {
-      if (lib) { const a = await assetPicker(kind === 'image' ? ['image', 'ai', 'logo'] : ['video'], 'Wybierz z biblioteki'); if (!a) return; id = a.id; }
-      else { const fs = await pickFiles(kind === 'image' ? 'image/*' : 'video/*', false); if (!fs[0]) return; id = await Assets.add(fs[0], kind); }
+  async addMedia(kind, lib, opt) {
+    opt = opt || {}; let id, tt; try {
+      if (lib) { const a = await assetPicker(kind === 'image' ? ['image', 'ai', 'logo'] : ['video'], 'Importuj ' + (kind === 'image' ? 'obraz' : 'wideo')); if (!a) return; id = a.id; }
+      else { const fs = await pickFiles(kind === 'image' ? 'image/*' : 'video/*,.mov,.mp4,.m4v,.webm,.mkv,.3gp', false); if (!fs[0]) return; tt = toast('Wczytuję „' + fs[0].name + '” (' + fmtSize(fs[0].size) + ')…', 'info', 120000); id = await Assets.add(fs[0], kind); }
       const rec = await Assets.rec(id); if (rec.err) throw new Error(rec.err); const r = this.reel, ar = (rec.w || 9) / (rec.h || 16), t0 = Math.min(this.t, Math.max(0, r.dur - 1));
       const l = mkLayer(kind, { x: r.w / 2, y: r.h / 2 }); l.t0 = t0; l.name = rec.name.slice(0, 22);
-      if (kind === 'image') { l.w = Math.min(r.w * 0.9, rec.w || 800); l.h = l.w / ar; l.img.assetId = id; IMGS.set(id, await Assets.img(id)); l.t1 = t0 + 4; }
-      else { l.w = r.w; l.h = r.h; l.video.assetId = id; l.video.fit = 'cover'; l.t1 = t0 + Math.min(rec.dur || 5, 30); l.name = 'Wideo: ' + l.name; }
-      this.ensureDur(l.t1); animateLayers([l], r.style, l.t1 - l.t0); if (kind === 'video') l.anim.in.p = 'none', l.anim.out.p = 'none'; r.layers.push(l); await this.ensureVideos(); this.afterAdd(l);
-    } catch (e) { toast('Nie udało się dodać pliku: ' + errText(e), 'bad', 7000); }
+      if (kind === 'image') { l.w = Math.min(r.w * 0.9, rec.w || 800); l.h = l.w / ar; l.img.assetId = id; IMGS.set(id, await Assets.img(id)); l.t1 = t0 + 4; r.layers.push(l); }
+      else {
+        l.w = r.w; l.h = r.h; l.video.assetId = id; l.video.fit = 'cover'; l.t1 = t0 + Math.min(rec.dur || 5, 120); l.name = (opt.pip ? 'Gadająca głowa: ' : 'Wideo: ') + l.name;
+        const bgN = r.layers.filter((x) => x.track === 'bg').length; r.layers.splice(bgN, 0, l); // wideo pod tekstami i grafikami (nad tłem)
+        if (opt.pip) { Object.assign(l.video, { shape: 'circle', bw: 8, bc: P.cur.brand.colors.accent, glow: 28 }); this.applyPip(l, { shape: 'circle', size: 'm', pos: 'bc' }); }
+      }
+      this.ensureDur(l.t1); animateLayers([l], r.style, l.t1 - l.t0); if (kind === 'video') { l.anim.in = opt.pip ? { p: 'zoom', d: 0.5, dl: 0, e: 'outBack', dir: 'bottom' } : { p: 'none', d: 0.6, dl: 0, e: 'outCubic', dir: 'bottom' }; l.anim.out.p = 'none'; }
+      await this.ensureVideos(); let audio = false; if (kind === 'video') audio = await this.attachVideoAudio(l);
+      if (tt) tt.remove(); this.afterAdd(l); if (kind === 'video') toast(audio ? 'Dodano wideo z dźwiękiem (ścieżka „Głos”).' : 'Dodano wideo. Brak odczytywalnego dźwięku w pliku.', audio ? 'ok' : 'warn', 5000);
+    } catch (e) { if (tt) tt.remove(); toast('Nie udało się dodać pliku: ' + errText(e), 'bad', 12000); }
+  },
+  // Gadająca głowa: kształt (koło / zaokrąglony / prostokąt / pełny ekran), rozmiar i miejsce w bezpiecznej strefie
+  applyPip(l, o) {
+    const r = this.reel, c = l.video, W = r.w, H = r.h; o = o || {}; if (o.shape) c.shape = o.shape; if (o.size) c.size = o.size; if (o.pos) c.pos = o.pos;
+    const shape = c.shape || 'rect', size = c.size || 'm', pos = c.pos || 'bc';
+    if (shape === 'full') { l.w = W; l.h = H; l.x = W / 2; l.y = H / 2; c.r = 0; return; }
+    const f = { s: 0.3, m: 0.46, l: 0.7, xl: 0.94 }[size] || 0.46, room = W - SAFE.left - SAFE.right, w = Math.min(Math.round(W * f), room), h = shape === 'circle' ? w : Math.round(w * 1.25);
+    l.w = w; l.h = h; if (shape === 'round') c.r = Math.round(w * 0.09); else if (shape === 'rect') c.r = 0;
+    const px = pos[1] === 'l' ? SAFE.left + w / 2 : pos[1] === 'r' ? W - SAFE.right - w / 2 : (SAFE.left + W - SAFE.right) / 2, py = pos[0] === 't' ? SAFE.top + h / 2 : pos[0] === 'm' ? H / 2 : H - SAFE.bottom - h / 2;
+    l.x = Math.round(px); l.y = Math.round(py);
+  },
+  // Dźwięk z pliku wideo → klip na ścieżce „Głos” powiązany z warstwą (przesuwa się i przycina razem z nią)
+  async attachVideoAudio(l) {
+    const r = this.reel, id = l.video.assetId; if (!id) return false; let A = null; try { A = await Assets.audio(id); } catch (e) { A = null; }
+    if (!A || !A.chs || !A.chs[0] || A.chs[0].length < 2000) return false;
+    const it = { id: uid('au'), track: 'voice', assetId: id, name: 'Dźwięk: ' + l.name.replace(/^(Wideo|Gadająca głowa): /, '').slice(0, 22), t0: l.t0, in: l.video.in || 0, dur: Math.max(0.1, Math.min(l.t1, r.dur) - l.t0), srcDur: A.chs[0].length / A.fs, gain: 0, fi: 0.01, fo: 0.03, loop: false, duck: false, link: l.id };
+    it.lk = this.lkSig(l); r.audio.push(it); this.mc = null; return true;
+  },
+  lkSig(l) { const c = l.video; return JSON.stringify([l.t0, Math.min(l.t1, this.reel.dur), c.in || 0, c.speed || 1, !!c.mute, c.vol || 0, !!l.hide]); },
+  syncVideoAudio() {
+    const r = this.reel; if (!r || !r.audio) return; r.audio = r.audio.filter((a) => {
+      if (!a.link) return true; const l = r.layers.find((x) => x.id === a.link); if (!l) return false; const sig = this.lkSig(l); if (a.lk === sig) return true; const c = l.video, sp = c.speed || 1;
+      a.t0 = l.t0; a.in = c.in || 0; a.dur = Math.max(0.1, Math.min(l.t1, r.dur) - l.t0); a.gain = (Math.abs(sp - 1) > 0.01 || c.mute || l.hide) ? -90 : (c.vol || 0); a.lk = sig; this.mc = null; return true;
+    });
   },
   async addAudio(track) {
     try {
-      const src = await new Promise((res) => { modal('Skąd wziąć dźwięk?', h('div', {}, [['takes', '🎙 Nagrania z Audio Studio'], ['lib', '🗂 Biblioteka zasobów'], ['file', '📁 Plik z komputera (MP3, WAV, M4A…)']].map(([k, n]) => h('button', { class: 'btn', style: { display: 'block', width: '100%', margin: '6px 0', textAlign: 'left' }, onclick: (e) => { res(k); e.target.closest('.modal-back').remove(); } }, n))), [{ t: 'Anuluj', fn: () => { res(null); } }]); });
+      const src = await new Promise((res) => { modal('Skąd wziąć dźwięk?', h('div', {}, [['takes', '🎙 Nagrania z Audio Studio'], ['lib', '🗂 Biblioteka / Drive / link'], ['file', '📁 Plik z komputera (MP3, WAV, M4A…)']].map(([k, n]) => h('button', { class: 'btn', style: { display: 'block', width: '100%', margin: '6px 0', textAlign: 'left' }, onclick: (e) => { res(k); e.target.closest('.modal-back').remove(); } }, n))), [{ t: 'Anuluj', fn: () => { res(null); } }]); });
       if (!src) return; let id, name;
       if (src === 'file') { const fs = await pickFiles('audio/*', false); if (!fs[0]) return; id = await Assets.add(fs[0], 'audio'); name = fs[0].name; }
-      else if (src === 'lib') { const a = await assetPicker(['audio', 'voice', 'music', 'sfx'], 'Wybierz dźwięk'); if (!a) return; id = a.id; name = a.name; }
+      else if (src === 'lib') { const a = await assetPicker(['audio', 'voice', 'music', 'sfx'], 'Importuj dźwięk'); if (!a) return; id = a.id; name = a.name; }
       else { const tk = (P.cur.audio.takes || []); if (!tk.length) { toast('Brak nagrań w Audio Studio. Nagraj lub wgraj głos w zakładce Audio.', 'warn'); return; } const pick = await new Promise((res) => { const m = modal('Nagrania z Audio Studio', h('div', { class: 'zebra' }, tk.map((x) => h('div', { class: 'take', onclick: () => { res(x); m.close(); } }, h('span', {}, x.name), h('span', { class: 'fine' }, fmtTime(x.dur))))), [{ t: 'Anuluj', fn: () => res(null) }]); }); if (!pick) return; id = pick.assetId; name = pick.name; }
       const rec = await Assets.rec(id); if (!rec || !rec.dur) throw new Error('Nie udało się odczytać dźwięku' + (rec && rec.err ? ': ' + rec.err : '')); const r = this.reel, m = P.cur.mix, t0 = Math.min(this.t, Math.max(0, r.dur - 0.5));
       const it = { id: uid('au'), track, assetId: id, name: String(name).replace(/\.[a-z0-9]+$/i, '').slice(0, 30), t0, in: 0, dur: track === 'music' ? Math.max(1, r.dur - t0) : Math.min(rec.dur, Math.max(0.5, r.dur - t0)), srcDur: rec.dur, gain: track === 'music' ? m.musicDb + 0 : track === 'sfx' ? -6 : 0, fi: track === 'music' ? 1 : 0.01, fo: track === 'music' ? 1.5 : 0.03, loop: track === 'music', duck: track === 'music' };
@@ -1968,7 +2021,7 @@ const Video = {
   async ensureVideos() {
     const r = this.reel; if (!r) return; for (const l of r.layers) if (l.type === 'video' && l.video.assetId) {
       let v = this.vids.get(l.id); if (v && v.asset === l.video.assetId) continue; const u = await Assets.url(l.video.assetId); if (!u) continue; const el = document.createElement('video'); el.muted = true; el.playsInline = true; el.preload = 'auto'; el.src = u;
-      await new Promise((res) => { el.onloadeddata = res; el.onerror = res; setTimeout(res, 5000); }); el.addEventListener('seeked', () => { if (!this.playing) this.stage.render(); }); this.vids.set(l.id, { el, asset: l.video.assetId });
+      await new Promise((res) => { el.onloadeddata = res; el.onerror = res; setTimeout(res, 8000); }); if (!el.videoWidth) toast('Przeglądarka nie wyświetla obrazu z „' + l.name + '” (kodek, np. HEVC/H.265). Użyj MP4 H.264 lub nagraj w trybie „Najbardziej zgodny”.', 'bad', 12000); el.addEventListener('seeked', () => { if (!this.playing) this.stage.render(); }); this.vids.set(l.id, { el, asset: l.video.assetId });
     }
   },
   syncVideos(t, playing) {
@@ -2108,7 +2161,7 @@ const AudioStudio = {
   },
   // ── Z Google Drive: folder „Creative Studio > Audio Input” udostępniony linkiem (Worker pośredniczy: api/s/drive/*) ──
   driveId(s) { s = String(s || '').trim(); const m = s.match(/\/folders\/([\w-]{10,})/) || s.match(/[?&]id=([\w-]{10,})/) || (/^[\w-]{10,}$/.test(s) ? [0, s] : null); return m ? m[1] : ''; },
-  driveErr(j, st) { return ({ private: 'Folder nie jest udostępniony linkiem. W Drive: prawy klik na „Audio Input” → Udostępnij → Dostęp ogólny → „Każdy, kto ma link” (Wyświetlający).', not_found: 'Nie znaleziono folderu lub pliku. Sprawdź link.', rate: 'Limit zapytań na godzinę. Spróbuj za chwilę.', too_big: 'Plik większy niż 250 MB.', bad: 'Nieprawidłowy link do folderu.', net: 'Worker nie połączył się z Google Drive: ' + ((j && j.msg) || '') }[j && j.code]) || (st === 403 ? 'Odmowa dostępu (403). Zaloguj się ponownie (Cloudflare Access).' : 'Błąd Drive (HTTP ' + st + ((j && j.msg) ? ': ' + j.msg : '') + ')'); },
+  driveErr(j, st) { return ({ private: 'Folder nie jest udostępniony linkiem. W Drive: prawy klik na folderze → Udostępnij → Dostęp ogólny → „Każdy, kto ma link” (Wyświetlający).', not_found: 'Nie znaleziono folderu lub pliku. Sprawdź link.', rate: 'Limit zapytań na godzinę. Spróbuj za chwilę.', too_big: 'Plik większy niż 250 MB.', bad: 'Nieprawidłowy link.', net: 'Worker nie połączył się z Google Drive: ' + ((j && j.msg) || '') }[j && j.code]) || (st === 403 ? 'Odmowa dostępu (403). Zaloguj się ponownie (Cloudflare Access).' : 'Błąd Drive (HTTP ' + st + ((j && j.msg) ? ': ' + j.msg : '') + ')'); },
   async driveFetchList(id) { let r; try { r = await fetch('api/s/drive/list?id=' + encodeURIComponent(id)); } catch (e) { throw new Error('Brak połączenia z serwerem: ' + errText(e)); } let j = {}; try { j = await r.json(); } catch { /* nie JSON */ } if (!r.ok) throw new Error(this.driveErr(j, r.status)); return j.files || []; },
   async driveDownload(f, pr) {
     let r; try { r = await fetch('api/s/drive/get?id=' + encodeURIComponent(f.id)); } catch (e) { throw new Error('Brak połączenia z serwerem: ' + errText(e)); }
@@ -2307,6 +2360,133 @@ const AudioStudio = {
   },
 };
 
+// ── Import materiałów (obraz / wideo / dźwięk) ──
+// Jedno okno ze źródłami: 🗂 biblioteka (wszystkie projekty) | ☁ folder Google Drive | 🔗 link do pliku | 📁 plik z urządzenia.
+// Materiały z innych czatów i projektów Claude trafiają na Drive (lub GitHub) – tu wybierasz je z listy albo wklejasz link.
+const Importer = {
+  FK: 'css-imp-folder', FK0: 'css-drive-folder', AK: 'css-imp-all',
+  EXT: { image: /\.(jpe?g|png|webp|gif|avif)$/i, video: /\.(mp4|m4v|mov|webm|mkv|3gp)$/i, audio: /\.(m4a|mp3|wav|aac|ogg|oga|opus|flac|aif|aiff|caf|amr|wma)$/i },
+  LBL: { image: 'obraz', video: 'wideo', audio: 'dźwięk' },
+  cls(kinds) { kinds = kinds || []; return kinds.includes('video') ? 'video' : kinds.some((k) => ['audio', 'voice', 'music', 'sfx'].includes(k)) ? 'audio' : 'image'; },
+  fits(cls, name, type) { type = type || ''; if (type.startsWith(cls + '/') || this.EXT[cls].test(name || '')) return true; return cls === 'audio' && (type.startsWith('video/') || this.EXT.video.test(name || '')); }, // dźwięk można wyciągnąć też z wideo
+  accept(cls) { return { image: 'image/*', video: 'video/*,.mov,.mp4,.m4v,.webm,.mkv,.3gp', audio: 'audio/*,video/*,.m4a,.mp3,.wav,.aac,.ogg,.opus,.flac' }[cls]; },
+  err(j, st, isFile) {
+    const c = j && j.code;
+    if (c === 'private') return isFile ? 'Plik nie jest udostępniony linkiem. W Drive: prawy klik na plik → Udostępnij → Dostęp ogólny → „Każdy, kto ma link”.' : AudioStudio.driveErr(j, st);
+    if (c === 'host') return 'Ten adres nie jest obsługiwany. Wklej link do pliku z Google Drive, GitHub (publiczne repo) lub Dropbox.';
+    return AudioStudio.driveErr(j, st);
+  },
+  async download(url, name, pr) {
+    let r; try { r = await fetch(url); } catch (e) { throw new Error('Brak połączenia z serwerem: ' + errText(e)); }
+    if (!r.ok) { let j = {}; try { j = await r.json(); } catch { /* nie JSON */ } throw new Error(this.err(j, r.status, true)); }
+    const tot = +r.headers.get('content-length') || 0, parts = []; let got = 0;
+    if (r.body && r.body.getReader) { const rd = r.body.getReader(); for (;;) { if (pr.cancel) { rd.cancel(); throw new Error('przerwano'); } const { done, value } = await rd.read(); if (done) break; parts.push(value); got += value.length; pr.set(tot ? Math.min(0.95, got / tot) : 0.5, (got / 1e6).toFixed(1) + (tot ? ' / ' + (tot / 1e6).toFixed(1) : '') + ' MB'); } }
+    else { const b = new Uint8Array(await r.arrayBuffer()); parts.push(b); got = b.length; }
+    if (!got) throw new Error('pusty plik');
+    let nm = name; if (!nm) { const xf = r.headers.get('x-filename'); if (xf) { try { nm = decodeURIComponent(xf); } catch { nm = xf; } } }
+    let ty = (r.headers.get('content-type') || '').split(';')[0].trim(); if (ty === 'application/octet-stream' || ty === 'binary/octet-stream') ty = ''; // typ dobierze Assets.add po rozszerzeniu
+    return new File(parts, nm || 'plik', { type: ty });
+  },
+  // pobiera plik z adresu Workera, sprawdza typ i zapisuje jako zasób projektu → rekord zasobu (lub null)
+  async fetchAsset(url, name, cls) {
+    const pr = progressModal('Pobieranie: ' + (name || 'plik'));
+    try {
+      const file = await this.download(url, name, pr);
+      if (!this.fits(cls, file.name, file.type)) throw new Error('„' + file.name + '” nie wygląda na ' + this.LBL[cls] + ' (typ: ' + (file.type || 'nieznany') + ').');
+      pr.set(0.97, 'zapis'); const id = await Assets.add(file, cls === 'audio' ? 'audio' : cls); pr.close();
+      return await Assets.rec(id);
+    } catch (e) { pr.close(); toast('Import: ' + errText(e), 'bad', 9000); return null; }
+  },
+  // Okno wyboru. Zwraca rekord zasobu (jak dawny assetPicker) albo null.
+  pick(kinds, title) {
+    kinds = kinds || ['image']; const cls = this.cls(kinds), self = this;
+    return new Promise((res) => {
+      let done = false, M, iv, cur = 'lib'; const fin = (v) => { if (done) return; done = true; clearInterval(iv); if (M) M.close(); res(v); };
+      const tabs = h('div', { class: 'seg imptabs' }), view = h('div', { class: 'impv' }), body = h('div', { class: 'imp' }, tabs, view);
+      const T = [['lib', '🗂 Biblioteka'], ['drive', '☁ Google Drive'], ['link', '🔗 Z linku'], ['dev', '📁 Z urządzenia']];
+      const go = (k) => { cur = k; [...tabs.children].forEach((b, i) => b.classList.toggle('on', T[i][0] === k)); view.innerHTML = ''; ({ lib, drive, link, dev })[k](); };
+      T.forEach(([k, n]) => tabs.append(h('button', { onclick: () => go(k) }, n)));
+
+      // 1. biblioteka: zasoby tego i (opcjonalnie) innych projektów
+      const lib = async () => {
+        view.append(h('div', { class: 'hint' }, 'Wczytuję bibliotekę…'));
+        const [all, prj] = await Promise.all([DBI.all('assets'), listProjects().catch(() => [])]); if (cur !== 'lib') return;
+        const names = {}; prj.forEach((p) => { names[p.id] = p.name; });
+        let showAll = true; try { showAll = localStorage.getItem(self.AK) !== '0'; } catch { /* tryb prywatny */ }
+        const mine = (x) => !P.cur || x.pid === P.cur.id || !x.pid;
+        const ok = (a) => a.kind !== 'font' && (kinds.includes(a.kind) || (cls === 'image' && (a.type || '').startsWith('image/')) || (cls === 'audio' && a.kind === 'video'));
+        const draw = () => {
+          view.innerHTML = '';
+          const items = all.filter((a) => ok(a) && (showAll || mine(a))).sort((a, b) => (mine(b) - mine(a)) || b.created - a.created), other = all.filter((a) => ok(a) && !mine(a)).length;
+          view.append(h('label', { class: 'row', style: { gap: '8px', cursor: 'pointer', margin: '0 0 8px' } }, h('input', { type: 'checkbox', checked: showAll, style: { flex: 'none', width: 'auto' }, onchange: (e) => { showAll = e.target.checked; try { localStorage.setItem(self.AK, showAll ? '1' : '0'); } catch { /* nic */ } draw(); } }), h('span', {}, 'Pokaż też materiały z innych projektów' + (other ? ' (' + other + ')' : ''))));
+          if (!items.length) {
+            view.append(h('div', { class: 'warnrow' }, 'Biblioteka nie ma jeszcze ' + (cls === 'image' ? 'obrazów' : cls === 'video' ? 'wideo' : 'dźwięków') + '. Wczytaj je tutaj:'),
+              h('div', { class: 'row' }, h('button', { class: 'btn pri', onclick: () => go('drive') }, '☁ Z folderu Drive'), h('button', { class: 'btn', onclick: () => go('link') }, '🔗 Z linku'), h('button', { class: 'btn', onclick: () => go('dev') }, '📁 Z urządzenia')),
+              h('div', { class: 'hint', style: { marginTop: '8px' } }, 'Pliki z innych czatów i projektów Claude: poproś tam o zapis na Google Drive (np. folder „Creative Studio > Materiały”), udostępnij folder linkiem i wybierz go w „Z folderu Drive”.')); return;
+          }
+          const grid = h('div', { class: 'cards impgrid' });
+          for (const a of items) {
+            const isImg = (a.type || '').startsWith('image/'), foreign = !mine(a);
+            grid.append(h('div', { class: 'card', style: { cursor: 'pointer' }, title: a.name, onclick: () => fin(a) },
+              isImg ? imgThumbEl(a.id) : h('div', { style: { padding: '22px 6px', textAlign: 'center', fontSize: '22px' } }, (a.type || '').startsWith('audio') || a.kind === 'audio' || a.kind === 'voice' || a.kind === 'music' || a.kind === 'sfx' ? '🎧' : '🎬', a.dur ? h('div', { class: 'hint' }, fmtTime(a.dur)) : null),
+              h('div', { class: 'cap' }, h('span', {}, a.name.slice(0, 22)), h('span', {}, foreign ? '↗ ' + (names[a.pid] || 'inny proj.').slice(0, 14) : a.kind))));
+          }
+          view.append(grid);
+        };
+        draw();
+      };
+
+      // 2. folder Google Drive (z podfolderami)
+      const drive = () => {
+        let saved = ''; try { saved = AudioStudio.driveId(localStorage.getItem(self.FK) || '') || AudioStudio.driveId(localStorage.getItem(self.FK0) || ''); } catch { saved = ''; }
+        const setup = () => {
+          view.innerHTML = ''; const inp = h('input', { type: 'text', placeholder: 'https://drive.google.com/drive/folders/…', style: { width: '100%', margin: '8px 0' } });
+          view.append(h('div', { style: { lineHeight: '1.5' } }, '1. Na Google Drive utwórz folder (np. „Creative Studio > Materiały”) i wrzuć tam pliki – także te z innych czatów i projektów Claude.', h('br'), '2. Prawy klik na folderze → Udostępnij → Dostęp ogólny → „Każdy, kto ma link” (Wyświetlający).', h('br'), '3. Wklej link do folderu:'), inp,
+            h('div', { class: 'hint' }, 'Link zapisuje się tylko w tej przeglądarce. Kto zna link, widzi pliki z folderu – nie wrzucaj tam nic prywatnego.'),
+            h('div', { class: 'row', style: { marginTop: '8px' } }, h('button', { class: 'btn pri', onclick: () => { const v = AudioStudio.driveId(inp.value); if (!v) { toast('To nie wygląda na link do folderu Google Drive.', 'bad'); return; } try { localStorage.setItem(self.FK, v); } catch { /* nic */ } show(v, []); } }, 'Zapisz i pokaż pliki')));
+          setTimeout(() => inp.focus(), 30);
+        };
+        const show = async (id, stack) => {
+          view.innerHTML = ''; view.append(h('div', { class: 'hint' }, 'Wczytuję listę z Drive…'));
+          let files; try { files = await AudioStudio.driveFetchList(id); } catch (e) { if (cur !== 'drive') return; view.innerHTML = ''; view.append(h('div', { class: 'warnrow bad' }, errText(e)), h('div', { class: 'row' }, h('button', { class: 'btn', onclick: () => show(id, stack) }, '↻ Spróbuj ponownie'), h('button', { class: 'btn', onclick: () => { try { localStorage.removeItem(self.FK); } catch { /* nic */ } setup(); } }, 'Zmień folder'))); return; }
+          if (cur !== 'drive') return; view.innerHTML = '';
+          const dirs = files.filter((f) => f.folder).sort((a, b) => a.name.localeCompare(b.name, 'pl', { numeric: true })), media = files.filter((f) => !f.folder && self.fits(cls, f.name, '')).sort((a, b) => b.name.localeCompare(a.name, 'pl', { numeric: true })), skipped = files.length - dirs.length - media.length;
+          const list = h('div', { class: 'zebra', style: { maxHeight: '44vh', overflow: 'auto' } });
+          dirs.forEach((f) => list.append(h('div', { class: 'take', style: { alignItems: 'center' }, onclick: () => show(f.id, [...stack, id]) }, h('span', {}, '📁 ' + f.name), h('span', { class: 'hint' }, 'otwórz ›'))));
+          media.forEach((f) => { const b = h('button', { class: 'btn', onclick: async () => { b.disabled = true; const rec = await self.fetchAsset('api/s/drive/get?id=' + encodeURIComponent(f.id), f.name, cls); b.disabled = false; if (rec) fin(rec); } }, 'Importuj'); list.append(h('div', { class: 'take', style: { cursor: 'default', alignItems: 'center' } }, h('span', { style: { flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }, title: f.name }, f.name, f.date ? h('span', { class: 'hint' }, '  ·  ' + f.date) : null), b)); });
+          view.append(h('div', { class: 'hint', style: { marginBottom: '6px' } }, (media.length ? media.length + ' plik(ów): ' + self.LBL[cls] : 'W tym folderze brak plików typu: ' + self.LBL[cls]) + (dirs.length ? ', podfolderów: ' + dirs.length : '') + (skipped ? ' (pominięto ' + skipped + ' innych)' : '')), dirs.length || media.length ? list : null,
+            h('div', { class: 'row', style: { marginTop: '8px' } }, stack.length ? h('button', { class: 'btn', onclick: () => show(stack[stack.length - 1], stack.slice(0, -1)) }, '‹ Wyżej') : null, h('button', { class: 'btn', onclick: () => show(id, stack) }, '↻ Odśwież'), h('button', { class: 'btn', onclick: () => { try { localStorage.removeItem(self.FK); } catch { /* nic */ } setup(); } }, 'Zmień folder')));
+        };
+        if (saved) show(saved, []); else setup();
+      };
+
+      // 3. link do pliku (Drive / GitHub / Dropbox) lub do folderu Drive
+      const link = () => {
+        const inp = h('input', { type: 'text', placeholder: 'https://drive.google.com/file/d/…  albo link GitHub / Dropbox', style: { width: '100%', margin: '8px 0' } });
+        const run = async () => {
+          const v = inp.value.trim(); if (!/^https:\/\//i.test(v)) { toast('Wklej pełny adres zaczynający się od https://', 'bad'); return; }
+          if (/drive\.google\.com\/.*\/folders\//.test(v)) { const id = AudioStudio.driveId(v); if (id) { try { localStorage.setItem(self.FK, id); } catch { /* nic */ } go('drive'); return; } }
+          go0.disabled = true; const rec = await self.fetchAsset('api/s/link?url=' + encodeURIComponent(v), '', cls); go0.disabled = false; if (rec) fin(rec);
+        };
+        const go0 = h('button', { class: 'btn pri', onclick: run }, 'Importuj'); inp.onkeydown = (e) => { if (e.key === 'Enter') run(); };
+        view.append(h('div', {}, 'Wklej link do pliku (' + self.LBL[cls] + ') udostępnionego linkiem:'), inp, h('div', { class: 'row' }, go0),
+          h('div', { class: 'hint', style: { marginTop: '8px', lineHeight: '1.5' } }, 'Obsługiwane: Google Drive (plik: „Każdy, kto ma link”), GitHub (publiczne repo, link do pliku), Dropbox. Link do folderu Drive otworzy listę plików. Limit pliku: 250 MB.'));
+        setTimeout(() => inp.focus(), 30);
+      };
+
+      // 4. plik z urządzenia
+      const dev = () => {
+        view.append(h('div', { class: 'hint', style: { marginBottom: '8px' } }, 'Plik z tego komputera lub telefonu (' + self.LBL[cls] + ').'),
+          h('button', { class: 'btn pri', onclick: async () => { const fs = await pickFiles(self.accept(cls), false); if (!fs[0]) return; const tt = toast('Wczytuję „' + fs[0].name + '” (' + fmtSize(fs[0].size) + ')…', 'info', 120000); try { const id = await Assets.add(fs[0], cls === 'audio' ? 'audio' : cls); tt.remove(); fin(await Assets.rec(id)); } catch (e) { tt.remove(); toast('Nie udało się wczytać: ' + errText(e), 'bad', 8000); } } }, 'Wybierz plik…'));
+      };
+
+      M = modal(title || 'Importuj materiały', body, [{ t: 'Anuluj', fn: () => { fin(null); } }]);
+      iv = setInterval(() => { if (!M.box.isConnected) fin(null); }, 400); // zamknięcie Esc / klikiem w tło też kończy obietnicę
+      go('lib');
+    });
+  },
+};
+
 /* PUBLISHING STUDIO: walidacja pod sieci (IG / YouTube / TikTok / Facebook), opis i hashtagi, pakiet do wgrania, bramka zatwierdzania, FINAL PUBLISH, dziennik, kalendarz treści */
 const NETS = {
   ig: { n: 'Instagram Reels', ic: '📸', url: 'https://www.instagram.com/', max: 90, cap: 2200 },
@@ -2371,7 +2551,7 @@ const Publish = {
     if (p.kind === 'video') { mat.append(info && p.video ? h('div', { class: 'card' }, h('table', { class: 'qc' }, ...[['Plik', info.name], ['Rozmiar', fmtSize(info.size)], ['Długość', info.dur.toFixed(1) + ' s'], ['Wymiary', info.w + '×' + info.h + ' @ ' + info.fps + ' fps'], ['Kodeki', info.note || info.kind], ['Wyeksportowano', new Date(info.ts).toLocaleString('pl-PL')]].map(([a, b]) => h('tr', {}, h('td', {}, a), h('td', {}, b))))) : h('div', { class: 'hint', html: rich('Brak wyeksportowanej rolki. Zaprojektuj ją w zakładce (Wideo) i wybierz Eksport → MP4.') }), h('div', { class: 'row', style: { marginTop: '6px' } }, h('button', { class: 'btn', onclick: () => S.go('video') }, 'Przejdź do Wideo'), info && p.video ? h('button', { class: 'btn', onclick: async () => { const b = await Assets.blob(p.video); if (b) download(b, info.name); } }, 'Pobierz plik') : null)); }
     else { const sel = h('select', { onchange: (e) => { p.postId = e.target.value; touch(); this.right(); } }, c.posts.map((x) => h('option', { value: x.id, selected: x.id === (p.postId || c.curPost) }, x.name + ' (' + x.slides.length + ' szt.)'))); mat.append(c.posts.length ? sel : h('div', { class: 'hint', html: rich('Brak projektów graficznych. Utwórz karuzelę w zakładce (Grafiki).') })); }
     L.append(h('h3', { style: { marginTop: 0 } }, 'Treść publikacji'), h('div', { class: 'fld' }, h('label', {}, 'Rodzaj materiału'), fld({ k: 'kind', t: 'seg', opts: [['video', 'Rolka (wideo)'], ['images', 'Karuzela / zdjęcia']] }, p, (k) => { touch(); this.render(); })), mat);
-    const cov = h('div', { class: 'row', style: { marginTop: '8px' } }, p.cover ? h('div', { class: 'thumbs' }, h('div', { class: 'th', style: { width: '54px', height: '96px' } }, imgThumbEl(p.cover))) : h('span', { class: 'hint' }, 'Brak okładki.'), h('button', { class: 'btn', onclick: async () => { const a = await assetPicker(['image', 'ai'], 'Okładka'); if (a) { p.cover = a.id; touch(); this.render(); } } }, 'Wybierz…'), p.cover ? h('button', { class: 'btn bad', onclick: () => { p.cover = null; touch(); this.render(); } }, 'Usuń') : null);
+    const cov = h('div', { class: 'row', style: { marginTop: '8px' } }, p.cover ? h('div', { class: 'thumbs' }, h('div', { class: 'th', style: { width: '54px', height: '96px' } }, imgThumbEl(p.cover))) : h('span', { class: 'hint' }, 'Brak okładki.'), h('button', { class: 'btn', onclick: async () => { const a = await assetPicker(['image', 'ai'], 'Okładka – importuj obraz'); if (a) { p.cover = a.id; touch(); this.render(); } } }, 'Wybierz…'), p.cover ? h('button', { class: 'btn bad', onclick: () => { p.cover = null; touch(); this.render(); } }, 'Usuń') : null);
     L.append(h('div', { class: 'fld', style: { marginTop: '10px' } }, h('label', {}, 'Okładka (z klatki rolki: zakładka Wideo → Eksport; ze slajdu: Grafiki → Eksport)'), cov));
     const cnt = (el, max) => { const s = h('span', { class: 'fine' }); const f = () => { s.textContent = el.value.length + (max ? ' / ' + max : ''); s.style.color = max && el.value.length > max ? 'var(--bad)' : ''; }; el.addEventListener('input', f); f(); return s; };
     const title = h('input', { type: 'text', value: p.title || '', placeholder: 'Tytuł (YouTube, opcjonalnie Facebook)', oninput: (e) => { p.title = e.target.value; touch(); }, onchange: () => this.right() }), cap = h('textarea', { rows: 7, placeholder: 'Pierwsza linia zatrzymuje kciuk. Potem treść i jedno wezwanie do działania.', oninput: (e) => { p.caption = e.target.value; touch(); }, onchange: () => this.right() }), tg = h('textarea', { rows: 2, placeholder: '#trening #zdrowie …', oninput: (e) => { p.hashtags = e.target.value; touch(); }, onchange: () => this.right() }); cap.value = p.caption || ''; tg.value = p.hashtags || '';
@@ -2664,6 +2844,65 @@ const Ideas = {
     if (it.variants) for (const v of it.variants) sec('Wariant: ' + v.label, h('div', {}, v.hook), h('div', { class: 'fine' }, (v.cards || []).join(' / ')));
     if (it.items) sec('Punkty', ...it.items.map((s) => h('div', {}, '• ' + s)));
     if (it.src || it.note) sec('Źródło i zastrzeżenia', it.src ? h('div', { class: 'fine' }, it.src) : null, it.note ? h('div', { class: 'fine' }, it.note) : null);
+  },
+};
+
+// ── Import rolki z dokumentu „Rolki” (projekt Agent John): skrypt lektora, karty tekstu z czasami, opis ──
+const Rolka = {
+  clean(t) { return String(t || '').replace(/\r/g, '').replace(/ /g, ' ').replace(/\\([#*_\\\-.!()[\]<>~`])/g, '$1').replace(/\*\*|__/g, '').replace(/^#{1,6}[ \t]*/gm, '').replace(/^[ \t]*\*(\S.*?)\*[ \t]*$/gm, '$1'); },
+  // tekst dokumentu → lista rolek [{n,title,status,spoken[],how[],cards[{t,text}],total,hook,shots,frame,limits,caption,caution}]
+  parse(text) {
+    const t = this.clean(text), hits = [...t.matchAll(/^[ \t]*ROLKA[ \t]*#?[ \t]*(\d+)[ \t]*[:.\-–—]*[ \t]*(.*)$/gim)];
+    const blocks = hits.length ? hits.map((m, i) => ({ n: +m[1], title: m[2].trim(), body: t.slice(m.index + m[0].length, i + 1 < hits.length ? hits[i + 1].index : t.length) })) : [{ n: 1, title: (t.split('\n').find((x) => x.trim()) || 'Rolka').trim().slice(0, 80), body: t }];
+    return blocks.map((b) => this.one(b)).filter((r) => r.cards.length || r.spoken.length);
+  },
+  one(b) {
+    let mode = '', status = ''; const spoken = [], how = [], rest = [], all = [];
+    for (const raw of b.body.split('\n')) {
+      const ln = raw.trim(); if (!ln) continue; all.push(ln); let m;
+      if ((m = ln.match(/^STATUS\s*:\s*(.*)$/i))) { status = m[1].trim(); continue; }
+      if (/^M[ÓO]WIONE\s*:?$/i.test(ln)) { mode = 'say'; continue; } if (/^JAK M[ÓO]WI[ĆC]\s*:?$/i.test(ln)) { mode = 'how'; continue; } if (/^DO KOPIUJ[- ]?WKLEJ\s*:?$/i.test(ln)) { mode = 'copy'; continue; }
+      if (mode === 'say') spoken.push(ln); else if (mode === 'how') how.push(ln); else rest.push(ln);
+    }
+    const src = rest.length ? rest : all, joined = src.join('\n'), first = (re) => { const m = joined.match(re); return m ? m[1].trim() : ''; }, cards = [];
+    for (const ln of src) { const m = ln.match(/^(\d{1,2}):(\d{2})(?:[.,]\d+)?\s+(.+)$/); if (m) cards.push({ t: +m[1] * 60 + +m[2], text: m[3].trim() }); }
+    cards.sort((a, c) => a.t - c.t); const frame = first(/^Kadr\s*:\s*(.+)$/im), num = (re) => { const m = frame.match(re); return m ? +m[1] : 0; };
+    return { n: b.n, title: b.title || 'Rolka ' + b.n, status, spoken, how, cards, total: +first(/Czas\s*:\s*(?:ok\.?\s*)?(\d+)/i) || 0, hook: first(/Hook\s*(?:\([^)]*\))?\s*:\s*(.+)$/im), shots: first(/^Uj[ęe]cia[^:\n]*:\s*(.+)$/im), frame, limits: { y0: num(/nie wy[żz]ej ni[żz] y\s*=\s*(\d+)/i), y1: num(/nie ni[żz]ej ni[żz] y\s*=\s*(\d+)/i), right: num(/prawe\s+(\d+)\s*px/i) }, caption: first(/^Opis(?:\s*\([^)]*\))?\s*:\s*(.+)$/im), caution: first(/^Zastrze[żz]enia\s*:\s*(.+)$/im) };
+  },
+  // rolka → nowa rolka w edytorze: tło marki, karty tekstu w czasie, skrypt do prompteru, opis do publikacji
+  build(rk) {
+    const p = P.cur, r = newReel(('Rolka ' + rk.n + ': ' + rk.title).slice(0, 34)), W = r.w, H = r.h; r.style = 'dynamic';
+    const last = rk.cards.length ? rk.cards[rk.cards.length - 1].t : 0, total = Math.max(rk.total || 0, last + 3, 5); r.dur = Math.ceil(total);
+    r.meta = { concept: rk.title, hook: rk.hook, caption: rk.caption, source: 'Agent John', shots: rk.shots, frame: rk.frame, how: rk.how.join(' '), status: rk.status, caution: rk.caution };
+    const sc = makeScene('cover', { title: 'x', total: 0, idx: null }, 'story', 0); r.layers.push(bgToLayer(sc.bg, W, H, 0, total));
+    const y0 = rk.limits.y0 || SAFE.top, y1 = rk.limits.y1 || (H - SAFE.bottom), rightPad = rk.limits.right || SAFE.right, cw = W - SAFE.left - rightPad, cx = SAFE.left + cw / 2, yy = Math.round(y0 + (y1 - y0) * 0.3), hf = p.brand.headingFont;
+    rk.cards.forEach((c, i) => {
+      const end = i + 1 < rk.cards.length ? rk.cards[i + 1].t : total, n = c.text.replace(/[*~]/g, '').length, size = n <= 14 ? 150 : n <= 26 ? 128 : n <= 42 ? 110 : 94;
+      const l = TXT(autoHL(c.text), { x: cx, y: yy, w: cw, font: hf, size, weight: 800, italic: true, upper: false, color: '#ffffff', align: 'center', lh: 1.04, name: 'Karta ' + (i + 1) + ': ' + c.text.slice(0, 18) });
+      l.text.shadow = { on: true, x: 0, y: 8, b: 28, c: 'rgba(0,0,0,.65)' }; l.t0 = c.t; l.t1 = Math.max(c.t + 0.5, end); l.anim.in = { p: 'words', d: 0.6, dl: 0, e: 'outCubic', dir: 'bottom' }; l.anim.out = { p: 'fade', d: 0.2, dl: 0, e: 'inCubic', dir: 'bottom' }; r.layers.push(l);
+    });
+    p.reels.push(r); p.curReel = r.id; if (rk.spoken.length) p.audio.script = rk.spoken.join('\n\n');
+    if (rk.caption) p.publish.caption = (p.publish.caption ? p.publish.caption + '\n\n' : '') + rk.caption;
+    touch(); return r;
+  },
+  docId(s) { const m = String(s || '').match(/\/document\/d\/([\w-]{10,})/) || String(s || '').match(/^([\w-]{25,})$/); return m ? m[1] : ''; },
+  async fetchDoc(link) {
+    const id = this.docId(link); if (!id) throw new Error('To nie wygląda na link do Dokumentu Google.');
+    let r; try { r = await fetch('api/s/doc?id=' + encodeURIComponent(id)); } catch (e) { throw new Error('Brak połączenia z serwerem: ' + errText(e)); } let j = {}; try { j = await r.json(); } catch { /* nie JSON */ }
+    if (!r.ok) throw new Error(({ private: 'Dokument nie jest udostępniony linkiem. Otwórz go, kliknij Udostępnij → „Każdy, kto ma link” (Wyświetlający), albo wklej tekst ręcznie.', not_found: 'Nie znaleziono dokumentu.', rate: 'Limit zapytań na godzinę.', too_big: 'Dokument jest za duży.' }[j.code]) || ('Błąd pobierania dokumentu (HTTP ' + r.status + ')')); return j.text || '';
+  },
+  dialog() {
+    const ta = h('textarea', { rows: 8, placeholder: 'Wklej tutaj treść dokumentu „Rolki” (Google Docs: Ctrl+A, Ctrl+C, wklej)…', style: { width: '100%', resize: 'vertical' } }), link = h('input', { type: 'text', placeholder: 'albo link do dokumentu (udostępnionego linkiem)', style: { flex: 1, minWidth: 0 } }), list = h('div', { style: { marginTop: '8px' } });
+    let found = [], pick = 0, M;
+    const draw = () => {
+      list.innerHTML = ''; if (!ta.value.trim()) return;
+      if (!found.length) { list.append(h('div', { class: 'warnrow bad' }, 'Nie znalazłem w tekście rolki. Szukam nagłówka „ROLKA #1 …”, sekcji „MÓWIONE” albo linii z czasem i tekstem karty (np. „0:03  DO 60 s: SPADEK 1-2%”).')); return; }
+      found.forEach((rk, i) => list.append(h('label', { class: 'row', style: { gap: '8px', alignItems: 'flex-start', cursor: 'pointer', margin: '6px 0' } }, h('input', { type: 'radio', name: 'rk', checked: i === pick, style: { flex: 'none', width: 'auto', marginTop: '4px' }, onchange: () => { pick = i; } }), h('span', {}, h('b', {}, 'ROLKA #' + rk.n + ' · ' + rk.title), h('span', { class: 'hint' }, '  ' + [rk.status, rk.total ? rk.total + ' s' : '', rk.cards.length + ' ' + plu(rk.cards.length, 'karta', 'karty', 'kart'), rk.spoken.length + ' ' + plu(rk.spoken.length, 'linia', 'linie', 'linii') + ' lektora'].filter(Boolean).join(' · '))))));
+    };
+    const reparse = () => { found = this.parse(ta.value); pick = Math.min(pick, Math.max(0, found.length - 1)); draw(); }; ta.addEventListener('input', debounce(reparse, 250));
+    const body = h('div', {}, h('div', { class: 'hint', style: { marginBottom: '6px' } }, 'Dokument „Rolki” z projektu Agent John: wklej treść (Ctrl+A, Ctrl+C w Google Docs) albo podaj link udostępniony linkiem.'), ta, h('div', { class: 'row', style: { marginTop: '6px', gap: '6px' } }, link, h('button', { class: 'btn', onclick: async (e) => { const b = e.currentTarget; b.disabled = true; try { ta.value = await this.fetchDoc(link.value); reparse(); } catch (x) { toast(errText(x), 'bad', 9000); } b.disabled = false; } }, 'Pobierz z linku')), list);
+    M = modal('📥 Rolka z dokumentu (Agent John)', body, [{ t: 'Utwórz rolkę', cls: 'pri', keep: true, fn: (close) => { const rk = found[pick]; if (!rk) { toast('Najpierw wklej tekst z rolką.', 'warn'); return false; } const r = this.build(rk); close(); S.go('video', true); toast('Rolka „' + r.name + '”: ' + rk.cards.length + ' ' + plu(rk.cards.length, 'karta', 'karty', 'kart') + ' tekstu z czasami. Skrypt lektora jest w Audio (prompter), opis w Publikacji. Dodaj teraz „🗣 Gadająca głowa” ze swoim nagraniem.', 'ok', 10000); } }, { t: 'Zamknij' }]);
+    setTimeout(() => ta.focus(), 30); return M;
   },
 };
 

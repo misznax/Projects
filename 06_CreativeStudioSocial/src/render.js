@@ -29,7 +29,7 @@ function mkLayer(type, o) {
     text: { text: { s: 'Twój tekst', font: P.cur ? P.cur.brand.headingFont : 'Georgia', size: 84, weight: 700, italic: false, color: '#ffffff', align: 'center', lh: 1.15, ls: 0, upper: false, stroke: { w: 0, c: '#000000' }, shadow: { on: false, x: 0, y: 6, b: 16, c: 'rgba(0,0,0,.45)' }, bg: { on: false, c: '#000000', pad: 28, r: 18 }, pad: 0 }, autoH: true },
     image: { img: { assetId: null, fit: 'cover', r: 0, flipX: false, b: 1, c: 1, s: 1, blur: 0 }, w: 600, h: 600 },
     shape: { shape: { kind: 'rect', fill: '#ffffff', fill2: '', gAngle: 90, r: 0, stroke: { w: 0, c: '#ffffff' }, shadow: { on: false, x: 0, y: 8, b: 20, c: 'rgba(0,0,0,.35)' } }, w: 400, h: 400 },
-    video: { video: { assetId: null, in: 0, speed: 1, vol: 0, mute: false, fit: 'cover', r: 0 }, w: 1080, h: 1920 },
+    video: { video: { assetId: null, in: 0, speed: 1, vol: 0, mute: false, fit: 'cover', r: 0, shape: 'rect', zoom: 1, ox: 0, oy: 0, flipX: false, bw: 0, bc: '#FFA000', glow: 0 }, w: 1080, h: 1920 },
     fx: { fx: { kind: 'orbs', c1: '#ffffff', c2: '#888888', c3: '#444444', n: 24, spd: 1 }, w: 1080, h: 1920 },
   }[type];
   return Object.assign(base, jclone(d), o || {});
@@ -173,7 +173,16 @@ function drawMedia(ctx, el, iw, ih, l, cfg, st) {
   const w = l.w, h = l.h; ctx.save(); rr(ctx, -w / 2, -h / 2, w, h, cfg.r || 0); ctx.clip();
   const f = []; if (cfg.b != null && cfg.b !== 1) f.push(`brightness(${cfg.b})`); if (cfg.c != null && cfg.c !== 1) f.push(`contrast(${cfg.c})`); if (cfg.s != null && cfg.s !== 1) f.push(`saturate(${cfg.s})`); if (cfg.blur) f.push(`blur(${cfg.blur}px)`);
   if (f.length) ctx.filter = (ctx.filter && ctx.filter !== 'none' ? ctx.filter + ' ' : '') + f.join(' ');
-  if (cfg.flipX) ctx.scale(-1, 1); const [x, y, rw, rh] = coverRect(iw, ih, w, h, cfg.fit, st.kb); ctx.drawImage(el, x + (st.kbx || 0), y + (st.kby || 0), rw, rh); ctx.restore();
+  if (cfg.flipX) ctx.scale(-1, 1); let [x, y, rw, rh] = coverRect(iw, ih, w, h, cfg.fit, st.kb);
+  const z = cfg.zoom || 1; if (z !== 1 || cfg.ox || cfg.oy) { const cx = x + rw / 2 + (cfg.flipX ? -1 : 1) * (cfg.ox || 0) * w, cy = y + rh / 2 + (cfg.oy || 0) * h; rw *= z; rh *= z; x = cx - rw / 2; y = cy - rh / 2; } // przybliżenie i przesunięcie kadru (twarz w kole)
+  ctx.drawImage(el, x + (st.kbx || 0), y + (st.kby || 0), rw, rh); ctx.restore();
+}
+function videoRadius(l) { const c = l.video; return c.shape === 'circle' ? Math.min(l.w, l.h) / 2 : Math.min(c.r || 0, Math.min(l.w, l.h) / 2); }
+function drawVideoFrame(ctx, l, el, st) { // wideo w kole / prostokącie z obramowaniem i poświatą (gadająca głowa)
+  const c = l.video, w = l.w, h = l.h, rad = videoRadius(l);
+  if (c.glow > 0) { ctx.save(); ctx.shadowColor = c.bc || '#FFA000'; ctx.shadowBlur = c.glow; ctx.fillStyle = '#000'; rr(ctx, -w / 2, -h / 2, w, h, rad); ctx.fill(); ctx.restore(); }
+  if (el && el.readyState >= 2 && el.videoWidth) drawMedia(ctx, el, el.videoWidth, el.videoHeight, l, Object.assign({}, c, { r: rad }), st); else { ctx.fillStyle = '#222'; rr(ctx, -w / 2, -h / 2, w, h, rad); ctx.fill(); }
+  if (c.bw > 0) { ctx.save(); ctx.strokeStyle = c.bc || '#FFA000'; ctx.lineWidth = c.bw; rr(ctx, -w / 2 + c.bw / 2, -h / 2 + c.bw / 2, w - c.bw, h - c.bw, Math.max(0, rad - c.bw / 2)); ctx.stroke(); ctx.restore(); }
 }
 function linGrad(ctx, x, y, w, h, angle, stops) { const a = (angle || 0) * Math.PI / 180, cx = x + w / 2, cy = y + h / 2, L = Math.abs(w * Math.cos(a)) / 2 + Math.abs(h * Math.sin(a)) / 2, g = ctx.createLinearGradient(cx - Math.cos(a) * L, cy - Math.sin(a) * L, cx + Math.cos(a) * L, cy + Math.sin(a) * L); for (const [o, c] of stops) g.addColorStop(o, c); return g; }
 function shapeFill(ctx, s, w, h) {
@@ -227,7 +236,7 @@ function drawLayer(ctx, l, t, W, H, opts) {
     if (l.type === 'text') drawText(ctx, l, st);
     else if (l.type === 'image') { const im = IMGS.get(l.img.assetId); if (im) drawMedia(ctx, im, im.naturalWidth, im.naturalHeight, l, l.img, st); else { ctx.fillStyle = 'rgba(128,128,128,.25)'; ctx.fillRect(-l.w / 2, -l.h / 2, l.w, l.h); } }
     else if (l.type === 'shape') drawShape(ctx, l);
-    else if (l.type === 'video') { const v = opts && opts.video ? opts.video(l, t) : null; if (v && v.readyState >= 2 && v.videoWidth) drawMedia(ctx, v, v.videoWidth, v.videoHeight, l, l.video, st); else { ctx.fillStyle = '#222'; ctx.fillRect(-l.w / 2, -l.h / 2, l.w, l.h); } }
+    else if (l.type === 'video') drawVideoFrame(ctx, l, opts && opts.video ? opts.video(l, t) : null, st);
     else if (l.type === 'fx') drawFx(ctx, l, t, t - l.t0);
   } catch (e) { console.warn('drawLayer', l.type, e); }
   ctx.restore();
