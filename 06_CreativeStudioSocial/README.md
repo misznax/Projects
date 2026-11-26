@@ -54,7 +54,7 @@ Autor: Michał Rzekiecki · kontakt: michus@gmail.com · adres: https://projects
 
 1. **Dodawanie muzyki i efektów**: przy każdej ścieżce na osi czasu jest przycisk ＋, puste paski mają podpowiedź, a **dwuklik** w pusty pasek dodaje klip w tym miejscu (dźwięk: okno wyboru źródła, reszta: menu). W lewym panelu są osobne przyciski „🎙 Głos", „🎵 Muzyka", „🔔 Efekt". Muzyka może pochodzić z Audio Studio, biblioteki, Drive, linku lub pliku.
 2. **🔊 Wyrównaj poziomy** (pasek nad osią): mierzy głośność (LUFS) użytej części każdego klipu i ustawia wzmocnienie: głos −18 LUFS (każdy klip jednakowo, także dźwięk z wideo), muzyka 11 LU pod głosem (17 LU bez ducking), efekty 6 LU pod głosem. Eksport i tak normalizuje całość do celu z ustawień rolki.
-3. **Tempo wideo i mowy**: suwak 0,5–2× (+ szybkie 0,8 / 1 / 1,15 / 1,25 / 1,5 / 2×) w pływającym panelu i w panelu po prawej. Klip skraca się lub wydłuża, żeby pokazać ten sam fragment pliku; dźwięk jest rozciągany algorytmem WSOLA bez zmiany wysokości głosu (nieniszcząco, w miksie podglądu i eksportu). Wcześniej zmiana prędkości wyciszała dźwięk.
+3. **Tempo wideo i mowy**: suwak 0,5–2× (+ szybkie 0,8 / 1 / 1,15 / 1,25 / 1,5 / 2×) na pasku osi czasu i w panelu po prawej. Klip skraca się lub wydłuża, żeby pokazać ten sam fragment pliku; dźwięk jest rozciągany algorytmem WSOLA bez zmiany wysokości głosu (nieniszcząco, w miksie podglądu i eksportu). Wcześniej zmiana prędkości wyciszała dźwięk.
 
 ## Zmiany v0.05 (wideo)
 
