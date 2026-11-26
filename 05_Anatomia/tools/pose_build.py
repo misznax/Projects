@@ -8,13 +8,17 @@ from scipy.spatial import cKDTree
 import scipy.sparse as sp
 
 PUB = pg.PUB; D = pg.D
-SEGS = ['thx', 'clav', 'scap', 'hum', 'uln', 'rad', 'hand', 'tw1', 'tw2']   # tw1/tw2 = pomocnicze segmenty skrętu przedramienia (1/3 i 2/3 nawrócenia)
-BSEGS = SEGS[:7]
-CLUS = [[0], [1, 2], [3], [4, 5], [6]]   # grupy kinematyczne do wyznaczania przyczepów: tułów, obręcz, ramię, przedramię (łokieć+promień), dłoń
+SEGS = ['thx', 'clav', 'scap', 'hum', 'uln', 'rad', 'hand', 'tw1', 'tw2', 'fem', 'tib', 'foot']   # tw1/tw2 = pomocnicze segmenty skrętu przedramienia (1/3 i 2/3 nawrócenia); fem/tib/foot = udo, podudzie (+strzałka, rzepka), stopa
+BSEGS = SEGS[:7] + SEGS[9:]   # segmenty z kośćmi (kolumny wag przed rozszerzeniem o tw1/tw2)
+CLUS = [[0], [1, 2], [3], [4, 5], [6], [7], [8], [9]]   # grupy kinematyczne do wyznaczania przyczepów: tułów(+miednica), obręcz, ramię, przedramię (łokieć+promień), dłoń, udo, podudzie, stopa
 bones = {b['id']: b for b in D['bones']}
 segOf = {'B002': 'clav', 'B033': 'scap', 'B017': 'hum', 'B045': 'uln', 'B031': 'rad'}
 for b in D['bones']:
     if b['kind'] == 'bone' and b['region'] == 'dlon': segOf[b['id']] = 'hand'
+segOf['Q001'] = 'fem'
+for k in ('Q115', 'Q102', 'Q110'): segOf[k] = 'tib'
+for b in D['bones']:
+    if b['kind'] == 'leg' and b['id'] not in segOf: segOf[b['id']] = 'foot'
 SI = {s: i for i, s in enumerate(SEGS)}
 
 def dense(P, idx):
@@ -23,14 +27,17 @@ def dense(P, idx):
     return np.vstack([P, (a + b + c) / 3, (a + b) / 2, (b + c) / 2, (a + c) / 2])
 
 # ---------- chmury punktów segmentów (świat) ----------
-B = g.meshes(PUB + 'bones.glb'); TR = g.meshes(PUB + 'trunk.glb'); AX = g.meshes(PUB + 'axial.glb')
+B = g.meshes(PUB + 'bones.glb'); TR = g.meshes(PUB + 'trunk.glb'); AX = g.meshes(PUB + 'axial.glb'); LO = g.meshes(PUB + 'lower.glb')
 clouds = {s: [] for s in BSEGS}
 for k, m in B.items():
     if k in segOf: clouds[segOf[k]].append(dense(g.world(m), m['idx']))
     elif k in bones and bones[k]['kind'] == 'ctx': clouds['thx'].append(dense(g.world(m), m['idx']))
 for src in (TR, AX):
     for k, m in src.items():
-        if k in bones and bones[k]['kind'] in ('trunk', 'axial'): clouds['thx'].append(dense(g.world(m), m['idx']))
+        if k in segOf: clouds[segOf[k]].append(dense(g.world(m), m['idx']))
+        elif k in bones and bones[k]['kind'] in ('trunk', 'axial'): clouds['thx'].append(dense(g.world(m), m['idx']))
+for k, m in LO.items():
+    if k in segOf: clouds[segOf[k]].append(dense(g.world(m), m['idx']))
 trees = {s: cKDTree(np.vstack(v)) for s, v in clouds.items()}
 print({s: len(t.data) for s, t in trees.items()})
 o0, W0 = pg.compute()
@@ -42,14 +49,17 @@ def tris(src, pred):
         if pred(k): L.append((g.world(m), m['idx']))
     return L
 SDFS = {}
-SD_SEGS = ['thx', 'clav', 'scap', 'hum', 'uln', 'rad']
+SD_SEGS = ['thx', 'clav', 'scap', 'hum', 'uln', 'rad', 'fem', 'tib', 'foot']
 SDFS['clav'] = sdfm.build(tris(B, lambda k: segOf.get(k) == 'clav'), 0.003, name='clav')
 SDFS['scap'] = sdfm.build(tris(B, lambda k: segOf.get(k) == 'scap'), 0.003, name='scap')
 SDFS['hum'] = sdfm.build(tris(B, lambda k: segOf.get(k) == 'hum'), 0.003, name='hum')
 SDFS['uln'] = sdfm.build(tris(B, lambda k: segOf.get(k) == 'uln'), 0.003, name='uln')
 SDFS['rad'] = sdfm.build(tris(B, lambda k: segOf.get(k) == 'rad'), 0.003, name='rad')
-thx_t = tris(B, lambda k: k in bones and bones[k]['kind'] == 'ctx') + tris(TR, lambda k: k in bones and bones[k]['kind'] == 'trunk') + tris(AX, lambda k: k in bones and bones[k]['kind'] == 'axial')
-SDFS['thx'] = sdfm.build(thx_t, 0.006, bbox=([-0.42, 1.02, -0.26], [0.06, 1.62, 0.26]), name='thx')
+thx_t = tris(B, lambda k: k in bones and bones[k]['kind'] == 'ctx') + tris(TR, lambda k: k in bones and bones[k]['kind'] == 'trunk' and k not in segOf) + tris(AX, lambda k: k in bones and bones[k]['kind'] == 'axial')
+SDFS['thx'] = sdfm.build(thx_t, 0.006, bbox=([-0.42, 0.76, -0.26], [0.06, 1.62, 0.26]), name='thx')
+SDFS['fem'] = sdfm.build(tris(TR, lambda k: segOf.get(k) == 'fem'), 0.004, name='fem')
+SDFS['tib'] = sdfm.build(tris(LO, lambda k: segOf.get(k) == 'tib'), 0.004, name='tib')
+SDFS['foot'] = sdfm.build(tris(LO, lambda k: segOf.get(k) == 'foot'), 0.0035, name='foot')
 
 # ---------- wagi ----------
 EPS, POW = 0.006, 4.0
@@ -112,7 +122,7 @@ def harmonic(P, w, idx, thr=0.8, eps=1e-4):
 def forearm_twist(P, w):
     """Skręt przedramienia: tkanki w strefie przedramienia dostają udział segmentów uln→tw1→tw2→rad wg położenia wzdłuż osi łokieć→nadgarstek
     (zamiast przypisania do najbliższej z dwóch kości, co rozrywało mięśnie przy nawróceniu)."""
-    w9 = np.zeros((len(P), len(SEGS))); w9[:, :7] = w
+    w9 = np.zeros((len(P), len(SEGS))); w9[:, :7] = w[:, :7]; w9[:, 9:12] = w[:, 7:10]
     el = np.array(o0['el']); wr = np.array(o0['wr']); ax = wr - el
     t = ((P - el) @ ax) / (ax @ ax)
     sh = w[:, 4] + w[:, 5]
@@ -155,7 +165,7 @@ def run(fn, key, namefilter):
             # po drugiej stronie zawiasu (łokieć, nadgarstek) tkanka się ściska przy zgięciu, więc odstęp tylko symboliczny (0,5 mm: bez wnikania w kość)
             cap = np.full(len(P), 0.035)
             cn = np.array([SD_SEGS[i] for i in o2[:, j]])
-            cross = ((cn == 'hum') & np.isin(dom, [4, 5, 6, 7, 8])) | (np.isin(cn, ['uln', 'rad']) & np.isin(dom, [3, 6]))
+            cross = ((cn == 'hum') & np.isin(dom, [4, 5, 6, 7, 8])) | (np.isin(cn, ['uln', 'rad']) & np.isin(dom, [3, 6])) | ((cn == 'fem') & np.isin(dom, [10, 11])) | ((cn == 'tib') & np.isin(dom, [9, 11])) | ((cn == 'foot') & np.isin(dom, [10])) | ((cn == 'thx') & (dom == 9))
             cap[cross] = 0.0035
             col[okj, 2 * j + 1] = np.clip(np.rint((np.minimum(d2[okj, j], cap[okj]) - 0.003) / 0.0005), -100, 127).astype(np.int8)
         cblob.append(col.tobytes()); ncol += int((col[:, 0] != 0).sum())
@@ -169,6 +179,7 @@ def run(fn, key, namefilter):
 MUSIDS = {m['id'] for m in D['muscles']}; STRIDS = {s['id'] for s in D.get('structs', [])}
 run('muscles.glb', 'muscles', lambda n: n in MUSIDS)
 run('trunk.glb', 'trunk', lambda n: n in MUSIDS)
+run('lower.glb', 'lower', lambda n: n in MUSIDS)
 run('lig.glb', 'lig', lambda n: n in STRIDS)
 run('nerv.glb', 'nerv', lambda n: n in STRIDS)
 run('vess.glb', 'vess', lambda n: n in STRIDS)
@@ -202,6 +213,26 @@ u = unit(o['pr_axis']); fe = o['us'] - o['rs']; fe = unit(fe - (fe @ u) * u)
 J['wr_fe'] = sgn_axis(o['wr'], fe, o['tip'], Z)             # zgięcie dłoniowe: palce do przodu (+z)
 dev = np.cross(fe, u)
 J['wr_dev'] = sgn_axis(o['wr'], dev, o['tip'], X)           # odchylenie łokciowe: palce przyśrodkowo (+x)
+# ---------- kończyna dolna ----------
+WL = {k: g.world(m) for src in (TR, LO) for k, m in src.items() if k in segOf}
+fem_p = WL['Q001']; hc = np.array([-0.06, 0.85, -0.01])
+for _ in range(8):
+    dd = np.linalg.norm(fem_p - hc, axis=1); sel = fem_p[(dd > 0.015) & (dd < 0.032) & (fem_p[:, 1] > 0.80) & (fem_p[:, 0] > -0.095)]
+    hc, hr_ = pg.sphere_fit(sel)
+tib_p = WL['Q115']
+kc = (fem_p[fem_p[:, 1] < 0.48].mean(0) + tib_p[tib_p[:, 1] > 0.403].mean(0)) / 2
+ac_ = WL['Q113'][WL['Q113'][:, 1] > 0.07].mean(0)
+sc_ = (WL['Q113'].mean(0) + WL['Q100'].mean(0)) / 2
+toe = WL['Q111'].mean(0); lat = WL['Q103'][WL['Q103'][:, 2] > WL['Q103'][:, 2].max() - 0.012].mean(0)
+J['hip'] = hc; J['hip_r_ax'] = None
+J['hip_f'] = sgn_axis(hc, X, kc, Z)                 # zgięcie biodra: kolano do przodu (+z)
+J['hip_a'] = sgn_axis(hc, Z, kc, -X)                # odwodzenie: kolano na zewnątrz (−x dla prawej)
+J['hip_r'] = sgn_axis(hc, unit(kc - hc), toe, X)    # rotacja wewnętrzna: palce stopy ku przyśrodkowi (+x)
+J['knee'] = kc; J['knee_f'] = sgn_axis(kc, X, ac_, -Z)   # zgięcie kolana: stopa do tyłu (−z)
+J['ank'] = ac_; J['ank_f'] = sgn_axis(ac_, X, toe, Y)    # zgięcie grzbietowe: palce w górę (+y)
+miter = unit(np.array([0.36, 0.64, 0.68]))               # skośna oś stawu podskokowego (od tyłu-dołu-boku ku przodowi-górze-przyśrodkowi)
+J['stj'] = sc_; J['stj_axis'] = sgn_axis(sc_, miter, lat, Y)   # inwersja: boczny brzeg stopy w górę
+del J['hip_r_ax']
 r = {k: [round(float(x), 5) for x in v] for k, v in J.items()}
 r['gh_r'] = round(float(o['gh_r']), 4)
 blob = []; off = 0; sdfmeta = {}

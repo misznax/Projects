@@ -146,7 +146,7 @@ const toast = (t, act) => { // act: { label, fn } — przycisk w komunikacie (np
 };
 
 /* ---------- poza: silnik ruchu stawów (pose.js) ---------- */
-const JSEG = { J_scj: 'thx', J_acj: 'scap', J_ghj: 'scap', J_lok: 'uln', J_hu: 'uln', J_hr: 'rad', J_pru: 'uln', J_dru: 'uln' }; // reszta stawów dłoni → 'hand'
+const JSEG = { J_scj: 'thx', J_acj: 'scap', J_ghj: 'scap', J_lok: 'uln', J_hu: 'uln', J_hr: 'rad', J_pru: 'uln', J_dru: 'uln', J_hip: 'thx', J_knee: 'fem', J_ankle: 'tib', J_stj: 'foot', J_mtp: 'foot' }; // reszta stawów dłoni → 'hand'
 const jointSegIdx = (jid) => { const j = JMAP.get(jid); const n = JSEG[jid] || (j && j.reg === 'dlon' ? 'hand' : 'thx'); return POSE.segIndex(n); };
 const markerRest = new Map();
 function poseChanged() { updateMarkers(); updatePins(); dirty(); syncPoseUI(); }
@@ -235,6 +235,7 @@ function ensureTrunk() {
     const cl2 = (o) => { const c = new THREE.Mesh(o.geometry, o.material); c.position.copy(o.position); c.quaternion.copy(o.quaternion); c.scale.copy(o.scale); c.userData = { ...o.userData, side: 'l' }; c.visible = false; rootL.add(c); return c; };
     for (const o of ml) { const m = MUS.get(o.name); o.userData = { kind: 'mus', id: m.id, grp: m.grp, side: 'r' }; o.material = grpMat[m.grp]; o.geometry.computeBoundsTree(); o.visible = false; root.attach(o); objs.mus.set(m.id, o); const c = cl2(o); SIDE.l.mus.set(m.id, c); pickables.push(o, c); POSE.skinned('trunk', m.id, [o, c]); }
     for (const o of bl) { const b = BON.get(o.name); o.userData = { kind: 'bone', id: b.id, side: 'r' }; o.material = MAT.bone; o.geometry.computeBoundsTree(); o.visible = false; root.attach(o); objs.bone.set(b.id, o); pickables.push(o); if (MIDB.has(b.id)) SIDE.l.bone.set(b.id, o); else { const c = cl2(o); SIDE.l.bone.set(b.id, c); pickables.push(c); } }
+    for (const o of bl) { const b = BON.get(o.name); const c = SIDE.l.bone.get(b.id); POSE.rigid(c && c !== o ? [o, c] : [o], () => POSE.segOfBone(b.id)); }
     S.trunk = true; toast(''); apply();
   }).catch((e) => { toast('Nie udało się wczytać tułowia: ' + e.message); trunkP = null; });
   return trunkP;
@@ -249,8 +250,9 @@ function ensureLeg() {
     g.updateMatrixWorld(true); const ml = [], bl = [];
     g.traverse((o) => { if (!o.isMesh) return; if (MUS.has(o.name)) ml.push(o); else if (BON.has(o.name)) bl.push(o); });
     const cl2 = (o) => { const c = new THREE.Mesh(o.geometry, o.material); c.position.copy(o.position); c.quaternion.copy(o.quaternion); c.scale.copy(o.scale); c.userData = { ...o.userData, side: 'l' }; c.visible = false; rootL.add(c); return c; };
-    for (const o of ml) { const m = MUS.get(o.name); o.userData = { kind: 'mus', id: m.id, grp: m.grp, side: 'r' }; o.material = grpMat[m.grp]; o.geometry.computeBoundsTree(); o.visible = false; root.attach(o); objs.mus.set(m.id, o); const c = cl2(o); SIDE.l.mus.set(m.id, c); pickables.push(o, c); }
+    for (const o of ml) { const m = MUS.get(o.name); o.userData = { kind: 'mus', id: m.id, grp: m.grp, side: 'r' }; o.material = grpMat[m.grp]; o.geometry.computeBoundsTree(); o.visible = false; root.attach(o); objs.mus.set(m.id, o); const c = cl2(o); SIDE.l.mus.set(m.id, c); pickables.push(o, c); POSE.skinned('lower', m.id, [o, c]); }
     for (const o of bl) { const b = BON.get(o.name); o.userData = { kind: 'bone', id: b.id, side: 'r' }; o.material = MAT.bone; o.geometry.computeBoundsTree(); o.visible = false; root.attach(o); objs.bone.set(b.id, o); pickables.push(o); const c = cl2(o); SIDE.l.bone.set(b.id, c); pickables.push(c); }
+    for (const o of bl) { const b = BON.get(o.name); const c = SIDE.l.bone.get(b.id); POSE.rigid(c && c !== o ? [o, c] : [o], () => POSE.segOfBone(b.id)); }
     S.leg = true; toast(''); apply();
   }).catch((e) => { toast('Nie udało się wczytać podudzia: ' + e.message); legP = null; });
   return legP;
@@ -435,11 +437,11 @@ function stepAnim(now) {
   if (k >= 1) anim = null; dirty();
 }
 const fitDist = (radius) => radius / Math.sin(THREE.MathUtils.degToRad(camera.fov) / 2) * 1.05;
-function boxOf(list) {
-  const b = new THREE.Box3(); for (const o of list) if (o) { o.updateWorldMatrix(true, false); b.expandByObject(o); } return b;
+function boxOf(list, precise) {
+  const b = new THREE.Box3(); for (const o of list) if (o) { o.updateWorldMatrix(true, false); b.expandByObject(o, precise); } return b;
 }
-function focusObjects(list, dir, minD = 0.12) {
-  const b = boxOf(list); if (b.isEmpty()) return; const c = b.getCenter(new THREE.Vector3()); const r = b.getSize(new THREE.Vector3()).length() / 2;
+function focusObjects(list, dir, minD = 0.12, precise = false) {
+  const b = boxOf(list, precise); if (b.isEmpty()) return; const c = b.getCenter(new THREE.Vector3()); const r = b.getSize(new THREE.Vector3()).length() / 2;
   flyTo(c, Math.max(fitDist(r), minD), dir);
 }
 const DIRS = { front: [0, 0.05, 1], back: [0, 0.05, -1], lat: [-1, 0.05, 0.12], med: [1, 0.05, 0.12], top: [0, 1, 0.08] };
@@ -451,11 +453,12 @@ function regionBox(region) {
   }
   return list;
 }
-function viewRegion(dirName) {
+function viewRegion(dirName, posed) {
   const dir = new THREE.Vector3(...DIRS[dirName || 'front']);
   if (S.side === 'l' && (dirName === 'lat' || dirName === 'med')) dir.x *= -1;
-  focusObjects(regionBox(S.region), dir);
+  focusObjects(regionBox(S.region), dir, 0.12, !!posed); // posed: dokładne granice po deformacji (skinning)
 }
+const animPose = (tg, dirName, ms = 900) => POSE.animateTo(poseTarget(tg), ms, dirName && S.box ? () => POSE.settled().then(() => viewRegion(dirName, true)) : undefined);
 
 /* ---------- wybór ---------- */
 const selSide = (sel) => (sel && sel.side) || defSide();
@@ -988,6 +991,15 @@ infoEl.addEventListener('change', (e) => { if (e.target.id === 'pinsToggle') { S
 
 
 /* ---------- panel „Poza”: suwaki stawów w zakresach ruchu zdrowego człowieka ---------- */
+/* ---------- noga: pokazanie regionu i kadr ---------- */
+const LEG_KEYS = ['hF', 'hA', 'hR', 'kF', 'aF', 'aI'];
+const legPose = (p) => Object.keys(p).some((k) => LEG_KEYS.includes(k) && p[k] !== 0);
+let legBusy = false;
+function legRegion(after) { // noga jest widoczna w regionie „Podudzie i stopa” (podudzie, stopa, mięśnie i kość udowa)
+  if (S.region === 'podudzie' && S.leg) { if (after) after(); return; }
+  if (legBusy) return; legBusy = true; toast('Wczytywanie nogi…');
+  setRegion('podudzie', () => { legBusy = false; toast(''); if (after) after(); });
+}
 const PRESETS = [
   ['Pozycja anatomiczna', {}],
   ['Ręka w górze — zgięcie 180°', { F: 180 }],
@@ -999,6 +1011,12 @@ const PRESETS = [
   ['Ręka w górze, łokieć 90° („stop”)', { A: 90, E: 90 }],
   ['Dłoń do barku', { E: 145, F: 20 }],
   ['Ręka za plecami (wyprost)', { F: -55, R: 40 }],
+  ['Siad — biodro 90°, kolano 90°', { hF: 90, kF: 90 }],
+  ['Przysiad głęboki', { hF: 115, kF: 130, aF: 25 }],
+  ['Noga w górę — zgięcie biodra', { hF: 90 }],
+  ['Noga w bok — odwodzenie 45°', { hA: 45 }],
+  ['Wspięcie na palce', { aF: -50 }],
+  ['Pięta do pośladka', { kF: 140 }],
 ];
 const poseTarget = (p) => { const t = { ...REST, ...p }; if (!('R' in p)) delete t.R; return t; }; // bez jawnego R: skręt naturalny (liczy silnik)
 const fmtDeg = (d, v) => { const a = Math.round(Math.abs(v)); if (a === 0) return '0°'; return `${a}° ${v >= 0 ? d.pos : d.neg}`; };
@@ -1013,9 +1031,9 @@ function trackBg(d, L) { // zielone = norma, bursztynowe = do maksymalnego zdrow
 }
 let poseBuilt = false, poseBadge = null;
 function renderPose() {
-  let h = '<p class="small">Poruszaj stawami w zakresach ruchu zdrowego człowieka. <b>0° = pozycja anatomiczna modelu.</b> Mięśnie odkształcają się razem z kośćmi (skinning z zachowaniem grubości, wagi rozłożone wzdłuż mięśnia, owijanie wokół kości). Poza działa symetrycznie na obie ręce.</p>';
+  let h = '<p class="small">Poruszaj stawami w zakresach ruchu zdrowego człowieka. <b>0° = pozycja anatomiczna modelu.</b> Mięśnie odkształcają się razem z kośćmi (skinning z zachowaniem grubości, wagi rozłożone wzdłuż mięśnia, owijanie wokół kości). Poza działa symetrycznie na obie kończyny. Ruchy nogi pokazują się w regionie „Podudzie i stopa” (włączam go automatycznie).</p>';
   h += `<label class="chk"><input type="checkbox" id="pRhythm" ${POSE.rhythm ? 'checked' : ''}> Rytm łopatkowo-ramienny (łopatka i obojczyk podążają za ramieniem)</label>`;
-  h += `<label class="chk"><input type="checkbox" id="pWrap" ${POSE.st.wrap ? 'checked' : ''}> Owijanie mięśni wokół kości (kolizje z główką kości ramiennej, łopatką, żebrami)</label>`;
+  h += `<label class="chk"><input type="checkbox" id="pWrap" ${POSE.st.wrap ? 'checked' : ''}> Owijanie mięśni wokół kości (kolizje z kośćmi ramienia, łopatką, żebrami, miednicą, udem, podudziem i stopą)</label>`;
   h += `<div class="subt">Gotowe pozy</div><div class="chips">${PRESETS.map(([n], i) => `<button class="chip" data-preset="${i}">${esc(n)}</button>`).join('')}</div>`;
   let g = '';
   for (const d of DOF) {
@@ -1034,15 +1052,15 @@ function syncPoseUI() {
     const sl = $(`input.psl[data-k="${d.k}"]`, root), v = POSE.vals[d.k]; if (!sl) continue;
     if (document.activeElement !== sl) sl.value = v; const pv = $(`#pv-${d.k}`, root); if (pv) pv.textContent = fmtDeg(d, v);
   }
-  const L = POSE.limits(); for (const k of ['R', 'A']) { const d = DOF.find((x) => x.k === k), sl = $(`input.psl[data-k="${k}"]`, root); if (sl) sl.style.setProperty('--bg', trackBg(d, L[k])); }
+  const L = POSE.limits(); for (const k of ['R', 'A', 'hF']) { const d = DOF.find((x) => x.k === k), sl = $(`input.psl[data-k="${k}"]`, root); if (sl) sl.style.setProperty('--bg', trackBg(d, L[k])); }
   const rb = $('#pRhythm', root); if (rb) rb.checked = POSE.rhythm;
   layoutPanels();
 }
-infoEl.addEventListener('input', (e) => { const sl = e.target.closest('input.psl'); if (!sl) return; POSE.set({ [sl.dataset.k]: +sl.value }); const d = DOF.find((x) => x.k === sl.dataset.k); const v = POSE.vals[d.k]; sl.value = v; const pv = $(`#pv-${d.k}`, pEl.poza); if (pv) pv.textContent = fmtDeg(d, v); });
+infoEl.addEventListener('input', (e) => { const sl = e.target.closest('input.psl'); if (!sl) return; if (LEG_KEYS.includes(sl.dataset.k) && +sl.value !== 0 && !(S.region === 'podudzie' && S.leg)) legRegion(); POSE.set({ [sl.dataset.k]: +sl.value }); const d = DOF.find((x) => x.k === sl.dataset.k); const v = POSE.vals[d.k]; sl.value = v; const pv = $(`#pv-${d.k}`, pEl.poza); if (pv) pv.textContent = fmtDeg(d, v); });
 infoEl.addEventListener('change', (e) => { if (e.target.id === 'pRhythm') POSE.setRhythm(e.target.checked); else if (e.target.id === 'pWrap') POSE.setWrap(e.target.checked); });
 infoEl.addEventListener('click', (e) => {
   const t = e.target; const pr = t.closest('[data-preset]');
-  if (pr) { const p = PRESETS[+pr.dataset.preset]; POSE.animateTo(poseTarget(p[1]), 900); toast(p[0]); return; }
+  if (pr) { const p = PRESETS[+pr.dataset.preset]; const lg = legPose(p[1]), go = () => { animPose(p[1], lg ? (p[1].hA ? 'front' : 'lat') : null); toast(p[0]); }; if (lg) legRegion(go); else go(); return; }
   if (t.closest('#pReset')) { POSE.animateTo({ ...REST }, 700); return; }
   if (t.closest('#pLat')) { viewRegion('lat'); return; } if (t.closest('#pFront')) { viewRegion('front'); return; }
 });
@@ -1078,6 +1096,10 @@ infoEl.addEventListener('click', (e) => {
 // powiązanie mięśni i stawów z ruchem: nazwa ruchu → docelowe kąty
 function poseMoveFor(j, ruch) {
   const r = norm(ruch), has = (x) => r.includes(x);
+  if (j === 'J_hip') { if (has('zgiecie')) return { hF: 100 }; if (has('wyprost')) return { hF: -20 }; if (has('odwodz')) return { hA: 40 }; if (has('przywodz')) return { hA: -28 }; if (has('zewn')) return { hF: 90, kF: 90, hR: -45 }; if (has('wewn')) return { hF: 90, kF: 90, hR: 40 }; return null; }
+  if (j === 'J_knee') { if (has('zgiecie')) return { kF: 130 }; if (has('wyprost')) return { kF: 0 }; return null; }
+  if (j === 'J_ankle') { if (has('grzbiet')) return { aF: 22 }; if (has('podeszw')) return { aF: -45 }; return null; }
+  if (j === 'J_stj') { if (has('inwersj')) return { aI: 32 }; if (has('ewersj')) return { aI: -16 }; return null; }
   const gh = ['J_ghj'], el = ['J_lok', 'J_hu', 'J_hr'], pr = ['J_pru', 'J_dru', 'J_lok', 'J_hr'], wr = ['J_rcj', 'J_mcj'], gd = ['J_scj', 'J_acj'];
   if (gh.includes(j)) { if (has('zgiecie')) return { F: 140 }; if (has('wyprost')) return { F: -45 }; if (has('odwodz')) return { A: 120 }; if (has('przywodz')) return { A: -25 }; if (has('zewn')) return { R: -70, E: 90 }; if (has('wewn')) return { R: 55, E: 90 }; }
   if (has('nawroc') || has('pronac')) return pr.includes(j) ? { E: 90, Pr: 55 } : null;
@@ -1087,13 +1109,17 @@ function poseMoveFor(j, ruch) {
   if (gd.includes(j)) { if (has('unoszen')) return { gElev: 30 }; if (has('opuszcz')) return { gElev: -8 }; if (has('protrak')) return { gProt: 22 }; if (has('retrak')) return { gProt: -16 }; }
   return null;
 }
-const poseJointInfo = (jid) => (['J_ghj', 'J_lok', 'J_hu', 'J_hr', 'J_pru', 'J_dru', 'J_rcj', 'J_mcj', 'J_scj', 'J_acj'].includes(jid) ? true : null);
+const poseJointInfo = (jid) => (['J_ghj', 'J_lok', 'J_hu', 'J_hr', 'J_pru', 'J_dru', 'J_rcj', 'J_mcj', 'J_scj', 'J_acj', 'J_hip', 'J_knee', 'J_ankle', 'J_stj'].includes(jid) ? true : null);
 function poseDemo(jid, ruch, gk) {
   const tg = poseMoveFor(jid, ruch); if (!tg) { toast('Ten ruch nie ma jeszcze animacji.'); return; }
-  showPanel('poza'); renderPose();
-  if (gk && G[gk]) { S.sel = { t: 'grp', id: gk }; S.hidden.delete(gk); apply(); renderInfo(); markList(); }
-  POSE.animateTo(poseTarget(tg), 900); toast(`${ruch} (${JMAP.get(jid).pl})`);
-  const side = /zgiecie|wyprost|protrak|retrak/.test(norm(ruch)) ? 'lat' : /odwodz|przywodz|unoszen|opuszcz/.test(norm(ruch)) ? 'front' : null; if (side && S.box) viewRegion(side);
+  const go = () => {
+    showPanel('poza'); renderPose();
+    if (gk && G[gk]) { S.sel = { t: 'grp', id: gk }; S.hidden.delete(gk); apply(); renderInfo(); markList(); }
+    const side = /zgiecie|wyprost|protrak|retrak|grzbiet|podeszw/.test(norm(ruch)) ? 'lat' : /odwodz|przywodz|unoszen|opuszcz|inwersj|ewersj/.test(norm(ruch)) ? 'front' : null;
+    if (legPose(tg)) animPose(tg, side); else { POSE.animateTo(poseTarget(tg), 900); if (side && S.box) setTimeout(() => viewRegion(side), 60); }
+    toast(`${ruch} (${JMAP.get(jid).pl})`);
+  };
+  if (legPose(tg)) legRegion(go); else go();
 }
 /* ---------- komplet ruchów (wszystkie stawy) ---------- */
 const moveOpen = new Set(); let ruchyRv = '';
@@ -1120,25 +1146,26 @@ async function moveShow(jid, ruch, gk) {
   const j = JMAP.get(jid), pr = j && j.pairs.find((p) => p[0] === ruch || p[2] === ruch); if (!pr) return;
   const first = pr[0] === ruch, ag = (first ? pr[1] : pr[3]).filter(isG), dof = poseMoveFor(jid, ruch);
   if (dof && gk && G[gk]) { poseDemo(jid, ruch, gk); return; }
-  S.region = 'all'; $$('#regions button').forEach((x) => x.classList.toggle('on', x.dataset.r === 'all'));
+  const legMv = !!dof && legPose(dof), rg0 = legMv ? 'podudzie' : 'all';
+  S.region = rg0; $$('#regions button').forEach((x) => x.classList.toggle('on', x.dataset.r === rg0));
   S.layers.muscles = true; S.layers.bones = true; $('#lMus').checked = true; $('#lBones').checked = true;
-  const regs = new Set(ag.map((k) => G[k].region));
+  const regs = new Set(ag.map((k) => G[k].region)); if (legMv) regs.add('podudzie');
   if (regs.has('tulow') || regs.has('bark') || regs.has('podudzie')) { S.layers.ctx = true; $('#lCtx').checked = true; }
   if (regs.has('glowa')) { S.layers.skull = true; $('#lSkull').checked = true; }
   if (window.innerWidth < 820) closeDrawer();
   toast(`${ruch} — ${j.pl}`);
   await Promise.all([regs.has('tulow') || regs.has('podudzie') ? ensureTrunk() : null, regs.has('podudzie') ? ensureLeg() : null, regs.has('glowa') ? ensureAxial() : null]);
   if (ag.length) setMulti(ag.map((k) => [k, 0]), !dof);
-  if (dof) { showPanel('poza'); renderPose(); POSE.animateTo(poseTarget(dof), 900); const side = /zgiecie|wyprost|protrak|retrak/.test(norm(ruch)) ? 'lat' : /odwodz|przywodz|unoszen|opuszcz/.test(norm(ruch)) ? 'front' : null; if (side && S.box) setTimeout(() => viewRegion(side), 60); }
+  if (dof) { showPanel('poza'); renderPose(); const side = /zgiecie|wyprost|protrak|retrak|grzbiet|podeszw/.test(norm(ruch)) ? 'lat' : /odwodz|przywodz|unoszen|opuszcz|inwersj|ewersj/.test(norm(ruch)) ? 'front' : null; if (legMv) animPose(dof, side); else { POSE.animateTo(poseTarget(dof), 900); if (side && S.box) setTimeout(() => viewRegion(side), 60); } }
 }
 function poseOpenJoint(jid) {
   showPanel('poza'); renderPose();
-  const g = ({ J_ghj: 'Staw ramienny', J_lok: 'Łokieć', J_hu: 'Łokieć', J_hr: 'Łokieć', J_pru: 'Przedramię', J_dru: 'Przedramię', J_rcj: 'Nadgarstek', J_mcj: 'Nadgarstek', J_scj: 'Obręcz barkowa', J_acj: 'Obręcz barkowa' })[jid];
+  const g = ({ J_ghj: 'Staw ramienny', J_lok: 'Łokieć', J_hu: 'Łokieć', J_hr: 'Łokieć', J_pru: 'Przedramię', J_dru: 'Przedramię', J_rcj: 'Nadgarstek', J_mcj: 'Nadgarstek', J_scj: 'Obręcz barkowa', J_acj: 'Obręcz barkowa', J_hip: 'Staw biodrowy', J_knee: 'Kolano', J_ankle: 'Kostka i stopa', J_stj: 'Kostka i stopa' })[jid];
   const el = g && $(`[data-pg="${g}"]`, pEl.poza); if (el) el.scrollIntoView({ block: 'start', behavior: 'smooth' });
 }
 function showMusclePose(k) {
   const mj = MJ.get(k) || []; for (const x of mj) if (poseMoveFor(x.j, x.ruch)) { poseDemo(x.j, x.ruch, k); return; }
-  toast('Dla tego mięśnia nie ma jeszcze animacji ruchu (obejmuje kończynę górną).');
+  toast('Dla tego mięśnia nie ma jeszcze animacji ruchu (obejmuje kończyny; kręgosłup i palce — nie).');
 }
 
 /* ---------- panel Widoczność ---------- */

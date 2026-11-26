@@ -1,10 +1,16 @@
-# 05 Anatomia — v0.10
+# 05 Anatomia — v0.12
 
 Interaktywny model 3D **kończyny górnej, głowy i szyi, tułowia, miednicy, uda oraz podudzia i stopy** (prawa / lewa = lustro / obie): 32 kości, 67 siatek mięśniowych (51 mięśni), 109 punktów kostnych, **22 stawy** (typ, osie, powierzchnie, antagoniści, torebki) oraz czaszka i kręgi szyjne (wczytywane na żądanie). Nazwy polskie (duże) i łacińskie (pod spodem, w nawiasie), wyszukiwarka po wszystkich nazwach (PL/łac./ang.), regiony (bark · ramię · przedramię · dłoń), obrót modelu, początki (niebieski) i przyczepy końcowe (pomarańczowy) mięśni na kościach.
 
 - Adres: https://anatomia.smialo.org/ (domena Workera podpięta 2026-11-16, tymczasowo do 2026-12-31) oraz https://projects.michus.workers.dev/05/ (stały). Żaden z nich nie jest za Cloudflare Access.
 - Technologia: three.js (WebGL) + three-mesh-bvh; jeden `index.html` + pliki GLB i dane pozy (`public/`).
 - Dane: `data/data.json` (nazwy, opisy, przyczepy, pozycje punktów).
+
+## v0.12
+- **Poza i animacja kończyny dolnej**: suwaki Staw biodrowy (zgięcie/wyprost, odwodzenie/przywodzenie, rotacja), Kolano (zgięcie), Kostka i stopa (grzbietowe/podeszwowe, inwersja/ewersja). Mięśnie uda i podudzia odkształcają się razem z kośćmi (skinning + kolizje z kością udową, piszczelą i stopą).
+- Kliknięcie ▶ przy ruchu biodra / kolana / kostki / stawu podskokowego w panelu „Ruchy” wykonuje ruch na modelu (region „Podudzie i stopa” włącza się i wczytuje automatycznie); kadr kamery dopasowuje się do ułożonej nogi.
+- Nowe gotowe pozy: siad, przysiad głęboki, noga w górę, noga w bok, wspięcie na palce, pięta do pośladka.
+- Dane pozy nogi: `public/skin_lower.bin`, `col_lower.bin`, `dlt_lower.bin` (generuje `tools/pose_build.py`).
 
 ## v0.11
 - Pasek przełączników paneli (Karta, Powiązania, Ruchy, Poza, Testy, Widoczność, Analiza) przeniesiony do górnego paska obok „Menu”; te same przełączniki są też w Menu → „Panele” (na telefonie pasek zostaje na dole).

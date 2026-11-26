@@ -1,5 +1,5 @@
-/* Silnik pozy kończyny górnej (prawa strona; lewa = lustro).
-   Segmenty sztywne: tułów(0) obojczyk(1) łopatka(2) ramię(3) łokieć/kość łokciowa(4) kość promieniowa(5) dłoń(6).
+/* Silnik pozy kończyn (prawa strona; lewa = lustro).
+   Segmenty sztywne: tułów+miednica(0) obojczyk(1) łopatka(2) ramię(3) łokieć/kość łokciowa(4) kość promieniowa(5) dłoń(6), pomocnicze skrętu przedramienia(7,8), udo(9) podudzie+strzałka+rzepka(10) stopa(11).
    Kości i znaczniki: ruch sztywny. Mięśnie, więzadła, nerwy, naczynia: skinning (4 wpływy na wierzchołek, wagi policzone offline
    wg odległości do kości), CPU + odświeżenie drzew BVH, więc wybieranie i najechanie działają na ciele w pozie. */
 import * as THREE from 'three';
@@ -19,8 +19,14 @@ export const DOF = [
   { k: 'Pr', g: 'Przedramię', n: 'Odwrót ⟷ nawrót', neg: 'odwrót (supinacja)', pos: 'nawrót (pronacja)', min: -90, max: 90, nmin: -80, nmax: 80, norm: 'supinacja 80–90°, pronacja 80–90° (0° = kciuk do góry)' },
   { k: 'wFE', g: 'Nadgarstek', n: 'Wyprost ⟷ zgięcie dłoniowe', neg: 'wyprost (grzbietowo)', pos: 'zgięcie dłoniowe', min: -70, max: 80, nmin: -60, nmax: 60, norm: 'zgięcie dłoniowe 60–80°, grzbietowe (wyprost) 60–70°' },
   { k: 'wDev', g: 'Nadgarstek', n: 'Odchylenie promieniowe ⟷ łokciowe', neg: 'promieniowe', pos: 'łokciowe', min: -20, max: 30, nmin: -20, nmax: 30, norm: 'promieniowe 20°, łokciowe 30°' },
+  { k: 'hF', g: 'Staw biodrowy', n: 'Zgięcie ⟷ wyprost', neg: 'wyprost', pos: 'zgięcie', min: -30, max: 130, nmin: -20, nmax: 120, norm: 'zgięcie 120–130° (przy wyprostowanym kolanie ok. 90° — ogranicza je napięcie tylnej grupy uda), wyprost 20–30°' },
+  { k: 'hA', g: 'Staw biodrowy', n: 'Odwodzenie ⟷ przywodzenie', neg: 'przywodzenie', pos: 'odwodzenie', min: -35, max: 50, nmin: -30, nmax: 45, norm: 'odwodzenie 45–50°, przywodzenie 30–35°' },
+  { k: 'hR', g: 'Staw biodrowy', n: 'Rotacja wewn. ⟷ zewn.', neg: 'zewnętrzna', pos: 'wewnętrzna', min: -60, max: 50, nmin: -45, nmax: 45, norm: 'rotacja wewnętrzna 40–50°, zewnętrzna 45–60°' },
+  { k: 'kF', g: 'Kolano', n: 'Zgięcie kolana', neg: 'przeprost', pos: 'zgięcie', min: -5, max: 150, nmin: 0, nmax: 140, norm: 'zgięcie 135–150°, wyprost 0° (przeprost do ok. 5°)' },
+  { k: 'aF', g: 'Kostka i stopa', n: 'Zgięcie grzbietowe ⟷ podeszwowe', neg: 'zgięcie podeszwowe', pos: 'zgięcie grzbietowe', min: -55, max: 30, nmin: -50, nmax: 20, norm: 'grzbietowe 20–30° (przy zgiętym kolanie więcej), podeszwowe 50–55°' },
+  { k: 'aI', g: 'Kostka i stopa', n: 'Inwersja ⟷ ewersja', neg: 'ewersja', pos: 'inwersja', min: -20, max: 40, nmin: -15, nmax: 35, norm: 'inwersja 30–40° (podeszwa do środka), ewersja 15–20°' },
 ];
-export const REST = { gElev: 0, gProt: 0, F: 0, A: 0, R: 0, E: 0, Pr: -90, wFE: 0, wDev: 0 };
+export const REST = { gElev: 0, gProt: 0, F: 0, A: 0, R: 0, E: 0, Pr: -90, wFE: 0, wDev: 0, hF: 0, hA: 0, hR: 0, kF: 0, aF: 0, aI: 0 };
 const COUPLING = 0.30; // naturalny skręt zewnętrzny ramienia przy odwodzeniu (paradoks Codmana) — dodawany do suwaka R automatycznie
 // rotacja „naturalna” dla danego uniesienia (suwak R pokazuje rzeczywisty skręt kości ramiennej względem pozycji neutralnej w danej płaszczyźnie)
 export function natR(F, A) { const e = Math.hypot(F, A); if (e < 1e-9) return 0; const p = Math.atan2(F, A); return -COUPLING * Math.max(0, Math.cos(p)) * e; }
@@ -29,13 +35,14 @@ export function limits(v) {
   const e = Math.hypot(v.F, v.A), s = Math.sin(Math.min(e, 90) * D2R), t = e > 90 ? (e - 90) / 90 : 0;
   const er = e <= 90 ? 90 + 10 * s : 100 - 10 * t, ir = e <= 90 ? 70 + 20 * s : 90 - 30 * t;
   const amin = -(ADD0 + (50 - ADD0) * Math.min(1, Math.max(0, v.F) / 45));
-  return { R: [-er, ir], A: [amin, 180] };
+  const hmax = 90 + 40 * Math.min(1, Math.max(0, v.kF || 0) / 70); // zgięcie biodra z wyprostowanym kolanem ograniczają ścięgna uda
+  return { R: [-er, ir], A: [amin, 180], hF: [-30, hmax] };
 }
 const ADD0 = 12; // przywiedzenie przy ramieniu opuszczonym (dalej ramię wchodziłoby w tułów)
 
 export function createPose({ onPose, base = '' }) {
   const st = { ready: false, J: null, segs: [], boneSeg: new Map(), vals: { ...REST }, rhythm: true, queue: [], rigid: [], skinned: [], meta: {}, bins: {}, cols: {}, sdf: [], sdfMeta: null, sdfP: null, mode: 'delta', alpha: 0.4, wrap: true, dlts: {}, lazy: [], lazyN: 0, dirty: false, M: null, anim: null };
-  const NSEG = 9, QR = new Float32Array(NSEG * 4), QD = new Float32Array(NSEG * 4), MA = new Float32Array(NSEG * 12), INV = [], ROT = [];
+  const NSEG = 12, QR = new Float32Array(NSEG * 4), QD = new Float32Array(NSEG * 4), MA = new Float32Array(NSEG * 12), INV = [], ROT = [];
   for (let i = 0; i < NSEG; i++) { INV.push(new Float32Array(12)); ROT.push(new Float32Array(9)); }
   const V = (a) => new THREE.Vector3(a[0], a[1], a[2]);
   const rotAbout = (pivot, axis, deg) => { // obrót o deg wokół osi przechodzącej przez pivot (współrzędne spoczynkowe)
@@ -48,7 +55,7 @@ export function createPose({ onPose, base = '' }) {
     const o = { ...v };
     for (const d of DOF) o[d.k] = clamp(+o[d.k] || 0, d.min, d.max);
     const e = Math.hypot(o.F, o.A); if (e > 180) { o.F *= 180 / e; o.A *= 180 / e; }
-    const L = limits(o); o.A = clamp(o.A, L.A[0], L.A[1]); o.R = clamp(o.R, L.R[0], L.R[1]);
+    const L = limits(o); o.A = clamp(o.A, L.A[0], L.A[1]); o.R = clamp(o.R, L.R[0], L.R[1]); o.hF = clamp(o.hF, L.hF[0], L.hF[1]);
     return o;
   }
   function compute(v) {
@@ -81,7 +88,13 @@ export function createPose({ onPose, base = '' }) {
     M[1] = Mcl; M[2] = Msc; M[3] = Mh; M[4] = Mu; M[5] = Mr; M[6] = Mw;
     // pomocnicze segmenty skrętu przedramienia: 1/3 i 2/3 nawrócenia (tkanki skręcają się wzdłuż przedramienia)
     M[7] = Mu.clone().multiply(rotAbout(J.pr_p, J.pr_axis, (v.Pr + 90) / 3)); M[8] = Mu.clone().multiply(rotAbout(J.pr_p, J.pr_axis, (v.Pr + 90) * 2 / 3));
-    M.q = [new THREE.Quaternion(), Qcl, Qsc, Qh, Qu, Qr, Qw, Qu.clone().multiply(qa(J.pr_axis, (v.Pr + 90) / 3)), Qu.clone().multiply(qa(J.pr_axis, (v.Pr + 90) * 2 / 3))];
+    // kończyna dolna: biodro (obrót wokół jednego punktu: rotacja → odwodzenie → zgięcie), kolano, kostka + staw podskokowy
+    const Mfe = rotAbout(J.hip, J.hip_f, v.hF).multiply(rotAbout(J.hip, J.hip_a, v.hA)).multiply(rotAbout(J.hip, J.hip_r, v.hR));
+    const Qfe = qa(J.hip_f, v.hF).multiply(qa(J.hip_a, v.hA)).multiply(qa(J.hip_r, v.hR));
+    const Mti = Mfe.clone().multiply(rotAbout(J.knee, J.knee_f, v.kF)), Qti = Qfe.clone().multiply(qa(J.knee_f, v.kF));
+    const Mfo = Mti.clone().multiply(rotAbout(J.ank, J.ank_f, v.aF)).multiply(rotAbout(J.stj, J.stj_axis, v.aI)), Qfo = Qti.clone().multiply(qa(J.ank_f, v.aF)).multiply(qa(J.stj_axis, v.aI));
+    M[9] = Mfe; M[10] = Mti; M[11] = Mfo;
+    M.q = [new THREE.Quaternion(), Qcl, Qsc, Qh, Qu, Qr, Qw, Qu.clone().multiply(qa(J.pr_axis, (v.Pr + 90) / 3)), Qu.clone().multiply(qa(J.pr_axis, (v.Pr + 90) * 2 / 3)), Qfe, Qti, Qfo];
     return M;
   }
   const isRest = () => DOF.every((d) => Math.abs(st.vals[d.k] - REST[d.k]) < 1e-6);
@@ -227,5 +240,6 @@ export function createPose({ onPose, base = '' }) {
     st.ready = true; st.M = compute(st.vals);
     const q = st.queue; st.queue = []; for (const f of q) f();
   }).catch((e) => { console.warn('pose.json', e); });
-  return { st, ready, rigid, skinned, sync, flush, set, reset, setMode, setWrap, loadSdf, setRhythm, animateTo, tick, xp, segOfBone, get vals() { return st.vals; }, get rhythm() { return st.rhythm; }, isRest, get active() { return !!st.anim; }, limits: () => limits(st.vals), segIndex: (n) => st.segs.indexOf(n) };
+  const settled = () => Promise.all([...Object.values(st.bins), ...Object.values(st.cols), ...Object.values(st.dlts), st.sdfP].filter(Boolean)).then(() => new Promise((r) => setTimeout(r, 120))); // dane skinningu doczytane
+  return { st, ready, settled, rigid, skinned, sync, flush, set, reset, setMode, setWrap, loadSdf, setRhythm, animateTo, tick, xp, segOfBone, get vals() { return st.vals; }, get rhythm() { return st.rhythm; }, isRest, get active() { return !!st.anim; }, limits: () => limits(st.vals), segIndex: (n) => st.segs.indexOf(n) };
 }
