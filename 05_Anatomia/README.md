@@ -6,6 +6,12 @@ Interaktywny model 3D **kończyny górnej, głowy i szyi, tułowia, miednicy, ud
 - Technologia: three.js (WebGL) + three-mesh-bvh; jeden `index.html` + pliki GLB i dane pozy (`public/`).
 - Dane: `data/data.json` (nazwy, opisy, przyczepy, pozycje punktów).
 
+## v0.11
+- Pasek przełączników paneli (Karta, Powiązania, Ruchy, Poza, Testy, Widoczność, Analiza) przeniesiony do górnego paska obok „Menu”; te same przełączniki są też w Menu → „Panele” (na telefonie pasek zostaje na dole).
+- Panel „Ruchy”: komplet ruchów wszystkich stawów (bark → palce, szyja, kręgosłup piersiowy i lędźwiowy, biodro, kolano, kostka, staw podskokowy, palce stopy) z listą mięśni wykonujących każdy ruch; ▶ = animacja na modelu, ◎ = podświetla mięśnie ruchu.
+- Nowe stawy w danych (`tools/add_joints.py`): biodrowy, krzyżowo-biodrowy, kolanowy, skokowo-goleniowy, podskokowy, MTP, kręgosłup lędźwiowy / piersiowy / szyjny.
+- Wybrany mięsień (np. biodrowo-lędźwiowy) pokazuje teraz ruchy, które wykonuje, także w kończynie dolnej i tułowiu.
+
 ## v0.10
 - **Zakresy ruchu = maksymalny zdrowy zakres + zaznaczona norma**: suwaki w panelu Poza mają pasek: 🟩 zielone = norma (typowy zdrowy dorosły, WHO / Luttgens), 🟧 bursztynowe = do maksymalnego zdrowego zakresu (AAOS / Kapandji, ruch bierny do końca), kreska = 0°; szare (kreskowane) pola = niedostępne w tej pozie. Nowe maksima: rotacja zewnętrzna 100°, wewnętrzna 90°, przywiedzenie 50°, zgięcie łokcia 150° (przeprost −10°), nawrót/odwrót ±90°.
 - **Rotacja barku zależna od pozycji**: dozwolony zakres rotacji zewn. 90→100° i wewn. 70→90° rośnie z uniesieniem ramienia (do 90°) i maleje powyżej; przywiedzenie 12° przy ramieniu opuszczonym do 50° przy ramieniu przed tułowiem. Suwak R pokazuje teraz **rzeczywisty skręt** kości ramiennej (naturalny skręt zewnętrzny przy odwodzeniu — paradoks Codmana — dodawany automatycznie do R przy ruchu F/A; wcześniej był ukryty w modelu, przez co granice rotacji w uniesieniu były błędne).

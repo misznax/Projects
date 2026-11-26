@@ -239,7 +239,7 @@ function ensureTrunk() {
   }).catch((e) => { toast('Nie udało się wczytać tułowia: ' + e.message); trunkP = null; });
   return trunkP;
 }
-const needTrunk = (sel) => { if (!sel) return false; if (sel.t === 'bone') return BON.get(sel.id)?.kind === 'trunk'; if (sel.t === 'grp' || sel.t === 'part') return G[grpOf(sel)].region === 'tulow'; return false; };
+const needTrunk = (sel) => { if (!sel) return false; if (sel.t === 'bone') return BON.get(sel.id)?.kind === 'trunk'; if (sel.t === 'joint') return JMAP.get(sel.id).reg === 'tulow'; if (sel.t === 'grp' || sel.t === 'part') return G[grpOf(sel)].region === 'tulow'; return false; };
 
 let legP = null; // podudzie i stopa — wczytywane na żądanie (2 MB); udo i kość udowa pochodzą z pliku tułowia
 function ensureLeg() {
@@ -255,7 +255,7 @@ function ensureLeg() {
   }).catch((e) => { toast('Nie udało się wczytać podudzia: ' + e.message); legP = null; });
   return legP;
 }
-const needLeg = (sel) => { if (!sel) return false; if (sel.t === 'bone') return BON.get(sel.id)?.kind === 'leg'; if (sel.t === 'grp' || sel.t === 'part') return G[grpOf(sel)].region === 'podudzie'; return false; };
+const needLeg = (sel) => { if (!sel) return false; if (sel.t === 'bone') return BON.get(sel.id)?.kind === 'leg'; if (sel.t === 'joint') return JMAP.get(sel.id).reg === 'podudzie'; if (sel.t === 'grp' || sel.t === 'part') return G[grpOf(sel)].region === 'podudzie'; return false; };
 
 const structP = {};
 function ensureStruct(f) { // f: 'lig' | 'nerv' | 'vess'
@@ -279,7 +279,7 @@ function useStructLayer(f, on) { S.layers[f] = on; const el = $('#l' + ({ lig: '
 /* ---------- widoczność / materiały ---------- */
 const grpRegion = (k) => G[k].region;
 const regionOk = (r) => S.region === 'all' || S.region === r;
-const jointRegionOk = (j) => regionOk(j.reg) && (j.reg !== 'glowa' || S.layers.skull || S.region === 'glowa');
+const jointRegionOk = (j) => regionOk(j.reg) && (j.reg !== 'glowa' || S.layers.skull || S.region === 'glowa') && ((j.reg !== 'tulow' && j.reg !== 'podudzie') || S.region === j.reg);
 function curGroups() { // Map: klucz grupy -> indeks koloru
   const m = new Map(S.multi); const s = S.sel;
   if (s && (s.t === 'grp' || s.t === 'part')) { const k = s.t === 'grp' ? s.id : MUS.get(s.id).grp; if (!m.has(k)) m.set(k, 0); }
@@ -779,7 +779,7 @@ window.addEventListener('keydown', (e) => { if (e.key === '/' && document.active
 const PDEF = [
   { id: 'karta', t: 'Karta', ico: 'ℹ️', zone: 'r', on: true, auto: true, tip: 'Opis wybranej struktury: przyczepy, czynność, unerwienie' },
   { id: 'pow', t: 'Powiązania', ico: '🔗', zone: 'l', on: true, auto: true, tip: 'Antagoniści, części, kości, stawy, więzadła' },
-  { id: 'ruchy', t: 'Ruchy', ico: '↔️', zone: 'l', on: true, auto: true, tip: 'Ruchy w stawach i pracujące mięśnie (antagoniści)' },
+  { id: 'ruchy', t: 'Ruchy', ico: '↔️', zone: 'l', on: false, tip: 'Komplet ruchów w stawach (bark → stopa, kręgosłup, szyja) i mięśnie, które je wykonują' },
   { id: 'poza', t: 'Poza', ico: '🦾', zone: 'r', on: false, tip: 'Ruchome stawy: suwaki z zakresami ruchu zdrowego człowieka' },
   { id: 'testy', t: 'Testy', ico: '🩺', zone: 'r', on: false, tip: 'Testy ruchowe: ustaw pozycję i sprawdź, które mięśnie mogą boleć' },
   { id: 'wid', t: 'Widoczność', ico: '👁', zone: 'l', on: false, tip: 'Ukryte, tło i wyróżnione mięśnie; przywracanie' },
@@ -787,22 +787,27 @@ const PDEF = [
 ];
 const PD = Object.fromEntries(PDEF.map((d) => [d.id, d]));
 const PS = {}; let mobActive = null;
-{ let sv = {}; try { sv = JSON.parse(localStorage.getItem('anatomia.panels') || '{}'); } catch (e) {}
+{ let sv = {}; try { sv = JSON.parse(localStorage.getItem('anatomia.panels2') || '{}'); } catch (e) {}
   for (const d of PDEF) { const o = sv[d.id] || {}; PS[d.id] = { on: typeof o.on === 'boolean' ? o.on : d.on, min: !!o.min, zone: o.zone === 'l' || o.zone === 'r' ? o.zone : d.zone, html: null }; } }
 const infoEl = $('#panels'), dockEl = $('#dock'); const zoneEl = { l: $('#zoneL'), r: $('#zoneR') };
 const isMobile = () => window.innerWidth < 820;
-const savePanels = () => { try { localStorage.setItem('anatomia.panels', JSON.stringify(Object.fromEntries(PDEF.map((d) => [d.id, { on: PS[d.id].on, min: PS[d.id].min, zone: PS[d.id].zone }])))); } catch (e) {} };
+const savePanels = () => { try { localStorage.setItem('anatomia.panels2', JSON.stringify(Object.fromEntries(PDEF.map((d) => [d.id, { on: PS[d.id].on, min: PS[d.id].min, zone: PS[d.id].zone }])))); } catch (e) {} };
 const pEl = {};
 for (const d of PDEF) { const e = document.createElement('section'); e.className = 'pnl'; e.dataset.p = d.id; e.hidden = true; e.innerHTML = `<div class="ph" title="Kliknij, aby zwinąć / rozwinąć"><b class="pt">${d.ico} ${d.t}</b><span class="pbs"><button data-pa="min" title="Zwiń / rozwiń" aria-label="Zwiń">–</button><button data-pa="zone" title="Przenieś na drugą stronę ekranu" aria-label="Przenieś">⇆</button><button data-pa="off" title="Wyłącz panel (włączysz go ponownie na dolnym pasku)" aria-label="Zamknij panel">×</button></span></div><div class="pb"></div>`; pEl[d.id] = e; }
 const PLACEHOLDER = {
   karta: '<p class="small">Zaznacz mięsień, kość lub staw (klik w model albo na liście po lewej) — tu pojawi się jego opis: przyczepy, czynność, unerwienie.</p>',
   pow: '<p class="small">Po zaznaczeniu struktury pojawią się tu antagoniści, części, kości, stawy i więzadła.</p>',
-  ruchy: '<p class="small">Po zaznaczeniu struktury pojawią się tu ruchy w stawach i pracujące mięśnie.</p>',
+  ruchy: '',
   poza: '', wid: '', ana: '<p class="small">Opisz ból lub ruch, a zaznaczę mięśnie, ich udział % i co wzmocnić lub rozciągnąć.</p><div class="btns"><button id="anaNew" class="pri">🔎 Nowa analiza</button></div>' };
 for (const d of PDEF) if (d.auto) $('.pb', pEl[d.id]).innerHTML = PLACEHOLDER[d.id];
 const panelVisible = (id) => { const p = PS[id]; if (!p.on) return false; if (PD[id].auto) return p.html != null || !!p.pin; return true; };
 // dolny pasek budowany raz — potem tylko aktualizowany w miejscu (przebudowa w trakcie kliknięcia gubiła kliknięcie)
 dockEl.innerHTML = PDEF.map((d) => `<button class="dk" data-dk="${d.id}" aria-pressed="false"><span class="ck">☐</span><span class="di">${d.ico}</span><span class="dl">${d.t}</span><i class="bd" hidden></i></button>`).join('') + '<button class="dk help" data-dk="_help" title="Skróty i obsługa">?</button>';
+const dockHome = dockEl.parentNode, mainEl = $('main');
+function placeDock() { const m = isMobile(); dockEl.classList.toggle('mob', m); const to = m ? mainEl : dockHome; if (dockEl.parentNode !== to) { if (m) to.appendChild(dockEl); else to.insertBefore(dockEl, $('#menuBtn')); } }
+window.addEventListener('resize', placeDock); placeDock();
+$('#menu').insertAdjacentHTML('afterbegin', '<div class="mh">Panele</div>' + PDEF.map((d) => `<button data-mp="${d.id}"><span class="mck">☐</span> ${d.ico} ${d.t}</button>`).join('') + '<hr>');
+const mnEl = Object.fromEntries(PDEF.map((d) => [d.id, $(`#menu [data-mp="${d.id}"] .mck`)]));
 const dkEl = Object.fromEntries(PDEF.map((d) => [d.id, dockEl.querySelector(`[data-dk="${d.id}"]`)]));
 function layoutPanels() {
   const mob = isMobile();
@@ -825,6 +830,7 @@ function layoutPanels() {
     const ap = String(vis); if (b.getAttribute('aria-pressed') !== ap) b.setAttribute('aria-pressed', ap);
     const ck = b.firstChild, ct = vis ? '☑' : '☐'; if (ck.textContent !== ct) ck.textContent = ct;
     const bd = b.lastChild; if (bd.textContent !== bt) { bd.textContent = bt; bd.hidden = !bt; }
+    const mk = mnEl[d.id]; if (mk.textContent !== ct) mk.textContent = ct;
   }
   updHintTop(); measureInsets();
 }
@@ -844,7 +850,7 @@ function setPanel(id, html, opts = {}) { // html === null → brak treści (pane
 function togglePanel(id, v) {
   const p = PS[id]; p.on = v === undefined ? !p.on : v;
   if (PD[id].auto) p.pin = p.on && p.html == null; // jawnie otwarty pusty panel pokazuje podpowiedź zamiast znikać
-  if (p.on) { p.min = false; if (isMobile()) mobActive = id; if (id === 'poza' && typeof renderPose === 'function') renderPose(); if (id === 'testy' && typeof renderTests === 'function') renderTests(); if (id === 'wid') renderVisPanel(); if (id === 'ana' && !S.ana) setPanel('ana', null, { quiet: true }); }
+  if (p.on) { p.min = false; if (isMobile()) mobActive = id; if (id === 'poza' && typeof renderPose === 'function') renderPose(); if (id === 'testy' && typeof renderTests === 'function') renderTests(); if (id === 'ruchy') renderRuchy({ keep: true }); if (id === 'wid') renderVisPanel(); if (id === 'ana' && !S.ana) setPanel('ana', null, { quiet: true }); }
   else if (id === 'ana' && S.ana) { S.ana = null; apply(); renderInfo(); markList(); }
   savePanels(); layoutPanels();
 }
@@ -864,7 +870,8 @@ infoEl.addEventListener('click', (e) => {
   const ph = e.target.closest('.ph'); if (ph && !e.target.closest('button')) { const p = PS[ph.parentNode.dataset.p]; p.min = !p.min; savePanels(); layoutPanels(); }
 });
 dockEl.addEventListener('wheel', (e) => { if (dockEl.scrollWidth > dockEl.clientWidth + 2) { dockEl.scrollLeft += e.deltaY || e.deltaX; e.preventDefault(); } }, { passive: false });
-dockEl.addEventListener('click', (e) => { const b = e.target.closest('[data-dk]'); if (!b) return; if (b.dataset.dk === '_help') { showHelp(); return; } const id = b.dataset.dk; togglePanel(id, panelVisible(id) && (!isMobile() || id === mobActive) ? false : true); });
+const dockToggle = (id) => togglePanel(id, panelVisible(id) && (!isMobile() || id === mobActive) ? false : true);
+dockEl.addEventListener('click', (e) => { const b = e.target.closest('[data-dk]'); if (!b) return; if (b.dataset.dk === '_help') { showHelp(); return; } dockToggle(b.dataset.dk); });
 
 layoutPanels();
 function chip(pl, la, t, id, cls = '', dot = '') { return `<button class="chip ${cls}" data-t="${t}" data-id="${id}">${dot}${esc(pl)} <small>(${esc(la)})</small></button>`; }
@@ -886,11 +893,11 @@ function renderMulti() {
     if (patchesByGrp.size) h += `<div class="legend"><span><i class="o"></i>początki</span><span><i class="i"></i>przyczepy końcowe</span></div>`;
   }
   h += `<div class="btns">${keys.length ? '<button id="bMultiFocus">Przybliż</button>' : ''}${keys.length && [...ANT.keys()].some((k) => S.multi.has(k)) ? '<button id="bAddAnt">Dodaj antagonistów</button>' : ''}${keys.length ? '<button id="bMultiClear">Wyczyść</button>' : ''}<button id="bMultiOff" class="pri">Zakończ wybór wielu</button></div>`;
-  setPanel('karta', h); setPanel('pow', pw || null); setPanel('ruchy', null);
+  setPanel('karta', h); setPanel('pow', pw || null); setRuchy('');
 }
 function renderInfo() {
   if (S.multiMode) { renderMulti(); return; }
-  const s = S.sel; if (!s) { setPanel('karta', null); setPanel('pow', null); setPanel('ruchy', null); return; }
+  const s = S.sel; if (!s) { setPanel('karta', null); setPanel('pow', null); setRuchy(''); return; }
   let h = '', pw = '', rv = '';
   if (s.t === 'grp' || s.t === 'part') {
     const gk = grpOf(s); const g = G[gk]; const part = s.t === 'part' ? MUS.get(s.id) : null;
@@ -899,7 +906,7 @@ function renderInfo() {
     if (patchesByGrp.get(gk)) h += `<div class="legend"><span><i class="o"></i>początek</span><span><i class="i"></i>przyczep końcowy</span><em>zaznaczone na kościach (orientacyjnie, wg modelu)</em></div>`;
     const an = ANT.get(gk); if (an && an.size) pw += `<div class="subt">Antagoniści</div><div class="chips">${[...an].sort((a, b) => G[a].pl.localeCompare(G[b].pl, 'pl')).map((k) => gchip(k)).join('')}</div>`;
     if (g.parts.length > 1) { pw += '<div class="subt">Części</div><div class="chips">'; for (const p of g.parts) pw += chip(p.pl, p.la, 'part', p.id, part && part.id === p.id ? 'on' : ''); pw += '</div>'; }
-    const mj = MJ.get(gk); if (mj && mj.length) { rv += '<div class="subt">Działa na stawy — kliknij ruch, aby zobaczyć go na modelu</div><div class="chips">'; for (const x of mj) { const dof = typeof poseMoveFor === 'function' ? poseMoveFor(x.j, x.ruch) : null; rv += dof ? `<button class="chip mvp" data-mvp="${x.j}|${esc(x.ruch)}|${gk}" title="Pokaż ten ruch na modelu">▶ ${esc(x.ruch)} <small>(${esc(JMAP.get(x.j).pl)})</small></button>` : chip(JMAP.get(x.j).pl, x.ruch, 'joint', x.j, '', sdot(JMAP.get(x.j))); } rv += '</div>'; }
+    const mj = MJ.get(gk); if (mj && mj.length) { rv += '<div class="subt">Ten mięsień wykonuje ruchy — kliknij, aby zobaczyć</div><div class="chips">' + mj.map((x) => mvChip(x.j, x.ruch, gk)).join('') + '</div>'; }
   } else if (s.t === 'bone') {
     const b = BON.get(s.id); const ls = lmsByBone.get(b.id) || [];
     h += head(b.pl, b.la, b.kind === 'ctx' ? 'Kość · kontekst' : 'Kość · ' + REGION_NAME[b.region].toLowerCase());
@@ -949,7 +956,7 @@ function renderInfo() {
   const jm = s.t === 'joint' && JMAP.get(s.id).pairs.some((p) => p[1].some(isG) || p[3].some(isG));
   const isM = s.t === 'grp' || s.t === 'part';
   h += `<div class="btns"><button id="bFocus">Przybliż</button>${isM ? '<button id="bHide" title="Ukryj ten mięsień, aby dotrzeć do głębszych (Shift+klik lub H)">Ukryj mięsień</button><button id="bIso">Ukryj resztę</button>' : ''}${s.t === 'bone' ? '<button id="bHide" title="Ukryj kość (Shift+klik lub H)">Ukryj kość</button>' : ''}${isM && ANT.has(grpOf(s)) ? '<button id="bAnt">Z antagonistami</button>' : ''}${jm ? '<button id="bJm">Pokaż mięśnie stawu</button>' : ''}<button id="bClear">Odznacz</button></div>`;
-  setPanel('karta', h); setPanel('pow', pw || null); setPanel('ruchy', rv || null);
+  setPanel('karta', h); setPanel('pow', pw || null); setRuchy(rv);
 }
 infoEl.addEventListener('click', (e) => {
   const t = e.target;
@@ -962,7 +969,8 @@ infoEl.addEventListener('click', (e) => {
   if (t.closest('#anaFocus')) { anaFly(); return; }
   if (t.closest('#bClear')) { select(null); return; }
   if (t.closest('#bHide')) { const s0 = S.sel; if (s0 && s0.t === 'bone') hideBone(s0.id); else if (s0) hideMuscle(grpOf(s0)); return; }
-  const mvp = t.closest('[data-mvp]'); if (mvp) { const [jid, ruch, gk] = mvp.dataset.mvp.split('|'); if (typeof poseDemo === 'function') poseDemo(jid, ruch, gk); return; }
+  const mvj = t.closest('[data-mvj]'); if (mvj) { const [jid, ruch, gk] = mvj.dataset.mvj.split('|'); moveShow(jid, ruch, gk); return; }
+  const mjt = t.closest('[data-mjt]'); if (mjt) { const id = mjt.dataset.mjt; if (moveOpen.has(id)) moveOpen.delete(id); else moveOpen.add(id); renderRuchy(); return; }
   if (t.closest('#bPoseJ')) { if (typeof poseOpenJoint === 'function') poseOpenJoint(t.closest('#bPoseJ').dataset.j); return; }
   if (t.closest('#bFocus')) { const s = S.sel; S.sel = null; select(s); return; }
   if (t.closest('#bIso')) { S.ghostBg = false; S.layers.bones = true; const s = S.sel; $('#ghostBg').checked = false; const gk = grpOf(s); clearVis(); for (const k of Object.keys(G)) if (k !== gk) S.hidden.add(k); renderList(); apply(); return; }
@@ -1086,6 +1094,42 @@ function poseDemo(jid, ruch, gk) {
   if (gk && G[gk]) { S.sel = { t: 'grp', id: gk }; S.hidden.delete(gk); apply(); renderInfo(); markList(); }
   POSE.animateTo(poseTarget(tg), 900); toast(`${ruch} (${JMAP.get(jid).pl})`);
   const side = /zgiecie|wyprost|protrak|retrak/.test(norm(ruch)) ? 'lat' : /odwodz|przywodz|unoszen|opuszcz/.test(norm(ruch)) ? 'front' : null; if (side && S.box) viewRegion(side);
+}
+/* ---------- komplet ruchów (wszystkie stawy) ---------- */
+const moveOpen = new Set(); let ruchyRv = '';
+const mvChip = (jid, ruch, gk = '') => `<button class="chip mvp" data-mvj="${jid}|${esc(ruch)}|${gk}" title="${poseMoveFor(jid, ruch) ? 'Pokaż ruch na modelu' : 'Pokaż mięśnie wykonujące ruch'}">${poseMoveFor(jid, ruch) ? '▶' : '◎'} ${esc(ruch)} <small>(${esc(JMAP.get(jid).pl)})</small></button>`;
+function movesCatalog() {
+  let h = '<div class="subt">Wszystkie ruchy — rozwiń staw, kliknij ruch</div><p class="small">▶ pokazuje ruch na modelu · ◎ pokazuje mięśnie, które go wykonują.</p>';
+  for (const r of REG_ORDER) {
+    const js = JN.filter((j) => j.reg === r && j.pairs.length); if (!js.length) continue;
+    h += `<div class="mvreg">${esc(REGION_NAME[r])}</div>`;
+    for (const j of js) {
+      const open = moveOpen.has(j.id);
+      h += `<div class="mvj"><button class="mvh${open ? ' open' : ''}" data-mjt="${j.id}">${open ? '▾' : '▸'} ${esc(j.pl)}</button>`;
+      if (open) for (const pr of j.pairs) for (const [ruch, mus] of [[pr[0], pr[1]], [pr[2], pr[3]]]) {
+        h += `<div class="mvr"><button class="chip mvp" data-mvj="${j.id}|${esc(ruch)}|">${poseMoveFor(j.id, ruch) ? '▶' : '◎'} ${esc(ruch)}</button><div class="mvm">${mus.map((k) => (isG(k) ? gchip(k) : `<span class="small">${esc(k)}</span>`)).join('')}</div></div>`;
+      }
+      h += '</div>';
+    }
+  }
+  return h;
+}
+const renderRuchy = (opts = {}) => setPanel('ruchy', (ruchyRv || '') + movesCatalog(), { keep: opts.keep !== false, quiet: true });
+function setRuchy(rv) { ruchyRv = rv || ''; setPanel('ruchy', ruchyRv + movesCatalog(), { quiet: true }); }
+async function moveShow(jid, ruch, gk) {
+  const j = JMAP.get(jid), pr = j && j.pairs.find((p) => p[0] === ruch || p[2] === ruch); if (!pr) return;
+  const first = pr[0] === ruch, ag = (first ? pr[1] : pr[3]).filter(isG), dof = poseMoveFor(jid, ruch);
+  if (dof && gk && G[gk]) { poseDemo(jid, ruch, gk); return; }
+  S.region = 'all'; $$('#regions button').forEach((x) => x.classList.toggle('on', x.dataset.r === 'all'));
+  S.layers.muscles = true; S.layers.bones = true; $('#lMus').checked = true; $('#lBones').checked = true;
+  const regs = new Set(ag.map((k) => G[k].region));
+  if (regs.has('tulow') || regs.has('bark') || regs.has('podudzie')) { S.layers.ctx = true; $('#lCtx').checked = true; }
+  if (regs.has('glowa')) { S.layers.skull = true; $('#lSkull').checked = true; }
+  if (window.innerWidth < 820) closeDrawer();
+  toast(`${ruch} — ${j.pl}`);
+  await Promise.all([regs.has('tulow') || regs.has('podudzie') ? ensureTrunk() : null, regs.has('podudzie') ? ensureLeg() : null, regs.has('glowa') ? ensureAxial() : null]);
+  if (ag.length) setMulti(ag.map((k) => [k, 0]), !dof);
+  if (dof) { showPanel('poza'); renderPose(); POSE.animateTo(poseTarget(dof), 900); const side = /zgiecie|wyprost|protrak|retrak/.test(norm(ruch)) ? 'lat' : /odwodz|przywodz|unoszen|opuszcz/.test(norm(ruch)) ? 'front' : null; if (side && S.box) setTimeout(() => viewRegion(side), 60); }
 }
 function poseOpenJoint(jid) {
   showPanel('poza'); renderPose();
@@ -1292,6 +1336,7 @@ document.addEventListener('pointerdown', (e) => {
 }, true);
 $('#menu').addEventListener('click', (e) => {
   const a = e.target.closest('button'); if (!a) return; $('#menu').classList.remove('show');
+  if (a.dataset.mp) { dockToggle(a.dataset.mp); return; }
   if (a.dataset.m === 'about') showModal(`<h3>O autorze</h3><p><b>Anatomia</b> — wersja <b>v${VERSION}</b></p><p>Autor: <b>Michał Rzekiecki</b><br>Kontakt: <a href="mailto:michus@gmail.com">michus@gmail.com</a></p><hr><p class="small">Model 3D: <a href="https://www.z-anatomy.com" target="_blank" rel="noopener">Z-Anatomy</a> (CC BY-SA 4.0), oparty na BodyParts3D © The Database Center for Life Science (CC BY-SA 2.1 Japan). Nazwy łacińskie wg Terminologia Anatomica. Opisy mają charakter edukacyjny — w razie wątpliwości sprawdź w podręczniku anatomii.</p>`);
   if (a.dataset.m === 'sug') showModal(`<h3>Sugestie</h3><p class="small">Napisz, co sprawiłoby, że aplikacja będzie jeszcze lepsza.</p><textarea id="sugTxt" rows="6" placeholder="Twoja sugestia…"></textarea><div class="btns"><button id="sugSend" class="pri">Wyślij e-mailem</button><button id="sugCopy">Kopiuj</button></div><p class="small">Otworzy się Twój program pocztowy (adres: michus@gmail.com).</p>`);
   if (a.dataset.m === 'help') showHelp();
@@ -1402,3 +1447,4 @@ ready.then(() => {
   window.__anat = { setRegion, setHover, openAna, AF, runAnalysis, ensureLeg, ensureTrunk, MUS, BON, setVis, STR, ensureStruct, S, select, G, DATA, objs, SIDE, camera, controls, apply, viewRegion, setSide, toggleMulti, setMulti, ensureAxial, JMAP, POSE, renderPose };
 });
 requestAnimationFrame(frame);
+setRuchy('');
