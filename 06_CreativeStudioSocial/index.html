@@ -86,7 +86,7 @@ table.qc td{vertical-align:top}
 #m-video{grid-template-columns:280px 1fr 310px;grid-template-rows:1fr 340px;grid-template-areas:"l c r" "t t t"}
 @media (min-height:960px){#m-video{grid-template-rows:1fr 430px}}
 #v-left{grid-area:l}#v-center{grid-area:c;display:flex;flex-direction:column;min-height:0;min-width:0}#v-right{grid-area:r}#v-tl{grid-area:t;background:var(--p1);border-top:1px solid var(--bd);display:flex;flex-direction:column;min-height:0}
-.tl-bar{display:flex;gap:6px;padding:6px 10px;align-items:center;border-bottom:1px solid var(--bd);flex-wrap:wrap}.tl-tempo{display:flex;align-items:center;gap:6px;font-size:12px;padding:2px 8px;border:1px solid var(--bd);border-radius:8px;background:var(--p3);white-space:nowrap}.tl-tempo input{width:96px;margin:0}.tl-tempo b{min-width:34px;text-align:right;color:var(--acc)}.tl-tempo.off{opacity:.5}.pipbar label b,.tl-tempo b.tmv{color:var(--acc)}.tl-bar .time{font-variant-numeric:tabular-nums;font-weight:700;color:var(--acc);min-width:96px}
+.tl-bar{display:flex;gap:6px;padding:6px 10px;align-items:center;border-bottom:1px solid var(--bd);flex-wrap:wrap}.tl-tempo{display:flex;align-items:center;gap:6px;font-size:12px;padding:2px 8px;border:1px solid var(--bd);border-radius:8px;background:var(--p3);white-space:nowrap}.tl-tempo input[type=range]{width:64px;margin:0}.tl-tempo .btn{padding:2px 6px}.tl-tempo b{min-width:34px;text-align:right;color:var(--acc)}.tl-tempo.off{opacity:.5}.pipbar label b,.tl-tempo b.tmv{color:var(--acc)}.tl-bar .time{font-variant-numeric:tabular-nums;font-weight:700;color:var(--acc);min-width:96px}
 .tl-wrap{flex:1;display:flex;min-height:0;overflow:hidden}.tl-names{width:132px;flex:none;border-right:1px solid var(--bd);background:var(--p1);overflow:hidden}.tl-names div{height:30px;display:flex;align-items:center;padding:0 8px;font-size:12px;color:var(--mut);border-bottom:1px solid var(--bd)}
 .tl-scroll{flex:1;overflow:auto;position:relative}.tl-inner{position:relative}.tl-ruler{height:24px;position:sticky;top:0;z-index:5;background:var(--p2);border-bottom:1px solid var(--bd);cursor:pointer}.tl-ruler i{position:absolute;top:0;bottom:0;border-left:1px solid var(--bd);font-style:normal;font-size:10px;color:var(--mut);padding-left:3px}
 .tl-track{height:30px;border-bottom:1px solid var(--bd);position:relative}.tl-track:nth-child(even){background:rgba(255,255,255,.025)}
@@ -587,7 +587,7 @@ const DSP = (function () {
 if (typeof module !== 'undefined') module.exports = DSP;
 
 /* Creative Studio Social — rdzeń: narzędzia, magazyn (IndexedDB), projekt, historia, UI-pomocniki */
-const APP = { name: 'Creative Studio Social', ver: 'v0.10', author: 'Michał Rzekiecki', mail: 'michus@gmail.com' };
+const APP = { name: 'Creative Studio Social', ver: 'v0.11', author: 'Michał Rzekiecki', mail: 'michus@gmail.com' };
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const uid = (p = 'x') => p + Math.random().toString(36).slice(2, 9);
@@ -1148,13 +1148,17 @@ function transQuick(l, redo) { // jedno przejście dla wejścia i wyjścia (osob
 }
 // Tempo wideo i mowy: suwak 0,5–2×, klip skraca się lub wydłuża, dźwięk rozciągany bez zmiany wysokości głosu
 const fxTempo = (v) => (+v).toFixed(2).replace(/0$/, '').replace(/\.0$/, '') + '×';
+// „Zastosuj do wszystkich”: kopiuje wskazane ustawienia zaznaczonego klipu do pozostałych klipów tego samego rodzaju
+const LOOK_KEYS = ['video.shape', 'video.size', 'video.pos', 'video.fit', 'video.zoom', 'video.ox', 'video.oy', 'video.flipX', 'video.feather', 'video.bw', 'video.bc', 'video.glow', 'video.r', 'anim.in', 'anim.out', 'x', 'y', 'w', 'h'];
+function allBtn(keys, label, tip) { return h('button', { class: 'btn sm', style: { margin: '4px 0', width: '100%' }, title: tip || 'Kopiuje te ustawienia do wszystkich innych klipów tego samego rodzaju (ten sam typ i ścieżka). Cofnij: Ctrl+Z', onclick: () => Video.applyAll(keys, label.replace(/^⇉\s*/, '')) }, label); }
 function tempoQuick(l, redo, compact) {
   const c = l.video, sp = c.speed || 1, span = (l.t1 - l.t0) * sp;
   const lab = h('div', { class: 'hint', style: { margin: '2px 0 4px' } }), val = h('b', { class: 'tmv' }), show = (v) => { val.textContent = fxTempo(v); lab.textContent = fxTempo(v) + ' · klip ' + (span / v).toFixed(1) + ' s (z ' + span.toFixed(1) + ' s materiału)'; }; show(sp);
   const set = (v) => { if (Video.setSpeed(l, v)) redo(); };
   const rg = h('input', { type: 'range', min: 0.5, max: 2, step: 0.05, value: Math.min(2, Math.max(0.5, sp)), 'aria-label': 'Tempo', oninput: (e) => show(+e.target.value), onchange: (e) => set(+e.target.value) });
-  if (compact) return h('div', { class: 'fld' }, h('label', {}, h('span', {}, '⏩ Tempo wideo i mowy '), val), rg, h('div', { class: 'seg' }, [0.8, 1, 1.25, 1.5].map((v) => h('button', { class: Math.abs(sp - v) < 0.005 ? 'on' : '', title: 'Ustaw tempo ' + fxTempo(v), onclick: () => set(v) }, fxTempo(v)))));
-  return h('div', { class: 'fld' }, h('label', {}, 'Tempo wideo i mowy (bez zmiany tonu głosu)'), rg, lab, h('div', { class: 'seg' }, [0.8, 1, 1.15, 1.25, 1.5, 2].map((v) => h('button', { class: Math.abs(sp - v) < 0.005 ? 'on' : '', title: 'Ustaw tempo ' + fxTempo(v), onclick: () => set(v) }, fxTempo(v)))));
+  const all = h('button', { class: 'btn sm', style: { margin: '4px 0', width: '100%' }, title: 'To tempo dostają wszystkie wideo na osi czasu (dźwięk idzie za nimi)', onclick: () => Video.applyTempoAll() }, '⇉ Tempo do wszystkich wideo');
+  if (compact) return h('div', { class: 'fld' }, h('label', {}, h('span', {}, '⏩ Tempo wideo i mowy '), val), rg, h('div', { class: 'seg' }, [0.8, 1, 1.25, 1.5].map((v) => h('button', { class: Math.abs(sp - v) < 0.005 ? 'on' : '', title: 'Ustaw tempo ' + fxTempo(v), onclick: () => set(v) }, fxTempo(v)))), all);
+  return h('div', { class: 'fld' }, h('label', {}, 'Tempo wideo i mowy (bez zmiany tonu głosu)'), rg, lab, h('div', { class: 'seg' }, [0.8, 1, 1.15, 1.25, 1.5, 2].map((v) => h('button', { class: Math.abs(sp - v) < 0.005 ? 'on' : '', title: 'Ustaw tempo ' + fxTempo(v), onclick: () => set(v) }, fxTempo(v)))), all);
 }
 // Kadr: oddalanie (0,35–1×, puste miejsca w kształcie wypełnia rozmyty obraz) i przybliżanie (do 3×); „Cały obraz” = całe wideo mieści się w kształcie
 function zoomQuick(l, cb, redo, compact) {
@@ -1197,7 +1201,7 @@ function layerFields(l, cb) {
   } else if (l.type === 'video') {
     const c = l.video, redo = () => { cb('live'); cb('commit'); }, segB = (label, key, opts, onpick) => pipSeg(l, label, key, opts, onpick, redo);
     out.unshift(
-      h('div', { class: 'ph' }, 'Tempo i dźwięk'), h('div', { class: 'sec' }, fld({ k: 'video.in', t: 'num', label: 'Start w pliku (s)', min: 0, step: 0.1 }, l, cb), tempoQuick(l, redo), fld({ k: 'video.vol', t: 'range', label: 'Głośność dźwięku z wideo', min: -30, max: 12, step: 0.5, unit: ' dB' }, l, cb), fld({ k: 'video.mute', t: 'chk', label: 'Wycisz dźwięk z wideo' }, l, cb),
+      h('div', { class: 'ph' }, 'Tempo i dźwięk'), h('div', { class: 'sec' }, fld({ k: 'video.in', t: 'num', label: 'Start w pliku (s)', min: 0, step: 0.1 }, l, cb), tempoQuick(l, redo), fld({ k: 'video.vol', t: 'range', label: 'Głośność dźwięku z wideo', min: -30, max: 12, step: 0.5, unit: ' dB' }, l, cb), fld({ k: 'video.mute', t: 'chk', label: 'Wycisz dźwięk z wideo' }, l, cb), allBtn(['video.vol', 'video.mute'], '⇉ Głośność i wyciszenie do wszystkich wideo'),
         h('div', { class: 'hint', html: rich('Dźwięk z pliku trafia na ścieżkę „Głos” (przesuwa się razem z klipem; przy zmianie tempa jest rozciągany bez zmiany wysokości głosu).') })),
       h('div', { class: 'ph' }, l.track === 'head' ? 'Gadająca głowa' : 'Wideo'), h('div', { class: 'sec' },
       l.track === 'head' ? headPresetRow(l, redo) : null,
@@ -1206,7 +1210,7 @@ function layerFields(l, cb) {
       h('div', { class: 'fld' }, h('label', {}, 'Miejsce (w bezpiecznej strefie)'), h('div', { class: 'pipgrid' }, [['tl', '↖'], ['tc', '↑'], ['tr', '↗'], ['ml', '←'], ['mc', '•'], ['mr', '→'], ['bl', '↙'], ['bc', '↓'], ['br', '↘']].map(([v, n]) => h('button', { class: c.pos === v ? 'on' : '', title: 'Ustaw w tym miejscu', onclick: (e) => { Video.applyPip(l, { pos: v }); redo(); [...e.currentTarget.parentNode.children].forEach((b) => b.classList.remove('on')); e.currentTarget.classList.add('on'); } }, n)))),
       fld({ k: 'video.fit', t: 'seg', label: 'Dopasowanie', opts: [['cover', 'Wypełnij'], ['contain', 'Zmieść']] }, l, cb), zoomQuick(l, cb, redo), rowOf(fld({ k: 'video.ox', t: 'range', label: 'Kadr: w prawo', min: -0.5, max: 0.5, step: 0.01 }, l, cb), fld({ k: 'video.oy', t: 'range', label: 'Kadr: w dół', min: -0.5, max: 0.5, step: 0.01 }, l, cb)), fld({ k: 'video.flipX', t: 'chk', label: 'Lustro (odbicie poziome)' }, l, cb)),
       h('div', { class: 'ph' }, 'Przejście i krawędzie'), h('div', { class: 'sec' }, transQuick(l, redo), fld({ k: 'video.feather', t: 'range', label: 'Miękkie krawędzie (rozmycie brzegu, bez ramki)', min: 0, max: 80, step: 1 }, l, cb)),
-      h('div', { class: 'ph' }, 'Ramka i poświata'), h('div', { class: 'sec' }, rowOf(fld({ k: 'video.bw', t: 'range', label: 'Grubość ramki', min: 0, max: 30, step: 1 }, l, cb), fld({ k: 'video.bc', t: 'color', label: 'Kolor ramki i poświaty' }, l, cb)), fld({ k: 'video.glow', t: 'range', label: 'Poświata', min: 0, max: 80, step: 1 }, l, cb), (c.shape === 'rect' || c.shape === 'round' || !c.shape) ? fld({ k: 'video.r', t: 'range', label: 'Zaokrąglenie rogów', min: 0, max: 540, step: 1 }, l, cb) : null));
+      h('div', { class: 'ph' }, 'Ramka i poświata'), h('div', { class: 'sec' }, rowOf(fld({ k: 'video.bw', t: 'range', label: 'Grubość ramki', min: 0, max: 30, step: 1 }, l, cb), fld({ k: 'video.bc', t: 'color', label: 'Kolor ramki i poświaty' }, l, cb)), fld({ k: 'video.glow', t: 'range', label: 'Poświata', min: 0, max: 80, step: 1 }, l, cb), (c.shape === 'rect' || c.shape === 'round' || !c.shape) ? fld({ k: 'video.r', t: 'range', label: 'Zaokrąglenie rogów', min: 0, max: 540, step: 1 }, l, cb) : null, allBtn(LOOK_KEYS, '⇉ Cały wygląd do wszystkich ' + (l.track === 'head' ? 'głów' : 'wideo'), 'Kształt, rozmiar, miejsce, kadr, ramka, poświata i przejścia: kopiowane do wszystkich innych klipów tej ścieżki')));
   } else if (l.type === 'fx') {
     out.push(h('div', { class: 'ph' }, 'Animacja tła'), h('div', { class: 'sec' }, fld({ k: 'fx.kind', t: 'sel', label: 'Rodzaj', opts: [['agrad', 'Płynący gradient'], ['orbs', 'Rozmyte kule'], ['particles', 'Cząsteczki'], ['confetti', 'Konfetti'], ['stripes', 'Pasy'], ['bar', 'Pasek postępu']] }, l, cb), rowOf(fld({ k: 'fx.c1', t: 'color', label: 'Kolor 1' }, l, cb), fld({ k: 'fx.c2', t: 'color', label: 'Kolor 2' }, l, cb), fld({ k: 'fx.c3', t: 'color', label: 'Kolor 3' }, l, cb)), rowOf(fld({ k: 'fx.n', t: 'num', label: 'Ilość', min: 1, max: 80 }, l, cb), fld({ k: 'fx.spd', t: 'num', label: 'Szybkość', step: 0.1, min: 0.1, max: 5 }, l, cb))));
   }
@@ -2080,20 +2084,40 @@ const Video = {
     this.timeEl = h('span', { class: 'time', style: { fontVariantNumeric: 'tabular-nums', fontWeight: 700, color: 'var(--acc)', minWidth: '104px', textAlign: 'center' } });
     this.loopBtn = b('⟲ Pętla', () => { this.loop = !this.loop; this.loopBtn.classList.toggle('on', this.loop); }, 'Zapętl odtwarzanie');
     this.tmVal = h('b', {}, '—'); this.tmRg = h('input', { type: 'range', min: 0.5, max: 2, step: 0.05, value: 1, disabled: true, 'aria-label': 'Tempo zaznaczonego wideo', oninput: (e) => { this.tmVal.textContent = fxTempo(+e.target.value); }, onchange: (e) => this.tlTempo(+e.target.value) });
-    this.tmBox = h('label', { class: 'tl-tempo off', title: 'Tempo zaznaczonego wideo lub gadającej głowy: mowa przyspiesza bez zmiany tonu głosu. Zaznacz klip wideo (albo jego dźwięk).' }, h('span', {}, '⏩ Tempo'), this.tmRg, this.tmVal);
+    this.tmAll = h('button', { class: 'btn sm', disabled: true, title: 'Zastosuj to tempo do wszystkich wideo (albo wszystkich odparowanych klipów dźwięku na tej ścieżce)', onclick: (e) => { e.preventDefault(); this.applyTempoAll(); } }, '⇉ wsz.');
+    this.tmBox = h('label', { class: 'tl-tempo off', title: 'Tempo zaznaczonego wideo, gadającej głowy lub klipu dźwięku: mowa przyspiesza bez zmiany tonu głosu. Zaznacz klip wideo (albo jego dźwięk).' }, h('span', {}, '⏩ Tempo'), this.tmRg, this.tmVal, this.tmAll);
     this.snapBtn = b('Przyciąganie', () => { this.snap = !this.snap; this.snapBtn.classList.toggle('on', this.snap); }, 'Przyciągaj krawędzie klipów do kursora i innych klipów', 'on');
-    this.tlBar.append(b('⏮', () => this.seek(0), 'Na początek (Home)'), this.playBtn, this.pauseBtn, this.stopBtn, this.timeEl, this.loopBtn, sep(),
+    this.tlBar.append(b('⏮', () => this.seek(0), 'Na początek (Home)'), this.playBtn, this.pauseBtn, this.stopBtn, b('⟳', () => this.refreshPreview(), 'Odśwież podgląd: gdy obraz zamarł, jest czarny albo dźwięk nie gra'), this.timeEl, this.loopBtn, sep(),
       b('－', () => this.setZoom(this.zoom / 1.4), 'Oddal oś czasu'), b('＋', () => this.setZoom(this.zoom * 1.4), 'Przybliż oś czasu'), b('Dopasuj', () => this.setZoom(1), 'Cała rolka w widoku'), this.snapBtn, sep(),
       b('🔊 Wyrównaj poziomy', () => this.autoLevel(), 'Wyrównuje głośność: głos do jednego poziomu, muzyka pod głosem, efekty obok. Potem eksport normalizuje całość do celu LUFS z ustawień rolki.'), this.tmBox, sep(),
-      b('✂ Przetnij (S)', () => this.split(), 'Przetnij zaznaczony klip w miejscu kursora'), b('🔇 Usuń ciszę', () => this.silenceDialog(), 'Zaznacz klip dźwięku (np. głos z wideo): przerwy w mowie zostaną wycięte, ale nic nie przesunie się na osi czasu'), b('⧉ Duplikuj', () => this.dupSel(), 'Duplikuj zaznaczony klip (Ctrl+D)'), b('🗑 Usuń', () => this.delSel(), 'Usuń zaznaczony klip (Delete)', 'bad'),
+      b('✂ Przetnij (S)', () => this.split(), 'Przetnij zaznaczony klip w miejscu kursora'), b('🔇 Cisza', () => this.silenceDialog(), 'Usuń ciszę: zaznacz klip dźwięku (np. głos z wideo), przerwy w mowie zostaną wycięte, ale nic nie przesunie się na osi czasu'), b('⧉ Duplikuj', () => this.dupSel(), 'Duplikuj zaznaczony klip (Ctrl+D)'), b('🗑 Usuń', () => this.delSel(), 'Usuń zaznaczony klip (Delete)', 'bad'),
       h('span', { style: { flex: 1 } }), h('span', { class: 'fine' }, 'Klip: przeciągnij = czas i ścieżka, krawędź = przytnij'));
     this.setPlayUi();
   },
-  tempoTarget() { const l = this.selLayer; if (l && l.type === 'video') return l; const a = this.selAudio, r = this.reel; return a && a.link && r ? r.layers.find((x) => x.id === a.link && x.type === 'video') || null : null; },
-  tempoUi() { // suwak tempa na pasku osi czasu: aktywny, gdy zaznaczono wideo / głowę (lub ich dźwięk)
-    if (!this.tmBox) return; const l = this.tempoTarget(), sp = l ? l.video.speed || 1 : 1; this.tmRg.disabled = !l; this.tmBox.classList.toggle('off', !l); this.tmRg.value = Math.min(2, Math.max(0.5, sp)); this.tmVal.textContent = l ? fxTempo(sp) : '—';
+  tempoTarget() { const l = this.selLayer; if (l && l.type === 'video') return l; const a = this.selAudio, r = this.reel; if (!a || !r) return null; if (a.link) return r.layers.find((x) => x.id === a.link && x.type === 'video') || null; return a.loop ? null : a; }, // wideo, a dla dźwięku powiązanego jego wideo; odparowany klip dźwięku ma własne tempo
+  tempoUi() { // suwak tempa na pasku osi czasu: aktywny, gdy zaznaczono wideo / głowę / klip dźwięku
+    if (!this.tmBox) return; const l = this.tempoTarget(), sp = l ? (l.video ? l.video.speed : l.tempo) || 1 : 1; this.tmRg.disabled = !l; this.tmBox.classList.toggle('off', !l); this.tmAll.disabled = !l; this.tmRg.value = Math.min(2, Math.max(0.5, sp)); this.tmVal.textContent = l ? fxTempo(sp) : '—';
   },
-  tlTempo(v) { const l = this.tempoTarget(); if (!l) return; if (this.setSpeed(l, v)) { this.commit(); this.stage.render(); } this.tempoUi(); },
+  tlTempo(v) { const l = this.tempoTarget(); if (!l) return; if (l.video ? this.setSpeed(l, v) : this.setAudioTempo(l, v)) { this.commit(!l.video); this.stage.render(); } this.tempoUi(); },
+  setAudioTempo(a, v) { const old = a.tempo || 1; v = clamp(Math.round(v * 100) / 100, 0.25, 4); if (Math.abs(v - old) < 1e-4) return false; const span = a.dur * old; a.tempo = v; a.dur = Math.max(0.1, span / v); this.ensureDur(a.t0 + a.dur); return true; },
+  // „Zastosuj do wszystkich”: tempo zaznaczonego klipu dostają wszystkie wideo (ich dźwięk idzie za nimi) albo wszystkie odparowane klipy dźwięku z tej ścieżki
+  applyTempoAll() {
+    const r = this.reel, t = this.tempoTarget(); if (!t) { toast('Zaznacz wideo albo klip dźwięku.', 'warn'); return; } let n = 0;
+    if (t.video) { const sp = t.video.speed || 1; for (const l of r.layers) if (l.type === 'video' && l !== t && this.setSpeed(l, sp)) n++; } else { const sp = t.tempo || 1; for (const a of r.audio) if (!a.link && !a.loop && a.track === t.track && a !== t && this.setAudioTempo(a, sp)) n++; }
+    if (!n) { toast('Wszystkie klipy mają już to tempo.', 'info', 3500); return; } this.commit(!t.video); this.stage.render(); toast('Tempo ' + fxTempo((t.video ? t.video.speed : t.tempo) || 1) + ' ustawiono w ' + n + ' kolejnych klipach.', 'ok', 5000);
+  },
+  // „Zastosuj do wszystkich” dla innych ustawień: keys = ścieżki właściwości zaznaczonego klipu; trafiają do pozostałych klipów tego samego rodzaju (ten sam typ i ścieżka)
+  applyAll(keys, label) {
+    const r = this.reel, c = this.curClip(); if (!c) { toast('Zaznacz klip.', 'warn'); return 0; } const src = c.it; let n = 0;
+    const cp = (v) => (v && typeof v === 'object' ? jclone(v) : v), lay = (x) => (x.link ? r.layers.find((l) => l.id === x.link) : null);
+    if (c.kind === 'audio') {
+      const sl = lay(src), sg = sl ? sl.video.vol || 0 : src.gain;
+      for (const p of r.audio) { if (p === src || p.track !== src.track) continue; for (const k of keys) { if (k === 'gain') { const pl = lay(p); if (pl) pl.video.vol = sg; else p.gain = sg; } else if (!p.link) p[k] = cp(src[k]); } n++; }
+    } else {
+      for (const p of r.layers) { if (p === src || p.type !== src.type || p.track !== src.track) continue; for (const k of keys) { if (k === 'speed') this.setSpeed(p, src.video.speed || 1); else if (getp(src, k) !== undefined) setp(p, k, cp(getp(src, k))); } n++; }
+    }
+    if (!n) { toast('Nie ma innych klipów tego rodzaju na tej ścieżce.', 'info', 4000); return 0; } this.commit(c.kind === 'audio'); this.stage.render(); this.panels(); toast((label || 'Ustawienia') + ': zastosowano do ' + n + ' ' + (n === 1 ? 'innego klipu' : 'innych klipów') + '.', 'ok', 5000); return n;
+  },
   setPlayUi() { if (this.playBtn) { this.playBtn.classList.toggle('on', !!this.playing); this.playBtn.textContent = this.playing ? '▶ Gra…' : '▶ Odtwarzaj'; } if (this.pauseBtn) this.pauseBtn.disabled = !this.playing; },
   show() {
     if (!this.built) this.build(); const p = P.cur;
@@ -2108,7 +2132,7 @@ const Video = {
   ctxBar() {
     const B = this.ctxEl, l = this.selLayer; if (!B) return; B.innerHTML = ''; if (!l || l.type !== 'video') { B.style.display = 'none'; return; } B.style.display = ''; const head = l.track === 'head', redo = () => { this.commit(); this.stage.render(); };
     B.append(h('div', { class: 'pip-hd' }, h('b', {}, head ? '🗣 Gadająca głowa' : l.track === 'bg' ? '🏞 Wideo w tle' : '🎬 Wideo'), h('button', { class: 'btn sm', title: this.ctxOff ? 'Rozwiń' : 'Zwiń', onclick: () => { this.ctxOff = !this.ctxOff; this.ctxBar(); } }, this.ctxOff ? '▸' : '▾')));
-    if (!this.ctxOff) B.append(...[...videoQuick(l, (k) => { this.stage.render(); if (k === 'commit') this.commit(); }, redo), trackSeg(l, redo), head ? headPresetRow(l, redo) : null, h('div', { class: 'hint' }, head ? 'Przeciągnij głowę na podglądzie, rogi = rozmiar. „Zapamiętaj to miejsce” = każda nowa głowa startuje tu.' : 'Przeciągnij klip na osi czasu między ścieżkami: Tło / Wideo / Głowa.')].filter(Boolean));
+    if (!this.ctxOff) B.append(...[...videoQuick(l, (k) => { this.stage.render(); if (k === 'commit') this.commit(); }, redo), trackSeg(l, redo), head ? headPresetRow(l, redo) : null, allBtn(LOOK_KEYS, '⇉ Cały wygląd do wszystkich ' + (head ? 'głów' : 'wideo')), h('div', { class: 'hint' }, head ? 'Przeciągnij głowę na podglądzie, rogi = rozmiar. „Zapamiętaj to miejsce” = każda nowa głowa startuje tu.' : 'Przeciągnij klip na osi czasu między ścieżkami: Tło / Wideo / Głowa.')].filter(Boolean));
   },
   panelsLive() { const l = this.selLayer; if (!l) return; for (const k of ['x', 'y', 'w', 'h', 'rot']) { const i = $(`input[data-pk="${k}"]`, this.right); if (i && document.activeElement !== i) i.value = rnd(l[k], 1); } },
   leftPanel() {
@@ -2152,15 +2176,15 @@ const Video = {
       const cbA = (k) => { if (k === 'commit') this.commit(true); };
       R.append(h('div', { class: 'ph' }, 'Klip dźwięku: ' + ({ voice: 'głos', music: 'muzyka', sfx: 'efekt' }[a.track])), h('div', { class: 'sec' }, fld({ k: 'name', t: 'text', label: 'Nazwa' }, a, cbA), rowOf(fld({ k: 't0', t: 'num', label: 'Start (s)', min: 0, step: 0.05 }, a, cbA), fld({ k: 'dur', t: 'num', label: 'Długość (s)', min: 0.1, step: 0.05 }, a, cbA)), fld({ k: 'in', t: 'num', label: 'Początek w nagraniu (s)', min: 0, step: 0.05 }, a, cbA),
         fld({ k: 'gain', t: 'range', label: 'Głośność klipu', min: -30, max: 12, step: 0.5, unit: ' dB' }, a, cbA), rowOf(fld({ k: 'fi', t: 'num', label: 'Fade-in (s)', min: 0, step: 0.05 }, a, cbA), fld({ k: 'fo', t: 'num', label: 'Fade-out (s)', min: 0, step: 0.05 }, a, cbA)),
-        h('button', { class: 'btn sm', style: { margin: '4px 0' }, title: 'Wycina przerwy w mowie bez przesuwania czegokolwiek na osi czasu', onclick: () => this.silenceDialog() }, '🔇 Usuń ciszę…'), a.track !== 'voice' ? fld({ k: 'loop', t: 'chk', label: 'Zapętl do końca klipu' }, a, cbA) : null, a.track === 'music' ? fld({ k: 'duck', t: 'chk', label: 'Ścisz pod głosem (ducking)' }, a, cbA) : null,
-        h('div', { class: 'hint', html: rich('Poziom końcowy ustawia normalizacja do (' + P.cur.mix.target + ' LUFS), a ducking: (−' + P.cur.mix.duckDepth + ' dB). Zmienisz je w ustawieniach rolki.') })));
+        h('div', { style: { display: 'flex', flexDirection: 'column', gap: '4px', margin: '6px 0' } }, h('button', { class: 'btn sm', title: 'Wycina przerwy w mowie bez przesuwania czegokolwiek na osi czasu', onclick: () => this.silenceDialog() }, '🔇 Usuń ciszę…'), ...this.pairBtns(a)), a.track !== 'voice' ? fld({ k: 'loop', t: 'chk', label: 'Zapętl do końca klipu' }, a, cbA) : null, a.track === 'music' ? fld({ k: 'duck', t: 'chk', label: 'Ścisz pod głosem (ducking)' }, a, cbA) : null,
+        allBtn(a.track === 'voice' ? ['gain', 'fi', 'fo'] : ['gain', 'fi', 'fo', 'duck', 'loop'], '⇉ Głośność i fade do wszystkich na ścieżce'), h('div', { class: 'hint', html: rich('Poziom końcowy ustawia normalizacja do (' + P.cur.mix.target + ' LUFS), a ducking: (−' + P.cur.mix.duckDepth + ' dB). Zmienisz je w ustawieniach rolki.') })));
       return;
     }
     if (l) {
       const dur = Math.max(0.1, Math.min(l.t1, r.dur) - l.t0);
       R.append(h('div', { class: 'ph' }, 'Warstwa', h('span', {}, ...[['⬆', 'Wyżej', 1], ['⬇', 'Niżej', -1]].map(([t, ti, d]) => h('button', { class: 'btn sm', title: ti, onclick: () => this.z(d) }, t)))), h('div', { class: 'sec' }, fld({ k: 'name', t: 'text', label: 'Nazwa' }, l, cb), rowOf(fld({ k: 't0', t: 'num', label: 'Początek (s)', min: 0, step: 0.1 }, l, cb), fld({ k: 't1', t: 'num', label: 'Koniec (s)', min: 0.1, step: 0.1 }, l, cb)), h('div', { class: 'row' }, fld({ k: 'lock', t: 'chk', label: 'Zablokuj' }, l, cb), fld({ k: 'hide', t: 'chk', label: 'Ukryj' }, l, cb)), trackSeg(l, () => { this.commit(); this.stage.render(); })));
       R.append(...layerFields(l, cb));
-      const an = (key, title, withDir) => [h('div', { class: 'ph' }, title), h('div', { class: 'sec' }, fld({ k: `anim.${key}.p`, t: 'sel', label: 'Rodzaj', opts: ANIMS }, l, cb), rowOf(fld({ k: `anim.${key}.d`, t: 'num', label: 'Czas (s)', min: 0.05, step: 0.05 }, l, cb), fld({ k: `anim.${key}.dl`, t: 'num', label: 'Opóźnienie (s)', min: 0, step: 0.05 }, l, cb)), fld({ k: `anim.${key}.e`, t: 'sel', label: 'Przyspieszenie (easing)', opts: EASES }, l, cb), fld({ k: `anim.${key}.dir`, t: 'sel', label: 'Kierunek', opts: DIRS }, l, cb))];
+      const an = (key, title, withDir) => [h('div', { class: 'ph' }, title), h('div', { class: 'sec' }, fld({ k: `anim.${key}.p`, t: 'sel', label: 'Rodzaj', opts: ANIMS }, l, cb), rowOf(fld({ k: `anim.${key}.d`, t: 'num', label: 'Czas (s)', min: 0.05, step: 0.05 }, l, cb), fld({ k: `anim.${key}.dl`, t: 'num', label: 'Opóźnienie (s)', min: 0, step: 0.05 }, l, cb)), fld({ k: `anim.${key}.e`, t: 'sel', label: 'Przyspieszenie (easing)', opts: EASES }, l, cb), fld({ k: `anim.${key}.dir`, t: 'sel', label: 'Kierunek', opts: DIRS }, l, cb), allBtn(['anim.' + key], '⇉ Do wszystkich takich warstw (ten sam rodzaj i ścieżka)'))];
       R.append(...an('in', 'Animacja wejścia'), ...an('out', 'Animacja wyjścia'));
       R.append(h('div', { class: 'ph' }, 'Animacja ciągła'), h('div', { class: 'sec' }, fld({ k: 'anim.loop.p', t: 'sel', label: 'Rodzaj', opts: LOOPS }, l, cb), rowOf(fld({ k: 'anim.loop.amp', t: 'num', label: 'Siła', step: 0.1, min: 0 }, l, cb), fld({ k: 'anim.loop.spd', t: 'num', label: 'Tempo', step: 0.1, min: 0.1 }, l, cb))),
         h('div', { class: 'ph' }, 'Gotowe style animacji'), h('div', { class: 'sec' }, h('div', { class: 'row' }, [['calm', 'Spokojny'], ['dynamic', 'Dynamiczny'], ['punchy', 'Mocny']].map(([k, n]) => h('button', { class: 'btn sm', onclick: () => { animateLayers([l], k, dur); this.commit(); this.panels(); this.stage.render(); } }, n)))));
@@ -2248,11 +2272,28 @@ const Video = {
   },
   lkFade(l) { const an = l.anim || {}, dur = Math.max(0.1, Math.min(l.t1, this.reel.dur) - l.t0), f = (x) => (x && x.p && x.p !== 'none' ? clamp((x.d || 0.5) * 0.8, 0.02, dur / 3) : 0); return { fi: f(an.in) || 0.01, fo: f(an.out) || 0.03 }; }, // dźwięk zanika razem z obrazem
   lkSig(l) { const c = l.video, an = l.anim || {}; return JSON.stringify([l.t0, Math.min(l.t1, this.reel.dur), c.in || 0, c.speed || 1, !!c.mute, c.vol || 0, !!l.hide, an.in && an.in.p, an.in && an.in.d, an.out && an.out.p, an.out && an.out.d]); },
+  lkCk(a) { return [a.t0, a.in, a.dur].map((x) => Math.round(x * 1000)).join(','); },
+  // Dźwięk powiązany z wideo: pełny klip albo fragmenty po usunięciu ciszy (s0–s1 = zakres w pliku). Pozycja i tempo zawsze wynikają z warstwy wideo
   syncVideoAudio() {
     const r = this.reel; if (!r || !r.audio) return; r.audio = r.audio.filter((a) => {
-      if (!a.link) return true; const l = r.layers.find((x) => x.id === a.link); if (!l) return false; const sig = this.lkSig(l), c = l.video, sp = clamp(c.speed || 1, 0.25, 4); if (a.lk === sig && (a.tempo || 1) === sp) return true;
-      a.t0 = l.t0; a.in = c.in || 0; a.dur = Math.max(0.1, Math.min(l.t1, r.dur) - l.t0); a.tempo = sp; a.gain = (c.mute || l.hide) ? -90 : (c.vol || 0); Object.assign(a, this.lkFade(l)); a.lk = sig; this.mc = null; return true;
+      if (!a.link) return true; const l = r.layers.find((x) => x.id === a.link); if (!l) return false;
+      const sig = this.lkSig(l), c = l.video, sp = clamp(c.speed || 1, 0.25, 4), piece = a.s1 != null;
+      if (a.lk === sig && (a.tempo || 1) === sp) { if (piece && a.ck && a.ck !== this.lkCk(a)) { a.s0 = a.in; a.s1 = a.in + a.dur * sp; a.ck = this.lkCk(a); } return true; } // fragment przycięty ręcznie: pamiętamy nowy zakres
+      const gain = (c.mute || l.hide) ? -90 : (c.vol || 0);
+      if (piece) {
+        const w0 = c.in || 0, w1 = w0 + Math.max(0.1, Math.min(l.t1, r.dur) - l.t0) * sp, s0 = Math.max(a.s0, w0), s1 = Math.min(a.s1, w1), f = this.lkFade(l);
+        if (s1 - s0 < 0.05) { a.t0 = l.t0; a.in = a.s0; a.dur = 0.1; a.gain = -90; } else { a.in = s0; a.t0 = l.t0 + (s0 - w0) / sp; a.dur = (s1 - s0) / sp; a.gain = gain; }
+        a.fi = s0 <= w0 + 0.002 ? f.fi : 0.012; a.fo = s1 >= w1 - 0.002 ? f.fo : 0.012; a.ck = this.lkCk(a);
+      } else { a.t0 = l.t0; a.in = c.in || 0; a.dur = Math.max(0.1, Math.min(l.t1, r.dur) - l.t0); a.gain = gain; Object.assign(a, this.lkFade(l)); }
+      a.tempo = sp; a.lk = sig; this.mc = null; return true;
     });
+  },
+  // Parowanie dźwięku z wideo: odparowany klip nie rusza się razem z obrazem i nie zmienia tempa razem z nim
+  unpairAudio(a, all) { const r = this.reel, ids = all && a.link ? r.audio.filter((x) => x.link === a.link) : [a]; for (const x of ids) { delete x.link; delete x.lk; delete x.s0; delete x.s1; delete x.ck; } this.commit(true); this.select('audio', a.id); toast('Odparowano ' + ids.length + ' ' + (ids.length === 1 ? 'klip' : 'klipów') + ' dźwięku od wideo. Można je teraz ruszać i zmieniać niezależnie.', 'ok', 5000); },
+  pairAudio(a, all) {
+    const r = this.reel, pick = (x) => { const c = r.layers.filter((l) => l.type === 'video' && l.video.assetId === x.assetId); if (!c.length) return null; const sp = (l) => clamp(l.video.speed || 1, 0.25, 4); return c.sort((p, q) => Math.abs(p.t0 + ((x.in || 0) - (p.video.in || 0)) / sp(p) - x.t0) - Math.abs(q.t0 + ((x.in || 0) - (q.video.in || 0)) / sp(q) - x.t0))[0]; };
+    const set = all ? r.audio.filter((x) => !x.link && x.assetId === a.assetId) : [a]; let n = 0; for (const x of set) { const l = pick(x); if (!l) continue; x.link = l.id; x.s0 = x.in || 0; x.s1 = (x.in || 0) + x.dur * (x.tempo || 1); delete x.lk; n++; }
+    if (!n) { toast('Nie ma wideo z tego samego pliku na osi czasu. Sparować można tylko dźwięk, który pochodzi z wideo.', 'warn', 6000); return; } this.commit(true); this.select('audio', a.id); toast('Sparowano ' + n + ' ' + (n === 1 ? 'klip' : 'klipów') + ' dźwięku z wideo (tempo i położenie biorą się teraz z obrazu).', 'ok', 5000);
   },
   // Wyrównanie poziomów: mierzy głośność (LUFS) użytej części każdego klipu i ustawia wzmocnienie: głos = jeden poziom, muzyka pod głosem, efekty obok
   async autoLevel() {
@@ -2261,7 +2302,7 @@ const Video = {
     try {
       await tick(); const set = (a, g) => { g = clamp(Math.round(g * 10) / 10, -30, 12); const l = a.link ? r.layers.find((x) => x.id === a.link) : null; if (l) l.video.vol = g; else a.gain = g; };
       const lufs = async (a) => { const A = await Assets.audio(a.assetId); if (!A) return -Infinity; const sp = a.tempo || 1, i0 = Math.floor((a.in || 0) * A.fs), i1 = Math.min(A.chs[0].length, i0 + Math.floor(Math.min(a.dur * sp, 45) * A.fs)); if (i1 - i0 < 0.5 * A.fs) return -Infinity; await tick(); return DSP.integratedLoudness(A.chs.map((x) => x.subarray(i0, i1)), A.fs); };
-      const meas = []; for (const a of r.audio) { if (a.gain <= -80) continue; const L = await lufs(a); if (!isFinite(L)) { skipped++; continue; } meas.push([a, L]); }
+      const meas = []; for (const a of r.audio) { if (a.link && r.audio.some((b) => b !== a && b.link === a.link && b.dur > a.dur)) continue; if (a.gain <= -80) continue; const L = await lufs(a); if (!isFinite(L)) { skipped++; continue; } meas.push([a, L]); }
       const duck = mx.duckDepth > 0, tgt = { voice: TV, music: TV - (duck ? 11 : 17), sfx: TV - 6 };
       for (const [a, L] of meas) { set(a, tgt[a.track] - L); got[a.track].push(a); }
       tt.remove(); const n = meas.length; if (!n) { toast('Nie udało się zmierzyć głośności (klipy za krótkie lub cisza).', 'warn'); return; }
@@ -2306,28 +2347,38 @@ const Video = {
   split() {
     const c = this.curClip(), t = this.t, r = this.reel; if (!c) { toast('Zaznacz klip do przecięcia.', 'warn'); return; } const it = c.it;
     if (c.kind === 'layer') { if (t <= it.t0 + 0.05 || t >= Math.min(it.t1, r.dur) - 0.05) { toast('Ustaw kursor wewnątrz klipu.', 'warn'); return; } const b = jclone(it); b.id = uid('l'); b.t0 = t; it.t1 = t; it.anim.out = { p: 'none', d: 0.4, dl: 0, e: 'inCubic', dir: 'bottom' }; b.anim.in = { p: 'none', d: 0.6, dl: 0, e: 'outCubic', dir: 'bottom' }; b.kf = (b.kf || []).map((k) => Object.assign({}, k, { t: Math.max(0, k.t - (t - it.t0)) })); if (b.type === 'video') b.video.in += (t - it.t0) * (b.video.speed || 1); r.layers.splice(r.layers.indexOf(it) + 1, 0, b); const fin = () => { this.commit(true); this.select('layer', b.id); }; if (b.type === 'video') this.attachVideoAudio(b).then(fin, fin); else fin(); }
-    else { if (t <= it.t0 + 0.05 || t >= it.t0 + it.dur - 0.05) { toast('Ustaw kursor wewnątrz klipu.', 'warn'); return; } const b = jclone(it); b.id = uid('au'); b.t0 = t; b.in = it.in + (t - it.t0); b.dur = it.t0 + it.dur - t; it.dur = t - it.t0; b.fi = 0.01; it.fo = 0.01; r.audio.push(b); this.commit(true); this.select('audio', b.id); }
+    else { if (t <= it.t0 + 0.05 || t >= it.t0 + it.dur - 0.05) { toast('Ustaw kursor wewnątrz klipu.', 'warn'); return; } const tp = it.tempo || 1, sc = it.in + (t - it.t0) * tp, b = jclone(it); b.id = uid('au'); b.t0 = t; b.in = sc; b.dur = it.t0 + it.dur - t; if (it.link) { const e = it.s1 != null ? it.s1 : it.in + it.dur * tp; if (it.s0 == null) it.s0 = it.in; it.s1 = sc; b.s0 = sc; b.s1 = e; } it.dur = t - it.t0; b.fi = 0.01; it.fo = 0.01; if (it.link) { it.ck = this.lkCk(it); b.ck = this.lkCk(b); } r.audio.push(b); this.commit(true); this.select('audio', b.id); }
   },
-  // Usuwanie ciszy z klipu dźwięku BEZ przesuwania czegokolwiek na osi: klip dzieli się na fragmenty z mową, a przerwy znikają (zostają luki). Pozostałe klipy i obraz stoją w miejscu
+  // Usuwanie ciszy z klipu dźwięku BEZ przesuwania czegokolwiek na osi: klip dzieli się na fragmenty z mową, a przerwy znikają (zostają luki). Fragmenty dźwięku z wideo zostają z nim sparowane
+  async silencePrep(a) { // skan klipu: { a, tp, fs, i0, i1, sc } albo null
+    if (a.loop) return null; const A = await Assets.audio(a.assetId); if (!A) return null; await tick(); const tp = clamp(a.tempo || 1, 0.25, 4), fs = A.fs, i0 = Math.floor((a.in || 0) * fs), i1 = Math.min(A.chs[0].length, i0 + Math.floor(a.dur * tp * fs)); if (i1 - i0 < fs * 0.6) return null;
+    return { a, tp, fs, i0, i1, sc: DSP.silenceScan(A.chs, fs, i0, i1) };
+  },
   async silenceDialog() {
     const a = this.selAudio, r = this.reel; if (!a) { toast('Zaznacz klip dźwięku (np. głos z wideo) na osi czasu.', 'warn'); return; } if (a.loop) { toast('Klip jest zapętlony: wyłącz „Zapętl”, potem usuń ciszę.', 'warn'); return; }
-    const tt = toast('Analizuję ciszę…', 'info', 60000); let A = null; try { A = await Assets.audio(a.assetId); await tick(); } catch (e) { A = null; } tt.remove(); if (!A) { toast('Nie udało się odczytać dźwięku tego klipu.', 'bad'); return; }
-    const tp = clamp(a.tempo || 1, 0.25, 4), fs = A.fs, i0 = Math.floor((a.in || 0) * fs), i1 = Math.min(A.chs[0].length, i0 + Math.floor(a.dur * tp * fs)); if (i1 - i0 < fs * 0.6) { toast('Klip jest za krótki.', 'warn'); return; }
-    const sc = DSP.silenceScan(A.chs, fs, i0, i1), o = { thresh: DSP.silenceAuto(sc), minMs: 350, keepMs: 100, close: false }, sum = h('div', { class: 'hint', style: { marginTop: '8px' } }); let res = null;
-    const calc = () => { res = DSP.silenceKeep(sc, fs, o); sum.innerHTML = rich(res.cuts ? 'Znaleziono (' + res.cuts + ') przerw, razem (' + res.removed.toFixed(1) + ' s) z ' + ((i1 - i0) / fs / tp).toFixed(1) + ' s klipu. Powstanie (' + res.segs.length + ') fragmentów.' : 'Przy tych ustawieniach nie ma ciszy do usunięcia. Podnieś próg lub skróć minimalną przerwę.'); };
+    const tt = toast('Analizuję ciszę…', 'info', 60000); let P0 = null; try { P0 = await this.silencePrep(a); } catch (e) { P0 = null; } tt.remove(); if (!P0) { toast('Nie udało się odczytać dźwięku tego klipu (albo jest za krótki).', 'bad'); return; }
+    const auto = DSP.silenceAuto(P0.sc), o = { thresh: auto, minMs: 350, keepMs: 100, close: false, all: false }, sum = h('div', { class: 'hint', style: { marginTop: '8px' } }), peers = r.audio.filter((x) => x !== a && x.track === a.track && !x.loop); let res = null;
+    const calc = () => { res = DSP.silenceKeep(P0.sc, P0.fs, o); sum.innerHTML = rich(res.cuts ? 'Znaleziono (' + res.cuts + ') przerw, razem (' + res.removed.toFixed(1) + ' s) z ' + ((P0.i1 - P0.i0) / P0.fs / P0.tp).toFixed(1) + ' s klipu. Powstanie (' + res.segs.length + ') fragmentów.' : 'Przy tych ustawieniach nie ma ciszy do usunięcia. Podnieś próg lub skróć minimalną przerwę.'); };
     calc(); const cb = () => calc();
     modal('Usuń ciszę z dźwięku', h('div', {}, h('div', { class: 'hint' }, 'Klip „' + a.name + '” zostanie pocięty na fragmenty z mową. Nic nie przesuwa się na osi czasu: w miejscu ciszy zostaje luka, a obraz i inne klipy stoją tam, gdzie były. Cofnij: Ctrl+Z.'),
       fld({ k: 'thresh', t: 'range', label: 'Cisza poniżej (ustawiono automatycznie)', min: -70, max: -20, step: 1, unit: ' dB' }, o, cb), rowOf(fld({ k: 'minMs', t: 'num', label: 'Min. długość przerwy (ms)', min: 100, max: 3000, step: 50 }, o, cb), fld({ k: 'keepMs', t: 'num', label: 'Zostaw na brzegach (ms)', min: 0, max: 500, step: 20 }, o, cb)),
-      a.link ? h('div', { class: 'hint', style: { marginTop: '6px' }, html: rich('Dźwięk zostanie odłączony od warstwy wideo: późniejsze przesunięcie wideo lub zmiana tempa nie ruszy już tych fragmentów.') }) : fld({ k: 'close', t: 'chk', label: 'Zamknij luki (fragmenty tego klipu przysuną się do siebie; reszta osi bez zmian)' }, o, cb), sum),
-      [{ t: 'Usuń ciszę', cls: 'pri', fn: () => { if (!res || !res.cuts) { toast('Brak ciszy do usunięcia przy tych ustawieniach.', 'warn'); return false; } this.applySilence(a, res, tp, fs, i0, i1 - i0, o.close && !a.link); } }, { t: 'Anuluj' }]);
+      a.link ? h('div', { class: 'hint', style: { marginTop: '6px' }, html: rich('Fragmenty zostają sparowane z wideo: zmiana tempa i przesunięcie wideo obejmą je wszystkie. Odparujesz je przyciskiem w panelu klipu.') }) : fld({ k: 'close', t: 'chk', label: 'Zamknij luki (fragmenty tego klipu przysuną się do siebie; reszta osi bez zmian)' }, o, cb),
+      peers.length ? fld({ k: 'all', t: 'chk', label: 'Zastosuj do wszystkich klipów tej ścieżki (jeszcze ' + peers.length + '; każdy z własnym progiem, jeśli nie ruszysz suwaka)' }, o, cb) : null, sum),
+      [{ t: o.all ? 'Usuń ciszę' : 'Usuń ciszę', cls: 'pri', fn: async () => {
+        if (!res || !res.cuts) { toast('Brak ciszy do usunięcia przy tych ustawieniach.', 'warn'); return false; }
+        const manual = o.thresh !== auto, jobs = [{ P: P0, res }]; let sel = null;
+        if (o.all) { const tp2 = toast('Analizuję pozostałe klipy…', 'info', 60000); try { for (const x of peers) { const Pp = await this.silencePrep(x); if (!Pp) continue; const rr = DSP.silenceKeep(Pp.sc, Pp.fs, { thresh: manual ? o.thresh : DSP.silenceAuto(Pp.sc), minMs: o.minMs, keepMs: o.keepMs }); if (rr.cuts) jobs.push({ P: Pp, res: rr }); } } finally { tp2.remove(); } }
+        let cuts = 0, removed = 0; for (const jb of jobs) { const first = this.applySilence(jb.P.a, jb.res, jb.P.tp, jb.P.fs, jb.P.i0, jb.P.i1 - jb.P.i0, o.close && !jb.P.a.link); if (!sel) sel = first; cuts += jb.res.cuts; removed += jb.res.removed; }
+        this.commit(true); if (sel) this.select('audio', sel.id); toast('Usunięto ciszę w ' + jobs.length + ' ' + (jobs.length === 1 ? 'klipie' : 'klipach') + ': ' + cuts + ' przerw, razem ' + removed.toFixed(1) + ' s' + (o.close ? '' : '. Nic się nie przesunęło') + '.', 'ok', 7000);
+      } }, { t: 'Anuluj' }]);
   },
-  applySilence(a, res, tp, fs, i0, total, closeGaps) {
+  applySilence(a, res, tp, fs, i0, total, closeGaps) { // zwraca pierwszy fragment; commit robi wywołujący
     const r = this.reel, pieces = []; let cur = a.t0;
-    res.segs.forEach(([s0, s1], k) => { const b = jclone(a); b.id = uid('au'); delete b.link; delete b.lk; b.in = (i0 + s0) / fs; b.dur = Math.max(0.05, (s1 - s0) / fs / tp); b.t0 = closeGaps ? cur : a.t0 + s0 / fs / tp; cur = b.t0 + b.dur; b.fi = k === 0 && s0 === 0 ? a.fi : 0.012; b.fo = k === res.segs.length - 1 && s1 >= total ? a.fo : 0.012; pieces.push(b); });
-    const i = r.audio.indexOf(a); if (i < 0 || !pieces.length) return; r.audio.splice(i, 1, ...pieces); this.ensureDur(pieces[pieces.length - 1].t0 + pieces[pieces.length - 1].dur); this.commit(true); this.select('audio', pieces[0].id);
-    toast('Usunięto ciszę: ' + res.cuts + ' przerw, razem ' + res.removed.toFixed(1) + ' s' + (closeGaps ? '' : '. Nic się nie przesunęło') + '.', 'ok', 7000);
+    res.segs.forEach(([s0, s1], k) => { const b = jclone(a); b.id = uid('au'); b.in = (i0 + s0) / fs; b.dur = Math.max(0.05, (s1 - s0) / fs / tp); b.t0 = closeGaps ? cur : a.t0 + s0 / fs / tp; cur = b.t0 + b.dur; b.fi = k === 0 && s0 === 0 ? a.fi : 0.012; b.fo = k === res.segs.length - 1 && s1 >= total ? a.fo : 0.012;
+      if (a.link) { b.s0 = b.in; b.s1 = b.in + b.dur * tp; b.ck = this.lkCk(b); } else { delete b.link; delete b.lk; delete b.s0; delete b.s1; delete b.ck; } pieces.push(b); });
+    const i = r.audio.indexOf(a); if (i < 0 || !pieces.length) return null; r.audio.splice(i, 1, ...pieces); this.ensureDur(pieces[pieces.length - 1].t0 + pieces[pieces.length - 1].dur); return pieces[0];
   },
-  dupSel() { const c = this.curClip(), r = this.reel; if (!c) return; if (c.kind === 'layer') { const b = jclone(c.it); b.id = uid('l'); const d = Math.min(c.it.t1, r.dur) - c.it.t0; b.t0 = c.it.t0 + d; b.t1 = b.t0 + d; this.ensureDur(b.t1); r.layers.splice(r.layers.indexOf(c.it) + 1, 0, b); const fin = () => { this.commit(true); this.select('layer', b.id); }; if (b.type === 'video') this.attachVideoAudio(b).then(fin, fin); else fin(); } else { const b = jclone(c.it); b.id = uid('au'); b.t0 = c.it.t0 + c.it.dur; this.ensureDur(b.t0 + b.dur); r.audio.push(b); this.commit(true); this.select('audio', b.id); } },
+  dupSel() { const c = this.curClip(), r = this.reel; if (!c) return; if (c.kind === 'layer') { const b = jclone(c.it); b.id = uid('l'); const d = Math.min(c.it.t1, r.dur) - c.it.t0; b.t0 = c.it.t0 + d; b.t1 = b.t0 + d; this.ensureDur(b.t1); r.layers.splice(r.layers.indexOf(c.it) + 1, 0, b); const fin = () => { this.commit(true); this.select('layer', b.id); }; if (b.type === 'video') this.attachVideoAudio(b).then(fin, fin); else fin(); } else { const b = jclone(c.it); b.id = uid('au'); b.t0 = c.it.t0 + c.it.dur; delete b.link; delete b.lk; delete b.s0; delete b.s1; delete b.ck; this.ensureDur(b.t0 + b.dur); r.audio.push(b); this.commit(true); this.select('audio', b.id); } },
   delSel() { const c = this.curClip(), r = this.reel; if (!c) return; if (c.kind === 'layer') r.layers = r.layers.filter((l) => l !== c.it); else r.audio = r.audio.filter((a) => a !== c.it); this.selId = null; this.commit(c.kind === 'audio'); this.panels(); },
   z(d, l) { const r = this.reel; l = l || this.selLayer; if (!l) return; const i = r.layers.indexOf(l), j = clamp(i + d, 0, r.layers.length - 1); r.layers.splice(i, 1); r.layers.splice(j, 0, l); this.commit(); this.stage.render(); },
   onKey(e) {
@@ -2420,6 +2471,22 @@ const Video = {
     const r = this.reel; if (!r) return; t = clamp(t, 0, r.dur); const was = this.playing; if (was) { this.pause(); } this.t = t; this.stage.render(t); this.updPlayhead(); this.updTime(); this.syncVideos(t, false); if (was && !scrubbing) this.play();
   },
   toggle() { this.playing ? this.pause() : this.play(); },
+  pairBtns(a) {
+    const r = this.reel, sib = a.link ? r.audio.filter((x) => x.link === a.link).length : 0, free = !a.link ? r.audio.filter((x) => !x.link && x.assetId === a.assetId).length : 0, has = !a.link && r.layers.some((l) => l.type === 'video' && l.video.assetId === a.assetId), bt = (t, ti, fn) => h('button', { class: 'btn sm', title: ti, onclick: fn }, t);
+    if (a.link) return [bt('🔓 Odparuj od wideo', 'Klip przestaje się ruszać razem z obrazem i zmieniać tempo razem z nim', () => this.unpairAudio(a, false)), sib > 1 ? bt('🔓 Odparuj wszystkie (' + sib + ')', 'Odparuj wszystkie fragmenty tego wideo', () => this.unpairAudio(a, true)) : null].filter(Boolean);
+    return has ? [bt('🔗 Sparuj z wideo', 'Klip podąża za obrazem: jego położenie i tempo wynikają z wideo z tego samego pliku', () => this.pairAudio(a, false)), free > 1 ? bt('🔗 Sparuj wszystkie (' + free + ')', 'Sparuj wszystkie niepowiązane klipy z tego pliku', () => this.pairAudio(a, true)) : null].filter(Boolean) : [];
+  },
+  // ⟳ Odśwież podgląd: gdy obraz zamarł, jest czarny albo dźwięk nie gra. Odtwarza elementy wideo, dekoduje dźwięk od nowa i rysuje klatkę
+  async refreshPreview() {
+    const r = this.reel; if (!r) return; if (this.exporting) { toast('Trwa eksport. Odśwież podgląd po jego zakończeniu.', 'warn'); return; } this.pause(); const tt = toast('Odświeżam podgląd…', 'info', 30000);
+    try {
+      for (const v of this.vids.values()) { try { v.el.pause(); v.el.removeAttribute('src'); v.el.load(); } catch (e) { /* element już zwolniony */ } } this.vids.clear();
+      if (this.ac) { try { await this.ac.close(); } catch (e) { /* już zamknięty */ } this.ac = null; }
+      for (const l of r.layers) if (l.type === 'video' && l.video.assetId) { const c = Assets.c.get(l.video.assetId); if (c) { if (c.url) { try { URL.revokeObjectURL(c.url); } catch (e) { /* nic */ } } delete c.url; delete c.vid; } }
+      for (const a of r.audio) { const c = Assets.c.get(a.assetId); if (c) delete c.aud; }
+      this.mc = null; this.tc = null; await preloadScene(r); await this.ensureVideos(); this.syncVideoAudio(); this.stage.fit(); this.syncVideos(this.t, false); this.stage.render(this.t); this.tl(); this.panels(); tt.remove(); toast('Podgląd odświeżony.', 'ok', 2500);
+    } catch (e) { tt.remove(); toast('Nie udało się odświeżyć podglądu: ' + errText(e) + '. Odśwież stronę (projekt zapisuje się sam).', 'bad', 9000); }
+  },
   async play() {
     const r = this.reel; if (this.playing) return; if (this.t >= r.dur - 0.03) this.t = 0; this.playing = true; this.setPlayUi();
     try { await this.ensureVideos(); await this.startAudio(this.t); } catch (e) { toast('Podgląd dźwięku niedostępny: ' + errText(e), 'warn', 6000); }
@@ -2514,7 +2581,7 @@ const Video = {
     modal('Eksport MP4', h('div', {}, info, h('div', { class: 'fld', style: { marginTop: '8px' } }, h('label', {}, 'Jakość'), pre, dnote), h('div', { class: 'row', style: { marginTop: '8px' } }, h('div', { class: 'fld' }, h('label', {}, 'Klatki na sekundę'), fps), h('div', { class: 'fld' }, h('label', {}, 'Przepływność wideo'), br)), h('div', { class: 'fld' }, h('label', {}, 'Rozdzielczość'), resSel),
       h('label', { style: { display: 'flex', gap: '8px', alignItems: 'center', margin: '8px 0 2px', fontSize: '13px' }, title: 'Każda klatka wideo źródłowego jest dekodowana raz, po kolei (zamiast przewijania pliku dla każdej klatki eksportu). Obsługa H.264 i HEVC (iPhone). Wyłącz tylko wtedy, gdy obraz w pliku wygląda źle.' }, fastChk, 'Szybkie dekodowanie wideo (zalecane)'),
       h('div', { class: 'fine', style: { marginTop: '6px' } }, 'Rolka: ' + fmtTime(r.dur) + ', ' + r.w + '×' + r.h + ', ' + r.layers.length + ' warstw, ' + r.audio.length + ' klipów dźwięku'), h('div', { style: { marginTop: '8px' } }, this.netCheck().map(([n, ok]) => h('span', { class: 'tag ' + (ok ? 'ok' : 'warn'), style: { marginRight: '6px' } }, n + (ok ? ' ✔' : ' ▲ długość'))))),
-      [{ t: 'Eksportuj', cls: 'pri', keep: true, fn: (close) => { close(); this.runExport({ fps: +fps.value, bitrate: +br.value * 1e6, w: +resSel.value, fast: fastChk.checked, draft: pre.value === 'draft' }); } }, { t: 'Anuluj' }]);
+      [{ t: 'Eksportuj', cls: 'pri', keep: true, fn: (close) => { close(); this.runExport({ fps: +fps.value, bitrate: +br.value * 1e6, w: +resSel.value, fast: fastChk.checked, draft: pre.value === 'draft' }); } }, { t: '📚 Eksportuj do biblioteki', keep: true, fn: (close) => { close(); this.runExport({ fps: +fps.value, bitrate: +br.value * 1e6, w: +resSel.value, fast: fastChk.checked, draft: pre.value === 'draft', lib: true }); } }, { t: 'Anuluj' }]);
   },
   async capabilities() {
     const c = { v: false, a: false, opus: false, vcodec: null, acodec: null };
@@ -2531,9 +2598,9 @@ const Video = {
       const nm = fname(slug(r.name) + (o.draft ? '_SZKIC' : ''), kind);
       if (!o.draft) { const id = await Assets.add(new File([blob], nm, { type: blob.type }), 'render'); P.cur.publish.video = id; P.cur.publish.videoInfo = { name: nm, size: blob.size, dur: r.dur, w: ow, h: oh, fps: o.fps, kind, note, ts: Date.now(), qc: this.mc && this.mc.qc ? this.mc.qc.items.map((x) => ({ k: x.k, v: x.v, ok: x.ok })) : null }; touch(); }
       let probe = null; try { probe = await this.probe(blob); } catch (e) { probe = { err: errText(e) }; }
-      const sec = ((Date.now() - t0) / 1000).toFixed(1); download(blob, nm);
+      const sec = ((Date.now() - t0) / 1000).toFixed(1); let libId = null; if (o.draft && o.lib) { try { libId = await Assets.add(new File([blob], nm, { type: blob.type }), 'render'); } catch (e) { console.warn(e); } } if (!o.lib) download(blob, nm);
       modal('Eksport zakończony', h('div', {}, h('table', { class: 'qc' }, ...[['Plik', nm], ['Rozmiar', fmtSize(blob.size)], ['Czas eksportu', sec + ' s'], ['Format', kind === 'mp4' ? 'MP4 (H.264' + (note.includes('AAC') ? ' + AAC' : note.includes('Opus') ? ' + Opus' : ', bez dźwięku') + ')' : 'WebM (awaryjny)'], ['Wymiary / FPS', ow + '×' + oh + ' @ ' + o.fps + (o.draft ? ' (SZKIC, nie do publikacji)' : '')], ...(stats ? [['Klatki obrazu', stats.frames + ' z ' + stats.expected + (stats.frames < stats.expected ? ' (koder pominął ' + (stats.expected - stats.frames) + ', czas zachowany)' : '')], ['Czas obrazu / dźwięku', stats.vdur.toFixed(2) + ' s / ' + (stats.adur ? stats.adur.toFixed(2) + ' s' : 'brak') + (stats.adur && Math.abs(stats.vdur - stats.adur) > 0.15 ? ' ⚠ różnica!' : '')]] : []), ...(modes.length ? [['Dekodowanie wideo', modes.map((m) => m.name.replace(/^[^:]*: /, '') + ': ' + m.mode + (m.codec ? ' (' + m.codec.split('.')[0] + ')' : '') + (m.why ? ', powód: ' + m.why.replace(/^FastVid: /, '') : '')).join('; ')]] : []), ['Test odczytu w przeglądarce', probe && !probe.err ? 'OK: ' + probe.w + '×' + probe.h + ', ' + probe.dur.toFixed(2) + ' s' : 'BŁĄD: ' + (probe && probe.err)]].map(([a, b]) => h('tr', {}, h('td', {}, a), h('td', {}, b)))),
-        this.mc && this.mc.qc ? h('div', { class: 'hint', style: { marginTop: '8px' }, html: rich('Dźwięk: (' + this.mc.qc.lufs.toFixed(1) + ' LUFS), true peak (' + this.mc.qc.tp.toFixed(1) + ' dBTP). Pełny raport: zakładka Audio.') }) : h('div', { class: 'hint', style: { marginTop: '8px' } }, 'Rolka nie ma ścieżki dźwiękowej.'), h('div', { class: 'hint', html: rich(o.draft ? 'To jest (szkic): plik tylko pobrano, do Publikacji nie trafił.' : 'Plik zapisano też w bibliotece projektu i wybrano go do (Publikacji).') })), [{ t: 'Zamknij' }]);
+        this.mc && this.mc.qc ? h('div', { class: 'hint', style: { marginTop: '8px' }, html: rich('Dźwięk: (' + this.mc.qc.lufs.toFixed(1) + ' LUFS), true peak (' + this.mc.qc.tp.toFixed(1) + ' dBTP). Pełny raport: zakładka Audio.') }) : h('div', { class: 'hint', style: { marginTop: '8px' } }, 'Rolka nie ma ścieżki dźwiękowej.'), h('div', { class: 'hint', html: rich(o.draft ? (o.lib ? 'To jest (szkic): plik zapisano w bibliotece projektu (nie pobrano na urządzenie), do Publikacji nie trafił.' : 'To jest (szkic): plik tylko pobrano, do Publikacji nie trafił.') : (o.lib ? 'Plik zapisano w bibliotece projektu i wybrano go do (Publikacji). Nie pobrano go na urządzenie: pobierzesz go z Publikacji lub biblioteki.' : 'Plik zapisano też w bibliotece projektu i wybrano go do (Publikacji).')) })), [{ t: 'Zamknij' }]);
     } catch (e) { pr.close(); if (/^cancel$/.test(e && e.message)) { toast('Eksport anulowany.', 'warn'); return; } console.error(e); toast('Eksport nieudany (' + APP.ver + '): ' + errText(e), 'bad', 12000); }
     finally { this.exporting = false; }
   },

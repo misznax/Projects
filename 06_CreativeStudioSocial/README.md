@@ -1,4 +1,4 @@
-# Creative Studio Social · v0.10
+# Creative Studio Social · v0.11
 
 Studio treści na social media w przeglądarce: marka → grafiki (karuzele) → wideo (rolki 9:16) → audio → publikacja na Instagram, YouTube Shorts, TikTok i Facebook Reels.
 Autor: Michał Rzekiecki · kontakt: michus@gmail.com · adres: https://projects.michus.workers.dev/06/
@@ -43,6 +43,14 @@ Autor: Michał Rzekiecki · kontakt: michus@gmail.com · adres: https://projects
 
 1. Analiza w przeglądarce (canvas, bez kluczy): poświaty (kolor i pozycja), pasek postępu, stopka, bloki tekstu, zdjęcie, akcenty → „DNA” układu, które steruje wszystkimi szablonami.
 2. Wzorzec domyślny: karuzela „Po kontuzji” (v4). Własny materiał (obrazy lub wideo rolki) nadpisuje DNA w projekcie; rodzaje slajdów są rozpoznawane zgrubnie.
+
+## Zmiany v0.11 (parowanie dźwięku, „zastosuj do wszystkich”, odświeżanie podglądu, eksport do biblioteki)
+
+1. **Fragmenty po usunięciu ciszy zostają sparowane z wideo**: dźwięk powiązany z wideo po cięciu dalej podąża za obrazem (położenie i tempo wynikają z warstwy wideo), więc zmiana tempa i przesunięcie wideo działają na wszystkie fragmenty. Fragment zna swój zakres w pliku; przycięcie wideo ucina fragmenty poza zakresem (po wydłużeniu wracają). Przycięcie fragmentu ręcznie jest zapamiętywane, cięcie (S) dzieli zakres.
+2. **Parowanie i odparowanie**: w panelu klipu dźwięku „🔓 Odparuj od wideo” / „Odparuj wszystkie (N)” oraz „🔗 Sparuj z wideo” / „Sparuj wszystkie (N)” (dla dźwięku z tego samego pliku co wideo na osi). Odparowany klip ma własne tempo: suwak ⏩ działa też dla klipów dźwięku.
+3. **⇉ Zastosuj do wszystkich**: tempo (przycisk „⇉ wszystkie” przy suwaku na pasku osi i w panelu wideo), głośność i wyciszenie wideo, cały wygląd wideo / głowy (kształt, rozmiar, miejsce, kadr, ramka, poświata, przejścia), animacje wejścia i wyjścia, głośność i fade klipów dźwięku, a w oknie „Usuń ciszę” opcja dla wszystkich klipów ścieżki (każdy z własnym progiem). Kopiowanie dotyczy klipów tego samego typu i ścieżki; cofnij: Ctrl+Z.
+4. **⟳ Odśwież podgląd** (obok ⏹): odtwarza elementy wideo, dekoduje dźwięk od nowa i rysuje klatkę, gdy obraz zamarł albo dźwięk nie gra.
+5. **📚 Eksportuj do biblioteki** (okno eksportu): gotowy plik trafia do biblioteki projektu i do Publikacji bez pobierania na urządzenie (pobierzesz go potem z Publikacji). Automatyczne publikowanie na Instagramie wymaga adaptera Metricool (plan).
 
 ## Zmiany v0.10 (synchronizacja eksportu, usuwanie ciszy)
 
@@ -111,6 +119,6 @@ Autor: Michał Rzekiecki · kontakt: michus@gmail.com · adres: https://projects
 
 ## Plan
 
-1. v0.11: R2 (chmura projektów i publiczne adresy mediów) + adapter Metricool (planowanie wpisów); nagrywanie gadającej głowy kamerą w aplikacji.
-2. v0.12: bezpośrednie API (YouTube, Meta, TikTok), format 4:5 w wideo.
+1. v0.12: R2 (chmura projektów i publiczne adresy mediów) + adapter Metricool (planowanie wpisów); nagrywanie gadającej głowy kamerą w aplikacji.
+2. v0.13: bezpośrednie API (YouTube, Meta, TikTok), format 4:5 w wideo.
 3. v1.0 po zatwierdzeniu; od tej wersji kopie w `backup/`.
