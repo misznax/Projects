@@ -1,0 +1,38 @@
+{
+ "updated": "2026-11-19",
+ "syncedAt": "2026-11-26",
+ "source": "repo misznax/smialo → .claude/instagram/kolory-marki.md (stan 19.11.2026)",
+ "colors": {
+  "primary": "#FF5A00",
+  "background": "#05070A",
+  "accent": "#FFE600"
+ },
+ "pal": {
+  "a": "#FF5A00",
+  "m": "#FFA000",
+  "b": "#FFE600",
+  "v": "#8B6CFF",
+  "bg": "#05070A",
+  "sf": "#0B1014",
+  "ink": "#E9EDF2",
+  "mut": "#98A2AD",
+  "on": "#1A0800"
+ },
+ "fonts": {
+  "heading": "Barlow Condensed",
+  "body": "Inter"
+ },
+ "handle": "@trenuj.smialo",
+ "site": "smialo.org · Wrocław",
+ "style": "Ciemne tło z fioletową i pomarańczową poświatą, gradient pomarańcz → żółć, szkło, nagłówki Barlow Condensed kursywą",
+ "rules": [
+  "Tło ciemne #05070A, kolor główny pomarańcz → żółć, fiolet tylko jako akcent (10–20%), nigdy jako główne tło.",
+  "Bez błękitu, cyjanu, limonki i magenty.",
+  "Napis na gradiencie pomarańcz → żółć: #1A0800 (nigdy biały); na ciemnym tle: #E9EDF2.",
+  "Nagłówki: Barlow Condensed kursywa 800/900 wersaliki; tekst: Inter.",
+  "Na grafikach tylko znak logo (lewy dolny róg) i @trenuj.smialo (prawy dolny róg), bez imienia i nazwiska."
+ ],
+ "tags": [
+  "Psychologia sportu"
+ ]
+}

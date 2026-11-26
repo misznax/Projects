@@ -1,0 +1,246 @@
+{
+ "syncedAt": "2026-11-26",
+ "source": "Google Drive (smialo.lec@gmail.com) → folder „Agent John”: Rolki, IG partia 2 i decyzje 20.11.2026",
+ "docs": [
+  {
+   "id": "1m3Lh452Jq35bLLbq-FdFMP1UErtnAQVGOW8Tw8lxDpw",
+   "title": "Rolki",
+   "url": "https://docs.google.com/document/d/1m3Lh452Jq35bLLbq-FdFMP1UErtnAQVGOW8Tw8lxDpw/edit",
+   "modified": "2026-11-21"
+  },
+  {
+   "id": "155gq7O_AAtRBQC367ca00p7Czo1_ootWbrjihpbJLEg",
+   "title": "IG partia 2 i decyzje 20.11.2026",
+   "url": "https://docs.google.com/document/d/155gq7O_AAtRBQC367ca00p7Czo1_ootWbrjihpbJLEg/edit",
+   "modified": "2026-11-20"
+  }
+ ],
+ "levels": {
+  "M": "mocne",
+  "U": "umiarkowane",
+  "O": "ograniczone / sporne",
+  "H": "ekstrapolacja"
+ },
+ "items": [
+  {
+   "id": "rolka-1",
+   "type": "rolka",
+   "title": "Rozciąganie przed treningiem",
+   "status": "do akceptacji",
+   "doc": "1m3Lh452Jq35bLLbq-FdFMP1UErtnAQVGOW8Tw8lxDpw",
+   "hook": "Minuta decyduje, czy rozciąganie kradnie ci siłę.",
+   "dur": 28,
+   "spoken": [
+    "Minuta decyduje, czy rozciąganie kradnie ci siłę.",
+    "Do sześćdziesięciu sekund na mięsień: strata jeden, dwa procent. Znikoma.",
+    "Powyżej minuty: nawet siedem i pół procent. To już ma znaczenie pod ciężarem.",
+    "Pół minuty na łydkę przed przysiadami? Śmiało.",
+    "A po pełnej rozgrzewce, z ruchem i lekką serią, rozciąganie do minuty siły nie obniża. Bywa, że ją poprawia.",
+    "Pilnuj jednej liczby: minuta."
+   ],
+   "cards": [
+    {
+     "t": 0,
+     "text": "MINUTA DECYDUJE"
+    },
+    {
+     "t": 3,
+     "text": "DO 60 s: SPADEK 1-2%"
+    },
+    {
+     "t": 7,
+     "text": "POWYŻEJ 60 s: SPADEK DO 7,5%"
+    },
+    {
+     "t": 12,
+     "text": "30 s NA ŁYDKĘ: ŚMIAŁO"
+    },
+    {
+     "t": 15,
+     "text": "PO ROZGRZEWCE: BEZ STRATY"
+    },
+    {
+     "t": 23,
+     "text": "PILNUJ: 1 MINUTY"
+    }
+   ],
+   "shots": [
+    "0:00-0:07 Ty do kamery, ruch od pierwszej klatki",
+    "0:07-0:15 stoper na ekranie, rozciągasz łydkę",
+    "0:15-0:23 lekka seria przysiadów po rozgrzewce",
+    "0:23-0:26 stoper na 1:00, do kamery"
+   ],
+   "facts": [
+    {
+     "label": "Do 60 s",
+     "value": 1.5,
+     "max": 8,
+     "txt": "1-2%"
+    },
+    {
+     "label": "Powyżej 60 s",
+     "value": 7.5,
+     "max": 8,
+     "txt": "do 7,5%"
+    }
+   ],
+   "src": "Chaabene, Behm, Negra, Granacher 2019, Frontiers in Physiology, DOI 10.3389/fphys.2019.01468",
+   "level": "U",
+   "note": "Źródło to przegląd badań o sile maksymalnej i mocy. Autorzy radzą wyczynowcom ostrożność przed zawodami.",
+   "variants": [
+    {
+     "label": "Szkic z partii 2",
+     "hook": "Rozciąganie do minuty: minus jeden, dwa procent siły.",
+     "cards": [
+      "DO 60 s: -1-2% SIŁY",
+      "POWYŻEJ 60 s: DO -7,5%",
+      "30 s PRZED PRZYSIADEM: OK",
+      "5 MIN NA PARTIĘ: NIE",
+      "NIE JAKO CAŁA ROZGRZEWKA",
+      "DO MINUTY"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "t18",
+   "type": "temat",
+   "title": "Dobry wynik na treningu to nie nauka",
+   "src": "Soderstrom i Bjork 2015, PMID 25910388",
+   "level": "U",
+   "note": "Przeniesienie na siłownię to ekstrapolacja (H)."
+  },
+  {
+   "id": "t19",
+   "type": "temat",
+   "title": "Mieszana kolejność ćwiczeń zamiast serii tego samego",
+   "summary": "Sporne: Czyż 2024 SMD 0,55, Ammar 2024 bez istotnej różnicy.",
+   "src": "Czyż 2024 (PMID 39205981) vs Ammar 2024 (DOI 10.1007/s10648-024-09892-z)",
+   "level": "O",
+   "facts": [
+    {
+     "label": "Czyż 2024",
+     "value": 0.55,
+     "max": 1,
+     "txt": "SMD 0,55"
+    },
+    {
+     "label": "Ammar 2024",
+     "value": 0,
+     "max": 1,
+     "txt": "brak istotnej różnicy"
+    }
+   ],
+   "compare": true
+  },
+  {
+   "id": "t20",
+   "type": "temat",
+   "title": "Pod presją psuje cię myślenie o ruchu",
+   "src": "Beilock i Carr 2001, 54 początkujących golfistów",
+   "level": "U",
+   "note": "Badanie laboratoryjne."
+  },
+  {
+   "id": "t21",
+   "type": "temat",
+   "title": "Rutyna przed podejściem",
+   "src": "Rupprecht 2021, DOI 10.1080/1750984X.2021.1944271",
+   "level": "U",
+   "note": "Podejście do ciężaru to ekstrapolacja (H).",
+   "facts": [
+    {
+     "label": "Przed i po (SMC)",
+     "value": 0.31,
+     "max": 1,
+     "txt": "0,31"
+    },
+    {
+     "label": "Eksperyment 1 (g)",
+     "value": 0.64,
+     "max": 1,
+     "txt": "0,64"
+    },
+    {
+     "label": "Eksperyment 2 (g)",
+     "value": 0.7,
+     "max": 1,
+     "txt": "0,70"
+    }
+   ]
+  },
+  {
+   "id": "t22",
+   "type": "temat",
+   "title": "Muzyka na treningu",
+   "summary": "Efekty małe: nastrój g 0,48, wynik g 0,31, wysiłek g 0,22.",
+   "src": "Terry 2020, DOI 10.1037/bul0000216",
+   "level": "M",
+   "facts": [
+    {
+     "label": "Nastrój (g)",
+     "value": 0.48,
+     "max": 1,
+     "txt": "0,48"
+    },
+    {
+     "label": "Wynik (g)",
+     "value": 0.31,
+     "max": 1,
+     "txt": "0,31"
+    },
+    {
+     "label": "Wysiłek (g)",
+     "value": 0.22,
+     "max": 1,
+     "txt": "0,22"
+    }
+   ]
+  },
+  {
+   "id": "t23",
+   "type": "temat",
+   "title": "Narzucona intensywność = mniej przyjemności",
+   "summary": "SMD -0,41; powyżej progu -1,30.",
+   "src": "Oliveira 2015, DOI 10.3389/fpsyg.2015.01105",
+   "level": "U",
+   "facts": [
+    {
+     "label": "Narzucona intensywność (SMD)",
+     "value": 0.41,
+     "max": 1.4,
+     "txt": "-0,41"
+    },
+    {
+     "label": "Powyżej progu (SMD)",
+     "value": 1.3,
+     "max": 1.4,
+     "txt": "-1,30"
+    }
+   ]
+  },
+  {
+   "id": "t24",
+   "type": "temat",
+   "title": "Minimalna dawka: jeden trening tygodniowo dla początkujących",
+   "src": "Behm 2024, DOI 10.1007/s40279-023-01949-3; exercise snacks PMID 40881585",
+   "level": "U"
+  },
+  {
+   "id": "t25",
+   "type": "temat",
+   "title": "Lęk o wygląd ciała a unikanie ćwiczeń",
+   "summary": "Przegląd literatury, związek korelacyjny.",
+   "src": "Przegląd literatury, Eur Psychiatry 2021",
+   "level": "O"
+  },
+  {
+   "id": "t26",
+   "type": "temat",
+   "title": "Postawa: brak przerw w siedzeniu zamiast „wady”",
+   "src": "Mahmoud 2019 (PMID 31773477); przegląd zakresowy 2025 (PMID 40111906); De Carvalho 2020 (PMID 32081511)",
+   "level": "U",
+   "note": "Wniosek z dokumentu: nie obiecujemy naprawy postawy i nie diagnozujemy bólu; mówimy o przerwach i ruchu."
+  }
+ ]
+}

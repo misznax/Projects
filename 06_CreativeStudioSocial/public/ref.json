@@ -1,0 +1,271 @@
+{
+ "name": "Po kontuzji (karuzela, wersja 4)",
+ "source": "repo misznax/smialo → public/ig/kontuzja-v4 (opublikowana na @trenuj.smialo 20.11.2026)",
+ "measuredAt": "2026-11-26",
+ "structure": "cover → point → point → flow → point → chips → steps → meter → recap",
+ "anatomy": {
+  "background": "#05070A + poświata fioletowa (góra-prawo) i pomarańczowa (dół-lewo), delikatna siatka na części slajdów",
+  "components": [
+   "pasek postępu (segmenty, wypełniane gradientem pomarańcz → żółć)",
+   "pigułka kategorii (tylko okładka i wybrane slajdy)",
+   "tytuł Barlow Condensed kursywa wersaliki, końcówka w gradiencie",
+   "tekst Inter, wniosek w kolorze fioletowym",
+   "szkło (karty, węzły schematu, CTA)",
+   "stopka: znak logo, numer slajdu, @trenuj.smialo"
+  ]
+ },
+ "dna": {
+  "glows": [
+   {
+    "x": 1.02,
+    "y": -0.02,
+    "r": 0.89,
+    "c": "v",
+    "a": 0.52
+   },
+   {
+    "x": -0.02,
+    "y": 1.04,
+    "r": 0.82,
+    "c": "a",
+    "a": 0.28
+   }
+  ],
+  "progress": true,
+  "grain": 0.05,
+  "grid": 0.035,
+  "caps": true,
+  "italic": true,
+  "titleW": 800,
+  "glass": true,
+  "titleBands": 0.407,
+  "footer": "logo+handle"
+ },
+ "slides": [
+  {
+   "img": "ref-01.jpg",
+   "kind": "cover",
+   "tag": "Psychologia sportu",
+   "measured": {
+    "glows": [
+     {
+      "x": 0.61,
+      "y": -0.02,
+      "r": 0.86,
+      "c": "v",
+      "a": 0.57
+     },
+     {
+      "x": 0.5,
+      "y": 0.68,
+      "r": 0.97,
+      "c": "a",
+      "a": 0.43
+     }
+    ],
+    "progressSegments": 1,
+    "titleY": 0.696
+   }
+  },
+  {
+   "img": "ref-02.jpg",
+   "kind": "point",
+   "tag": null,
+   "measured": {
+    "glows": [
+     {
+      "x": 1.02,
+      "y": -0.02,
+      "r": 0.85,
+      "c": "v",
+      "a": 0.52
+     },
+     {
+      "x": 0.39,
+      "y": 0.41,
+      "r": 0.89,
+      "c": "a",
+      "a": 0.3
+     }
+    ],
+    "progressSegments": 2,
+    "titleY": 0.407
+   }
+  },
+  {
+   "img": "ref-03.jpg",
+   "kind": "point",
+   "tag": null,
+   "measured": {
+    "glows": [
+     {
+      "x": 1.02,
+      "y": -0.02,
+      "r": 0.92,
+      "c": "v",
+      "a": 0.52
+     },
+     {
+      "x": -0.02,
+      "y": 1.04,
+      "r": 0.76,
+      "c": "a",
+      "a": 0.28
+     }
+    ],
+    "progressSegments": 4,
+    "titleY": 0.141
+   }
+  },
+  {
+   "img": "ref-04.jpg",
+   "kind": "flow",
+   "tag": null,
+   "measured": {
+    "glows": [
+     {
+      "x": 1.02,
+      "y": -0.02,
+      "r": 0.89,
+      "c": "v",
+      "a": 0.52
+     },
+     {
+      "x": -0.02,
+      "y": 1.04,
+      "r": 0.8,
+      "c": "a",
+      "a": 0.28
+     }
+    ],
+    "progressSegments": 4,
+    "titleY": 0.474
+   }
+  },
+  {
+   "img": "ref-05.jpg",
+   "kind": "point",
+   "tag": "Skąd to wiemy",
+   "measured": {
+    "glows": [
+     {
+      "x": 1.02,
+      "y": -0.02,
+      "r": 0.91,
+      "c": "v",
+      "a": 0.52
+     },
+     {
+      "x": -0.02,
+      "y": 1.04,
+      "r": 0.83,
+      "c": "a",
+      "a": 0.28
+     }
+    ],
+    "progressSegments": 6,
+    "titleY": 0.252
+   }
+  },
+  {
+   "img": "ref-06.jpg",
+   "kind": "chips",
+   "tag": null,
+   "measured": {
+    "glows": [
+     {
+      "x": 1.02,
+      "y": -0.02,
+      "r": 0.91,
+      "c": "v",
+      "a": 0.52
+     },
+     {
+      "x": -0.02,
+      "y": 1.04,
+      "r": 0.82,
+      "c": "a",
+      "a": 0.28
+     }
+    ],
+    "progressSegments": 7,
+    "titleY": 0.141
+   }
+  },
+  {
+   "img": "ref-07.jpg",
+   "kind": "steps",
+   "tag": null,
+   "measured": {
+    "glows": [
+     {
+      "x": 1.02,
+      "y": -0.02,
+      "r": 0.86,
+      "c": "v",
+      "a": 0.52
+     },
+     {
+      "x": 1.02,
+      "y": 0.5,
+      "r": 0.74,
+      "c": "a",
+      "a": 0.8
+     }
+    ],
+    "progressSegments": 8,
+    "titleY": 0.2
+   }
+  },
+  {
+   "img": "ref-08.jpg",
+   "kind": "meter",
+   "tag": null,
+   "measured": {
+    "glows": [
+     {
+      "x": 1.02,
+      "y": -0.02,
+      "r": 0.86,
+      "c": "v",
+      "a": 0.52
+     },
+     {
+      "x": -0.02,
+      "y": 1.04,
+      "r": 0.8,
+      "c": "a",
+      "a": 0.27
+     }
+    ],
+    "progressSegments": 10,
+    "titleY": 0.556
+   }
+  },
+  {
+   "img": "ref-09.jpg",
+   "kind": "recap",
+   "tag": null,
+   "measured": {
+    "glows": [
+     {
+      "x": 1.02,
+      "y": -0.02,
+      "r": 0.89,
+      "c": "v",
+      "a": 0.51
+     },
+     {
+      "x": -0.02,
+      "y": 1.04,
+      "r": 0.97,
+      "c": "a",
+      "a": 0.32
+     }
+    ],
+    "progressSegments": 11,
+    "titleY": 0.763
+   }
+  }
+ ]
+}

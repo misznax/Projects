@@ -55,20 +55,21 @@ const Brand = {
     const b = P.cur.brand, L = this.left; L.innerHTML = '';
     const colorRow = (role, label) => {
       const inp = h('input', { type: 'text', value: b.colors[role], maxlength: 7, spellcheck: false, 'aria-label': label + ' HEX' }), pick = h('input', { type: 'color', value: b.colors[role], 'aria-label': label }), badge = h('span', { class: 'tag off' });
-      const upd = (v) => { if (!/^#[0-9a-fA-F]{6}$/.test(v)) return; b.colors[role] = v.toUpperCase(); inp.value = b.colors[role]; pick.value = b.colors[role].toLowerCase(); touch(); this.refreshRight(); bd(); };
+      const upd = (v) => { if (!/^#[0-9a-fA-F]{6}$/.test(v)) return; b.colors[role] = v.toUpperCase(); this.detach(); this.syncPal(b); inp.value = b.colors[role]; pick.value = b.colors[role].toLowerCase(); touch(); this.refreshRight(); bd(); };
       const bd = () => { const c = contrast(b.colors.primary, b.colors.background); badge.textContent = role === 'primary' ? 'kontrast z tłem ' + c.toFixed(1) + ':1' : ''; badge.className = 'tag ' + (c >= 4.5 ? 'ok' : c >= 3 ? 'warn' : 'bad'); if (role !== 'primary') badge.style.display = 'none'; };
       pick.oninput = () => upd(pick.value); inp.onchange = () => upd(inp.value.startsWith('#') ? inp.value : '#' + inp.value); bd();
       return h('div', { class: 'fld' }, h('label', {}, label), h('div', { class: 'row' }, pick, inp, badge));
     };
-    const fontSel = (key, label) => { const s = h('select', { 'aria-label': label }); for (const f of allFonts()) s.append(h('option', { value: f, selected: f === b[key] }, f)); s.onchange = () => { b[key] = s.value; touch(); this.refreshRight(); }; return h('div', { class: 'fld' }, h('label', {}, label), s); };
-    L.append(h('div', { class: 'ph' }, 'Kolory marki'), h('div', { class: 'sec' },
+    const fontSel = (key, label) => { const s = h('select', { 'aria-label': label }); for (const f of allFonts()) s.append(h('option', { value: f, selected: f === b[key] }, f)); s.onchange = () => { b[key] = s.value; this.detach(); touch(); this.refreshRight(); }; return h('div', { class: 'fld' }, h('label', {}, label), s); };
+    this.autoBox = h('div', {}); L.append(this.autoBox); this.updCard();
+    L.append(h('div', { class: 'ph' }, 'Kolory marki (ręczna zmiana odpina markę od automatu)'), h('div', { class: 'sec' },
       colorRow('primary', 'Primary (kolor główny)'), colorRow('background', 'Background (tło bazowe)'), colorRow('accent', 'Accent (akcent)'),
       h('div', { class: 'row', style: { marginTop: '8px' } }, h('button', { class: 'btn', onclick: () => this.importMd() }, 'Wczytaj brand.md'), h('button', { class: 'btn', onclick: () => this.pasteMd() }, 'Wklej brand.md'), h('button', { class: 'btn', onclick: () => download(new Blob([brandToMd(b)], { type: 'text/markdown' }), fname('brand', 'md')) }, 'Zapisz brand.md')),
-      h('div', { class: 'hint', style: { marginTop: '6px' }, html: rich('Format pliku: „Primary: #123456”, „Background: #F5F2ED”, „Accent: #D49B65” (opcjonalnie fonty i styl). Gdy ról brak, przypiszę je automatycznie, a Ty możesz je zmienić.') })));
+      h('div', { class: 'hint', style: { marginTop: '6px' }, html: rich('Nie musisz niczego wgrywać: marka sama się ładuje z repo marki. Plik brand.md jest tylko dla innych marek (format: „Primary: #123456”, „Background: #F5F2ED”, „Accent: #D49B65”).') })));
     L.append(h('div', { class: 'ph' }, 'Typografia'), h('div', { class: 'sec' }, fontSel('headingFont', 'Font nagłówków'), fontSel('bodyFont', 'Font tekstu'),
       h('div', { class: 'row' }, h('button', { class: 'btn', onclick: () => this.uploadFont() }, 'Dodaj własny font (TTF/OTF/WOFF)')),
       h('div', { class: 'fld' }, h('label', {}, 'Styl marki (słowa kluczowe)'), h('input', { type: 'text', value: b.style, onchange: (e) => { b.style = e.target.value; touch(); } })),
-      h('div', { class: 'fld' }, h('label', {}, 'Uchwyt konta (stopka grafik)'), h('input', { type: 'text', value: b.handle || '', placeholder: '@twoje.konto', onchange: (e) => { b.handle = e.target.value.trim(); touch(); this.refreshRight(); } }))));
+      h('div', { class: 'fld' }, h('label', {}, 'Uchwyt konta (stopka grafik)'), h('input', { type: 'text', value: b.handle || '', placeholder: '@twoje.konto', onchange: (e) => { b.handle = e.target.value.trim(); this.detach(); touch(); this.refreshRight(); } }))));
     const logos = h('div', { class: 'thumbs' }); for (const id of b.logos) logos.append(h('div', { class: 'th' }, imgThumbEl(id), h('button', { class: 'x', title: 'Usuń logo', onclick: () => { b.logos = b.logos.filter((x) => x !== id); touch(); this.render(); this.refreshRight(); } }, '✕')));
     L.append(h('div', { class: 'ph' }, 'Biblioteka logo'), h('div', { class: 'sec' }, logos, h('button', { class: 'btn', style: { marginTop: '8px' }, onclick: () => this.pick('image/png,image/svg+xml,image/webp,image/jpeg', true, async (fs) => { for (const f of fs) b.logos.push(await Assets.add(f, 'logo')); touch(); this.render(); this.refreshRight(); }) }, 'Dodaj logo (PNG/SVG/WEBP)')));
     const refs = h('div', { class: 'thumbs' }); for (const r of b.refs) refs.append(h('div', { class: 'th', title: r.name }, r.pdf ? h('div', { style: { padding: '18px 6px', fontSize: '12px', textAlign: 'center' } }, 'PDF') : imgThumbEl(r.id), h('button', { class: 'x', onclick: () => { b.refs = b.refs.filter((x) => x.id !== r.id); touch(); this.render(); this.refreshRight(); } }, '✕')));
@@ -83,12 +84,29 @@ const Brand = {
     L.append(h('div', { class: 'ph' }, 'Zapisane style graficzne'), h('div', { class: 'sec' }, sty, h('button', { class: 'btn', style: { marginTop: '8px' }, onclick: () => { const n = prompt('Nazwa stylu:', 'Styl ' + ((b.styles || []).length + 1)); if (!n) return; b.styles = b.styles || []; b.styles.push({ name: n, colors: jclone(b.colors), headingFont: b.headingFont, bodyFont: b.bodyFont, style: b.style, strictness: b.strictness }); touch(); this.render(); } }, 'Zapisz bieżący styl')));
     this.renderRight();
   },
+  detach() { const b = P.cur.brand; if (!b.auto) return; b.auto = false; this.updCard(); },
+  syncPal(b) { // ręczna zmiana 3 kolorów przesuwa odpowiadające im kolory palety (gradient, poświata), reszta zostaje
+    if (!b.pal) return; const p = b.pal, C = b.colors; p.a = C.primary; p.bg = C.background; p.sf = mix(C.background, '#FFFFFF', 0.045); p.b = C.accent; p.m = mix(p.a, p.b, 0.5); p.on = readable(p.a);
+  },
+  updCard() {
+    if (!this.autoBox) return; const b = P.cur.brand, s = brandSrc(), pal = palOf(b), on = !!b.auto, box = this.autoBox; box.innerHTML = '';
+    const live = !!SYNC.brand, when = s.updated ? fdate(s.updated) : '?';
+    box.append(h('div', { class: 'autocard' }, h('div', { style: { fontWeight: 700 } }, on ? 'Marka z automatu' : 'Marka ręczna (odpięta od automatu)'),
+      h('div', { class: 'fine' }, (live ? 'Źródło: ' + (s.source || 'repo marki') : 'Źródło: wbudowana kopia (brak pliku z danymi)') + ' · stan z ' + when),
+      h('div', { class: 'sws' }, ...['a', 'm', 'b', 'v', 'bg', 'ink'].map((k) => h('i', { style: { background: pal[k] || '#000' }, title: k + ' ' + (pal[k] || '') }))),
+      h('div', { class: 'fine' }, `${b.headingFont} + ${b.bodyFont}${b.handle ? ' · ' + b.handle : ''}${s.site ? ' · ' + s.site : ''}`),
+      b.dna ? h('div', { class: 'fine', style: { marginTop: '4px' } }, 'Styl grafik (z karuzeli ' + (b.dnaUser ? 'wgranej przez Ciebie' : ((SYNC.ref && SYNC.ref.name) || 'wzorcowej')) + '): ' + Learn.describe(b.dna)) : null,
+      h('div', { class: 'row', style: { marginTop: '8px' } },
+        h('button', { class: 'btn sm', onclick: async () => { await syncLoad(true); if (P.cur.brand.auto) applyAutoBrand(P.cur.brand); touch(); this.render(); toast('Odświeżono dane marki.', 'ok'); } }, 'Odśwież'),
+        on ? h('button', { class: 'btn sm', onclick: () => { b.auto = false; touch(); this.updCard(); toast('Marka odpięta. Edytujesz ją ręcznie.', 'info'); } }, 'Odepnij (ręcznie)')
+          : h('button', { class: 'btn sm pri', onclick: async () => { applyAutoBrand(b); await ensureLogo(b); touch(); this.render(); this.refreshRight(); toast('Marka znów z automatu.', 'ok'); } }, 'Przypnij do automatu'))));
+  },
   pick(accept, multi, cb) { const i = h('input', { type: 'file', accept, multiple: !!multi }); i.onchange = () => i.files.length && cb([...i.files]); i.click(); },
   importMd() { this.pick('.md,.txt,text/markdown,text/plain', false, async ([f]) => this.applyMd(await f.text())); },
   pasteMd() { const ta = h('textarea', { rows: 10, placeholder: '# Brand Identity\nPrimary: #123456\nBackground: #F5F2ED\nAccent: #D49B65' }); modal('Wklej brand.md', ta, [{ t: 'Zastosuj', cls: 'pri', fn: () => this.applyMd(ta.value) }, { t: 'Anuluj' }]); },
   applyMd(txt) {
     const r = parseBrandMd(txt), b = P.cur.brand, n = Object.keys(r.colors).length; if (!n) { toast('Nie znalazłem kolorów HEX w pliku (oczekuję np. „Primary: #123456”).', 'bad', 6000); return; }
-    Object.assign(b.colors, r.colors); if (r.hf) b.headingFont = r.hf; if (r.bf) b.bodyFont = r.bf; if (r.style) b.style = r.style; if (r.handle) b.handle = r.handle; touch(); this.render();
+    Object.assign(b.colors, r.colors); this.detach(); this.syncPal(b); if (r.hf) b.headingFont = r.hf; if (r.bf) b.bodyFont = r.bf; if (r.style) b.style = r.style; if (r.handle) b.handle = r.handle; touch(); this.render();
     toast(`Wczytano ${n}/3 kolory` + (r.auto ? ' (role przypisane automatycznie, sprawdź)' : '') + (r.hf && !allFonts().includes(r.hf) ? '. Font „' + r.hf + '” nie jest zainstalowany: dodaj go przyciskiem fontu.' : ''), r.auto || n < 3 ? 'warn' : 'ok', 6000);
   },
   uploadFont() { this.pick('.ttf,.otf,.woff,.woff2', true, async (fs) => { const b = P.cur.brand; for (const f of fs) { try { const fam = f.name.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' '), id = await Assets.add(f, 'font'), rec = { family: fam, assetId: id }; await loadFontAsset(rec); b.fonts.push(rec); toast('Dodano font „' + fam + '”', 'ok'); } catch (e) { toast('Font nie załadował się: ' + errText(e), 'bad'); } } touch(); this.render(); }); },

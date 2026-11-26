@@ -1,5 +1,5 @@
 /* Creative Studio Social — rdzeń: narzędzia, magazyn (IndexedDB), projekt, historia, UI-pomocniki */
-const APP = { name: 'Creative Studio Social', ver: 'v0.01', author: 'Michał Rzekiecki', mail: 'kontakt@smialo.org' };
+const APP = { name: 'Creative Studio Social', ver: 'v0.02', author: 'Michał Rzekiecki', mail: 'michus@gmail.com' };
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const uid = (p = 'x') => p + Math.random().toString(36).slice(2, 9);
@@ -105,7 +105,7 @@ const Assets = {
 };
 
 // ── Projekt ──
-const DEFAULT_BRAND = () => ({ colors: { primary: '#123456', background: '#F5F2ED', accent: '#D49B65' }, headingFont: 'Georgia', bodyFont: 'Segoe UI', style: 'Nowoczesny, Premium, Minimalistyczny', strictness: 80, logos: [], refs: [], rules: '', fonts: [], handle: '@trenuj.smialo', styles: [] });
+const DEFAULT_BRAND = () => ({ colors: { primary: '#FF5A00', background: '#05070A', accent: '#FFE600' }, headingFont: 'Barlow Condensed', bodyFont: 'Inter', style: 'Ciemne tło z poświatą, gradient pomarańcz → żółć, szkło', strictness: 80, logos: [], refs: [], rules: '', fonts: [], handle: '@trenuj.smialo', styles: [], auto: true, pal: null, dna: null, look: 'glow' });
 function newProject(name) {
   return { id: uid('p'), name: name || 'Nowy projekt', v: 1, created: Date.now(), updated: Date.now(), brand: DEFAULT_BRAND(), posts: [], reels: [], curPost: null, curSlide: 0, curReel: null, audio: { takes: [], cur: null, fx: {} }, mix: { duckDepth: 10, duckAttack: 0.08, duckRelease: 0.45, musicDb: -14, target: -14, tp: -1 }, publish: { nets: { ig: true, yt: true, tt: true, fb: true }, caption: '', hashtags: '', title: '', schedule: '', cover: null, checks: {} }, calendar: [], log: [] };
 }
@@ -122,11 +122,15 @@ async function snapshot(label) { if (!P.cur) return; await saveNow(); const id =
 setInterval(() => { if (P.cur && P.dirty) snapshot('autosave'); }, 10 * 60 * 1000);
 async function listProjects() { return (await DBI.all('projects')).sort((a, b) => b.updated - a.updated); }
 async function openProject(id) {
-  const p = await DBI.get('projects', id); if (!p) throw new Error('Brak projektu'); P.cur = migrate(p); localStorage.setItem('css-last', id);
+  const p = await DBI.get('projects', id); if (!p) throw new Error('Brak projektu'); P.cur = migrate(p); localStorage.setItem('css-last', id); await brandBoot();
   for (const f of P.cur.brand.fonts || []) loadFontAsset(f).catch(() => {});
   bus.emit('project'); return P.cur;
 }
-function migrate(p) { const d = newProject(); for (const k of Object.keys(d)) if (p[k] == null) p[k] = d[k]; for (const k of Object.keys(d.brand)) if (p.brand[k] == null) p.brand[k] = d.brand[k]; for (const k of Object.keys(d.mix)) if (p.mix[k] == null) p.mix[k] = d.mix[k]; return p; }
+function migrate(p) {
+  const d = newProject(), legacy = p.brand && p.brand.auto == null; for (const k of Object.keys(d)) if (p[k] == null) p[k] = d[k]; for (const k of Object.keys(d.brand)) if (p.brand[k] == null) p.brand[k] = d.brand[k]; for (const k of Object.keys(d.mix)) if (p.mix[k] == null) p.mix[k] = d.mix[k];
+  if (legacy) p.brand.auto = p.brand.colors.primary === '#FF5A00' || (p.brand.colors.primary === '#123456' && !(p.brand.logos || []).length); // marka z v0.01 bez własnych zmian przechodzi na automat
+  return p;
+}
 async function loadFontAsset(f) { const b = await Assets.blob(f.assetId); if (!b) return; const ff = new FontFace(f.family, await b.arrayBuffer()); await ff.load(); document.fonts.add(ff); }
 async function duplicateProject() { await snapshot('przed duplikacją'); const c = jclone(P.cur); c.id = uid('p'); c.name = P.cur.name + ' (kopia)'; c.created = c.updated = Date.now(); await DBI.put('projects', c); toast('Zduplikowano projekt', 'ok'); }
 

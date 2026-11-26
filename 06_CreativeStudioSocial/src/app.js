@@ -1,8 +1,8 @@
 /* POWŁOKA: zakładki, menu, projekty, wersje, eksport/import, asystent treści, status integracji, O autorze, Sugestie */
 const S = {
   tab: 'brand',
-  mods: { brand: Brand, creative: Creative, video: Video, audio: AudioStudio, publish: Publish },
-  names: [['brand', 'Marka'], ['creative', 'Grafiki'], ['video', 'Wideo'], ['audio', 'Audio'], ['publish', 'Publikacja']],
+  mods: { brand: Brand, ideas: Ideas, creative: Creative, video: Video, audio: AudioStudio, publish: Publish },
+  names: [['brand', 'Marka'], ['ideas', 'Pomysły'], ['creative', 'Grafiki'], ['video', 'Wideo'], ['audio', 'Audio'], ['publish', 'Publikacja']],
   go(tab, force) {
     if (!P.cur) return; if (tab === this.tab && !force) return; const prev = this.mods[this.tab]; if (prev && prev.hide && tab !== this.tab) prev.hide();
     this.tab = tab; $$('.tab').forEach((b) => { b.classList.toggle('on', b.dataset.tab === tab); b.setAttribute('aria-selected', b.dataset.tab === tab); }); $$('.mod').forEach((m) => m.classList.toggle('on', m.id === 'm-' + tab));
@@ -56,12 +56,12 @@ async function integrationsFill(body, force) {
   body.innerHTML = ''; body.append(h('div', { class: 'hint' }, 'Sprawdzam Workera…')); const s = await AI.status(force); body.innerHTML = '';
   const rows = [
     ['Edytor grafik, wideo, audio, eksport MP4', 'ok', 'działa w przeglądarce, bez serwera', ''],
-    ['Zapis projektów (IndexedDB w tej przeglądarce)', 'ok', 'działa', 'Dane są tylko na tym urządzeniu. Użyj menu → „Eksport projektu” jako kopii. Synchronizacja w chmurze: planowana (v0.02, wymaga R2).'],
+    ['Zapis projektów (IndexedDB w tej przeglądarce)', 'ok', 'działa', 'Dane są tylko na tym urządzeniu. Użyj menu → „Eksport projektu” jako kopii. Synchronizacja w chmurze: planowana (v0.03, wymaga R2).'],
     ['Asystent tekstu (scenariusze, opisy, karuzele)', s.error ? 'bad' : (s.ai && (s.ai.claude || s.ai.llama) ? 'ok' : 'bad'), s.error ? 'Worker nie odpowiada: ' + s.error : (s.ai && s.ai.claude ? 'Claude (klucz ustawiony)' : s.ai && s.ai.llama ? 'Llama (Workers AI, bez klucza)' : 'brak modelu'), 'Jakość najlepsza z kluczem ANTHROPIC_API_KEY w Workerze.'],
     ['Obrazy AI (FLUX schnell)', s.error ? 'bad' : (s.img && s.img.flux ? 'ok' : 'bad'), s.img && s.img.flux ? 'Workers AI' : 'niedostępne', 'Bez zachowania tożsamości osób: do portretów użyj własnych zdjęć.'],
     ['Rozpoznawanie mowy (Whisper)', s.error ? 'bad' : (s.ai && s.ai.stt ? 'ok' : 'bad'), s.ai && s.ai.stt ? 'Workers AI' : 'niedostępne', 'Napisy i transkrypcja.'],
     ['Analiza obrazów referencyjnych przez model (vision)', s.ckey ? 'ok' : 'warn', s.ckey ? 'klucz Claude ustawiony' : 'wymaga konfiguracji', 'Bez klucza działa lokalna analiza kolorów i jasności. Ustaw sekret ANTHROPIC_API_KEY (GitHub Actions / Cloudflare).'],
-    ['Instagram / YouTube / TikTok / Facebook: publikacja przez API', 'warn', 'wymaga konfiguracji', 'W v0.01: pakiet do wgrania + otwarcie stron nadawczych. Automat wymaga publicznego magazynu plików (R2) oraz tokenów (Metricool lub Meta Graph, YouTube Data API, TikTok Content Posting API z audytem aplikacji). Plan: v0.02.'],
+    ['Instagram / YouTube / TikTok / Facebook: publikacja przez API', 'warn', 'wymaga konfiguracji', 'W v0.02: pakiet do wgrania + otwarcie stron nadawczych. Automat wymaga publicznego magazynu plików (R2) oraz tokenów (Metricool lub Meta Graph, YouTube Data API, TikTok Content Posting API z audytem aplikacji). Plan: v0.03.'],
     ['Kodowanie MP4 AAC (WebCodecs) w tej przeglądarce', 'info', 'sprawdzane przy eksporcie', 'Chrome na Windows/macOS: H.264 + AAC. Inne: tryb awaryjny.'],
   ];
   body.append(h('table', { class: 'qc' }, ...rows.map(([n, st, v, hint]) => h('tr', {}, h('td', {}, h('div', {}, n), hint ? h('div', { class: 'fine' }, hint) : null), h('td', {}, h('span', { class: 'tag ' + ({ ok: 'ok', warn: 'warn', bad: 'bad', info: 'off' }[st]) }, v))))));
@@ -93,7 +93,7 @@ function suggestDialog() {
   modal('Sugestie', h('div', {}, t, h('div', { class: 'row', style: { marginTop: '8px' } }, a, h('button', { class: 'btn', onclick: async () => { try { await navigator.clipboard.writeText(t.value); msg.textContent = 'Skopiowano. Wklej w wiadomości na ' + APP.mail + '.'; } catch (e) { t.select(); msg.textContent = 'Zaznaczone — skopiuj (Ctrl/Cmd+C) i wyślij na ' + APP.mail + '.'; } } }, 'Kopiuj')), msg), [{ t: 'Zamknij' }]);
 }
 function shortcutsDialog() {
-  const rows = [['Ctrl+1…5', 'Przełącz zakładki'], ['Ctrl+Z / Ctrl+Y', 'Cofnij / ponów (Grafiki, Wideo)'], ['Spacja', 'Odtwarzaj / pauza (Wideo, Audio)'], ['S', 'Przetnij klip w miejscu kursora (Wideo)'], ['Delete', 'Usuń zaznaczoną warstwę / klip'], ['Ctrl+D', 'Duplikuj warstwę / klip'], ['Strzałki', 'Przesuń warstwę o 1 px (Shift: 10 px); w Wideo: klatka po klatce'], ['Home / End', 'Początek / koniec rolki'], ['Dwuklik na tekście', 'Edytuj tekst warstwy']];
+  const rows = [['Ctrl+1…6', 'Przełącz zakładki'], ['Ctrl+Z / Ctrl+Y', 'Cofnij / ponów (Grafiki, Wideo)'], ['Spacja', 'Odtwarzaj / pauza (Wideo, Audio)'], ['S', 'Przetnij klip w miejscu kursora (Wideo)'], ['Delete', 'Usuń zaznaczoną warstwę / klip'], ['Ctrl+D', 'Duplikuj warstwę / klip'], ['Strzałki', 'Przesuń warstwę o 1 px (Shift: 10 px); w Wideo: klatka po klatce'], ['Home / End', 'Początek / koniec rolki'], ['Dwuklik na tekście', 'Edytuj tekst warstwy']];
   modal('Skróty klawiszowe', h('table', { class: 'qc' }, ...rows.map(([k, v]) => h('tr', {}, h('td', {}, h('b', {}, k)), h('td', {}, v)))), [{ t: 'Zamknij' }]);
 }
 function mainMenu(anchor) {
@@ -108,13 +108,13 @@ async function boot() {
   $('#btnAI').onclick = assistantDialog; $('#btnMenu').onclick = (e) => mainMenu(e.currentTarget);
   const nm = $('#projName'); nm.addEventListener('change', () => { if (P.cur) { P.cur.name = nm.value.trim() || 'Projekt'; nm.value = P.cur.name; touch(); } });
   bus.on('project', () => { nm.value = P.cur.name; S.go(S.tab, true); });
-  window.addEventListener('keydown', (e) => { if ((e.ctrlKey || e.metaKey) && /^[1-5]$/.test(e.key) && !e.target.closest('input,textarea,select')) { e.preventDefault(); S.go(S.names[+e.key - 1][0]); } });
+  window.addEventListener('keydown', (e) => { if ((e.ctrlKey || e.metaKey) && /^[1-6]$/.test(e.key) && !e.target.closest('input,textarea,select')) { e.preventDefault(); S.go(S.names[+e.key - 1][0]); } });
   document.addEventListener('visibilitychange', () => { if (document.hidden && P.cur && P.dirty) saveNow(); }); window.addEventListener('beforeunload', () => { if (P.cur && P.dirty) saveNow(); });
   window.addEventListener('error', (e) => { if (e.message && !/ResizeObserver/.test(e.message)) toast('Błąd aplikacji: ' + e.message, 'bad', 9000); }); window.addEventListener('unhandledrejection', (e) => { console.error(e.reason); toast('Błąd: ' + errText(e.reason), 'bad', 9000); });
   try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) { /* opcjonalne */ }
   try {
     const last = localStorage.getItem('css-last'), list = await listProjects(); let id = list.find((p) => p.id === last) ? last : (list[0] && list[0].id);
-    if (!id) { await createProject('Mój pierwszy projekt'); toast('Zacznij od zakładki Marka: wgraj logo, fonty lub plik brand.md. Potem Grafiki, Wideo i Audio.', 'info', 9000); } else await openProject(id);
+    if (!id) { await createProject('Mój pierwszy projekt'); toast('Marka i pomysły ładują się same (Drive, Instagram). Zacznij od zakładki Pomysły: wybierz temat i kliknij „Utwórz w edytorze”.', 'info', 9000); } else await openProject(id);
   } catch (e) { console.error(e); toast('Nie udało się otworzyć bazy projektów: ' + errText(e) + '. Sprawdź, czy przeglądarka nie blokuje danych witryn (tryb prywatny).', 'bad', 15000); }
 }
 boot();
