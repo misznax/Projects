@@ -57,6 +57,17 @@ textarea{resize:vertical;min-height:60px}
 .thumbs{display:flex;flex-wrap:wrap;gap:6px}.thumbs .th{position:relative;width:64px;height:64px;border-radius:8px;overflow:hidden;border:1px solid var(--bd);background:var(--p2)}.thumbs img{width:100%;height:100%;object-fit:contain}.thumbs .x{position:absolute;right:2px;top:2px;background:rgba(0,0,0,.7);border:0;border-radius:50%;width:18px;height:18px;cursor:pointer;line-height:16px;padding:0;color:#fff;font-size:11px}
 h3{margin:14px 0 6px;font-size:15px}.fine{font-size:12px;color:var(--mut)}
 
+
+/* nagrywanie: prompter */
+.rec-back{background:transparent!important;pointer-events:none;display:block!important}
+.rec-win{pointer-events:auto;position:fixed;display:flex!important;flex-direction:column;gap:8px;padding:10px 12px!important;overflow:hidden!important;resize:both;min-width:440px;min-height:420px;max-width:99vw;max-height:98vh!important;box-shadow:0 24px 80px rgba(0,0,0,.8),0 0 0 1px rgba(139,108,255,.55)!important;background:radial-gradient(120% 90% at 100% 0%,rgba(139,108,255,.16),transparent 55%),var(--p1)!important}
+.rec-win.full{left:6px!important;top:6px!important;width:calc(100vw - 12px)!important;height:calc(100vh - 12px)!important;resize:none}
+.rec-win .rec-hd{display:flex;align-items:center;gap:8px;font-weight:700;cursor:move;user-select:none}
+.rec-win>*{flex:none}.rec-win>.rec-pr{flex:1 1 0}.rec-win .rec-hd span{white-space:nowrap}.rec-win .rec-hd .fine{overflow:hidden;text-overflow:ellipsis}.rec-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.rec-tools .meter{min-width:120px}
+.rec-pr{position:relative;flex:1;min-height:140px;background:#000;border-radius:10px;overflow:hidden;border:1px solid var(--bd)}
+.rec-pr textarea{position:absolute;top:0;height:100%;background:transparent;border:0;outline:0;color:#fff;resize:none;overflow-y:auto;scrollbar-width:thin;font-family:"Inter","Segoe UI",system-ui,sans-serif;box-sizing:border-box;min-height:0;white-space:pre-wrap}
+.rec-pr textarea::placeholder{color:#5b646e}
+.rec-guide{position:absolute;left:0;right:0;pointer-events:none;background:linear-gradient(90deg,rgba(255,122,26,.16),rgba(139,108,255,.1));border-top:1px solid rgba(255,122,26,.6);border-bottom:1px solid rgba(255,122,26,.25)}
 /* ideas */
 #m-ideas{grid-template-columns:380px 1fr}
 .autocard{margin:10px 12px 4px;padding:10px 12px;border:1px solid rgba(139,108,255,.4);border-radius:12px;background:radial-gradient(120% 140% at 100% 0%,rgba(139,108,255,.22),transparent 60%),radial-gradient(120% 140% at 0% 100%,rgba(255,90,0,.16),transparent 60%),var(--p2);backdrop-filter:blur(6px)}
