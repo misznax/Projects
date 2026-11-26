@@ -11,7 +11,7 @@ Autor: Michał Rzekiecki · kontakt: michus@gmail.com · adres: https://projects
 4. Jedna warstwa modelu (tekst, obraz, kształt, wideo, efekt, animacje wejścia/wyjścia/pętla, klatki kluczowe) i jedna funkcja `drawScene` dla edycji, podglądu i eksportu.
 5. Dźwięk: własny silnik DSP w czystym JS (`src/dsp.js`): WSOLA (tempo), zmiana wysokości tonu, redukcja szumu STFT, usuwanie trzasków, korektor, kompresor, de-esser, usuwanie ciszy, głośność BS.1770 (LUFS), true peak, limiter, ducking, miks. Podgląd rolki gra dokładnie ten sam miks, który trafia do eksportu.
 6. Eksport wideo: WebCodecs (H.264 + AAC) + mp4-muxer → MP4. Gdy brak AAC w przeglądarce: Opus w MP4 z ostrzeżeniem; gdy brak WebCodecs: WebM (MediaRecorder).
-7. AI przez Worker (klucze tylko jako sekrety): `/api/n/claude` (Claude, a bez klucza Llama), `/api/n/stt` (Whisper), `/api/s/img` (FLUX.1 schnell, Workers AI), `/api/s/status` (uczciwy stan integracji).
+7. AI przez Worker (klucze tylko jako sekrety): `/api/n/claude` (Claude, a bez klucza Llama), `/api/n/stt` (Whisper), `/api/s/img` (FLUX.1 schnell, Workers AI), `/api/s/status` (uczciwy stan integracji), `/api/s/drive/list|get` (folder Google Drive udostępniony linkiem: lista i pobranie nagrań, bez kluczy).
 
 ## Moduły (zakładki)
 
@@ -21,7 +21,7 @@ Autor: Michał Rzekiecki · kontakt: michus@gmail.com · adres: https://projects
 | Pomysły | pomysły z Drive + posty z Instagrama → plan rolki lub karuzeli, ostrzeżenia o powtórkach, balans formatów, slot „materiał instruktażowy” (uczenie stylu z karuzeli / rolki) |
 | Grafiki | karuzele i posty: slajdy, warstwy, tło, usuwanie tła, obrazy AI, eksport PNG/JPG/ZIP |
 | Wideo | oś czasu (9 ścieżek), sceny z szablonów, animacje, klatki kluczowe, napisy z nagrania, miks, eksport MP4 |
-| Audio | nagrywanie z teleprompterem (okno rozciągalne i przeciągane, edytowalny tekst, wolne przewijanie w słowach/min, czcionka, szerokość, położenie, lustro, pełny ekran), edycja nieniszcząca (oryginał zostaje), łańcuch obróbki, raport jakości (LUFS, true peak, clipping, DC) |
+| Audio | import nagrań z telefonu z Google Drive („☁ Z Drive”: folder Creative Studio > Audio Input udostępniony linkiem, link wklejany raz), nagrywanie z teleprompterem (okno rozciągalne i przeciągane, edytowalny tekst, wolne przewijanie w słowach/min, czcionka, szerokość, położenie, lustro, pełny ekran), edycja nieniszcząca (oryginał zostaje), łańcuch obróbki, raport jakości (LUFS, true peak, clipping, DC) |
 | Publikacja | walidacja pod 4 sieci, opisy i hashtagi, bramka zatwierdzenia (6 kroków), FINAL PUBLISH, dziennik, kalendarz (ICS) |
 | Asystent | z jednego pomysłu: koncepcja, hook, scenariusz → rolka lub karuzela + opis |
 

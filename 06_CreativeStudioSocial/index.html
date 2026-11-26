@@ -2085,9 +2085,9 @@ const AudioStudio = {
 
   leftPanel() {
     const L = this.left, tk = this.A.takes; L.innerHTML = '';
-    L.append(h('div', { class: 'ph' }, 'Nagrania głosu'), h('div', { class: 'sec' }, h('div', { class: 'row' }, h('button', { class: 'btn pri', onclick: () => this.record() }, '🎙 Nagraj'), h('button', { class: 'btn', onclick: async () => { const fs = await pickFiles('audio/*,video/*', true); for (const f of fs) await this.importFile(f); } }, '📁 Wgraj plik'))));
+    L.append(h('div', { class: 'ph' }, 'Nagrania głosu'), h('div', { class: 'sec' }, h('div', { class: 'row' }, h('button', { class: 'btn pri', onclick: () => this.record() }, '🎙 Nagraj'), h('button', { class: 'btn', onclick: async () => { const fs = await pickFiles('audio/*,video/*', true); for (const f of fs) await this.importFile(f); } }, '📁 Wgraj plik'), h('button', { class: 'btn', title: 'Nagrania z telefonu z folderu Creative Studio > Audio Input na Google Drive', onclick: () => this.driveModal() }, '☁ Z Drive'))));
     const list = h('div', { class: 'zebra' }); tk.forEach((t) => list.append(h('div', { class: 'take' + (t.id === this.A.cur ? ' on' : ''), onclick: () => { this.stop(); this.A.cur = t.id; this.sel = null; this.cur = 0; this.view = null; this.panels(); } }, h('span', { style: { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, (t.parent ? '↳ ' : '') + t.name), h('span', { style: { display: 'flex', gap: '4px', alignItems: 'center' } }, h('span', { class: 'fine' }, fmtTime(t.dur)), h('button', { class: 'btn sm', title: 'Więcej', onclick: (e) => { e.stopPropagation(); this.takeMenu(e.currentTarget, t); } }, '⋯')))));
-    L.append(tk.length ? list : h('div', { class: 'sec hint', html: rich('Brak nagrań. Nagraj głos mikrofonem lub wgraj plik (MP3, WAV, M4A, a także ścieżkę z pliku wideo).') }));
+    L.append(tk.length ? list : h('div', { class: 'sec hint', html: rich('Brak nagrań. Nagraj głos mikrofonem, wgraj plik (MP3, WAV, M4A, a także ścieżkę z pliku wideo) albo pobierz nagranie z telefonu przez „☁ Z Drive”.') }));
     L.append(h('div', { class: 'ph' }, 'Muzyka i efekty'), h('div', { class: 'sec' }, h('div', { class: 'row' }, h('button', { class: 'btn', onclick: async () => { const fs = await pickFiles('audio/*', true); for (const f of fs) await this.importAsset(f, 'music'); } }, '🎵 Wgraj muzykę'), h('button', { class: 'btn', onclick: async () => { const fs = await pickFiles('audio/*', true); for (const f of fs) await this.importAsset(f, 'sfx'); } }, '🔔 Wgraj efekt')), h('div', { class: 'hint', style: { marginTop: '6px' }, html: rich('Używaj muzyki, do której masz prawa (np. własna, z licencją). (Aplikacja nie dołącza żadnej muzyki.)') })), h('div', { class: 'zebra', id: 'musLib' }));
     this.musList();
   },
@@ -2106,7 +2106,64 @@ const AudioStudio = {
   takeMenu(anchor, t) {
     popMenu(anchor, [{ t: 'Dodaj do rolki jako głos', i: '🎞', fn: () => this.takeToReel(t) }, { t: 'Transkrypcja (Whisper)…', i: '📝', fn: () => this.transcribe(t) }, { t: 'Pobierz WAV', i: '⬇', fn: async () => { const A = await Assets.audio(t.assetId); download(new Blob([DSP.wav(A.chs, A.fs, 24)], { type: 'audio/wav' }), fname(slug(t.name), 'wav')); } }, { t: 'Zmień nazwę…', i: '✎', fn: () => { const n = prompt('Nazwa:', t.name); if (n) { t.name = n; touch(); this.leftPanel(); } } }, '-', { t: 'Usuń nagranie', i: '🗑', fn: () => { if (!confirm('Usunąć „' + t.name + '”? (Klipy użyte w rolkach przestaną grać.)')) return; this.A.takes = this.A.takes.filter((x) => x !== t); if (this.A.cur === t.id) this.A.cur = this.A.takes[0] ? this.A.takes[0].id : null; touch(); this.panels(); } }]);
   },
-  async importFile(f) { const pr = progressModal('Wczytywanie ' + f.name); try { pr.set(0.3, 'dekodowanie'); const A = await Assets.decode(f); pr.set(0.8, 'zapis'); const t = await this.addTake(A.chs, A.fs, f.name.replace(/\.[a-z0-9]+$/i, '').slice(0, 40)); pr.close(); this.panels(); toast('Wczytano: ' + t.name + ' (' + fmtTime(t.dur) + ')', 'ok'); } catch (e) { pr.close(); toast('Nie udało się wczytać „' + f.name + '”: ' + errText(e), 'bad', 9000); } },
+  // ── Z Google Drive: folder „Creative Studio > Audio Input” udostępniony linkiem (Worker pośredniczy: api/s/drive/*) ──
+  driveId(s) { s = String(s || '').trim(); const m = s.match(/\/folders\/([\w-]{10,})/) || s.match(/[?&]id=([\w-]{10,})/) || (/^[\w-]{10,}$/.test(s) ? [0, s] : null); return m ? m[1] : ''; },
+  driveErr(j, st) { return ({ private: 'Folder nie jest udostępniony linkiem. W Drive: prawy klik na „Audio Input” → Udostępnij → Dostęp ogólny → „Każdy, kto ma link” (Wyświetlający).', not_found: 'Nie znaleziono folderu lub pliku. Sprawdź link.', rate: 'Limit zapytań na godzinę. Spróbuj za chwilę.', too_big: 'Plik większy niż 250 MB.', bad: 'Nieprawidłowy link do folderu.', net: 'Worker nie połączył się z Google Drive: ' + ((j && j.msg) || '') }[j && j.code]) || (st === 403 ? 'Odmowa dostępu (403). Zaloguj się ponownie (Cloudflare Access).' : 'Błąd Drive (HTTP ' + st + ((j && j.msg) ? ': ' + j.msg : '') + ')'); },
+  async driveFetchList(id) { let r; try { r = await fetch('api/s/drive/list?id=' + encodeURIComponent(id)); } catch (e) { throw new Error('Brak połączenia z serwerem: ' + errText(e)); } let j = {}; try { j = await r.json(); } catch { /* nie JSON */ } if (!r.ok) throw new Error(this.driveErr(j, r.status)); return j.files || []; },
+  async driveDownload(f, pr) {
+    let r; try { r = await fetch('api/s/drive/get?id=' + encodeURIComponent(f.id)); } catch (e) { throw new Error('Brak połączenia z serwerem: ' + errText(e)); }
+    if (!r.ok) { let j = {}; try { j = await r.json(); } catch { /* nie JSON */ } throw new Error(this.driveErr(j, r.status)); }
+    const tot = +r.headers.get('content-length') || 0, parts = []; let got = 0;
+    if (r.body && r.body.getReader) { const rd = r.body.getReader(); for (;;) { if (pr.cancel) { rd.cancel(); throw new Error('przerwano'); } const { done, value } = await rd.read(); if (done) break; parts.push(value); got += value.length; pr.set(tot ? Math.min(0.95, got / tot) : 0.5, (got / 1e6).toFixed(1) + (tot ? ' / ' + (tot / 1e6).toFixed(1) : '') + ' MB'); } }
+    else parts.push(new Uint8Array(await r.arrayBuffer()));
+    if (!got && !parts.length) throw new Error('pusty plik'); return new File(parts, f.name, { type: r.headers.get('content-type') || '' });
+  },
+  driveModal() {
+    const KEY = 'css-drive-folder', DK = 'css-drive-done', AUD = /\.(m4a|mp3|wav|aac|ogg|oga|opus|flac|aif|aiff|caf|amr|3gp|wma|mp4|m4v|mov|webm)$/i;
+    let done = []; try { done = JSON.parse(localStorage.getItem(DK) || '[]'); } catch { done = []; }
+    const box = h('div', { class: 'drv' }), M = modal('☁ Nagrania z Google Drive', box, [{ t: 'Zamknij' }]);
+    const save = () => { try { localStorage.setItem(DK, JSON.stringify(done.slice(-300))); } catch { /* brak miejsca */ } };
+    const imp = async (f, mark) => {
+      const pr = progressModal('Pobieranie z Drive: ' + f.name);
+      try { const file = await this.driveDownload(f, pr); pr.close(); const ok = await this.importFile(file); if (ok) { if (!done.includes(f.id)) done.push(f.id); save(); if (mark) mark(); } return ok; }
+      catch (e) { pr.close(); toast('Drive: ' + errText(e), 'bad', 9000); return false; }
+    };
+    const setup = () => {
+      const inp = h('input', { type: 'text', placeholder: 'https://drive.google.com/drive/folders/…', style: { width: '100%', margin: '8px 0' } });
+      box.innerHTML = '';
+      box.append(
+        h('div', { class: 'hint' }, 'Jednorazowa konfiguracja (ok. 1 min):'),
+        h('div', { style: { margin: '6px 0', lineHeight: '1.5' } }, '1. W Drive utwórz folder „Creative Studio”, a w nim „Audio Input”.', h('br'), '2. Prawy klik na „Audio Input” → Udostępnij → Dostęp ogólny → „Każdy, kto ma link” (Wyświetlający).', h('br'), '3. Skopiuj link do folderu i wklej tutaj:'),
+        inp,
+        h('div', { class: 'hint' }, 'Link zapisuje się tylko w tej przeglądarce. Kto zna link, może odsłuchać pliki z tego folderu, więc nie wrzucaj tam nic prywatnego.'),
+        h('div', { class: 'row', style: { marginTop: '8px' } }, h('button', { class: 'btn pri', onclick: () => { const v = this.driveId(inp.value); if (!v) { toast('To nie wygląda na link do folderu Google Drive.', 'bad'); return; } try { localStorage.setItem(KEY, v); } catch { /* tryb prywatny */ } show(v); } }, 'Zapisz i pokaż nagrania')));
+      setTimeout(() => inp.focus(), 30);
+    };
+    const show = async (id) => {
+      box.innerHTML = ''; box.append(h('div', { class: 'hint' }, 'Wczytuję listę z Drive…'));
+      let files; try { files = await this.driveFetchList(id); } catch (e) { box.innerHTML = ''; box.append(h('div', { class: 'warnrow bad' }, errText(e)), h('div', { class: 'row' }, h('button', { class: 'btn', onclick: () => show(id) }, '↻ Spróbuj ponownie'), h('button', { class: 'btn', onclick: () => { try { localStorage.removeItem(KEY); } catch { /* */ } setup(); } }, 'Zmień folder'))); return; }
+      const aud = files.filter((f) => !f.folder && AUD.test(f.name)).sort((a, b) => b.name.localeCompare(a.name, 'pl', { numeric: true })), other = files.length - aud.length;
+      box.innerHTML = '';
+      const marks = {}, list = h('div', { class: 'zebra', style: { maxHeight: '48vh', overflow: 'auto' } });
+      const rowFor = (f) => {
+        const st = h('span', { class: 'hint' }, done.includes(f.id) ? '✓ wczytano' : ''), btn = h('button', { class: 'btn', onclick: async () => { btn.disabled = true; await imp(f, upd); btn.disabled = false; } }, done.includes(f.id) ? 'Wczytaj ponownie' : 'Wczytaj');
+        const upd = () => { st.textContent = '✓ wczytano'; btn.textContent = 'Wczytaj ponownie'; };
+        marks[f.id] = upd; return h('div', { class: 'take', style: { cursor: 'default', alignItems: 'center' } }, h('span', { style: { flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }, title: f.name }, f.name, f.date ? h('span', { class: 'hint' }, '  ·  ' + f.date) : null), st, btn);
+      };
+      aud.forEach((f) => list.append(rowFor(f)));
+      const left = () => aud.filter((f) => !done.includes(f.id)), hdr = h('div', { class: 'hint', style: { marginBottom: '6px' } }), bulk = h('button', { class: 'btn pri', onclick: async (e) => { e.target.disabled = true; for (const f of left()) { if (!(await imp(f, marks[f.id]))) break; } e.target.disabled = false; } });
+      const upBulk = () => { const n = left().length; hdr.textContent = aud.length ? aud.length + ' nagr. w folderze' + (other ? ' (pominięto ' + other + ' innych plików)' : '') + ', nowych: ' + n : files.length ? 'Brak plików audio w folderze (' + files.length + ' innych).' : 'Folder jest pusty. Wrzuć nagranie z telefonu do „Audio Input” i odśwież.'; bulk.textContent = 'Wczytaj nowe (' + n + ')'; bulk.style.display = n ? '' : 'none'; };
+      Object.keys(marks).forEach((k) => { const u = marks[k]; marks[k] = () => { u(); upBulk(); }; }); upBulk();
+      box.append(hdr, aud.length ? list : null,
+        h('div', { class: 'row', style: { marginTop: '8px' } },
+          bulk,
+          h('button', { class: 'btn', onclick: () => show(id) }, '↻ Odśwież'), h('button', { class: 'btn', onclick: () => { try { localStorage.removeItem(KEY); } catch { /* */ } setup(); } }, 'Zmień folder')));
+    };
+    let id = ''; try { id = this.driveId(localStorage.getItem(KEY) || ''); } catch { id = ''; }
+    if (id) show(id); else setup();
+    return M;
+  },
+  async importFile(f) { const pr = progressModal('Wczytywanie ' + f.name); try { pr.set(0.3, 'dekodowanie'); const A = await Assets.decode(f); pr.set(0.8, 'zapis'); const t = await this.addTake(A.chs, A.fs, f.name.replace(/\.[a-z0-9]+$/i, '').slice(0, 40)); pr.close(); this.panels(); toast('Wczytano: ' + t.name + ' (' + fmtTime(t.dur) + ')', 'ok'); return true; } catch (e) { pr.close(); toast('Nie udało się wczytać „' + f.name + '”: ' + errText(e), 'bad', 9000); return false; } },
   async importAsset(f, kind) { try { const id = await Assets.add(f, kind), rec = await Assets.rec(id); if (rec.err) throw new Error(rec.err); this.musList(); toast('Dodano: ' + f.name, 'ok'); } catch (e) { toast('Nie udało się dodać pliku: ' + errText(e), 'bad', 8000); } },
 
   // ── Nagrywanie: okno z edytowalnym prompterem (zmiana rozmiaru, przeciąganie, powolne przewijanie) ──

@@ -260,9 +260,39 @@ function secure(res, url) { // nagłówki bezpieczeństwa dla stron i plików st
   return new Response(res.body, { status: res.status, statusText: res.statusText, headers: h });
 }
 
+// ── Google Drive: folder udostępniony linkiem (nagrania z telefonu) — lista i pobranie pliku, bez kluczy i logowania ──
+const DRV_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36';
+async function driveList(id) {
+  let r; try { r = await fetch('https://drive.google.com/embeddedfolderview?id=' + id, { headers: { 'user-agent': DRV_UA, 'accept-language': 'pl,en;q=0.8' } }); } catch (e) { return J({ code: 'net', msg: String(e.message || e).slice(0, 160) }, 502); }
+  if (/accounts\.google\.com/.test(r.url)) return J({ code: 'private' }, 403);
+  if (r.status === 404) return J({ code: 'not_found' }, 404);
+  if (!r.ok) return J({ code: 'drive', msg: 'HTTP ' + r.status }, 502);
+  const html = await r.text(), at = [...html.matchAll(/id="entry-([\w-]+)"/g)], files = [];
+  at.forEach((m, i) => {
+    const seg = html.slice(m.index, i + 1 < at.length ? at[i + 1].index : html.length), t = seg.match(/class="flip-entry-title">([^<]*)</), d = seg.match(/class="flip-entry-last-modified"><div>([^<]*)</), href = (seg.match(/href="([^"]+)"/) || [])[1] || '';
+    files.push({ id: m[1], name: dec(t ? t[1] : ''), date: d ? dec(d[1]) : '', folder: /\/folders\//.test(href) });
+  });
+  if (!files.length && /ServiceLogin|Sign in|Zaloguj/.test(html)) return J({ code: 'private' }, 403);
+  return J({ files });
+}
+async function driveGet(id) {
+  let r; try { r = await fetch('https://drive.usercontent.google.com/download?id=' + id + '&export=download&confirm=t', { headers: { 'user-agent': DRV_UA } }); } catch (e) { return J({ code: 'net', msg: String(e.message || e).slice(0, 160) }, 502); }
+  if (/accounts\.google\.com/.test(r.url)) return J({ code: 'private' }, 403);
+  if (r.status === 404) return J({ code: 'not_found' }, 404);
+  if (!r.ok) return J({ code: 'drive', msg: 'HTTP ' + r.status }, 502);
+  const ct = r.headers.get('content-type') || '';
+  if (/text\/html/i.test(ct)) return J({ code: 'private' }, 403); // strona logowania lub ostrzeżenie zamiast pliku
+  const len = +(r.headers.get('content-length') || 0);
+  if (len > 250e6) return J({ code: 'too_big' }, 413);
+  const h = new Headers({ 'content-type': ct || 'application/octet-stream', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' });
+  if (len && !r.headers.get('content-encoding')) h.set('content-length', String(len));
+  return new Response(r.body, { status: 200, headers: h });
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
+    { const pre = url.pathname.match(/^\/\d\d(\/api\/.*)$/); if (pre) url.pathname = pre[1]; } // aplikacja otwarta pod /NN/ woła api/… względnie
     if (url.pathname.startsWith('/api/')) {
       if (!(await accessOk(request, env))) return J({ code: 'forbidden' }, 403);
       if (['/api/transcript', '/api/ask', '/api/n/claude', '/api/n/stt'].includes(url.pathname) && !(await rl(request, env, 'ai', 120))) return J({ code: 'rate' }, 429);
@@ -285,6 +315,12 @@ export default {
         const prompt = String(b.prompt || '').slice(0, 2000); if (!prompt) return J({ code: 'bad' }, 400);
         try { const o = await env.AI.run('@cf/black-forest-labs/flux-1-schnell', { prompt, steps: Math.min(8, Math.max(1, +b.steps || 4)) }); if (!o || !o.image) throw new Error('brak obrazu w odpowiedzi modelu'); return J({ image: o.image, mime: 'image/jpeg' }); }
         catch (e) { return J({ code: 'ai_error', msg: String(e.message || e).slice(0, 200) }, 502); }
+      }
+      if (url.pathname === '/api/s/drive/list' || url.pathname === '/api/s/drive/get') {
+        const id = url.searchParams.get('id') || '';
+        if (!/^[\w-]{10,100}$/.test(id)) return J({ code: 'bad' }, 400);
+        if (!(await rl(request, env, 'drive', 300))) return J({ code: 'rate' }, 429);
+        return url.pathname.endsWith('/list') ? driveList(id) : driveGet(id);
       }
       if (url.pathname === '/api/n/status') return J({ stt: !!(env.OPENAI_API_KEY || env.AI || env.GROQ_API_KEY), diar: !!env.OPENAI_API_KEY, claude: !!(env.ANTHROPIC_API_KEY || env.AI || env.GROQ_API_KEY), ckey: !!env.ANTHROPIC_API_KEY });
       // 04 Notatnik Słuchacza: proxy do OpenAI (transkrypcja + mówcy) i Claude (notatki, autorzy, weryfikacja); klucze tylko jako sekrety Workera
