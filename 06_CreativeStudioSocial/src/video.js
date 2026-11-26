@@ -1,11 +1,20 @@
 /* VIDEO STUDIO: rolki 9:16 — oś czasu (9 ścieżek), animacje, klatki kluczowe, podgląd z dźwiękiem, eksport MP4 (WebCodecs) */
 const TRACKS = [['bg', 'Tło'], ['video', 'Wideo'], ['image', 'Obrazy'], ['text', 'Tekst'], ['graphic', 'Grafiki'], ['anim', 'Animacje'], ['voice', 'Głos'], ['music', 'Muzyka'], ['sfx', 'Efekty dźw.']];
 const ATRK = ['voice', 'music', 'sfx'];
-const newReel = (name) => { const F = FORMATS.story; return { id: uid('r'), name: name || 'Rolka', fmt: 'story', w: F.w, h: F.h, dur: 30, fps: 30, bg: { type: 'color', c1: '#000000' }, layers: [], audio: [], style: 'dynamic', meta: {} }; };
+const BGFX = ['agrad', 'orbs', 'stripes']; // animowane tła: zawsze pod wideo, tekstem i grafikami
+const isBgFx = (l) => l.type === 'fx' && BGFX.includes(l.fx && l.fx.kind);
+const newReel = (name) => { const F = FORMATS.story; return { id: uid('r'), name: name || 'Rolka', fmt: 'story', w: F.w, h: F.h, dur: 30, fps: 30, bg: { type: 'color', c1: '#000000' }, layers: [], audio: [], style: 'dynamic', meta: {}, zv: 2 }; };
 
 const Video = {
   built: false, selId: null, selKind: 'layer', t: 0, playing: false, zoom: 1, snap: true, loop: false, vids: new Map(), mc: null, ac: null, src: null, hist: null,
-  get reel() { const p = P.cur; return p.reels.find((r) => r.id === p.curReel) || null; },
+  get reel() { const p = P.cur, r = p.reels.find((x) => x.id === p.curReel) || null; if (r && r.zv !== 2) this.fixZ(r); return r; },
+  // Kolejność warstw: [tła sceny][animowane tła][wideo][reszta]. Starsze rolki miały animowane tło NA WIERZCHU (zasłaniało wideo i łapało kliknięcia): jednorazowa naprawa.
+  zBgEnd(r) { let e = 0; while (e < r.layers.length && (r.layers[e].track === 'bg' || isBgFx(r.layers[e]))) e++; return e; },
+  fixZ(r) {
+    r.zv = 2; const L = r.layers, vi = L.findIndex((l) => l.type === 'video'); if (vi < 0) return;
+    const mv = L.filter((l, i) => i > vi && isBgFx(l) && l.w >= r.w * 0.9 && l.h >= r.h * 0.9); if (!mv.length) return;
+    const rest = L.filter((l) => !mv.includes(l)); rest.splice(rest.findIndex((l) => l.type === 'video'), 0, ...mv); L.splice(0, L.length, ...rest); setTimeout(() => { touch(); }, 0);
+  },
   get selLayer() { const r = this.reel; return r && this.selKind === 'layer' && this.selId ? r.layers.find((l) => l.id === this.selId) || null : null; },
   get selAudio() { const r = this.reel; return r && this.selKind === 'audio' && this.selId ? r.audio.find((a) => a.id === this.selId) || null : null; },
   setHist() { this.hist = new History(() => this.reel, (s) => { const i = P.cur.reels.findIndex((x) => x.id === s.id); if (i >= 0) P.cur.reels[i] = s; }); },
@@ -14,6 +23,7 @@ const Video = {
     const root = $('#m-video'); root.innerHTML = '';
     this.left = h('div', { class: 'panel', id: 'v-left' }); this.right = h('div', { class: 'panel r', id: 'v-right' });
     this.bar = h('div', { class: 'tool' }); this.host = h('div', { class: 'stagehost vprev' });
+    this.ctxEl = h('div', { class: 'pipbar', style: { display: 'none' } }); // pływający panel w lewym marginesie podglądu (nie zmienia układu, więc podgląd nie skacze)
     const center = h('div', { id: 'v-center' }, this.bar, this.host);
     this.tlBar = h('div', { class: 'tl-bar' }); this.names = h('div', { class: 'tl-names' }); this.inner = h('div', { class: 'tl-inner' }); this.scroll = h('div', { class: 'tl-scroll' }, this.inner);
     const tl = h('div', { id: 'v-tl' }, this.tlBar, h('div', { class: 'tl-wrap' }, this.names, this.scroll));
@@ -25,7 +35,7 @@ const Video = {
       change: (k) => (k === 'commit' ? this.commit() : this.panelsLive()), draw: () => ({ video: (l) => { const v = this.vids.get(l.id); return v ? v.el : null; } }),
       onEdit: () => { const t = $('textarea[data-k="text.s"]', this.right); if (t) { t.focus(); t.select(); } }, key: (e) => this.onKey(e),
     });
-    this.buildBar(); this.buildTlBar();
+    this.host.append(this.ctxEl); this.buildBar(); this.buildTlBar();
     window.addEventListener('keydown', (e) => { if (S.tab !== 'video' || e.target.closest('input,textarea,select,.modal')) return; this.onKey(e); });
   },
   buildBar() {
@@ -51,7 +61,13 @@ const Video = {
   hide() { this.pause(); },
 
   // ── Panele ──
-  panels() { this.leftPanel(); this.rightPanel(); this.updTime(); },
+  panels() { this.leftPanel(); this.rightPanel(); this.ctxBar(); this.updTime(); },
+  // pasek nad podglądem: pojawia się po zaznaczeniu wideo / gadającej głowy (kształt, rozmiar, przybliżenie, miękkość, przejście)
+  ctxBar() {
+    const B = this.ctxEl, l = this.selLayer; if (!B) return; B.innerHTML = ''; if (!l || l.type !== 'video') { B.style.display = 'none'; return; } B.style.display = '';
+    B.append(h('div', { class: 'pip-hd' }, h('b', {}, '🗣 Wideo'), h('button', { class: 'btn sm', title: this.ctxOff ? 'Rozwiń' : 'Zwiń', onclick: () => { this.ctxOff = !this.ctxOff; this.ctxBar(); } }, this.ctxOff ? '▸' : '▾')));
+    if (!this.ctxOff) B.append(...videoQuick(l, (k) => { this.stage.render(); if (k === 'commit') this.commit(); }, () => { this.commit(); this.stage.render(); }), h('div', { class: 'hint' }, 'Przeciągnij wideo na podglądzie, rogi = rozmiar. Więcej ustawień: panel po prawej.'));
+  },
   panelsLive() { const l = this.selLayer; if (!l) return; for (const k of ['x', 'y', 'w', 'h', 'rot']) { const i = $(`input[data-pk="${k}"]`, this.right); if (i && document.activeElement !== i) i.value = rnd(l[k], 1); } },
   leftPanel() {
     const L = this.left, p = P.cur, r = this.reel; L.innerHTML = '';
@@ -108,7 +124,7 @@ const Video = {
   // ── Zaznaczanie / commit ──
   select(kind, id) { this.selKind = kind; this.selId = id; this.panels(); this.stage.render(); this.tlMarks(); },
   commit(audio) { this.syncVideoAudio(); if (this.hist) this.hist.mark(); if (audio) this.mc = null; touch(); this.tl(); this.rightPanelSoft(); this.stage.render(); },
-  rightPanelSoft() { const a = document.activeElement; if (a && this.right.contains(a) && /INPUT|TEXTAREA|SELECT/.test(a.tagName)) return; this.rightPanel(); },
+  rightPanelSoft() { const a = document.activeElement, typing = (el) => a && el && el.contains(a) && /INPUT|TEXTAREA|SELECT/.test(a.tagName); if (!typing(this.right)) this.rightPanel(); if (!typing(this.ctxEl)) this.ctxBar(); },
   undo() { if (this.hist && this.hist.undo()) { this.selId = null; this.mc = null; this.panels(); this.tl(); this.stage.render(); touch(); } },
   redo() { if (this.hist && this.hist.redo()) { this.selId = null; this.mc = null; this.panels(); this.tl(); this.stage.render(); touch(); } },
   ensureDur(t) { const r = this.reel; if (t > r.dur) { r.dur = Math.ceil(t); this.fitBase(); } },
@@ -126,7 +142,7 @@ const Video = {
     if (type === 'text') { l.w = r.w * 0.8; l.text.size = 84; l.text.color = '#ffffff'; l.text.font = P.cur.brand.headingFont; l.text.stroke.w = 0; l.text.shadow.on = true; }
     if (type === 'shape') { l.shape.kind = kind; l.shape.fill = P.cur.brand.colors.accent; l.w = kind === 'line' ? r.w * 0.5 : 360; l.h = kind === 'line' ? 14 : 360; }
     if (type === 'fx') { l.fx.kind = kind; l.w = r.w; l.h = r.h; Object.assign(l.fx, { c1: P.cur.brand.colors.accent, c2: P.cur.brand.colors.primary, c3: mix(P.cur.brand.colors.accent, '#ffffff', 0.4) }); if (kind === 'bar') { l.w = r.w * 0.7; l.h = 18; l.y = r.h - SAFE.bottom + 30; } l.t0 = 0; l.t1 = r.dur; l.track = 'anim'; }
-    animateLayers([l], r.style, 4); this.ensureDur(l.t1); r.layers.push(l); this.afterAdd(l);
+    animateLayers([l], r.style, 4); this.ensureDur(l.t1); if (isBgFx(l)) r.layers.splice(this.zBgEnd(r), 0, l); else r.layers.push(l); this.afterAdd(l);
   },
   async addMedia(kind, lib, opt) {
     opt = opt || {}; let id, tt; try {
@@ -137,10 +153,10 @@ const Video = {
       if (kind === 'image') { l.w = Math.min(r.w * 0.9, rec.w || 800); l.h = l.w / ar; l.img.assetId = id; IMGS.set(id, await Assets.img(id)); l.t1 = t0 + 4; r.layers.push(l); }
       else {
         l.w = r.w; l.h = r.h; l.video.assetId = id; l.video.fit = 'cover'; l.t1 = t0 + Math.min(rec.dur || 5, 120); l.name = (opt.pip ? 'Gadająca głowa: ' : 'Wideo: ') + l.name;
-        const bgN = r.layers.filter((x) => x.track === 'bg').length; r.layers.splice(bgN, 0, l); // wideo pod tekstami i grafikami (nad tłem)
+        r.layers.splice(this.zBgEnd(r), 0, l); // wideo pod tekstami i grafikami, nad tłem i animowanym tłem
         if (opt.pip) { Object.assign(l.video, { shape: 'circle', bw: 8, bc: P.cur.brand.colors.accent, glow: 28 }); this.applyPip(l, { shape: 'circle', size: 'm', pos: 'bc' }); }
       }
-      this.ensureDur(l.t1); animateLayers([l], r.style, l.t1 - l.t0); if (kind === 'video') { l.anim.in = opt.pip ? { p: 'zoom', d: 0.5, dl: 0, e: 'outBack', dir: 'bottom' } : { p: 'none', d: 0.6, dl: 0, e: 'outCubic', dir: 'bottom' }; l.anim.out.p = 'none'; }
+      this.ensureDur(l.t1); animateLayers([l], r.style, l.t1 - l.t0); if (kind === 'video') { l.anim.in = opt.pip ? { p: 'soft', d: 0.7, dl: 0, e: 'linear', dir: 'bottom' } : { p: 'none', d: 0.6, dl: 0, e: 'outCubic', dir: 'bottom' }; l.anim.out = opt.pip ? { p: 'soft', d: 0.6, dl: 0, e: 'linear', dir: 'bottom' } : Object.assign(l.anim.out, { p: 'none' }); }
       await this.ensureVideos(); let audio = false; if (kind === 'video') audio = await this.attachVideoAudio(l);
       if (tt) tt.remove(); this.afterAdd(l); if (kind === 'video') toast(audio ? 'Dodano wideo z dźwiękiem (ścieżka „Głos”).' : 'Dodano wideo. Brak odczytywalnego dźwięku w pliku.', audio ? 'ok' : 'warn', 5000);
     } catch (e) { if (tt) tt.remove(); toast('Nie udało się dodać pliku: ' + errText(e), 'bad', 12000); }
@@ -159,14 +175,15 @@ const Video = {
   async attachVideoAudio(l) {
     const r = this.reel, id = l.video.assetId; if (!id) return false; let A = null; try { A = await Assets.audio(id); } catch (e) { A = null; }
     if (!A || !A.chs || !A.chs[0] || A.chs[0].length < 2000) return false;
-    const it = { id: uid('au'), track: 'voice', assetId: id, name: 'Dźwięk: ' + l.name.replace(/^(Wideo|Gadająca głowa): /, '').slice(0, 22), t0: l.t0, in: l.video.in || 0, dur: Math.max(0.1, Math.min(l.t1, r.dur) - l.t0), srcDur: A.chs[0].length / A.fs, gain: 0, fi: 0.01, fo: 0.03, loop: false, duck: false, link: l.id };
+    const it = { id: uid('au'), track: 'voice', assetId: id, name: 'Dźwięk: ' + l.name.replace(/^(Wideo|Gadająca głowa): /, '').slice(0, 22), t0: l.t0, in: l.video.in || 0, dur: Math.max(0.1, Math.min(l.t1, r.dur) - l.t0), srcDur: A.chs[0].length / A.fs, gain: 0, ...this.lkFade(l), loop: false, duck: false, link: l.id };
     it.lk = this.lkSig(l); r.audio.push(it); this.mc = null; return true;
   },
-  lkSig(l) { const c = l.video; return JSON.stringify([l.t0, Math.min(l.t1, this.reel.dur), c.in || 0, c.speed || 1, !!c.mute, c.vol || 0, !!l.hide]); },
+  lkFade(l) { const an = l.anim || {}, dur = Math.max(0.1, Math.min(l.t1, this.reel.dur) - l.t0), f = (x) => (x && x.p && x.p !== 'none' ? clamp((x.d || 0.5) * 0.8, 0.02, dur / 3) : 0); return { fi: f(an.in) || 0.01, fo: f(an.out) || 0.03 }; }, // dźwięk zanika razem z obrazem
+  lkSig(l) { const c = l.video, an = l.anim || {}; return JSON.stringify([l.t0, Math.min(l.t1, this.reel.dur), c.in || 0, c.speed || 1, !!c.mute, c.vol || 0, !!l.hide, an.in && an.in.p, an.in && an.in.d, an.out && an.out.p, an.out && an.out.d]); },
   syncVideoAudio() {
     const r = this.reel; if (!r || !r.audio) return; r.audio = r.audio.filter((a) => {
       if (!a.link) return true; const l = r.layers.find((x) => x.id === a.link); if (!l) return false; const sig = this.lkSig(l); if (a.lk === sig) return true; const c = l.video, sp = c.speed || 1;
-      a.t0 = l.t0; a.in = c.in || 0; a.dur = Math.max(0.1, Math.min(l.t1, r.dur) - l.t0); a.gain = (Math.abs(sp - 1) > 0.01 || c.mute || l.hide) ? -90 : (c.vol || 0); a.lk = sig; this.mc = null; return true;
+      a.t0 = l.t0; a.in = c.in || 0; a.dur = Math.max(0.1, Math.min(l.t1, r.dur) - l.t0); a.gain = (Math.abs(sp - 1) > 0.01 || c.mute || l.hide) ? -90 : (c.vol || 0); Object.assign(a, this.lkFade(l)); a.lk = sig; this.mc = null; return true;
     });
   },
   async addAudio(track) {

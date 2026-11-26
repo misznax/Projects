@@ -24,6 +24,27 @@ function pickFiles(accept, multi) { return new Promise((res) => { const i = h('i
 // wybór zasobu: biblioteka (wszystkie projekty) / folder Drive / link / urządzenie → patrz import.js
 function assetPicker(kinds, title) { return Importer.pick(kinds, title); }
 
+// ── Sterowanie wideo / gadającą głową: wspólne dla paska nad podglądem i panelu po prawej ──
+function pipSeg(l, label, key, opts, onpick, redo) {
+  const c = l.video; return h('div', { class: 'fld' }, h('label', {}, label), h('div', { class: 'seg' }, opts.map(([v, n, tip]) => h('button', { class: String(c[key] || (key === 'shape' ? 'rect' : '')) === String(v) ? 'on' : '', title: tip || '', onclick: (e) => { onpick(v); redo(); [...e.currentTarget.parentNode.children].forEach((b) => b.classList.remove('on')); e.currentTarget.classList.add('on'); } }, n))));
+}
+const PIP_SHAPES = [['circle', '⬤ Koło', 'Wideo w kole'], ['round', '▢ Zaokrąglony', 'Prostokąt z zaokrąglonymi rogami'], ['rect', '▭ Prostokąt'], ['full', '⛶ Pełny ekran']];
+function transQuick(l, redo) { // jedno przejście dla wejścia i wyjścia (osobne ustawienia są niżej w „Animacja wejścia / wyjścia”)
+  const a = l.anim, cur = (a.in && a.in.p) || 'none', dur = (a.in && a.in.d) || (a.out && a.out.d) || 0.6, ks = ['in', 'out'];
+  const sel = h('select', { title: 'Przejście przy wejściu i wyjściu klipu', onchange: (e) => { const p = e.target.value; for (const k of ks) { a[k] = Object.assign({ dl: 0, dir: 'bottom', e: 'outCubic' }, a[k], { p }); if (p === 'soft') a[k].e = 'linear'; else if (p === 'fade') a[k].e = 'inOutCubic'; if (p !== 'none' && !(a[k].d > 0.05)) a[k].d = 0.6; } redo(); } }, [['none', 'Brak (twarde cięcie)'], ['soft', 'Miękkie (zanik + lekki zoom)'], ['fade', 'Zanik'], ['zoom', 'Zoom'], ['blur', 'Rozmycie'], ['circle', 'Maska kołowa']].map(([v, n]) => h('option', { value: v, selected: v === cur }, n)));
+  const d = h('input', { type: 'number', min: 0.1, max: 3, step: 0.1, value: rnd(dur, 1), title: 'Czas przejścia (s)', style: { width: '64px', flex: 'none' }, onchange: (e) => { const x = clamp(+e.target.value || 0.6, 0.1, 3); for (const k of ks) if (a[k] && a[k].p !== 'none') a[k].d = x; redo(); } });
+  return h('div', { class: 'fld' }, h('label', {}, 'Przejście (wejście i wyjście)'), h('div', { class: 'row' }, sel, d, h('span', { class: 'hint' }, 's')));
+}
+function videoQuick(l, cb, redo) { // pasek nad podglądem
+  const pip = (o) => Video.applyPip(l, o);
+  return [
+    pipSeg(l, 'Kształt', 'shape', PIP_SHAPES.map(([v, n, t]) => [v, n.split(' ')[0], t || n.slice(2)]), (v) => pip({ shape: v }), redo),
+    pipSeg(l, 'Rozmiar', 'size', [['s', 'S'], ['m', 'M'], ['l', 'L'], ['xl', 'XL']], (v) => pip({ size: v }), redo),
+    fld({ k: 'video.zoom', t: 'range', label: 'Przybliżenie kadru', min: 1, max: 3, step: 0.01, unit: '×' }, l, cb),
+    fld({ k: 'video.feather', t: 'range', label: 'Miękkie krawędzie', min: 0, max: 80, step: 1 }, l, cb),
+    transQuick(l, redo)];
+}
+
 // Wspólny panel właściwości warstwy (Creative + Video): pozycja + pola zależne od typu
 function layerFields(l, cb) {
   const pos = [rowOf(fld({ k: 'x', t: 'num', label: 'X' }, l, cb), fld({ k: 'y', t: 'num', label: 'Y' }, l, cb)), rowOf(fld({ k: 'w', t: 'num', label: 'Szerokość', min: 10 }, l, cb), l.type === 'text' ? h('div') : fld({ k: 'h', t: 'num', label: 'Wysokość', min: 10 }, l, cb)), rowOf(fld({ k: 'rot', t: 'num', label: 'Obrót °' }, l, cb), fld({ k: 'op', t: 'range', label: 'Przezroczystość', min: 0, max: 1, step: 0.01 }, l, cb))];
@@ -43,12 +64,13 @@ function layerFields(l, cb) {
   } else if (l.type === 'shape') {
     out.push(h('div', { class: 'ph' }, 'Kształt'), h('div', { class: 'sec' }, fld({ k: 'shape.kind', t: 'sel', label: 'Rodzaj', opts: [['rect', 'Prostokąt'], ['ellipse', 'Elipsa'], ['line', 'Pasek']] }, l, cb), fld({ k: 'shape.fill', t: 'color', label: 'Wypełnienie' }, l, cb), fld({ k: 'shape.fill2', t: 'color', label: 'Drugi kolor (gradient, puste = brak)' }, l, cb), fld({ k: 'shape.gAngle', t: 'num', label: 'Kąt gradientu °' }, l, cb), fld({ k: 'shape.r', t: 'range', label: 'Zaokrąglenie', min: 0, max: 400, step: 1 }, l, cb), rowOf(fld({ k: 'shape.stroke.w', t: 'num', label: 'Obrys', min: 0 }, l, cb), fld({ k: 'shape.stroke.c', t: 'color', label: 'Kolor obrysu' }, l, cb)), fld({ k: 'shape.shadow.on', t: 'chk', label: 'Cień' }, l, cb)));
   } else if (l.type === 'video') {
-    const c = l.video, redo = () => { cb('live'); cb('commit'); }, segB = (label, key, opts, onpick) => h('div', { class: 'fld' }, h('label', {}, label), h('div', { class: 'seg' }, opts.map(([v, n, tip]) => h('button', { class: String(c[key] || (key === 'shape' ? 'rect' : '')) === String(v) ? 'on' : '', title: tip || '', onclick: (e) => { onpick(v); redo(); [...e.currentTarget.parentNode.children].forEach((b) => b.classList.remove('on')); e.currentTarget.classList.add('on'); } }, n))));
-    out.push(h('div', { class: 'ph' }, 'Gadająca głowa / wideo'), h('div', { class: 'sec' },
-      segB('Kształt', 'shape', [['circle', '⬤ Koło', 'Wideo w kole'], ['round', '▢ Zaokrąglony'], ['rect', '▭ Prostokąt'], ['full', '⛶ Pełny ekran']], (v) => Video.applyPip(l, { shape: v })),
+    const c = l.video, redo = () => { cb('live'); cb('commit'); }, segB = (label, key, opts, onpick) => pipSeg(l, label, key, opts, onpick, redo);
+    out.unshift(h('div', { class: 'ph' }, 'Gadająca głowa / wideo'), h('div', { class: 'sec' },
+      segB('Kształt', 'shape', PIP_SHAPES, (v) => Video.applyPip(l, { shape: v })),
       segB('Rozmiar', 'size', [['s', 'S'], ['m', 'M'], ['l', 'L'], ['xl', 'XL']], (v) => Video.applyPip(l, { size: v })),
       h('div', { class: 'fld' }, h('label', {}, 'Miejsce (w bezpiecznej strefie)'), h('div', { class: 'pipgrid' }, [['tl', '↖'], ['tc', '↑'], ['tr', '↗'], ['ml', '←'], ['mc', '•'], ['mr', '→'], ['bl', '↙'], ['bc', '↓'], ['br', '↘']].map(([v, n]) => h('button', { class: c.pos === v ? 'on' : '', title: 'Ustaw w tym miejscu', onclick: (e) => { Video.applyPip(l, { pos: v }); redo(); [...e.currentTarget.parentNode.children].forEach((b) => b.classList.remove('on')); e.currentTarget.classList.add('on'); } }, n)))),
       fld({ k: 'video.fit', t: 'seg', label: 'Dopasowanie', opts: [['cover', 'Wypełnij'], ['contain', 'Zmieść']] }, l, cb), fld({ k: 'video.zoom', t: 'range', label: 'Przybliżenie kadru', min: 1, max: 3, step: 0.01, unit: '×' }, l, cb), rowOf(fld({ k: 'video.ox', t: 'range', label: 'Kadr: w prawo', min: -0.5, max: 0.5, step: 0.01 }, l, cb), fld({ k: 'video.oy', t: 'range', label: 'Kadr: w dół', min: -0.5, max: 0.5, step: 0.01 }, l, cb)), fld({ k: 'video.flipX', t: 'chk', label: 'Lustro (odbicie poziome)' }, l, cb)),
+      h('div', { class: 'ph' }, 'Przejście i krawędzie'), h('div', { class: 'sec' }, transQuick(l, redo), fld({ k: 'video.feather', t: 'range', label: 'Miękkie krawędzie (rozmycie brzegu, bez ramki)', min: 0, max: 80, step: 1 }, l, cb)),
       h('div', { class: 'ph' }, 'Ramka i poświata'), h('div', { class: 'sec' }, rowOf(fld({ k: 'video.bw', t: 'range', label: 'Grubość ramki', min: 0, max: 30, step: 1 }, l, cb), fld({ k: 'video.bc', t: 'color', label: 'Kolor ramki i poświaty' }, l, cb)), fld({ k: 'video.glow', t: 'range', label: 'Poświata', min: 0, max: 80, step: 1 }, l, cb), (c.shape === 'rect' || c.shape === 'round' || !c.shape) ? fld({ k: 'video.r', t: 'range', label: 'Zaokrąglenie rogów', min: 0, max: 540, step: 1 }, l, cb) : null),
       h('div', { class: 'ph' }, 'Czas i dźwięk'), h('div', { class: 'sec' }, rowOf(fld({ k: 'video.in', t: 'num', label: 'Start w pliku (s)', min: 0, step: 0.1 }, l, cb), fld({ k: 'video.speed', t: 'num', label: 'Prędkość ×', min: 0.25, max: 4, step: 0.05 }, l, cb)), fld({ k: 'video.vol', t: 'range', label: 'Głośność dźwięku z wideo', min: -30, max: 12, step: 0.5, unit: ' dB' }, l, cb), fld({ k: 'video.mute', t: 'chk', label: 'Wycisz dźwięk z wideo' }, l, cb),
         h('div', { class: 'hint', html: rich('Dźwięk z pliku trafia na ścieżkę „Głos” (przesuwa się razem z klipem; przy prędkości innej niż 1× jest wyciszony).') })));

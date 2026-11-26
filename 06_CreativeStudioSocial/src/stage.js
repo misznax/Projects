@@ -37,9 +37,9 @@ class Stage {
   }
   pt(e) { const r = this.cv.getBoundingClientRect(); return { x: (e.clientX - r.left) / r.width * this.sc.w, y: (e.clientY - r.top) / r.height * this.sc.h }; }
   hit(e) {
-    const p = this.pt(e), sc = this.sc;
-    for (let i = sc.layers.length - 1; i >= 0; i--) {
-      const l = sc.layers[i]; if (l.hide || l.lock || (this.o.visible && !this.o.visible(l, this.t))) continue;
+    const p = this.pt(e), sc = this.sc, full = (l) => l.type === 'fx' && l.w >= sc.w * 0.9 && l.h >= sc.h * 0.9; // efekt na cały ekran łapie klik dopiero, gdy pod kursorem nie ma nic innego
+    for (let pass = 0; pass < 2; pass++) for (let i = sc.layers.length - 1; i >= 0; i--) {
+      const l = sc.layers[i]; if (l.hide || l.lock || (this.o.visible && !this.o.visible(l, this.t)) || (pass === 0 && full(l))) continue;
       const a = -l.rot * Math.PI / 180, dx = p.x - l.x, dy = p.y - l.y, lx = dx * Math.cos(a) - dy * Math.sin(a), ly = dx * Math.sin(a) + dy * Math.cos(a);
       if (Math.abs(lx) <= l.w / 2 && Math.abs(ly) <= l.h / 2) return l;
     }
