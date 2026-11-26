@@ -321,6 +321,31 @@ const DSP = (function () {
     return { chs: out, cuts: segs.length - 1, removed: (N - total) / fs };
   }
 
+  // ── Mapa ciszy dla klipu na osi czasu (nic nie skraca: wskazuje fragmenty do zachowania, więc nic się nie przesuwa) ──
+  function silenceScan(chs, fs, i0, i1) { // poziom (dB) w oknach po 20 ms
+    const w = Math.max(1, Math.round(0.02 * fs)), nb = Math.max(0, Math.floor((i1 - i0) / w)), db = new Float32Array(nb);
+    for (let b = 0; b < nb; b++) { let m = 0; for (const x of chs) m = Math.max(m, rms(x, i0 + b * w, i0 + (b + 1) * w)); db[b] = dB(m); }
+    return { w, nb, db, len: i1 - i0 };
+  }
+  function silenceAuto(sc) { // próg między poziomem tła (10. percentyl) a poziomem mowy (90.)
+    if (sc.nb < 10) return -45; const s = Array.from(sc.db).sort((a, b) => a - b), q = (p) => s[Math.min(s.length - 1, Math.floor(p * s.length))], lo = q(0.1), hi = q(0.9);
+    return Math.max(-60, Math.min(-28, Math.round(lo + 0.3 * (hi - lo))));
+  }
+  function silenceKeep(sc, fs, o) { // → { segs: [[a,b] w próbkach względem początku klipu], cuts, removed (s) }
+    const thr = o.thresh, minW = Math.max(1, Math.round((o.minMs || 350) / 1000 * fs / sc.w)), keepW = Math.round((o.keepMs == null ? 100 : o.keepMs) / 1000 * fs / sc.w), nb = sc.nb, keep = new Uint8Array(nb).fill(1);
+    for (let b = 0; b < nb;) {
+      if (sc.db[b] >= thr) { b++; continue; } let e = b; while (e < nb && sc.db[e] < thr) e++;
+      if (e - b >= minW) { const a = b === 0 ? b : b + keepW, c = e === nb ? e : e - keepW; for (let k = a; k < c; k++) keep[k] = 0; } b = e;
+    }
+    for (let b = 0; b < nb;) { if (!keep[b]) { b++; continue; } let e = b; while (e < nb && keep[e]) e++; if (e - b < 3 && (b === 0 || !keep[b - 1]) && (e === nb || !keep[e]) && (b > 0 || e < nb)) for (let k = b; k < e; k++) keep[k] = 0; b = e; } // pojedyncze trzaski między ciszami
+    const segs = []; let removed = 0, cuts = 0;
+    for (let b = 0; b < nb;) {
+      const v = keep[b]; let e = b; while (e < nb && keep[e] === v) e++;
+      if (v) segs.push([b * sc.w, e === nb ? sc.len : e * sc.w]); else { removed += (e - b) * sc.w / fs; cuts++; } b = e;
+    }
+    return { segs, cuts, removed };
+  }
+
   // ── Limiter z wyprzedzeniem + normalizacja głośności ──
   function limit(chs, fs, ceilDb, relMs) {
     const ceil = lin(ceilDb), look = Math.round(0.005 * fs), N = chs[0].length, rel = Math.exp(-1 / (fs * (relMs || 80) / 1000));
@@ -425,6 +450,6 @@ const DSP = (function () {
     return { lufs, tp, pk, clips, items };
   }
 
-  return { dB, lin, fft, biquad, applyBiquad, peak, peakDb, rms, clipCount, kWeight, integratedLoudness, truePeak, resampleStep, resampleRate, wsola, pitchShift, denoise, declick, eq, EQ_PRESETS, compress, deess, removeSilence, limit, loudnessNormalize, duckEnvelope, peaks, wav, mixdown, qc };
+  return { dB, lin, fft, biquad, applyBiquad, peak, peakDb, rms, clipCount, kWeight, integratedLoudness, truePeak, resampleStep, resampleRate, wsola, pitchShift, denoise, declick, eq, EQ_PRESETS, compress, deess, removeSilence, silenceScan, silenceAuto, silenceKeep, limit, loudnessNormalize, duckEnvelope, peaks, wav, mixdown, qc };
 })();
 if (typeof module !== 'undefined') module.exports = DSP;

@@ -1,4 +1,4 @@
-# Creative Studio Social · v0.09
+# Creative Studio Social · v0.10
 
 Studio treści na social media w przeglądarce: marka → grafiki (karuzele) → wideo (rolki 9:16) → audio → publikacja na Instagram, YouTube Shorts, TikTok i Facebook Reels.
 Autor: Michał Rzekiecki · kontakt: michus@gmail.com · adres: https://projects.michus.workers.dev/06/
@@ -43,6 +43,13 @@ Autor: Michał Rzekiecki · kontakt: michus@gmail.com · adres: https://projects
 
 1. Analiza w przeglądarce (canvas, bez kluczy): poświaty (kolor i pozycja), pasek postępu, stopka, bloki tekstu, zdjęcie, akcenty → „DNA” układu, które steruje wszystkimi szablonami.
 2. Wzorzec domyślny: karuzela „Po kontuzji” (v4). Własny materiał (obrazy lub wideo rolki) nadpisuje DNA w projekcie; rodzaje slajdów są rozpoznawane zgrubnie.
+
+## Zmiany v0.10 (synchronizacja eksportu, usuwanie ciszy)
+
+1. **Eksport trzyma rzeczywisty czas klatek**: DTS liczony jest z numerów klatek wyświetlania, a nie z kolejności wyjścia kodera. Gdy koder pominie klatki (w teście symulującym brak co 3. klatki obraz miał 6 s przy 9 s dźwięku), czas obrazu już się nie ściska, a pominięta klatka po prostu trwa dłużej. Test: 30/15 kl./s, tempo 1× i 1,5×, źródło ze zmienną liczbą klatek i klatkami B: błyski obrazu i sygnały dźwięku zgodne co do kilku ms.
+2. **Okno „Eksport zakończony”**: wiersze „Klatki obrazu (np. 90 z 90)” i „Czas obrazu / dźwięku”, z ostrzeżeniem ⚠ przy różnicy powyżej 0,15 s.
+3. **🔇 Usuń ciszę** (pasek osi czasu i panel klipu dźwięku): klip dzieli się na fragmenty z mową, a przerwy znikają. Nic się nie przesuwa: w miejscu ciszy zostaje luka, obraz i inne klipy stoją na swoich miejscach. Próg ciszy dobiera się automatycznie (tło vs. mowa), a można go zmienić; ustawiane są też minimalna długość przerwy i margines przy mowie. Opcja „Zamknij luki” przysuwa fragmenty jednego klipu do siebie (nie dla dźwięku powiązanego z wideo, który po cięciu zostaje odłączony od warstwy). Cofanie: Ctrl+Z.
+4. Tempo (⏩ na pasku osi czasu) działa na zaznaczone wideo i jego dźwięk razem (0,5–2×); przy tempie 1× nic się nie zmienia.
 
 ## Zmiany v0.09 (eksport: Baseline, HEVC, szkic, baner nowej wersji)
 
@@ -104,6 +111,6 @@ Autor: Michał Rzekiecki · kontakt: michus@gmail.com · adres: https://projects
 
 ## Plan
 
-1. v0.10: R2 (chmura projektów i publiczne adresy mediów) + adapter Metricool (planowanie wpisów); nagrywanie gadającej głowy kamerą w aplikacji.
-2. v0.11: bezpośrednie API (YouTube, Meta, TikTok), format 4:5 w wideo.
+1. v0.11: R2 (chmura projektów i publiczne adresy mediów) + adapter Metricool (planowanie wpisów); nagrywanie gadającej głowy kamerą w aplikacji.
+2. v0.12: bezpośrednie API (YouTube, Meta, TikTok), format 4:5 w wideo.
 3. v1.0 po zatwierdzeniu; od tej wersji kopie w `backup/`.
