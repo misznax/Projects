@@ -212,7 +212,7 @@ async function appState(request, env, app) {
 
 
 // ── Lista chętnych (strona główna): imię + e-mail + aplikacja, D1 ──
-const WANT_APPS = ['Startup Board', 'Nawyk', 'Esencja', 'Notatnik Słuchacza', 'Anatomia 3D'];
+const WANT_APPS = ['Startup Board', 'Nawyk', 'Esencja', 'Notatnik Słuchacza', 'Anatomia 3D', 'Creative Studio Social'];
 let interestReady = false;
 async function interest(request, env) {
   if (request.method !== 'POST') return J({ code: 'method' }, 405);
@@ -276,6 +276,16 @@ export default {
       if (url.pathname === '/api/stats') return (await accessOk(request, env, true)) ? J(await stats(env)) : J({ code: 'forbidden' }, 403);
       const sm = url.pathname.match(/^\/api\/state\/([a-z0-9_-]+)$/);
       if (sm) return appState(request, env, sm[1]);
+      // 06 Creative Studio Social: status integracji + obrazy AI (FLUX schnell na Workers AI; model nie przyjmuje wymiarów — kadrowanie robi przeglądarka)
+      if (url.pathname === '/api/s/status') return J({ ai: { claude: !!env.ANTHROPIC_API_KEY, llama: !!env.AI, stt: !!(env.OPENAI_API_KEY || env.AI || env.GROQ_API_KEY) }, img: { flux: !!env.AI }, ckey: !!env.ANTHROPIC_API_KEY, publish: { metricool: false, meta: false, youtube: false, tiktok: false }, r2: false });
+      if (url.pathname === '/api/s/img' && request.method === 'POST') {
+        if (!env.AI) return J({ code: 'no_key' }, 501);
+        if (!(await rl(request, env, 'img', 40))) return J({ code: 'rate' }, 429);
+        let b; try { b = await request.json(); } catch { return J({ code: 'bad' }, 400); }
+        const prompt = String(b.prompt || '').slice(0, 2000); if (!prompt) return J({ code: 'bad' }, 400);
+        try { const o = await env.AI.run('@cf/black-forest-labs/flux-1-schnell', { prompt, steps: Math.min(8, Math.max(1, +b.steps || 4)) }); if (!o || !o.image) throw new Error('brak obrazu w odpowiedzi modelu'); return J({ image: o.image, mime: 'image/jpeg' }); }
+        catch (e) { return J({ code: 'ai_error', msg: String(e.message || e).slice(0, 200) }, 502); }
+      }
       if (url.pathname === '/api/n/status') return J({ stt: !!(env.OPENAI_API_KEY || env.AI || env.GROQ_API_KEY), diar: !!env.OPENAI_API_KEY, claude: !!(env.ANTHROPIC_API_KEY || env.AI || env.GROQ_API_KEY), ckey: !!env.ANTHROPIC_API_KEY });
       // 04 Notatnik Słuchacza: proxy do OpenAI (transkrypcja + mówcy) i Claude (notatki, autorzy, weryfikacja); klucze tylko jako sekrety Workera
       if (url.pathname === '/api/n/stt' && request.method === 'POST') {

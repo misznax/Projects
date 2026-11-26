@@ -14,7 +14,8 @@ VERSION = "v0.06"
 HOSTS = ["https://stronywww.michus.workers.dev/img/", "https://twojastrona.smialo.org/img/"]
 MEDIA = Path(__file__).parent / "media" / "img"
 SHOTS = {"nawyk": ["nawyk-1", "nawyk-2", "nawyk-3", "nawyk-4"], "esencja": ["esencja-2", "esencja-1", "esencja-3", "esencja-4"],
-         "notatnik": [f"notatnik-{i}" for i in range(1, 11)], "anatomia": ["anatomia-1", "anatomia-2", "anatomia-3"]}
+         "notatnik": [f"notatnik-{i}" for i in range(1, 11)], "anatomia": ["anatomia-1", "anatomia-2", "anatomia-3"],
+         "creative": ["creative-1", "creative-2", "creative-3", "creative-4"]}
 MAIL = "kontakt@smialo.org"
 HERE = Path(__file__).parent
 esc = html.escape
@@ -58,7 +59,7 @@ def trial(subject):
     return f"mailto:{MAIL}?subject={quote('Pytanie – ' + subject)}&body={quote(body)}"
 
 
-from demos import mock_board, mock_nawyk, mock_esencja, mock_notatnik, mock_anatomia  # animowane makiety
+from demos import mock_board, mock_nawyk, mock_esencja, mock_notatnik, mock_anatomia, mock_creative  # animowane makiety
 
 
 def mini_ring():
@@ -130,13 +131,25 @@ APPS = [
                    "Strona prawa, lewa lub obie; wybór wielu mięśni naraz",
                    "Mapa ciała do szybkiej nawigacji"],
          demo="/05/", mock=mock_anatomia),
+    dict(id="06", slug="creative", name="Creative Studio Social", cat="Social media", plat=["Przeglądarka", "Wersja 0.01"],
+         tag="Karuzele, rolki i dźwięk w jednym miejscu. Gotowe pod Instagram, YouTube, TikTok i Facebook.",
+         problem="Grafiki w jednym programie, wideo w drugim, dźwięk w trzecim, a opisy i terminy w notatniku.",
+         solution="Jedno studio w przeglądarce: marka, grafiki, montaż rolek, obróbka głosu i przygotowanie publikacji z kontrolą przed wysyłką.",
+         benefits=["Karuzele i rolki 9:16 z szablonów w kolorach Twojej marki",
+                   "Oś czasu z animacjami, napisami z nagrania (Whisper) i ścieżką muzyki z automatycznym ściszaniem pod głos",
+                   "Obróbka głosu: szumy, trzaski, korektor, tempo i ton niezależnie, raport głośności (LUFS)",
+                   "Eksport MP4 H.264 gotowy pod Instagram, YouTube Shorts, TikTok i Facebook Reels",
+                   "Publikacja: kontrola długości i opisów pod każdą sieć, bramka zatwierdzenia i pakiet do wgrania",
+                   "Wszystko działa w przeglądarce, projekty zapisują się u Ciebie"],
+         roadmap="chmura projektów i planowanie wpisów przez Metricool.",
+         demo="/06/", mock=mock_creative),
 ]
 
 CHECK = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10.5 4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>'
 ARROW = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h11m-4-5 5 5-5 5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
 
 
-EXTRA = {'startupboard': ('Użytkownicy komputerów, którzy codziennie otwierają te same pliki.', 'Windows 10 / 11 · bez instalacji · pliki nie są wysyłane do internetu', '1.44'), 'nawyk': ('Sportowcy, osoby pracujące zdalnie, mówcy i trenerzy.', 'Komputer · tablet · telefon', '1.03'), 'esencja': ('Studenci, osoby uczące się języków i zapracowani.', 'Komputer · tablet · telefon', '0.05'), 'notatnik': ('Studenci i uczestnicy szkoleń.', 'Komputer · tablet · telefon', '0.34'), 'anatomia': ('Studenci medycyny i fizjoterapii, trenerzy i masażyści.', 'Komputer · tablet · telefon', '0.05')}
+EXTRA = {'startupboard': ('Użytkownicy komputerów, którzy codziennie otwierają te same pliki.', 'Windows 10 / 11 · bez instalacji · pliki nie są wysyłane do internetu', '1.44'), 'nawyk': ('Sportowcy, osoby pracujące zdalnie, mówcy i trenerzy.', 'Komputer · tablet · telefon', '1.03'), 'esencja': ('Studenci, osoby uczące się języków i zapracowani.', 'Komputer · tablet · telefon', '0.05'), 'notatnik': ('Studenci i uczestnicy szkoleń.', 'Komputer · tablet · telefon', '0.34'), 'anatomia': ('Studenci medycyny i fizjoterapii, trenerzy i masażyści.', 'Komputer · tablet · telefon', '0.05'), 'creative': ('Trenerzy, twórcy i małe firmy, które same robią treści na social media.', 'Komputer (Chrome lub Edge) · eksport MP4 działa najlepiej na Windows i macOS', '0.01')}
 
 
 def render_app(a, i):
@@ -213,7 +226,7 @@ def main():
     pills = "".join(f'<a href="#{a["slug"]}" data-p="{a["slug"]}"><b>{a["id"]}</b>{esc(a["name"])}</a>' for a in APPS)
     apps = "\n".join(render_app(a, i) for i, a in enumerate(APPS))
     marquee = "".join(f"<span>{esc(t)}</span>" for t in
-                      ["Start dnia", "Nawyki", "Streszczenia wideo", "Notatki z wykładów", "Anatomia 3D",
+                      ["Start dnia", "Nawyki", "Streszczenia wideo", "Notatki z wykładów", "Anatomia 3D", "Studio social media",
                        "Po polsku", "Demo w przeglądarce", "3 dni próby"])
     out = (tpl.replace("{{CSS}}", css).replace("{{JS}}", js).replace("{{PILLS}}", pills)
            .replace("{{APPS}}", apps).replace("{{MARQUEE}}", marquee * 2)

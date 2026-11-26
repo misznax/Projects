@@ -151,3 +151,28 @@ def mock_anatomia():
         '<b><span class="sh" data-at="1">Kość ramienna</span><span class="sh" data-at="2">Biceps brachii</span><span class="sh" data-at="3">Triceps brachii</span>'
         '<span class="sh" data-at="4">5 z 6</span><span class="sh" data-at="5">lewa</span></b></div></div></div>'
         '</div><div class="dcap"></div>', caps)
+
+
+# ─────────────────────────────── 06 Creative Studio Social ───────────────────────────────
+def mock_creative():
+    tabs = "".join(f'<b style="padding:3px 8px;border-radius:6px;font-size:11px;{"background:#d7f25a;color:#111" if i == 2 else "opacity:.7"}">{n}</b>'
+                   for i, n in enumerate(["Marka", "Grafiki", "Wideo", "Audio", "Publikacja"]))
+    def clip(l, w, c, d=0):
+        return f'<s style="display:block;height:12px;margin:3px 0 3px {l}%;width:{w}%;border-radius:4px;background:{c};opacity:.95"></s>'
+    rows = (clip(0, 24, "#3b5a8a") + clip(24, 24, "#3b5a8a", 1) + clip(48, 24, "#3b5a8a", 2))
+    tx = (clip(0, 24, "#7a4fb0") + clip(24, 24, "#7a4fb0") + clip(48, 24, "#7a4fb0"))
+    aud = clip(0, 62, "#2f9d8d") + clip(0, 100, "#6a8f2d")
+    nets = "".join(f'<span class="sh" data-at="{i}" style="padding:3px 8px;border-radius:999px;background:rgba(255,255,255,.1);font-size:11px;margin-right:4px">{n}</span>'
+                   for i, n in [(4, "Instagram ✔"), (4, "YouTube ✔"), (4, "TikTok ✔"), (4, "Facebook ✔")])
+    caps = ["Wybierasz szablon sceny w kolorach marki", "Dokładasz napisy i animacje na osi czasu",
+            "Głos i muzyka: muzyka sama ściszy się pod lektora", "Eksport MP4 gotowy pod cztery sieci", "Kontrola i zatwierdzenie przed wgraniem"]
+    return dem(
+        '<div class="win dk">' + bar("Creative Studio Social") +
+        f'<div style="display:flex;gap:4px;padding:8px 10px 0;color:#fff;flex-wrap:wrap">{tabs}</div>'
+        '<div style="display:flex;gap:12px;padding:10px">'
+        '<div style="width:34%;aspect-ratio:9/16;max-height:170px;border-radius:8px;background:linear-gradient(160deg,#16466f,#0c2a47);padding:10px;color:#fff;display:flex;flex-direction:column;justify-content:center">'
+        '<i style="display:block;width:22px;height:3px;background:#d49b65;margin-bottom:6px"></i><b style="font-size:13px;line-height:1.15">Jak odzyskać energię w 7 dni</b>'
+        '<span class="sh" data-at="1,2" style="font-size:9px;opacity:.75;margin-top:6px">Prosty plan, który działa</span></div>'
+        f'<div style="flex:1;min-width:0"><small style="opacity:.6;font-size:10px">Tło · Tekst</small>{rows}{tx}'
+        f'<small class="sv" data-from="2" style="opacity:.6;font-size:10px">Głos · Muzyka</small><div class="sv" data-from="2">{aud}</div>'
+        f'<div style="margin-top:8px">{nets}</div></div></div></div><div class="dcap"></div>', caps)
