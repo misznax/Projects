@@ -65,6 +65,7 @@ Autor: Michał Rzekiecki · kontakt: michus@gmail.com · adres: https://projects
 6. Szkło (rozmycie) używa `ctx.filter`: w Safari zastępuje je półprzezroczysta warstwa; w eksporcie MP4 rozmycie spowalnia kodowanie.
 7. Rozpoznawanie rodzajów slajdów w wgranym materiale jest heurystyczne; automat zadziałał na jednej karuzeli wzorcowej, różnicowanie pomysłów zależy od danych w `ideas.json`.
 8. Test produkcyjny przeglądarką Chrome na prawdziwym koncie niewykonany (sprawdzono lokalnie z atrapą Workera i przez pobranie wdrożonego pliku).
+9. Lista folderu Drive czyta publiczny widok `embeddedfolderview` (HTML): jeśli Google zmieni układ strony, lista może przestać działać; wtedy zostaje import z linku do pojedynczego pliku. Nie sprawdzono na żywym Drive.
 
 ## Plan
 
