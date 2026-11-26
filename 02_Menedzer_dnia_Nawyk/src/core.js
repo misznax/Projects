@@ -1,5 +1,5 @@
 /* ───────── Nawyk v1.0 — logika aplikacji ───────── */
-const VER='v1.03', MAIL='kontakt@smialo.org', LS='nawyk.v1', APPKEY='nawyk';
+const VER='v1.04', MAIL='kontakt@smialo.org', LS='nawyk.v1', APPKEY='nawyk';
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const pad=n=>String(n).padStart(2,'0');
@@ -164,7 +164,7 @@ function pacePhase(pace,el){
   while(pos>=pace[i][1]){pos-=pace[i][1];i++}
   return{i,n:Math.floor(pos)+1,len:pace[i][1],f:pos/pace[i][1]};
 }
-const pscale=(dir,f)=>.55+.45*(dir===1?f:dir===0?1-f:dir===2?1:0);
+const pscale=(dir,f)=>.3+.7*(dir===1?f:dir===0?1-f:dir===2?1:0);
 function makeTimer(root,build,onDone){
   root.innerHTML='<div class="tm" data-kind="idle"><div class="tm-tag"></div><div class="tm-lbl"></div><div class="tm-sub"></div><div class="tm-pace" hidden><div class="pring"><i></i></div><div class="pp"><b></b><span></span></div></div><div class="tm-clock">0:00</div><div class="bar"><i></i></div><div class="tm-row"><button class="btn pri" data-a="go" type="button">Start</button><button class="btn" data-a="skip" type="button">Dalej ›</button><button class="btn ghost" data-a="rst" type="button">Od nowa</button></div><div class="tm-tot"></div></div>';
   const q=s=>$(s,root), tm=$('.tm',root);
@@ -194,7 +194,7 @@ function makeTimer(root,build,onDone){
         const p=pacePhase(s.pace,Math.max(0,s.sec-ms/1000));
         pc.dataset.d=s.pace[p.i][2];q('.pp b').textContent=s.pace[p.i][0];q('.pp span').textContent=p.n+' / '+p.len;
         q('.pring i').style.transform='scale('+pscale(s.pace[p.i][2],p.f).toFixed(3)+')';
-      }else{pc.dataset.d='';q('.pp b').textContent='Gotowy?';q('.pp span').textContent='Start';q('.pring i').style.transform='scale(.55)'}
+      }else{pc.dataset.d='';q('.pp b').textContent='Gotowy?';q('.pp span').textContent='Start';q('.pring i').style.transform='scale(.3)'}
     }else pc.hidden=true;
   }
   function load(){
@@ -269,6 +269,7 @@ function openSum(){SUM_OPEN=true;renderSummary();scrollTo('#sumCard','start')}
 function setDone(k,v,o){
   o=o||{};
   const was=allDone(),d=S.days[TODAY]||(S.days[TODAY]={});
+  if(!v)advCancel();
   if(v)d[k]=1;else delete d[k];
   if(!Object.keys(d).length)delete S.days[TODAY];
   const c=findC(k);
@@ -302,21 +303,32 @@ function markBlock(bid,v,o){
   save();paintDone();
 }
 /* po zaliczeniu: zwiń sekcję, otwórz następną; po całym dniu zwiń wszystko i pokaż podsumowanie */
+let ADV=0;
+function advCancel(){if(ADV){clearInterval(ADV.iv);ADV=0}const b=$('#advBar');if(b)b.remove()}
+const autoOn=()=>S.set.auto!==0;
 function afterDone(k,fin,o){
+  if(o.keep)return;
   const run=()=>{
-    if(o.keep)return;
     const el=$('#card-'+k);if(el&&el.open)el.open=false;
     if(fin){$$('#cards details.card').forEach(d=>{d.open=false});scrollTo('#finish','center');return}
     const nx=TASKS().find(c=>!isDone(c.id));
     if(nx){const e=$('#card-'+nx.id);if(e&&!e.open)e.open=true;scrollTo('#card-'+nx.id,'start')}
   };
-  FX.calm()?run():setTimeout(run,650);
+  advCancel();
+  if(!autoOn())return;
+  const nx=fin?null:TASKS().find(c=>!isDone(c.id));
+  const bar=document.createElement('div');bar.id='advBar';bar.setAttribute('role','status');
+  let n=3;
+  const txt=()=>`<span class="adc">✓</span><span><b>Zrobione!</b> ${fin?'Podsumowanie dnia':'Następne zadanie'} za <b>${n}</b> s</span><button type="button" class="btn sm" data-a="stay">Zostań tu</button><i class="adp"></i>`;
+  bar.innerHTML=txt();document.body.appendChild(bar);
+  bar.onclick=e=>{if(e.target.closest('[data-a=stay]'))advCancel()};
+  ADV={iv:setInterval(()=>{n--;if(n<=0){advCancel();run();return}const t=$('#advBar b:last-of-type');if(t)t.textContent=n},1000)};
 }
 const CHEER=['Dobra robota! Tak buduje się nawyk.','Jest! Kolejny krok za Tobą.','Świetnie — małe kroki wygrywają.','Brawo! Tak trzymać.','Zrobione — to się liczy najbardziej.'];
 const MILES=[3,7,14,21,30,50,100];
 function cheer(k,fin){
   const el=document.querySelector('[data-tick="'+k+'"]'),tk=TASKS(),cnt=tk.filter(c=>isDone(c.id)).length,tot=tk.length,first=Object.keys(doneKeys()).length===1,st=streak();
-  FX.celebrate(el,fin);FX.haptic(fin?[20,40,20]:14);unlock();
+  if(el){el.classList.remove('tickpop');void el.offsetWidth;el.classList.add('tickpop')}FX.celebrate(el,fin);FX.haptic(fin?[20,40,20]:14);unlock();
   if(S.set.snd){beep(660,.09);setTimeout(()=>beep(880,.09),110);if(fin)setTimeout(()=>beep(1175,.2),230)}
   let m;
   if(fin)m='🎉 Wszystko na dziś zrobione! Wróć jutro po kolejną porcję.';
@@ -331,7 +343,7 @@ const exLabel=e=>(e.c?e.c+' · ':'')+'ok. '+exMin(e)+' min';
 const QI={};
 const hueOf=c=>{let h=0;for(const ch of String(c||'x'))h=(h*31+ch.charCodeAt(0))%360;return h};
 const deadline=e=>{const w=e.when||'';return /wieczor|przed snem/i.test(w)?'dziś, najlepiej wieczorem — najpóźniej przed snem':/rano/i.test(w)?'najlepiej rano; najpóźniej do końca dnia':'dziś, do końca dnia'};
-const quoteHTML=bid=>{const q=QUOTES[(QI[bid]||0)%QUOTES.length];return `<h5>Przeczytaj na głos</h5><blockquote class="qt"><p>${esc(q.x).replace(/\n/g,'<br>')}</p><cite>— ${esc(q.a)}, ${esc(q.w)}</cite></blockquote><button class="btn sm" type="button" data-a="nq">Pokaż następny ›</button>`};
+const quoteHTML=bid=>{const q=QUOTES[(QI[bid]||0)%QUOTES.length],tx=t=>esc(t).replace(/\n/g,'<br>'),cite=q.a?`<cite>— ${esc(q.a)}${q.w?', '+esc(q.w):''}</cite>`:'';return `<h5>Przeczytaj na głos</h5><blockquote class="qt${q.en?' qt2':''}">${q.en?`<div class="qc"><span class="ql">PL</span><p>${tx(q.x)}</p></div><div class="qc qe"><span class="ql">EN</span><p lang="en">${tx(q.en)}</p></div>`:`<p>${tx(q.x)}</p>`}${cite}</blockquote><button class="btn sm" type="button" data-a="nq">Pokaż następny ›</button>`};
 const hk=t=>String(t).slice(0,60);
 const howDef=()=>S.set.how!=='closed';
 const howOpen=k=>S.hx[k]===1?true:S.hx[k]===0?false:howDef();
@@ -1144,6 +1156,7 @@ function wire(){
   $('#pkSet').onclick=async()=>{await useKey($('#pkIn').value,$('#pkMsg'))};
 
   $('#sws').onclick=e=>{const b=e.target.closest('[data-h]');if(!b)return;S.set.hue=+b.dataset.h;save();applyLook();renderLook()};
+  const aT=$('#autoT');if(aT){const pa=()=>{aT.setAttribute('aria-pressed',autoOn());aT.querySelector('span').textContent=autoOn()?'Auto':'Ręcznie'};pa();aT.onclick=()=>{S.set.auto=autoOn()?0:1;save();advCancel();pa()}}
   $('#setQuiet').onchange=e=>{S.set.quiet=e.target.checked?1:0;save();applyLook()};
   $('#setSnd').onchange=e=>{S.set.snd=e.target.checked?1:0;save()};
   $('#setFx').onchange=e=>{S.set.fx=e.target.checked?1:0;save();applyLook()};

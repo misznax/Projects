@@ -149,3 +149,50 @@ const FIX={
   const all=[].concat(CH,VL,UW,ST,FO);
   all.forEach(e=>{const f=FIX[e.t];if(!f)return;Object.assign(e,f);if(f.read===0)delete e.read;if(f.solo==='')delete e.solo});
   })();
+
+/* v1.04: teksty do czytania na głos — własne, współczesne, tylko pozytywny przekaz (bez autora) */
+QUOTES.push(...[
+'Dzisiejszy dzień to czysta karta, a ja trzymam w ręku pióro. Zaczynam od jednej wyraźnej decyzji i pozwalam, by reszta ułożyła się wokół niej. Spokój i konsekwencja to moja przewaga.',
+'Każda rozmowa jest okazją, by kogoś zainspirować. Mówię wolno, wyraźnie i z uśmiechem, bo energia płynie z głosu prosto do ludzi wokół mnie.',
+'Mój głos to narzędzie, które z każdym dniem brzmi pewniej. Oddycham głęboko, otwieram gardło i pozwalam słowom płynąć spokojnie jak rzeka w słoneczny dzień.',
+'Wielkie projekty powstają z małych kroków powtarzanych codziennie. Dziś robię swój krok z radością i widzę, jak przybliża mnie do celu.',
+'Ciekawość jest moim paliwem. Pytam, słucham i łączę pomysły w nowe całości, a każdy dzień uczy mnie czegoś nowego.',
+'Jestem architektem własnych nawyków. Układam je cegła po cegle: wyraźnie, cierpliwie i z satysfakcją, że fundament staje się coraz mocniejszy.',
+'Dobra prezentacja zaczyna się od oddechu. Wyprostowane plecy, swobodne ramiona, spokojny wzrok. Dopiero potem pada pierwsze zdanie, a ono brzmi jak rozmowa z dobrym znajomym.',
+'Technologia daje mi dziś więcej możliwości niż kiedykolwiek wcześniej. Wybieram te narzędzia, które pomagają mi tworzyć, uczyć się i spędzać więcej czasu z ludźmi.',
+'Najlepsze pomysły przychodzą w ruchu. Wychodzę na krótki spacer, wdycham chłodne powietrze i czuję, jak myśli układają się w klarowny plan.',
+'Moją siłą jest jasna komunikacja. Mówię konkretnie, dobieram proste słowa i dbam o to, by każdy rozmówca wyszedł z poczuciem, że został usłyszany.',
+'Zespół, w którym pracuję, jest jak dobrze zgrana orkiestra. Każdy gra swoją partię, a ja uważnie słucham, żeby razem zabrzmieć jeszcze lepiej.',
+'Rozwijam się dzięki regularności. Dziesięć minut ćwiczeń dziennie daje po roku więcej niż tydzień zrywu, więc dziś znów cieszę się swoim rytmem.',
+'Cisza między zdaniami to nie przerwa, to moc. Robię krótką pauzę, oddycham i dopiero wtedy wypowiadam najważniejszą myśl, a słuchacze patrzą na mnie z uwagą.',
+'Z wdzięcznością patrzę na drogę, która jest już za mną. Każde doświadczenie dołożyło coś do mojej wiedzy i dziś mogę z nią sięgać po kolejne, ciekawsze wyzwania.',
+'Lubię zaczynać dzień od jednej rzeczy, która mnie cieszy. Szklanka wody, otwarte okno, głęboki oddech i już wiem, że ten dzień będzie dobry.',
+'Zdrowie to inwestycja, która procentuje każdego ranka. Ruszam ciało, dbam o sen i wybieram jedzenie, po którym czuję lekkość i energię.',
+'Kreatywność rośnie, kiedy zostawiam sobie miejsce na swobodę. Zapisuję pomysł, odkładam go na chwilę i wracam z nową perspektywą, która zawsze zaskakuje mnie pozytywnie.',
+'Jestem uważnym obserwatorem świata. Dostrzegam światło na ścianie, uśmiech przechodnia i zapach kawy, a te drobiazgi składają się na dobry, pełny dzień.',
+'Moje cele są jasne, a plan prosty: zacząć, popracować, podsumować. Każde zakończone zadanie dodaje mi pewności siebie i zaprasza kolejne.',
+'Wspieram ludzi wokół siebie, bo wiem, że wspólny sukces smakuje najlepiej. Szczera pochwała i uważne wysłuchanie kosztują niewiele, a zmieniają bardzo dużo.',
+'Uczę się szybko, bo traktuję wszystko jak ciekawą grę. Zadaję pytania, sprawdzam, wyciągam wnioski i z każdą próbą wiem więcej i jest mi spokojniej.',
+'Nowy dzień przynosi nowe możliwości. Otwieram się na nie z ciekawością, a pewność siebie rośnie ze mną z każdym wypowiedzianym wyraźnie zdaniem.',
+'Dobra dykcja to wyraźne spółgłoski i swobodne samogłoski. Wymawiam każdą sylabę starannie, a zdania płyną naturalnie, rytmicznie i z przyjemnością dla uszu słuchaczy.',
+'Lider to ktoś, kto daje przykład spokojem i konsekwencją. Dziś chcę być takim przykładem: słuchać, decydować i mówić jasno, z szacunkiem dla każdego.',
+'Praca staje się lekka, gdy ma sens. Przypominam sobie, po co to robię, i od razu czuję w sobie energię, by zrobić następny krok lepiej niż poprzedni.',
+'Uśmiech jest najkrótszą drogą do drugiego człowieka. Ofiaruję go dziś każdemu, kogo spotkam, i patrzę, jak wraca do mnie z podwójną siłą.',
+'Lubię porządek w myślach i na biurku. Jedna sprawa naraz, jeden oddech naraz, a wszystko, co ważne, ma swoje miejsce i swój czas.',
+'Kocham momenty, w których coś zaczyna się udawać. Ten pierwszy wyraźny postęp daje paliwo na tygodnie, więc celebruję go, nawet jeśli jest niewielki.',
+'Świat jest pełen ludzi, od których mogę się uczyć. Słucham ich historii z zainteresowaniem i zabieram ze sobą to, co pomaga mi rosnąć.',
+'Mówię wyraźnie, bo moje słowa mają znaczenie. Każde zdanie niesie myśl, a ja z radością oddaję ją światu w najlepszej, najczytelniejszej formie.',
+'Dziś skupiam się na tym, co zależy ode mnie. Wykonuję zadania po kolei, oddycham spokojnie i obserwuję, jak z drobnych działań rośnie wielka zmiana.',
+'Wyobrażam sobie siebie za rok: pełno pewności, odpoczynku i satysfakcji z drogi. Wystarczy, że dziś zrobię jedną rzecz, która mnie do tej wizji przybliża.',
+'Muzyka języka polskiego jest piękna: szum, szczebiot, dźwięczne samogłoski. Wypowiadam te słowa powoli, smakuję każdy dźwięk i bawię się własnym głosem.',
+'Każdy dzień daje mi szansę, by być odrobinę lepszą wersją siebie. Nie śpieszę się, nie porównuję, po prostu idę własnym tempem i cieszę się widokami.',
+'Zaufanie buduje się codziennie: dotrzymaną obietnicą, uważnym spojrzeniem i spokojnym tonem. Dbam o to i widzę, że ludzie chętnie się do mnie zbliżają.',
+'Energia płynie tam, gdzie kieruję uwagę. Dziś kieruję ją na rzeczy, które dają mi satysfakcję, i czuję, jak z każdą godziną zyskuję lekkość i rozmach.',
+'Odpoczynek jest częścią pracy. Robię przerwę, rozciągam plecy, patrzę w dal, a po kilku minutach wracam z odświeżoną, klarowną głową i nowymi pomysłami.',
+'Wybieram słowa, które budują. Mówię o możliwościach, o rozwiązaniach i o kolejnych krokach, a rozmowa sama układa się w stronę, która służy wszystkim.',
+'Mam w sobie siłę, by zaczynać od nowa. Każdy poranek jest zaproszeniem do czegoś lepszego, a ja z uśmiechem przyjmuję je i ruszam przed siebie.',
+'Wiem, że moje starania mają sens. Z każdym powtórzeniem rośnie moja sprawność, pewność i spokój, a razem tworzą fundament, na którym zbuduję wszystko, co zaplanowane.',
+].map(x=>({a:'',w:'',x})));
+
+/* v1.04: rytm oddechu (kropka) także w tych ćwiczeniach */
+{const PACE={"Syczenie „sss” na wydechu":[["WDECH nosem",4,1],["WYDECH „sss”",8,0]],"Świeczka: wolny wydech":[["WDECH nosem",3,1],["WYDECH cienko",7,0]],"Westchnienie „haaa”":[["WDECH nosem",3,1],["WYDECH „haaa”",5,0]],"Mruczenie w dół":[["WDECH nosem",4,1],["WYDECH „mmm”",8,0]],"Słomka w wodzie":[["WDECH nosem",4,1],["WYDECH w słomkę",8,0]],"Wydech na „fff” z liczeniem":[["WDECH nosem",4,1],["WYDECH „fff”",8,0]],"Liczenie wydechów do 10":[["WDECH",4,1],["WYDECH",6,0]],"Książka na brzuchu":[["WDECH nosem",4,1],["WYDECH",6,0]],"Wargi „brrr”":[["WDECH",3,1],["WYDECH „brrr”",6,0]]};[].concat(CH,VL,UW,ST,FO).forEach(e=>{if(PACE[e.t]&&!e.pace)e.pace=PACE[e.t]})}

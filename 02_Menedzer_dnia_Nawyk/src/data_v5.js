@@ -1,19 +1,10 @@
 /* ───────── v0.05: cytaty do czytania na głos (utwory z domeny publicznej) ───────── */
 const QUOTES=[
-{a:'Adam Mickiewicz',w:'„Pan Tadeusz” (Inwokacja)',x:'Litwo! Ojczyzno moja! ty jesteś jak zdrowie;\nIle cię trzeba cenić, ten tylko się dowie,\nKto cię stracił.'},
-{a:'Adam Mickiewicz',w:'„Romantyczność”',x:'Czucie i wiara silniej mówi do mnie\nNiż mędrca szkiełko i oko.'},
-{a:'Adam Mickiewicz',w:'„Oda do młodości”',x:'Młodości! dodaj mi skrzydła!\nNiech nad martwym wzlecę światem\nW rajską dziedzinę fantazji'},
-{a:'Jan Kochanowski',w:'„Na zdrowie” (Fraszki)',x:'Szlachetne zdrowie,\nNikt się nie dowie,\nJako smakujesz,\nAż się zepsujesz.'},
-{a:'Juliusz Słowacki',w:'„Testament mój”',x:'Lecz zaklinam – niech żywi nie tracą nadziei\nI przed narodem niosą oświaty kaganiec;'},
-{a:'Cyprian Norwid',w:'„Moja piosnka (II)”',x:'Do kraju tego, gdzie kruszynę chleba\nPodnoszą z ziemi przez uszanowanie\nDla darów Nieba…\nTęskno mi, Panie.'},
-{a:'Julian Tuwim',w:'„Lokomotywa”',x:'Stoi na stacji lokomotywa,\nCiężka, ogromna i pot z niej spływa'},
-{a:'Maria Konopnicka',w:'„Rota”',x:'Nie rzucim ziemi, skąd nasz ród,\nNie damy pogrześć mowy!'},
-{a:'William Shakespeare',w:'„Hamlet”',x:'To be, or not to be, that is the question:\nWhether ’tis nobler in the mind to suffer\nThe slings and arrows of outrageous fortune,'},
-{a:'William Shakespeare',w:'„As You Like It” (Jak wam się podoba)',x:'All the world’s a stage,\nAnd all the men and women merely players;\nThey have their exits and their entrances,'},
-{a:'Rudyard Kipling',w:'„If—”',x:'If you can keep your head when all about you\nAre losing theirs and blaming it on you,'},
-{a:'John Keats',w:'„Endymion”',x:'A thing of beauty is a joy for ever:\nIts loveliness increases; it will never\nPass into nothingness;'},
-{a:'William Wordsworth',w:'„I Wandered Lonely as a Cloud”',x:'I wandered lonely as a cloud\nThat floats on high o’er vales and hills,'},
-{a:'Walt Whitman',w:'„Song of Myself”',x:'I celebrate myself, and sing myself,\nAnd what I assume you shall assume,'},
+{a:'Adam Mickiewicz',w:'„Oda do młodości”',x:'Młodości! dodaj mi skrzydła!\nNiech nad martwym wzlecę światem\nW rajską dziedzinę ułudy:'},
+{a:'John Keats',w:'„Endymion”',x:'Piękno jest radością na zawsze:\njego urok rośnie i nigdy\nnie przeminie w nicość;',en:'A thing of beauty is a joy for ever:\nIts loveliness increases; it will never\nPass into nothingness;'},
+{a:'William Wordsworth',w:'„I Wandered Lonely as a Cloud”',x:'I wtedy serce napełnia się radością\ni tańczy razem z żonkilami.',en:'And then my heart with pleasure fills,\nAnd dances with the daffodils.'},
+{a:'Walt Whitman',w:'„Song of Myself”',x:'Celebruję siebie i śpiewam siebie,\na to, co ja przyjmuję, przyjmiesz i ty,',en:'I celebrate myself, and sing myself,\nAnd what I assume you shall assume,'},
+{a:'Rudyard Kipling',w:'„If—”',x:'Jeśli potrafisz wypełnić bezlitosną minutę\nsześćdziesięcioma sekundami drogi do przebiegnięcia,\ntwoja jest Ziemia i wszystko, co na niej.',en:'If you can fill the unforgiving minute\nWith sixty seconds\u2019 worth of distance run,\nYours is the Earth and everything that\u2019s in it,'},
 ];
 
 /* ───────── v0.05: baza ćwiczeń ruchowych wg poziomu ─────────

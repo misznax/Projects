@@ -437,6 +437,29 @@ html[data-dark="0"] .okb{color:hsl(150 70% 22%)}
 .ekp img+img{animation:ekb 2.4s ease-in-out infinite}
 @keyframes ekb{0%,15%{opacity:0}45%,65%{opacity:1}95%,100%{opacity:0}}
 @media (prefers-reduced-motion:reduce){.ekp{display:flex}.ekp img{width:min(46%,200px)}.ekp img+img{animation:none}}
+
+/* v1.04 */
+.autoT{display:inline-flex;align-items:center;gap:5px;font:600 12px system-ui,sans-serif;padding:6px 10px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--mute);cursor:pointer}
+.autoT[aria-pressed="true"]{color:var(--acc);border-color:var(--acc);background:color-mix(in srgb,var(--acc) 14%,transparent)}
+.autoT i{font-style:normal}
+#advBar{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:60;display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:16px;background:var(--menu);border:1px solid var(--acc);box-shadow:0 8px 28px rgba(0,0,0,.35);max-width:calc(100vw - 24px);overflow:hidden;animation:advin .35s cubic-bezier(.2,1.4,.4,1)}
+#advBar .adc{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:hsl(150 70% 40%);color:#fff;font-weight:800;animation:advpop .5s cubic-bezier(.2,1.6,.4,1)}
+#advBar .adp{position:absolute;left:0;bottom:0;height:3px;background:var(--acc);width:100%;transform-origin:left;animation:advbar 3s linear forwards}
+@keyframes advin{from{opacity:0;transform:translate(-50%,16px)}}
+@keyframes advpop{0%{transform:scale(0)}100%{transform:scale(1)}}
+@keyframes advbar{to{transform:scaleX(0)}}
+.tickpop{animation:tickpop .6s cubic-bezier(.2,1.6,.4,1)}
+@keyframes tickpop{0%{transform:scale(.6)}60%{transform:scale(1.35)}100%{transform:scale(1)}}
+.pring{width:128px;height:128px}
+.pring i{width:128px;height:128px;transition:transform .3s linear,background .6s,border-color .6s,box-shadow .6s;border-width:3px;box-shadow:0 0 0 0 transparent}
+.tm-pace[data-d="1"] .pring i{background:hsl(172 80% 45%/.35);border-color:hsl(172 80% 50%);box-shadow:0 0 26px hsl(172 80% 50%/.45)}
+.tm-pace[data-d="0"] .pring i{background:hsl(14 100% 60%/.3);border-color:hsl(14 100% 62%);box-shadow:0 0 26px hsl(14 100% 62%/.4)}
+.tm-pace[data-d="2"] .pring i,.tm-pace[data-d="3"] .pring i{background:hsl(270 90% 62%/.3);border-color:hsl(270 90% 66%);box-shadow:0 0 26px hsl(270 90% 66%/.4)}
+.qt2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.qt2 cite{grid-column:1/-1}
+.qc{position:relative;min-width:0}.qc p{margin:0}
+.qe{padding-left:12px;border-left:2px solid var(--line);font-style:italic;color:var(--mute)}
+.ql{display:block;font:700 10px system-ui,sans-serif;letter-spacing:.14em;color:var(--acc);margin-bottom:3px;font-style:normal}
 .ek small{display:block;margin-top:4px;font-size:11px;color:var(--mute)}
 .ek small a{color:var(--cacc)}
 .alt{margin-top:14px;padding-top:10px;border-top:1px dashed color-mix(in srgb,var(--ink) 16%,transparent)}
@@ -588,6 +611,7 @@ textarea.mono{font:12px/1.4 ui-monospace,Consolas,monospace;min-height:110px}
       <div class="date" id="date"></div>
     </div>
     <div class="hr">
+      <button class="autoT" id="autoT" type="button" aria-pressed="true" title="Automatyczne przejście do następnego zadania po zaliczeniu"><i>⏭</i><span>Auto</span></button>
       <div class="ring" id="ring" aria-label="Postęp dnia"></div>
       <button class="icon" id="menuBtn" aria-label="Menu" aria-haspopup="true" aria-expanded="false">⋯</button>
       <div class="menu" id="menu" hidden>
@@ -656,6 +680,7 @@ textarea.mono{font:12px/1.4 ui-monospace,Consolas,monospace;min-height:110px}
   <p><b>Nawyk — menedżer dnia</b></p>
   <p>Wersja: <span id="verA"></span></p>
   <p>Autor: Michał Rzekiecki</p>
+  <p class="src" style="margin-top:2px"><b>Co nowego w v1.04:</b> teksty do czytania: po polsku z lewej, oryginał z prawej, 45 pozytywnych tekstów; po zaliczeniu animacja i przejście do następnego zadania po 3 s (przełącznik „Auto” u góry); kropka oddechu w kolejnych ćwiczeniach.</p>
   <p class="src" style="margin-top:2px"><b>Co nowego w v1.03:</b> krótszy brief — przy każdym ćwiczeniu jedno zdanie „TERAZ”, wyraźne kroki i kolory: <b>wdech</b>, <b>wydech</b>, <b>zatrzymaj</b>, czas; zaliczone zadania znikają z listy, podsumowanie dnia jest osobno; ilustracje z Canvy.</p>
   <p class="src" style="margin-top:2px"><b>Co nowego w v1.02:</b> ikona strony (płomień w pierścieniu postępu) — na karcie przeglądarki i po dodaniu do ekranu głównego telefonu.</p>
   <p class="src" style="margin-top:2px"><b>Co nowego w v1.01:</b> jeden link z kluczem (Menu → Kopia danych → „Kopiuj link”) pokazuje Twoje dane na każdym urządzeniu i adresie; pierwsze uruchomienie podpowiada, jak wczytać dotychczasowe dane; w „Kopii danych” jest opis, gdzie dane są zapisane.</p>
@@ -853,20 +878,11 @@ const TRAIN={upper:'Góra',lower:'Dół',grip:'Chwyt',mix:'Mix'};
 
 /* ───────── v0.05: cytaty do czytania na głos (utwory z domeny publicznej) ───────── */
 const QUOTES=[
-{a:'Adam Mickiewicz',w:'„Pan Tadeusz” (Inwokacja)',x:'Litwo! Ojczyzno moja! ty jesteś jak zdrowie;\nIle cię trzeba cenić, ten tylko się dowie,\nKto cię stracił.'},
-{a:'Adam Mickiewicz',w:'„Romantyczność”',x:'Czucie i wiara silniej mówi do mnie\nNiż mędrca szkiełko i oko.'},
-{a:'Adam Mickiewicz',w:'„Oda do młodości”',x:'Młodości! dodaj mi skrzydła!\nNiech nad martwym wzlecę światem\nW rajską dziedzinę fantazji'},
-{a:'Jan Kochanowski',w:'„Na zdrowie” (Fraszki)',x:'Szlachetne zdrowie,\nNikt się nie dowie,\nJako smakujesz,\nAż się zepsujesz.'},
-{a:'Juliusz Słowacki',w:'„Testament mój”',x:'Lecz zaklinam – niech żywi nie tracą nadziei\nI przed narodem niosą oświaty kaganiec;'},
-{a:'Cyprian Norwid',w:'„Moja piosnka (II)”',x:'Do kraju tego, gdzie kruszynę chleba\nPodnoszą z ziemi przez uszanowanie\nDla darów Nieba…\nTęskno mi, Panie.'},
-{a:'Julian Tuwim',w:'„Lokomotywa”',x:'Stoi na stacji lokomotywa,\nCiężka, ogromna i pot z niej spływa'},
-{a:'Maria Konopnicka',w:'„Rota”',x:'Nie rzucim ziemi, skąd nasz ród,\nNie damy pogrześć mowy!'},
-{a:'William Shakespeare',w:'„Hamlet”',x:'To be, or not to be, that is the question:\nWhether ’tis nobler in the mind to suffer\nThe slings and arrows of outrageous fortune,'},
-{a:'William Shakespeare',w:'„As You Like It” (Jak wam się podoba)',x:'All the world’s a stage,\nAnd all the men and women merely players;\nThey have their exits and their entrances,'},
-{a:'Rudyard Kipling',w:'„If—”',x:'If you can keep your head when all about you\nAre losing theirs and blaming it on you,'},
-{a:'John Keats',w:'„Endymion”',x:'A thing of beauty is a joy for ever:\nIts loveliness increases; it will never\nPass into nothingness;'},
-{a:'William Wordsworth',w:'„I Wandered Lonely as a Cloud”',x:'I wandered lonely as a cloud\nThat floats on high o’er vales and hills,'},
-{a:'Walt Whitman',w:'„Song of Myself”',x:'I celebrate myself, and sing myself,\nAnd what I assume you shall assume,'},
+{a:'Adam Mickiewicz',w:'„Oda do młodości”',x:'Młodości! dodaj mi skrzydła!\nNiech nad martwym wzlecę światem\nW rajską dziedzinę ułudy:'},
+{a:'John Keats',w:'„Endymion”',x:'Piękno jest radością na zawsze:\njego urok rośnie i nigdy\nnie przeminie w nicość;',en:'A thing of beauty is a joy for ever:\nIts loveliness increases; it will never\nPass into nothingness;'},
+{a:'William Wordsworth',w:'„I Wandered Lonely as a Cloud”',x:'I wtedy serce napełnia się radością\ni tańczy razem z żonkilami.',en:'And then my heart with pleasure fills,\nAnd dances with the daffodils.'},
+{a:'Walt Whitman',w:'„Song of Myself”',x:'Celebruję siebie i śpiewam siebie,\na to, co ja przyjmuję, przyjmiesz i ty,',en:'I celebrate myself, and sing myself,\nAnd what I assume you shall assume,'},
+{a:'Rudyard Kipling',w:'„If—”',x:'Jeśli potrafisz wypełnić bezlitosną minutę\nsześćdziesięcioma sekundami drogi do przebiegnięcia,\ntwoja jest Ziemia i wszystko, co na niej.',en:'If you can fill the unforgiving minute\nWith sixty seconds\u2019 worth of distance run,\nYours is the Earth and everything that\u2019s in it,'},
 ];
 
 /* ───────── v0.05: baza ćwiczeń ruchowych wg poziomu ─────────
@@ -1366,6 +1382,53 @@ const FIX={
   all.forEach(e=>{const f=FIX[e.t];if(!f)return;Object.assign(e,f);if(f.read===0)delete e.read;if(f.solo==='')delete e.solo});
   })();
 
+/* v1.04: teksty do czytania na głos — własne, współczesne, tylko pozytywny przekaz (bez autora) */
+QUOTES.push(...[
+'Dzisiejszy dzień to czysta karta, a ja trzymam w ręku pióro. Zaczynam od jednej wyraźnej decyzji i pozwalam, by reszta ułożyła się wokół niej. Spokój i konsekwencja to moja przewaga.',
+'Każda rozmowa jest okazją, by kogoś zainspirować. Mówię wolno, wyraźnie i z uśmiechem, bo energia płynie z głosu prosto do ludzi wokół mnie.',
+'Mój głos to narzędzie, które z każdym dniem brzmi pewniej. Oddycham głęboko, otwieram gardło i pozwalam słowom płynąć spokojnie jak rzeka w słoneczny dzień.',
+'Wielkie projekty powstają z małych kroków powtarzanych codziennie. Dziś robię swój krok z radością i widzę, jak przybliża mnie do celu.',
+'Ciekawość jest moim paliwem. Pytam, słucham i łączę pomysły w nowe całości, a każdy dzień uczy mnie czegoś nowego.',
+'Jestem architektem własnych nawyków. Układam je cegła po cegle: wyraźnie, cierpliwie i z satysfakcją, że fundament staje się coraz mocniejszy.',
+'Dobra prezentacja zaczyna się od oddechu. Wyprostowane plecy, swobodne ramiona, spokojny wzrok. Dopiero potem pada pierwsze zdanie, a ono brzmi jak rozmowa z dobrym znajomym.',
+'Technologia daje mi dziś więcej możliwości niż kiedykolwiek wcześniej. Wybieram te narzędzia, które pomagają mi tworzyć, uczyć się i spędzać więcej czasu z ludźmi.',
+'Najlepsze pomysły przychodzą w ruchu. Wychodzę na krótki spacer, wdycham chłodne powietrze i czuję, jak myśli układają się w klarowny plan.',
+'Moją siłą jest jasna komunikacja. Mówię konkretnie, dobieram proste słowa i dbam o to, by każdy rozmówca wyszedł z poczuciem, że został usłyszany.',
+'Zespół, w którym pracuję, jest jak dobrze zgrana orkiestra. Każdy gra swoją partię, a ja uważnie słucham, żeby razem zabrzmieć jeszcze lepiej.',
+'Rozwijam się dzięki regularności. Dziesięć minut ćwiczeń dziennie daje po roku więcej niż tydzień zrywu, więc dziś znów cieszę się swoim rytmem.',
+'Cisza między zdaniami to nie przerwa, to moc. Robię krótką pauzę, oddycham i dopiero wtedy wypowiadam najważniejszą myśl, a słuchacze patrzą na mnie z uwagą.',
+'Z wdzięcznością patrzę na drogę, która jest już za mną. Każde doświadczenie dołożyło coś do mojej wiedzy i dziś mogę z nią sięgać po kolejne, ciekawsze wyzwania.',
+'Lubię zaczynać dzień od jednej rzeczy, która mnie cieszy. Szklanka wody, otwarte okno, głęboki oddech i już wiem, że ten dzień będzie dobry.',
+'Zdrowie to inwestycja, która procentuje każdego ranka. Ruszam ciało, dbam o sen i wybieram jedzenie, po którym czuję lekkość i energię.',
+'Kreatywność rośnie, kiedy zostawiam sobie miejsce na swobodę. Zapisuję pomysł, odkładam go na chwilę i wracam z nową perspektywą, która zawsze zaskakuje mnie pozytywnie.',
+'Jestem uważnym obserwatorem świata. Dostrzegam światło na ścianie, uśmiech przechodnia i zapach kawy, a te drobiazgi składają się na dobry, pełny dzień.',
+'Moje cele są jasne, a plan prosty: zacząć, popracować, podsumować. Każde zakończone zadanie dodaje mi pewności siebie i zaprasza kolejne.',
+'Wspieram ludzi wokół siebie, bo wiem, że wspólny sukces smakuje najlepiej. Szczera pochwała i uważne wysłuchanie kosztują niewiele, a zmieniają bardzo dużo.',
+'Uczę się szybko, bo traktuję wszystko jak ciekawą grę. Zadaję pytania, sprawdzam, wyciągam wnioski i z każdą próbą wiem więcej i jest mi spokojniej.',
+'Nowy dzień przynosi nowe możliwości. Otwieram się na nie z ciekawością, a pewność siebie rośnie ze mną z każdym wypowiedzianym wyraźnie zdaniem.',
+'Dobra dykcja to wyraźne spółgłoski i swobodne samogłoski. Wymawiam każdą sylabę starannie, a zdania płyną naturalnie, rytmicznie i z przyjemnością dla uszu słuchaczy.',
+'Lider to ktoś, kto daje przykład spokojem i konsekwencją. Dziś chcę być takim przykładem: słuchać, decydować i mówić jasno, z szacunkiem dla każdego.',
+'Praca staje się lekka, gdy ma sens. Przypominam sobie, po co to robię, i od razu czuję w sobie energię, by zrobić następny krok lepiej niż poprzedni.',
+'Uśmiech jest najkrótszą drogą do drugiego człowieka. Ofiaruję go dziś każdemu, kogo spotkam, i patrzę, jak wraca do mnie z podwójną siłą.',
+'Lubię porządek w myślach i na biurku. Jedna sprawa naraz, jeden oddech naraz, a wszystko, co ważne, ma swoje miejsce i swój czas.',
+'Kocham momenty, w których coś zaczyna się udawać. Ten pierwszy wyraźny postęp daje paliwo na tygodnie, więc celebruję go, nawet jeśli jest niewielki.',
+'Świat jest pełen ludzi, od których mogę się uczyć. Słucham ich historii z zainteresowaniem i zabieram ze sobą to, co pomaga mi rosnąć.',
+'Mówię wyraźnie, bo moje słowa mają znaczenie. Każde zdanie niesie myśl, a ja z radością oddaję ją światu w najlepszej, najczytelniejszej formie.',
+'Dziś skupiam się na tym, co zależy ode mnie. Wykonuję zadania po kolei, oddycham spokojnie i obserwuję, jak z drobnych działań rośnie wielka zmiana.',
+'Wyobrażam sobie siebie za rok: pełno pewności, odpoczynku i satysfakcji z drogi. Wystarczy, że dziś zrobię jedną rzecz, która mnie do tej wizji przybliża.',
+'Muzyka języka polskiego jest piękna: szum, szczebiot, dźwięczne samogłoski. Wypowiadam te słowa powoli, smakuję każdy dźwięk i bawię się własnym głosem.',
+'Każdy dzień daje mi szansę, by być odrobinę lepszą wersją siebie. Nie śpieszę się, nie porównuję, po prostu idę własnym tempem i cieszę się widokami.',
+'Zaufanie buduje się codziennie: dotrzymaną obietnicą, uważnym spojrzeniem i spokojnym tonem. Dbam o to i widzę, że ludzie chętnie się do mnie zbliżają.',
+'Energia płynie tam, gdzie kieruję uwagę. Dziś kieruję ją na rzeczy, które dają mi satysfakcję, i czuję, jak z każdą godziną zyskuję lekkość i rozmach.',
+'Odpoczynek jest częścią pracy. Robię przerwę, rozciągam plecy, patrzę w dal, a po kilku minutach wracam z odświeżoną, klarowną głową i nowymi pomysłami.',
+'Wybieram słowa, które budują. Mówię o możliwościach, o rozwiązaniach i o kolejnych krokach, a rozmowa sama układa się w stronę, która służy wszystkim.',
+'Mam w sobie siłę, by zaczynać od nowa. Każdy poranek jest zaproszeniem do czegoś lepszego, a ja z uśmiechem przyjmuję je i ruszam przed siebie.',
+'Wiem, że moje starania mają sens. Z każdym powtórzeniem rośnie moja sprawność, pewność i spokój, a razem tworzą fundament, na którym zbuduję wszystko, co zaplanowane.',
+].map(x=>({a:'',w:'',x})));
+
+/* v1.04: rytm oddechu (kropka) także w tych ćwiczeniach */
+{const PACE={"Syczenie „sss” na wydechu":[["WDECH nosem",4,1],["WYDECH „sss”",8,0]],"Świeczka: wolny wydech":[["WDECH nosem",3,1],["WYDECH cienko",7,0]],"Westchnienie „haaa”":[["WDECH nosem",3,1],["WYDECH „haaa”",5,0]],"Mruczenie w dół":[["WDECH nosem",4,1],["WYDECH „mmm”",8,0]],"Słomka w wodzie":[["WDECH nosem",4,1],["WYDECH w słomkę",8,0]],"Wydech na „fff” z liczeniem":[["WDECH nosem",4,1],["WYDECH „fff”",8,0]],"Liczenie wydechów do 10":[["WDECH",4,1],["WYDECH",6,0]],"Książka na brzuchu":[["WDECH nosem",4,1],["WYDECH",6,0]],"Wargi „brrr”":[["WDECH",3,1],["WYDECH „brrr”",6,0]]};[].concat(CH,VL,UW,ST,FO).forEach(e=>{if(PACE[e.t]&&!e.pace)e.pace=PACE[e.t]})}
+
 /* ───────── Nawyk v0.06 — efekty: żywe tło, konfetti, fala przy dotyku, podświetlenie karty, toasty ───────── */
 const FX=(()=>{
   const d=document, mq=window.matchMedia?matchMedia('(prefers-reduced-motion: reduce)'):null;
@@ -1465,7 +1528,7 @@ const FX=(()=>{
 })();
 
 /* ───────── Nawyk v1.0 — logika aplikacji ───────── */
-const VER='v1.03', MAIL='kontakt@smialo.org', LS='nawyk.v1', APPKEY='nawyk';
+const VER='v1.04', MAIL='kontakt@smialo.org', LS='nawyk.v1', APPKEY='nawyk';
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const pad=n=>String(n).padStart(2,'0');
@@ -1630,7 +1693,7 @@ function pacePhase(pace,el){
   while(pos>=pace[i][1]){pos-=pace[i][1];i++}
   return{i,n:Math.floor(pos)+1,len:pace[i][1],f:pos/pace[i][1]};
 }
-const pscale=(dir,f)=>.55+.45*(dir===1?f:dir===0?1-f:dir===2?1:0);
+const pscale=(dir,f)=>.3+.7*(dir===1?f:dir===0?1-f:dir===2?1:0);
 function makeTimer(root,build,onDone){
   root.innerHTML='<div class="tm" data-kind="idle"><div class="tm-tag"></div><div class="tm-lbl"></div><div class="tm-sub"></div><div class="tm-pace" hidden><div class="pring"><i></i></div><div class="pp"><b></b><span></span></div></div><div class="tm-clock">0:00</div><div class="bar"><i></i></div><div class="tm-row"><button class="btn pri" data-a="go" type="button">Start</button><button class="btn" data-a="skip" type="button">Dalej ›</button><button class="btn ghost" data-a="rst" type="button">Od nowa</button></div><div class="tm-tot"></div></div>';
   const q=s=>$(s,root), tm=$('.tm',root);
@@ -1660,7 +1723,7 @@ function makeTimer(root,build,onDone){
         const p=pacePhase(s.pace,Math.max(0,s.sec-ms/1000));
         pc.dataset.d=s.pace[p.i][2];q('.pp b').textContent=s.pace[p.i][0];q('.pp span').textContent=p.n+' / '+p.len;
         q('.pring i').style.transform='scale('+pscale(s.pace[p.i][2],p.f).toFixed(3)+')';
-      }else{pc.dataset.d='';q('.pp b').textContent='Gotowy?';q('.pp span').textContent='Start';q('.pring i').style.transform='scale(.55)'}
+      }else{pc.dataset.d='';q('.pp b').textContent='Gotowy?';q('.pp span').textContent='Start';q('.pring i').style.transform='scale(.3)'}
     }else pc.hidden=true;
   }
   function load(){
@@ -1735,6 +1798,7 @@ function openSum(){SUM_OPEN=true;renderSummary();scrollTo('#sumCard','start')}
 function setDone(k,v,o){
   o=o||{};
   const was=allDone(),d=S.days[TODAY]||(S.days[TODAY]={});
+  if(!v)advCancel();
   if(v)d[k]=1;else delete d[k];
   if(!Object.keys(d).length)delete S.days[TODAY];
   const c=findC(k);
@@ -1768,21 +1832,32 @@ function markBlock(bid,v,o){
   save();paintDone();
 }
 /* po zaliczeniu: zwiń sekcję, otwórz następną; po całym dniu zwiń wszystko i pokaż podsumowanie */
+let ADV=0;
+function advCancel(){if(ADV){clearInterval(ADV.iv);ADV=0}const b=$('#advBar');if(b)b.remove()}
+const autoOn=()=>S.set.auto!==0;
 function afterDone(k,fin,o){
+  if(o.keep)return;
   const run=()=>{
-    if(o.keep)return;
     const el=$('#card-'+k);if(el&&el.open)el.open=false;
     if(fin){$$('#cards details.card').forEach(d=>{d.open=false});scrollTo('#finish','center');return}
     const nx=TASKS().find(c=>!isDone(c.id));
     if(nx){const e=$('#card-'+nx.id);if(e&&!e.open)e.open=true;scrollTo('#card-'+nx.id,'start')}
   };
-  FX.calm()?run():setTimeout(run,650);
+  advCancel();
+  if(!autoOn())return;
+  const nx=fin?null:TASKS().find(c=>!isDone(c.id));
+  const bar=document.createElement('div');bar.id='advBar';bar.setAttribute('role','status');
+  let n=3;
+  const txt=()=>`<span class="adc">✓</span><span><b>Zrobione!</b> ${fin?'Podsumowanie dnia':'Następne zadanie'} za <b>${n}</b> s</span><button type="button" class="btn sm" data-a="stay">Zostań tu</button><i class="adp"></i>`;
+  bar.innerHTML=txt();document.body.appendChild(bar);
+  bar.onclick=e=>{if(e.target.closest('[data-a=stay]'))advCancel()};
+  ADV={iv:setInterval(()=>{n--;if(n<=0){advCancel();run();return}const t=$('#advBar b:last-of-type');if(t)t.textContent=n},1000)};
 }
 const CHEER=['Dobra robota! Tak buduje się nawyk.','Jest! Kolejny krok za Tobą.','Świetnie — małe kroki wygrywają.','Brawo! Tak trzymać.','Zrobione — to się liczy najbardziej.'];
 const MILES=[3,7,14,21,30,50,100];
 function cheer(k,fin){
   const el=document.querySelector('[data-tick="'+k+'"]'),tk=TASKS(),cnt=tk.filter(c=>isDone(c.id)).length,tot=tk.length,first=Object.keys(doneKeys()).length===1,st=streak();
-  FX.celebrate(el,fin);FX.haptic(fin?[20,40,20]:14);unlock();
+  if(el){el.classList.remove('tickpop');void el.offsetWidth;el.classList.add('tickpop')}FX.celebrate(el,fin);FX.haptic(fin?[20,40,20]:14);unlock();
   if(S.set.snd){beep(660,.09);setTimeout(()=>beep(880,.09),110);if(fin)setTimeout(()=>beep(1175,.2),230)}
   let m;
   if(fin)m='🎉 Wszystko na dziś zrobione! Wróć jutro po kolejną porcję.';
@@ -1797,7 +1872,7 @@ const exLabel=e=>(e.c?e.c+' · ':'')+'ok. '+exMin(e)+' min';
 const QI={};
 const hueOf=c=>{let h=0;for(const ch of String(c||'x'))h=(h*31+ch.charCodeAt(0))%360;return h};
 const deadline=e=>{const w=e.when||'';return /wieczor|przed snem/i.test(w)?'dziś, najlepiej wieczorem — najpóźniej przed snem':/rano/i.test(w)?'najlepiej rano; najpóźniej do końca dnia':'dziś, do końca dnia'};
-const quoteHTML=bid=>{const q=QUOTES[(QI[bid]||0)%QUOTES.length];return `<h5>Przeczytaj na głos</h5><blockquote class="qt"><p>${esc(q.x).replace(/\n/g,'<br>')}</p><cite>— ${esc(q.a)}, ${esc(q.w)}</cite></blockquote><button class="btn sm" type="button" data-a="nq">Pokaż następny ›</button>`};
+const quoteHTML=bid=>{const q=QUOTES[(QI[bid]||0)%QUOTES.length],tx=t=>esc(t).replace(/\n/g,'<br>'),cite=q.a?`<cite>— ${esc(q.a)}${q.w?', '+esc(q.w):''}</cite>`:'';return `<h5>Przeczytaj na głos</h5><blockquote class="qt${q.en?' qt2':''}">${q.en?`<div class="qc"><span class="ql">PL</span><p>${tx(q.x)}</p></div><div class="qc qe"><span class="ql">EN</span><p lang="en">${tx(q.en)}</p></div>`:`<p>${tx(q.x)}</p>`}${cite}</blockquote><button class="btn sm" type="button" data-a="nq">Pokaż następny ›</button>`};
 const hk=t=>String(t).slice(0,60);
 const howDef=()=>S.set.how!=='closed';
 const howOpen=k=>S.hx[k]===1?true:S.hx[k]===0?false:howDef();
@@ -2610,6 +2685,7 @@ function wire(){
   $('#pkSet').onclick=async()=>{await useKey($('#pkIn').value,$('#pkMsg'))};
 
   $('#sws').onclick=e=>{const b=e.target.closest('[data-h]');if(!b)return;S.set.hue=+b.dataset.h;save();applyLook();renderLook()};
+  const aT=$('#autoT');if(aT){const pa=()=>{aT.setAttribute('aria-pressed',autoOn());aT.querySelector('span').textContent=autoOn()?'Auto':'Ręcznie'};pa();aT.onclick=()=>{S.set.auto=autoOn()?0:1;save();advCancel();pa()}}
   $('#setQuiet').onchange=e=>{S.set.quiet=e.target.checked?1:0;save();applyLook()};
   $('#setSnd').onchange=e=>{S.set.snd=e.target.checked?1:0;save()};
   $('#setFx').onchange=e=>{S.set.fx=e.target.checked?1:0;save();applyLook()};

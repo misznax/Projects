@@ -22,3 +22,6 @@ Wdrożenie: push do `main` → wspólny Worker `projects` (00_Worker) → **http
 `backup/` — kopie wersji finalnych (od v1.0).
 
 Pinterest: oficjalne API wymaga płatnego/zatwierdzonego dostępu, więc przy ćwiczeniach są linki do wyszukiwania na Pinterest (i Google Grafika/YouTube), a darmowe ilustracje Everkinetic pokazują się bezpośrednio.
+
+**v1.04** — teksty do czytania: PL z lewej, oryginał (EN) z prawej, 45 pozytywnych tekstów (40 własnych); po zaliczeniu animacja i odliczanie 3 s do następnego zadania, przełącznik „Auto” w nagłówku; kropka oddechu (rosnąca, zmieniająca kolor) w 9 kolejnych ćwiczeniach.
+
