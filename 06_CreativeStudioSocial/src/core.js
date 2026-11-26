@@ -1,5 +1,5 @@
 /* Creative Studio Social — rdzeń: narzędzia, magazyn (IndexedDB), projekt, historia, UI-pomocniki */
-const APP = { name: 'Creative Studio Social', ver: 'v0.07', author: 'Michał Rzekiecki', mail: 'michus@gmail.com' };
+const APP = { name: 'Creative Studio Social', ver: 'v0.08', author: 'Michał Rzekiecki', mail: 'michus@gmail.com' };
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const uid = (p = 'x') => p + Math.random().toString(36).slice(2, 9);
@@ -55,7 +55,7 @@ function popMenu(anchor, items) {
 function progressModal(title) { // pasek postępu z możliwością anulowania (ZASADY #18: %, czas, anulowanie)
   const bar = h('div', { class: 'pbar' }, h('i')), info = h('div', { class: 'pinfo' }, 'Start…'), st = { cancel: false, t0: Date.now() };
   const mm = modal(title, h('div', {}, bar, info), [{ t: 'Anuluj', fn: () => { st.cancel = true; return true; } }]);
-  st.set = (p, txt) => { bar.firstChild.style.width = clamp(p * 100, 0, 100) + '%'; const el = (Date.now() - st.t0) / 1000, eta = p > 0.03 ? el / p - el : null; info.textContent = Math.round(p * 100) + '% · ' + (txt || '') + (eta != null ? ' · pozostało ~' + Math.ceil(eta) + ' s' : ''); };
+  st.set = (p, txt) => { bar.firstChild.style.width = clamp(p * 100, 0, 100) + '%'; const el = (Date.now() - st.t0) / 1000, eta = p > 0.03 ? el / p - el : null; info.textContent = Math.round(p * 100) + '% · ' + (txt || '') + (eta != null ? ' · pozostało ~' + (eta >= 90 ? Math.round(eta / 60) + ' min' : Math.ceil(eta) + ' s') : ''); };
   st.close = mm.close; return st;
 }
 

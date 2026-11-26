@@ -1,4 +1,4 @@
-# Creative Studio Social · v0.07
+# Creative Studio Social · v0.08
 
 Studio treści na social media w przeglądarce: marka → grafiki (karuzele) → wideo (rolki 9:16) → audio → publikacja na Instagram, YouTube Shorts, TikTok i Facebook Reels.
 Autor: Michał Rzekiecki · kontakt: michus@gmail.com · adres: https://projects.michus.workers.dev/06/
@@ -43,6 +43,13 @@ Autor: Michał Rzekiecki · kontakt: michus@gmail.com · adres: https://projects
 
 1. Analiza w przeglądarce (canvas, bez kluczy): poświaty (kolor i pozycja), pasek postępu, stopka, bloki tekstu, zdjęcie, akcenty → „DNA” układu, które steruje wszystkimi szablonami.
 2. Wzorzec domyślny: karuzela „Po kontuzji” (v4). Własny materiał (obrazy lub wideo rolki) nadpisuje DNA w projekcie; rodzaje slajdów są rozpoznawane zgrubnie.
+
+## Zmiany v0.08 (eksport MP4: błąd DTS i szybkość)
+
+1. **Naprawa błędu „Timestamps must be monotonically increasing (DTS went from … to …)”**: sprzętowy koder H.264 zwraca klatki B w kolejności dekodowania. Eksport buforuje je, wylicza opóźnienie i zapisuje osobno DTS (rosnący) i PTS (przesunięcie kompozycji), a dźwięk dostaje tyle samo ciszy na starcie (synchronizacja A/V bez zmian). Test syntetyczny z przestawionymi klatkami: plik poprawny (DTS ściśle rosnące, PTS unikalne, ffmpeg dekoduje bez błędów).
+2. **Szybkie dekodowanie wideo** (`src/fastvid.js`): zamiast przewijania każdego `<video>` do każdej klatki (dekodowanie od klatki kluczowej, ~15 s na 6 s materiału z dwiema warstwami) eksport dekoduje pliki MP4/MOV po kolei przez WebCodecs, z obsługą klatek B, listy edycji i obrotu iPhone'a. Każda warstwa przechodzi na przewijanie osobno, gdy kodek lub plik jest nieobsługiwany. Wynik: ok. 3× szybciej (5 s zamiast 16 s w teście), obraz zgodny z metodą starą (różnica ≈ szum kodera). Okno eksportu ma przełącznik „Szybkie dekodowanie” (wyłączenie = stara metoda).
+3. **Rozdzielczość**: domyślnie 1080×1920 (standard Instagram); opcja „720×1280 (szybka próba)” skraca eksport ok. 2×. Podczas eksportu podgląd nie renderuje się przy każdym `seeked`.
+4. **💾 Zapisz projekt** na pasku osi czasu: pobiera ZIP z konfiguracją i zasobami (to samo co „Eksport projektu” w menu ⋯; wczytanie: „Import projektu”). Postęp eksportu pokazuje klatki/s, a czas w minutach przy dłuższych operacjach.
 
 ## Zmiany v0.07 (kadr głowy i widoczny suwak tempa)
 
@@ -90,6 +97,6 @@ Autor: Michał Rzekiecki · kontakt: michus@gmail.com · adres: https://projects
 
 ## Plan
 
-1. v0.08: R2 (chmura projektów i publiczne adresy mediów) + adapter Metricool (planowanie wpisów); nagrywanie gadającej głowy kamerą w aplikacji.
-2. v0.09: bezpośrednie API (YouTube, Meta, TikTok), format 4:5 w wideo.
+1. v0.09: R2 (chmura projektów i publiczne adresy mediów) + adapter Metricool (planowanie wpisów); nagrywanie gadającej głowy kamerą w aplikacji.
+2. v0.10: bezpośrednie API (YouTube, Meta, TikTok), format 4:5 w wideo.
 3. v1.0 po zatwierdzeniu; od tej wersji kopie w `backup/`.
