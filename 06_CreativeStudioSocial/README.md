@@ -1,4 +1,4 @@
-# Creative Studio Social · v0.04
+# Creative Studio Social · v0.05
 
 Studio treści na social media w przeglądarce: marka → grafiki (karuzele) → wideo (rolki 9:16) → audio → publikacja na Instagram, YouTube Shorts, TikTok i Facebook Reels.
 Autor: Michał Rzekiecki · kontakt: michus@gmail.com · adres: https://projects.michus.workers.dev/06/
@@ -20,7 +20,7 @@ Autor: Michał Rzekiecki · kontakt: michus@gmail.com · adres: https://projects
 | Marka | karta „Marka z automatu” (kolory, fonty, uchwyt, zasady z repo marki; odśwież / odepnij), ręczna edycja, logo, referencje, 12 szablonów |
 | Pomysły | pomysły z Drive + posty z Instagrama → plan rolki lub karuzeli, ostrzeżenia o powtórkach, balans formatów, slot „materiał instruktażowy” (uczenie stylu z karuzeli / rolki) |
 | Grafiki | karuzele i posty: slajdy, warstwy, tło, usuwanie tła, obrazy AI, eksport PNG/JPG/ZIP |
-| Wideo | oś czasu (9 ścieżek), sceny z szablonów, animacje, klatki kluczowe, napisy z nagrania, miks, eksport MP4; **🗣 Gadająca głowa** (wideo w kole / zaokrąglonym / prostokącie / pełnym ekranie, 4 rozmiary, 9 pozycji w bezpiecznej strefie, ramka, poświata, kadr, lustro, **miękkie krawędzie** i **miękkie przejście** wejścia i wyjścia z płynnym zanikiem dźwięku; po zaznaczeniu wideo pływający panel w lewym marginesie podglądu + te same opcje na górze panelu po prawej; dźwięk idzie na ścieżkę „Głos” i jest miksowany). Kolejność warstw: tła sceny → animowane tła → wideo → reszta (animowane tło nie zasłania już wideo, a pełnoekranowy efekt łapie kliknięcie dopiero, gdy pod kursorem nie ma nic innego); **📥 Rolka z dokumentu (Agent John)**: wklejony tekst dokumentu „Rolki” albo link → rolka z kartami w czasie, skrypt do telepromptera i opis |
+| Wideo | oś czasu (10 ścieżek: Tło, Wideo, **Głowa**, Obrazy, Tekst, Grafiki, Animacje, Głos, Muzyka, Efekty dźw.), przyciski ⏮ ▶ ⏸ ⏹ + Spacja nad osią, klipy przeciągane w poziomie (czas) i w pionie (zmiana ścieżki, np. Wideo → Tło), lista **Warstw** z ikonami, ukryj / zablokuj / wyżej / niżej, sceny z szablonów, animacje, klatki kluczowe, napisy z nagrania, miks, eksport MP4; **🗣 Gadająca głowa** (wideo w kole / zaokrąglonym / prostokącie / pełnym ekranie, 4 rozmiary, 9 pozycji w bezpiecznej strefie, ramka, poświata, kadr, lustro, **miękkie krawędzie** i **miękkie przejście** wejścia i wyjścia z płynnym zanikiem dźwięku; po zaznaczeniu wideo pływający panel w lewym marginesie podglądu + te same opcje na górze panelu po prawej; dźwięk idzie na ścieżkę „Głos” i jest miksowany). Kolejność warstw: tła sceny → animowane tła → wideo → reszta (animowane tło nie zasłania już wideo, a pełnoekranowy efekt łapie kliknięcie dopiero, gdy pod kursorem nie ma nic innego); **📥 Rolka z dokumentu (Agent John)**: wklejony tekst dokumentu „Rolki” albo link → rolka z kartami w czasie, skrypt do telepromptera i opis |
 | Import materiałów | jedno okno w każdym miejscu, gdzie dodajesz obraz / wideo / dźwięk: 🗂 biblioteka (też materiały z innych projektów aplikacji), ☁ folder Google Drive (z podfolderami), 🔗 link do pliku (Drive, GitHub, Dropbox), 📁 plik z urządzenia. Materiały z innych czatów i projektów Claude: zapis na Drive → folder udostępniony linkiem → wybór z listy |
 | Audio | import nagrań z telefonu z Google Drive („☁ Z Drive”: folder Creative Studio > Audio Input udostępniony linkiem, link wklejany raz), nagrywanie z teleprompterem (okno rozciągalne i przeciągane, edytowalny tekst, wolne przewijanie w słowach/min, czcionka, szerokość, położenie, lustro, pełny ekran), edycja nieniszcząca (oryginał zostaje), łańcuch obróbki, raport jakości (LUFS, true peak, clipping, DC) |
 | Publikacja | walidacja pod 4 sieci, opisy i hashtagi, bramka zatwierdzenia (6 kroków), FINAL PUBLISH, dziennik, kalendarz (ICS) |
@@ -43,6 +43,15 @@ Autor: Michał Rzekiecki · kontakt: michus@gmail.com · adres: https://projects
 
 1. Analiza w przeglądarce (canvas, bez kluczy): poświaty (kolor i pozycja), pasek postępu, stopka, bloki tekstu, zdjęcie, akcenty → „DNA” układu, które steruje wszystkimi szablonami.
 2. Wzorzec domyślny: karuzela „Po kontuzji” (v4). Własny materiał (obrazy lub wideo rolki) nadpisuje DNA w projekcie; rodzaje slajdów są rozpoznawane zgrubnie.
+
+## Zmiany v0.05 (wideo)
+
+1. **Kolejność warstw wg ścieżki**: Tło < animowane tło < wideo w tle < Wideo < Głowa < obrazy / teksty / grafiki. Nowa gadająca głowa zawsze ląduje nad zwykłym wideo (wcześniej trafiała pod pełnoekranowe wideo i klik zaznaczał wideo). Starsze rolki naprawiają się przy otwarciu.
+2. **Przeciąganie klipu między ścieżkami** (Wideo ⇄ Tło ⇄ Głowa; obraz ⇄ grafika; dźwięk głos / muzyka / efekty). Ścieżka docelowa podświetla się na zielono, niedozwolona na czerwono. To samo: przełącznik „Ścieżka” w panelu wideo. Wideo na ścieżce Tło nie reaguje na klik w podglądzie (zaznaczasz je na osi czasu).
+3. **Transport nad osią czasu**: ⏮ ▶ Odtwarzaj, ⏸ Pauza, ⏹ Stop, czas, pętla. **Spacja** = odtwarzaj / pauza wszędzie poza polami tekstowymi i liczbowymi (także po kliknięciu w podgląd, suwak, pole wyboru, przycisk).
+4. **Rozróżnienie warstw**: osobna ścieżka „Głowa” (różowa), tło w paski, ikony ścieżek, opisowe nazwy efektów (np. „Tło: płynący gradient”) i panel „Warstwy” w lewej kolumnie.
+5. **Schemat miejsca gadającej głowy**: „📌 Zapamiętaj to miejsce” zapisuje miejsce, kształt, rozmiar, ramkę, poświatę i przejścia; domyślny schemat stosuje się do każdej nowej głowy. Okno „Schematy…”: zastosuj, ustaw domyślny, usuń. Zapis w przeglądarce (wspólny dla wszystkich projektów).
+6. **Przycinanie i cięcie wideo**: lewa krawędź nie cofa się przed początek pliku, prawa nie wychodzi poza długość pliku; druga połowa po cięciu i duplikat dostają własny obraz i powiązany dźwięk; duplikat leży tuż nad oryginałem.
 
 ## Co działa naprawdę (przetestowane w Chrome)
 
@@ -69,6 +78,6 @@ Autor: Michał Rzekiecki · kontakt: michus@gmail.com · adres: https://projects
 
 ## Plan
 
-1. v0.05: R2 (chmura projektów i publiczne adresy mediów) + adapter Metricool (planowanie wpisów); nagrywanie gadającej głowy kamerą w aplikacji.
-2. v0.06: bezpośrednie API (YouTube, Meta, TikTok), format 4:5 w wideo.
+1. v0.06: R2 (chmura projektów i publiczne adresy mediów) + adapter Metricool (planowanie wpisów); nagrywanie gadającej głowy kamerą w aplikacji.
+2. v0.07: bezpośrednie API (YouTube, Meta, TikTok), format 4:5 w wideo.
 3. v1.0 po zatwierdzeniu; od tej wersji kopie w `backup/`.

@@ -65,7 +65,8 @@ function layerFields(l, cb) {
     out.push(h('div', { class: 'ph' }, 'Kształt'), h('div', { class: 'sec' }, fld({ k: 'shape.kind', t: 'sel', label: 'Rodzaj', opts: [['rect', 'Prostokąt'], ['ellipse', 'Elipsa'], ['line', 'Pasek']] }, l, cb), fld({ k: 'shape.fill', t: 'color', label: 'Wypełnienie' }, l, cb), fld({ k: 'shape.fill2', t: 'color', label: 'Drugi kolor (gradient, puste = brak)' }, l, cb), fld({ k: 'shape.gAngle', t: 'num', label: 'Kąt gradientu °' }, l, cb), fld({ k: 'shape.r', t: 'range', label: 'Zaokrąglenie', min: 0, max: 400, step: 1 }, l, cb), rowOf(fld({ k: 'shape.stroke.w', t: 'num', label: 'Obrys', min: 0 }, l, cb), fld({ k: 'shape.stroke.c', t: 'color', label: 'Kolor obrysu' }, l, cb)), fld({ k: 'shape.shadow.on', t: 'chk', label: 'Cień' }, l, cb)));
   } else if (l.type === 'video') {
     const c = l.video, redo = () => { cb('live'); cb('commit'); }, segB = (label, key, opts, onpick) => pipSeg(l, label, key, opts, onpick, redo);
-    out.unshift(h('div', { class: 'ph' }, 'Gadająca głowa / wideo'), h('div', { class: 'sec' },
+    out.unshift(h('div', { class: 'ph' }, l.track === 'head' ? 'Gadająca głowa' : 'Wideo'), h('div', { class: 'sec' },
+      l.track === 'head' ? headPresetRow(l, redo) : null,
       segB('Kształt', 'shape', PIP_SHAPES, (v) => Video.applyPip(l, { shape: v })),
       segB('Rozmiar', 'size', [['s', 'S'], ['m', 'M'], ['l', 'L'], ['xl', 'XL']], (v) => Video.applyPip(l, { size: v })),
       h('div', { class: 'fld' }, h('label', {}, 'Miejsce (w bezpiecznej strefie)'), h('div', { class: 'pipgrid' }, [['tl', '↖'], ['tc', '↑'], ['tr', '↗'], ['ml', '←'], ['mc', '•'], ['mr', '→'], ['bl', '↙'], ['bc', '↓'], ['br', '↘']].map(([v, n]) => h('button', { class: c.pos === v ? 'on' : '', title: 'Ustaw w tym miejscu', onclick: (e) => { Video.applyPip(l, { pos: v }); redo(); [...e.currentTarget.parentNode.children].forEach((b) => b.classList.remove('on')); e.currentTarget.classList.add('on'); } }, n)))),
