@@ -8,6 +8,7 @@ const zRank = (l) => (l.type === 'video' ? (l.track === 'bg' ? 2 : l.track === '
 const TRK_ICON = { bg: '🏞', video: '🎬', head: '🗣', image: '🖼', text: '🔤', graphic: '◼', anim: '✦', voice: '🎙', music: '🎵', sfx: '🔔' };
 const TRK_NAME = Object.fromEntries(TRACKS);
 const trkAllow = (l) => (l.type === 'video' ? ['bg', 'video', 'head'] : l.type === 'image' ? ['bg', 'image', 'graphic'] : l.type === 'text' ? ['text'] : ['bg', 'graphic', 'anim']);
+const TRK_ADD = { bg: 'Scena z szablonu', video: 'Wideo', head: 'Gadająca głowa', image: 'Obraz', text: 'Tekst', graphic: 'Kształt', anim: 'Animowane tło / efekt', voice: 'Głos / lektor', music: 'Muzyka', sfx: 'Efekt dźwiękowy' };
 const FX_NAMES = { agrad: 'Tło: płynący gradient', orbs: 'Tło: rozmyte kule', stripes: 'Tło: pasy', particles: 'Cząsteczki', confetti: 'Konfetti', bar: 'Pasek postępu' };
 const newReel = (name) => { const F = FORMATS.story; return { id: uid('r'), name: name || 'Rolka', fmt: 'story', w: F.w, h: F.h, dur: 30, fps: 30, bg: { type: 'color', c1: '#000000' }, layers: [], audio: [], style: 'dynamic', meta: {}, zv: 3 }; };
 
@@ -107,6 +108,7 @@ const Video = {
     this.snapBtn = b('Przyciąganie', () => { this.snap = !this.snap; this.snapBtn.classList.toggle('on', this.snap); }, 'Przyciągaj krawędzie klipów do kursora i innych klipów', 'on');
     this.tlBar.append(b('⏮', () => this.seek(0), 'Na początek (Home)'), this.playBtn, this.pauseBtn, this.stopBtn, this.timeEl, this.loopBtn, sep(),
       b('－', () => this.setZoom(this.zoom / 1.4), 'Oddal oś czasu'), b('＋', () => this.setZoom(this.zoom * 1.4), 'Przybliż oś czasu'), b('Dopasuj', () => this.setZoom(1), 'Cała rolka w widoku'), this.snapBtn, sep(),
+      b('🔊 Wyrównaj poziomy', () => this.autoLevel(), 'Wyrównuje głośność: głos do jednego poziomu, muzyka pod głosem, efekty obok. Potem eksport normalizuje całość do celu LUFS z ustawień rolki.'), sep(),
       b('✂ Przetnij (S)', () => this.split(), 'Przetnij zaznaczony klip w miejscu kursora'), b('⧉ Duplikuj', () => this.dupSel(), 'Duplikuj zaznaczony klip (Ctrl+D)'), b('🗑 Usuń', () => this.delSel(), 'Usuń zaznaczony klip (Delete)', 'bad'),
       h('span', { style: { flex: 1 } }), h('span', { class: 'fine' }, 'Klip: przeciągnij = czas i ścieżka, krawędź = przytnij'));
     this.setPlayUi();
@@ -142,9 +144,9 @@ const Video = {
       h('button', { class: 'btn', onclick: (e) => popMenu(e.currentTarget, [{ t: 'Prostokąt', i: '▭', fn: () => this.addLayer('shape', 'rect') }, { t: 'Elipsa', i: '◯', fn: () => this.addLayer('shape', 'ellipse') }, { t: 'Pasek', i: '▬', fn: () => this.addLayer('shape', 'line') }]) }, '▭ Kształt'),
       h('button', { class: 'btn', onclick: (e) => popMenu(e.currentTarget, [{ t: 'Obraz z komputera…', i: '🖼', fn: () => this.addMedia('image', false) }, { t: 'Obraz: biblioteka / Drive / link…', i: '🗂', fn: () => this.addMedia('image', true) }, { t: 'Wideo z komputera…', i: '🎬', fn: () => this.addMedia('video', false) }, { t: 'Wideo: biblioteka / Drive / link…', i: '🗂', fn: () => this.addMedia('video', true) }]) }, '🖼 Obraz / wideo')),
       h('div', { class: 'row', style: { marginTop: '6px' } }, h('button', { class: 'btn pri', title: 'Wideo z Twoją twarzą w kole lub prostokącie (z dźwiękiem)', onclick: (e) => popMenu(e.currentTarget, [{ t: 'Importuj: biblioteka / Drive / link…', i: '🗂', fn: () => this.addMedia('video', true, { pip: true }) }, { t: 'Plik z komputera / telefonu…', i: '📁', fn: () => this.addMedia('video', false, { pip: true }) }]) }, '🗣 Gadająca głowa')),
-      h('div', { class: 'row', style: { marginTop: '6px' } }, h('button', { class: 'btn', onclick: (e) => popMenu(e.currentTarget, [['agrad', 'Płynący gradient'], ['orbs', 'Rozmyte kule'], ['particles', 'Cząsteczki'], ['confetti', 'Konfetti'], ['stripes', 'Pasy'], ['bar', 'Pasek postępu']].map(([k, n]) => ({ t: n, i: '✦', fn: () => this.addLayer('fx', k) }))) }, '✦ Animowane tło'),
-        h('button', { class: 'btn', onclick: (e) => popMenu(e.currentTarget, [{ t: 'Głos / lektor…', i: '🎙', fn: () => this.addAudio('voice') }, { t: 'Muzyka…', i: '🎵', fn: () => this.addAudio('music') }, { t: 'Efekt dźwiękowy…', i: '🔔', fn: () => this.addAudio('sfx') }]) }, '🎧 Dźwięk')),
-      h('div', { class: 'hint', style: { marginTop: '8px' }, html: rich('Klip trafia w miejsce kursora (czerwona linia). (Nagrywanie i obróbka głosu: zakładka Audio.)') })));
+      h('div', { class: 'row', style: { marginTop: '6px' } }, h('button', { class: 'btn', style: { width: '100%' }, onclick: (e) => this.addMenu('anim', e.currentTarget) }, '✦ Animowane tło')),
+      h('div', { class: 'row', style: { marginTop: '6px' } }, h('button', { class: 'btn', title: 'Dodaj głos / lektora na ścieżkę „Głos”', onclick: () => this.addAudio('voice') }, '🎙 Głos'), h('button', { class: 'btn', title: 'Dodaj muzykę na ścieżkę „Muzyka” (z Audio Studio, biblioteki, Drive, linku lub pliku)', onclick: () => this.addAudio('music') }, '🎵 Muzyka'), h('button', { class: 'btn', title: 'Dodaj efekt dźwiękowy na ścieżkę „Efekty dźw.”', onclick: () => this.addAudio('sfx') }, '🔔 Efekt')),
+      h('div', { class: 'hint', style: { marginTop: '8px' }, html: rich('Klip trafia w miejsce kursora (czerwona linia). Na osi czasu: ＋ przy ścieżce lub dwuklik w pusty pasek. (Nagrywanie i obróbka głosu: zakładka Audio.)') })));
     this.lyEl = h('div', {}); L.append(h('div', { class: 'ph' }, 'Warstwy (od góry)'), h('div', { class: 'sec' }, this.lyEl)); this.layersList();
     L.append(h('div', { class: 'ph' }, 'Import rolki'), h('div', { class: 'sec' }, h('button', { class: 'btn', style: { width: '100%' }, title: 'Skrypt rolki z dokumentu „Rolki” (projekt Agent John): tekst na ekranie z czasami, skrypt lektora, opis', onclick: () => Rolka.dialog() }, '📥 Rolka z dokumentu (Agent John)')));
     L.append(h('div', { class: 'ph' }, 'Napisy'), h('div', { class: 'sec' }, h('button', { class: 'btn', style: { width: '100%' }, onclick: () => this.subtitlesDialog() }, 'Napisy z nagrania głosu (Whisper)'), h('div', { class: 'hint', style: { marginTop: '6px' }, html: rich('Rozpoznaje mowę z klipów na ścieżce „Głos” i układa napisy w bezpiecznej strefie. (Wymaga działania Workera AI.)') })));
@@ -203,6 +205,18 @@ const Video = {
 
   // ── Dodawanie ──
   nextStart() { const r = this.reel; const ends = r.layers.filter((l) => l.track === 'bg' && !l.mv && l.type !== 'video' && l.t1 < 1e5).map((l) => l.t1); return ends.length ? Math.max(...ends) : 0; },
+  // dodawanie na konkretną ścieżkę (przycisk ＋ przy ścieżce i dwuklik w pusty pasek): dźwięk → okno wyboru źródła, reszta → menu
+  addMenu(k, anchor) {
+    const pm = (items) => popMenu(anchor, items), med = (kind, lib, o) => () => this.addMedia(kind, lib, o);
+    if (ATRK.includes(k)) return this.addAudio(k);
+    if (k === 'video') return pm([{ t: 'Wideo z komputera / telefonu…', i: '🎬', fn: med('video', false) }, { t: 'Wideo: biblioteka / Drive / link…', i: '🗂', fn: med('video', true) }]);
+    if (k === 'head') return pm([{ t: 'Plik z komputera / telefonu…', i: '📁', fn: med('video', false, { pip: true }) }, { t: 'Importuj: biblioteka / Drive / link…', i: '🗂', fn: med('video', true, { pip: true }) }]);
+    if (k === 'image') return pm([{ t: 'Obraz z komputera…', i: '🖼', fn: med('image', false) }, { t: 'Obraz: biblioteka / Drive / link…', i: '🗂', fn: med('image', true) }]);
+    if (k === 'text') return this.addLayer('text');
+    if (k === 'graphic') return pm([{ t: 'Prostokąt', i: '▭', fn: () => this.addLayer('shape', 'rect') }, { t: 'Elipsa', i: '◯', fn: () => this.addLayer('shape', 'ellipse') }, { t: 'Pasek', i: '▬', fn: () => this.addLayer('shape', 'line') }]);
+    if (k === 'anim') return pm([['agrad', 'Płynący gradient'], ['orbs', 'Rozmyte kule'], ['particles', 'Cząsteczki'], ['confetti', 'Konfetti'], ['stripes', 'Pasy'], ['bar', 'Pasek postępu']].map(([kk, n]) => ({ t: n, i: '✦', fn: () => this.addLayer('fx', kk) })));
+    if (k === 'bg') return pm(TPL_KINDS.map(([kk, n]) => ({ t: n, i: '＋', fn: () => this.addScene(kk) })));
+  },
   addScene(kind, c, dur, noRender) {
     const r = this.reel, t0 = noRender ? c.__t0 : this.nextStart(); dur = dur || 4;
     const ls = sceneToReel(kind, Object.assign({}, c || TPL_SAMPLE[kind], { handle: P.cur.brand.handle }), t0, dur, r.style, r.layers.length); let k = this.zIns(r, 0);
@@ -248,16 +262,41 @@ const Video = {
   async attachVideoAudio(l) {
     const r = this.reel, id = l.video.assetId; if (!id) return false; let A = null; try { A = await Assets.audio(id); } catch (e) { A = null; }
     if (!A || !A.chs || !A.chs[0] || A.chs[0].length < 2000) return false;
-    const it = { id: uid('au'), track: 'voice', assetId: id, name: 'Dźwięk: ' + l.name.replace(/^(Wideo|Gadająca głowa): /, '').slice(0, 22), t0: l.t0, in: l.video.in || 0, dur: Math.max(0.1, Math.min(l.t1, r.dur) - l.t0), srcDur: A.chs[0].length / A.fs, gain: 0, ...this.lkFade(l), loop: false, duck: false, link: l.id };
+    const it = { id: uid('au'), track: 'voice', assetId: id, name: 'Dźwięk: ' + l.name.replace(/^(Wideo|Gadająca głowa): /, '').slice(0, 22), t0: l.t0, in: l.video.in || 0, dur: Math.max(0.1, Math.min(l.t1, r.dur) - l.t0), srcDur: A.chs[0].length / A.fs, gain: l.video.mute ? -90 : (l.video.vol || 0), tempo: clamp(l.video.speed || 1, 0.25, 4), ...this.lkFade(l), loop: false, duck: false, link: l.id };
     it.lk = this.lkSig(l); r.audio.push(it); this.mc = null; return true;
   },
   lkFade(l) { const an = l.anim || {}, dur = Math.max(0.1, Math.min(l.t1, this.reel.dur) - l.t0), f = (x) => (x && x.p && x.p !== 'none' ? clamp((x.d || 0.5) * 0.8, 0.02, dur / 3) : 0); return { fi: f(an.in) || 0.01, fo: f(an.out) || 0.03 }; }, // dźwięk zanika razem z obrazem
   lkSig(l) { const c = l.video, an = l.anim || {}; return JSON.stringify([l.t0, Math.min(l.t1, this.reel.dur), c.in || 0, c.speed || 1, !!c.mute, c.vol || 0, !!l.hide, an.in && an.in.p, an.in && an.in.d, an.out && an.out.p, an.out && an.out.d]); },
   syncVideoAudio() {
     const r = this.reel; if (!r || !r.audio) return; r.audio = r.audio.filter((a) => {
-      if (!a.link) return true; const l = r.layers.find((x) => x.id === a.link); if (!l) return false; const sig = this.lkSig(l); if (a.lk === sig) return true; const c = l.video, sp = c.speed || 1;
-      a.t0 = l.t0; a.in = c.in || 0; a.dur = Math.max(0.1, Math.min(l.t1, r.dur) - l.t0); a.gain = (Math.abs(sp - 1) > 0.01 || c.mute || l.hide) ? -90 : (c.vol || 0); Object.assign(a, this.lkFade(l)); a.lk = sig; this.mc = null; return true;
+      if (!a.link) return true; const l = r.layers.find((x) => x.id === a.link); if (!l) return false; const sig = this.lkSig(l), c = l.video, sp = clamp(c.speed || 1, 0.25, 4); if (a.lk === sig && (a.tempo || 1) === sp) return true;
+      a.t0 = l.t0; a.in = c.in || 0; a.dur = Math.max(0.1, Math.min(l.t1, r.dur) - l.t0); a.tempo = sp; a.gain = (c.mute || l.hide) ? -90 : (c.vol || 0); Object.assign(a, this.lkFade(l)); a.lk = sig; this.mc = null; return true;
     });
+  },
+  // Wyrównanie poziomów: mierzy głośność (LUFS) użytej części każdego klipu i ustawia wzmocnienie: głos = jeden poziom, muzyka pod głosem, efekty obok
+  async autoLevel() {
+    const r = this.reel, mx = P.cur.mix; if (!r.audio.length) { toast('Brak dźwięku na osi czasu. Dodaj głos, muzykę lub wideo z dźwiękiem.', 'warn'); return; }
+    const tt = toast('Mierzę głośność klipów…', 'info', 90000), TV = -18, got = { voice: [], music: [], sfx: [] }; let skipped = 0;
+    try {
+      await tick(); const set = (a, g) => { g = clamp(Math.round(g * 10) / 10, -30, 12); const l = a.link ? r.layers.find((x) => x.id === a.link) : null; if (l) l.video.vol = g; else a.gain = g; };
+      const lufs = async (a) => { const A = await Assets.audio(a.assetId); if (!A) return -Infinity; const sp = a.tempo || 1, i0 = Math.floor((a.in || 0) * A.fs), i1 = Math.min(A.chs[0].length, i0 + Math.floor(Math.min(a.dur * sp, 45) * A.fs)); if (i1 - i0 < 0.5 * A.fs) return -Infinity; await tick(); return DSP.integratedLoudness(A.chs.map((x) => x.subarray(i0, i1)), A.fs); };
+      const meas = []; for (const a of r.audio) { if (a.gain <= -80) continue; const L = await lufs(a); if (!isFinite(L)) { skipped++; continue; } meas.push([a, L]); }
+      const duck = mx.duckDepth > 0, tgt = { voice: TV, music: TV - (duck ? 11 : 17), sfx: TV - 6 };
+      for (const [a, L] of meas) { set(a, tgt[a.track] - L); got[a.track].push(a); }
+      tt.remove(); const n = meas.length; if (!n) { toast('Nie udało się zmierzyć głośności (klipy za krótkie lub cisza).', 'warn'); return; }
+      this.commit(true); const f = (k) => (got[k].length ? got[k].length + '× ' + Math.round(tgt[k]) + ' LUFS' : null);
+      toast('Wyrównano poziomy (' + [['głos', 'voice'], ['muzyka', 'music'], ['efekty', 'sfx']].map(([nm, k]) => (f(k) ? nm + ' ' + f(k) : null)).filter(Boolean).join(', ') + (skipped ? '; pominięto ' + skipped + ' bez sygnału' : '') + '). Eksport podnosi całość do ' + mx.target + ' LUFS.', 'ok', 9000);
+    } catch (e) { tt.remove(); toast('Nie udało się wyrównać poziomów: ' + errText(e), 'bad', 8000); }
+  },
+  // Tempo wideo: klip skraca się / wydłuża tak, by pokazywać ten sam fragment pliku; dźwięk rozciąga mixReel (WSOLA, bez zmiany wysokości głosu)
+  setSpeed(l, v) {
+    const c = l.video, old = c.speed || 1; v = clamp(Math.round(v * 100) / 100, 0.25, 4); if (Math.abs(v - old) < 1e-4) return false;
+    const span = (l.t1 - l.t0) * old; c.speed = v; l.t1 = l.t0 + span / v; this.ensureDur(l.t1); return true;
+  },
+  async stretched(a, A, tp) {
+    this.tc = this.tc || new Map(); const k = [a.assetId, a.in, a.dur, tp].join('|'); if (this.tc.has(k)) return this.tc.get(k);
+    const i0 = Math.floor((a.in || 0) * A.fs), i1 = Math.min(A.chs[0].length, i0 + Math.floor(a.dur * tp * A.fs)); await tick();
+    const out = DSP.wsola(A.chs.map((x) => x.subarray(i0, i1)), tp, A.fs); this.tc.set(k, out); if (this.tc.size > 8) this.tc.delete(this.tc.keys().next().value); return out;
   },
   async addAudio(track) {
     try {
@@ -311,10 +350,10 @@ const Video = {
     for (const a of r.audio) items[a.track].push({ it: a, kind: 'audio', tr: a.track, t0: a.t0, t1: a.t0 + a.dur });
     const laneN = {}; for (const k in items) { const ends = []; items[k].sort((a, b) => a.t0 - b.t0); for (const c of items[k]) { let i = ends.findIndex((e) => e <= c.t0 + 0.001); if (i < 0) { i = ends.length; ends.push(0); } ends[i] = c.t1; c.lane = i; } laneN[k] = Math.max(1, ends.length); }
     const LH = (k) => (laneN[k] > 1 ? 22 : 30), RH = (k) => (laneN[k] > 1 ? laneN[k] * 22 : items[k].length ? 30 : 24);
-    this.names.innerHTML = ''; this.names.append(h('div', { style: { height: '24px', borderBottom: '1px solid var(--bd)' } })); TRACKS.forEach(([k, n]) => this.names.append(h('div', { class: 'tn ' + k, style: { height: RH(k) + 'px' }, title: laneN[k] > 1 ? n + ': ' + laneN[k] + ' nakładające się warstwy' : n }, TRK_ICON[k] + ' ' + n)));
+    this.names.innerHTML = ''; this.names.append(h('div', { style: { height: '24px', borderBottom: '1px solid var(--bd)' } })); TRACKS.forEach(([k, n]) => this.names.append(h('div', { class: 'tn ' + k, style: { height: RH(k) + 'px' }, title: laneN[k] > 1 ? n + ': ' + laneN[k] + ' nakładające się warstwy' : n }, h('span', { class: 'tnl' }, TRK_ICON[k] + ' ' + n), h('button', { class: 'tn-add', title: 'Dodaj na tę ścieżkę: ' + TRK_ADD[k], onclick: (e) => { this.addMenu(k, e.currentTarget); } }, '＋'))));
     const ruler = h('div', { class: 'tl-ruler', style: { width: W + 'px' } }); ruler.addEventListener('pointerdown', (e) => this.scrub(e));
     let step = [0.5, 1, 2, 5, 10, 15, 30, 60].find((s) => s * pps >= 56) || 60; for (let s = 0; s <= r.dur + 1e-6; s += step) ruler.append(h('i', { style: { left: s * pps + 'px' } }, fmtTime(s))); this.inner.append(ruler);
-    const rows = {}; TRACKS.forEach(([k]) => { const row = h('div', { class: 'tl-track ' + k, style: { width: W + 'px', height: RH(k) + 'px' } }); row.dataset.tr = k; row.addEventListener('pointerdown', (e) => { if (e.target === row) { blurInputs(); this.scrub(e); if (this.selId) { this.selId = null; this.panels(); this.stage.render(); this.tlMarks(); } } }); rows[k] = row; this.inner.append(row); });
+    const rows = {}; TRACKS.forEach(([k]) => { const row = h('div', { class: 'tl-track ' + k, style: { width: W + 'px', height: RH(k) + 'px' } }); row.dataset.tr = k; if (!items[k].length) row.append(h('span', { class: 'tl-ph' }, '＋ ' + TRK_ADD[k] + ': dwuklik lub przycisk ＋ po lewej')); row.addEventListener('pointerdown', (e) => { if (e.target === row) { const now = performance.now(), d = this._dc; if (d && d.k === k && now - d.t < 450 && Math.abs(e.clientX - d.x) < 10) { this._dc = null; e.preventDefault(); const q = this.inner.getBoundingClientRect(); this.seek(clamp((e.clientX - q.left) / pps, 0, r.dur)); this.addMenu(k, { getBoundingClientRect: () => ({ right: e.clientX, bottom: e.clientY }) }); return; } this._dc = { k, t: now, x: e.clientX }; blurInputs(); this.scrub(e); if (this.selId) { this.selId = null; this.panels(); this.stage.render(); this.tlMarks(); } } }); rows[k] = row; this.inner.append(row); });
     for (const k in items) for (const c of items[k]) rows[k].append(this.clipEl(c.it, c.kind, k, c.t0, c.t1, pps, c.lane, LH(k), laneN[k] > 1));
     this.ph = h('div', { class: 'playhead' }); this.inner.append(this.ph); this.updPlayhead(); this.names.scrollTop = this.scroll.scrollTop;
   },
@@ -325,7 +364,7 @@ const Video = {
     if (kind === 'audio') { const cv = h('canvas', { width: Math.max(8, Math.round((t1 - t0) * pps)), height: 24 }); el.prepend(cv); this.wave(cv, it); } return el;
   },
   async wave(cv, a) {
-    try { const A = await Assets.audio(a.assetId); if (!A) return; const w = cv.width, pk = DSP.peaks(A.chs[0], w, Math.floor(a.in * A.fs), Math.min(A.chs[0].length, Math.floor((a.in + a.dur) * A.fs))), x = cv.getContext('2d'); x.fillStyle = 'rgba(255,255,255,.85)'; for (let i = 0; i < w; i++) { const mn = pk[2 * i], mx = pk[2 * i + 1]; x.fillRect(i, 12 - mx * 12, 1, Math.max(1, (mx - mn) * 12)); } } catch (e) { /* brak podglądu fali */ }
+    try { const A = await Assets.audio(a.assetId); if (!A) return; const w = cv.width, pk = DSP.peaks(A.chs[0], w, Math.floor(a.in * A.fs), Math.min(A.chs[0].length, Math.floor((a.in + a.dur * (a.tempo || 1)) * A.fs))), x = cv.getContext('2d'); x.fillStyle = 'rgba(255,255,255,.85)'; for (let i = 0; i < w; i++) { const mn = pk[2 * i], mx = pk[2 * i + 1]; x.fillRect(i, 12 - mx * 12, 1, Math.max(1, (mx - mn) * 12)); } } catch (e) { /* brak podglądu fali */ }
   },
   snapT(t, ex) {
     if (!this.snap) return t; const pps = this.pps(), tol = 8 / pps, pts = [0, this.reel.dur, this.t]; for (const c of this.allClips()) if (c.it !== ex) pts.push(c.t0, c.t1);
@@ -345,7 +384,7 @@ const Video = {
         rows.forEach((rw) => { rw.classList.toggle('drop', !!tgt && rw.dataset.tr === tgt); rw.classList.toggle('deny', !!nt && nt !== it.track && !tgt && rw.dataset.tr === nt); }); el.style.transform = v ? 'translateY(' + dy + 'px)' : ''; el.classList.toggle('drag', v);
       }
       else if (mode === 'l') { let a = this.snapT(Math.max(0, o.t0 + d), it); a = clamp(a, 0, o.t1 - 0.1); if (isA) { const nin = o.in + (a - o.t0); if (nin < 0) a = o.t0 - o.in; it.in = Math.max(0, o.in + (a - o.t0)); } else if (it.type === 'video') { const sp = it.video.speed || 1, v0 = (this._vin0 = this._vin0 == null ? it.video.in : this._vin0); if (v0 + (a - o.t0) * sp < 0) a = o.t0 - v0 / sp; it.video.in = Math.max(0, v0 + (a - o.t0) * sp); } apply(a, o.t1); }
-      else { let b = this.snapT(o.t1 + d, it); b = Math.max(o.t0 + 0.1, b); if (isA && !it.loop && it.srcDur) b = Math.min(b, o.t0 + (it.srcDur - it.in)); else if (it.type === 'video') { const mx = this.vidMax(it); if (mx) b = Math.min(b, o.t0 + mx); } apply(o.t0, b); }
+      else { let b = this.snapT(o.t1 + d, it); b = Math.max(o.t0 + 0.1, b); if (isA && !it.loop && it.srcDur) b = Math.min(b, o.t0 + (it.srcDur - it.in) / (it.tempo || 1)); else if (it.type === 'video') { const mx = this.vidMax(it); if (mx) b = Math.min(b, o.t0 + mx); } apply(o.t0, b); }
       this.t = this.t; this.stage.render();
     };
     const up = () => {
@@ -399,9 +438,9 @@ const Video = {
     const buf = this.ac.createBuffer(2, m.chs[0].length, 48000); buf.copyToChannel(m.chs[0], 0); buf.copyToChannel(m.chs[1], 1); const s = this.ac.createBufferSource(); s.buffer = buf; s.connect(this.ac.destination); s.start(0, Math.min(t, m.chs[0].length / 48000 - 0.01)); this.src = s;
   },
   async mixReel() {
-    const r = this.reel, mx = P.cur.mix, key = JSON.stringify([r.audio.map((a) => [a.assetId, a.track, a.t0, a.in, a.dur, a.gain, a.fi, a.fo, a.loop, a.duck]), r.dur, mx.duckDepth, mx.duckAttack, mx.duckRelease, mx.target, mx.tp]);
+    const r = this.reel, mx = P.cur.mix, key = JSON.stringify([r.audio.map((a) => [a.assetId, a.track, a.t0, a.in, a.dur, a.gain, a.fi, a.fo, a.loop, a.duck, a.tempo || 1]), r.dur, mx.duckDepth, mx.duckAttack, mx.duckRelease, mx.target, mx.tp]);
     if (this.mc && this.mc.key === key) return this.mc; if (!r.audio.length) return (this.mc = { key, none: true });
-    const clips = []; for (const a of r.audio) { const A = await Assets.audio(a.assetId); if (!A) continue; clips.push({ track: a.track, chs: A.chs, t0: a.t0, in: a.in, out: a.in + a.dur, t1: a.t0 + a.dur, vol: a.gain, fadeIn: a.fi, fadeOut: a.fo, loop: !!a.loop, duck: a.duck !== false }); }
+    const clips = []; for (const a of r.audio) { const A = await Assets.audio(a.assetId); if (!A) continue; const tp = a.tempo || 1, st = Math.abs(tp - 1) > 0.005; clips.push({ track: a.track, chs: st ? await this.stretched(a, A, tp) : A.chs, t0: a.t0, in: st ? 0 : a.in, out: st ? a.dur : a.in + a.dur, t1: a.t0 + a.dur, vol: a.gain, fadeIn: a.fi, fadeOut: a.fo, loop: !!a.loop, duck: a.duck !== false }); }
     await tick(); const m = DSP.mixdown(clips, 48000, r.dur, { duck: { depth: mx.duckDepth, attack: mx.duckAttack, release: mx.duckRelease } }); await tick();
     const n = DSP.loudnessNormalize(m.chs, 48000, mx.target, mx.tp), qc = DSP.qc(n.chs, 48000, { target: mx.target, tp: mx.tp, voice: m.voice, music: m.music });
     return (this.mc = { key, chs: n.chs, qc, fs: 48000, voice: m.voice, music: m.music });

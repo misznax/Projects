@@ -1,4 +1,4 @@
-# Creative Studio Social · v0.05
+# Creative Studio Social · v0.06
 
 Studio treści na social media w przeglądarce: marka → grafiki (karuzele) → wideo (rolki 9:16) → audio → publikacja na Instagram, YouTube Shorts, TikTok i Facebook Reels.
 Autor: Michał Rzekiecki · kontakt: michus@gmail.com · adres: https://projects.michus.workers.dev/06/
@@ -44,6 +44,12 @@ Autor: Michał Rzekiecki · kontakt: michus@gmail.com · adres: https://projects
 1. Analiza w przeglądarce (canvas, bez kluczy): poświaty (kolor i pozycja), pasek postępu, stopka, bloki tekstu, zdjęcie, akcenty → „DNA” układu, które steruje wszystkimi szablonami.
 2. Wzorzec domyślny: karuzela „Po kontuzji” (v4). Własny materiał (obrazy lub wideo rolki) nadpisuje DNA w projekcie; rodzaje slajdów są rozpoznawane zgrubnie.
 
+## Zmiany v0.06 (dźwięk i tempo)
+
+1. **Dodawanie muzyki i efektów**: przy każdej ścieżce na osi czasu jest przycisk ＋, puste paski mają podpowiedź, a **dwuklik** w pusty pasek dodaje klip w tym miejscu (dźwięk: okno wyboru źródła, reszta: menu). W lewym panelu są osobne przyciski „🎙 Głos", „🎵 Muzyka", „🔔 Efekt". Muzyka może pochodzić z Audio Studio, biblioteki, Drive, linku lub pliku.
+2. **🔊 Wyrównaj poziomy** (pasek nad osią): mierzy głośność (LUFS) użytej części każdego klipu i ustawia wzmocnienie: głos −18 LUFS (każdy klip jednakowo, także dźwięk z wideo), muzyka 11 LU pod głosem (17 LU bez ducking), efekty 6 LU pod głosem. Eksport i tak normalizuje całość do celu z ustawień rolki.
+3. **Tempo wideo i mowy**: suwak 0,5–2× (+ szybkie 0,8 / 1 / 1,15 / 1,25 / 1,5 / 2×) w pływającym panelu i w panelu po prawej. Klip skraca się lub wydłuża, żeby pokazać ten sam fragment pliku; dźwięk jest rozciągany algorytmem WSOLA bez zmiany wysokości głosu (nieniszcząco, w miksie podglądu i eksportu). Wcześniej zmiana prędkości wyciszała dźwięk.
+
 ## Zmiany v0.05 (wideo)
 
 1. **Kolejność warstw wg ścieżki**: Tło < animowane tło < wideo w tle < Wideo < Głowa < obrazy / teksty / grafiki. Nowa gadająca głowa zawsze ląduje nad zwykłym wideo (wcześniej trafiała pod pełnoekranowe wideo i klik zaznaczał wideo). Starsze rolki naprawiają się przy otwarciu.
@@ -78,6 +84,6 @@ Autor: Michał Rzekiecki · kontakt: michus@gmail.com · adres: https://projects
 
 ## Plan
 
-1. v0.06: R2 (chmura projektów i publiczne adresy mediów) + adapter Metricool (planowanie wpisów); nagrywanie gadającej głowy kamerą w aplikacji.
-2. v0.07: bezpośrednie API (YouTube, Meta, TikTok), format 4:5 w wideo.
+1. v0.07: R2 (chmura projektów i publiczne adresy mediów) + adapter Metricool (planowanie wpisów); nagrywanie gadającej głowy kamerą w aplikacji.
+2. v0.08: bezpośrednie API (YouTube, Meta, TikTok), format 4:5 w wideo.
 3. v1.0 po zatwierdzeniu; od tej wersji kopie w `backup/`.
