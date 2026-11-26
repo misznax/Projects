@@ -1,10 +1,14 @@
-# 05 Anatomia — v0.12
+# 05 Anatomia — v0.13
 
 Interaktywny model 3D **kończyny górnej, głowy i szyi, tułowia, miednicy, uda oraz podudzia i stopy** (prawa / lewa = lustro / obie): 32 kości, 67 siatek mięśniowych (51 mięśni), 109 punktów kostnych, **22 stawy** (typ, osie, powierzchnie, antagoniści, torebki) oraz czaszka i kręgi szyjne (wczytywane na żądanie). Nazwy polskie (duże) i łacińskie (pod spodem, w nawiasie), wyszukiwarka po wszystkich nazwach (PL/łac./ang.), regiony (bark · ramię · przedramię · dłoń), obrót modelu, początki (niebieski) i przyczepy końcowe (pomarańczowy) mięśni na kościach.
 
 - Adres: https://anatomia.smialo.org/ (domena Workera podpięta 2026-11-16, tymczasowo do 2026-12-31) oraz https://projects.michus.workers.dev/05/ (stały). Żaden z nich nie jest za Cloudflare Access.
 - Technologia: three.js (WebGL) + three-mesh-bvh; jeden `index.html` + pliki GLB i dane pozy (`public/`).
 - Dane: `data/data.json` (nazwy, opisy, przyczepy, pozycje punktów).
+
+## v0.13
+- **Poza się sumuje**: gotowe pozy, ruchy z panelu „Ruchy” i suwaki zmieniają tylko swoje stawy, reszta pozy zostaje (np. siad + rotacja biodra + wspięcie). Pełny reset: przycisk Reset albo gotowa poza „Pozycja anatomiczna”. Testy (🩺) nadal ustawiają pozę od zera.
+- **Zaznaczone mięśnie zostają** przy zmianie pozy: włączenie nogi nie czyści już zaznaczenia ani ukryć, a ▶ przy ruchu nie podmienia wybranych mięśni (gdy nic nie wybrano, nadal pokazuje mięśnie danego ruchu).
 
 ## v0.12
 - **Poza i animacja kończyny dolnej**: suwaki Staw biodrowy (zgięcie/wyprost, odwodzenie/przywodzenie, rotacja), Kolano (zgięcie), Kostka i stopa (grzbietowe/podeszwowe, inwersja/ewersja). Mięśnie uda i podudzia odkształcają się razem z kośćmi (skinning + kolizje z kością udową, piszczelą i stopą).
