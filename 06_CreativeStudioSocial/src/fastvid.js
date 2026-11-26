@@ -43,6 +43,13 @@ const FastVid = (() => {
     return bad('brak moov');
   }
 
+  // ciąg kodeka HEVC z hvcC (ISO 14496-15, dodatek E): hvc1.<profil>.<flagi zgodności (bity odwrócone)>.<L|H><poziom>.<bajty ograniczeń bez zer na końcu>
+  function hevcCodec(v, b, ety) {
+    const g = (i) => v.getUint8(b + i), ps = g(1) >> 6, tier = (g(1) >> 5) & 1, pidc = g(1) & 31; let comp = ((g(2) << 24) | (g(3) << 16) | (g(4) << 8) | g(5)) >>> 0, rev = 0;
+    for (let i = 0; i < 32; i++) { rev = ((rev << 1) | (comp & 1)) >>> 0; comp >>>= 1; }
+    const cs = []; for (let i = 0; i < 6; i++) cs.push(g(6 + i)); while (cs.length && !cs[cs.length - 1]) cs.pop();
+    return ety + '.' + ['', 'A', 'B', 'C'][ps] + pidc + '.' + rev.toString(16).toUpperCase() + '.' + (tier ? 'H' : 'L') + g(12) + cs.map((x) => '.' + x.toString(16).toUpperCase()).join('');
+  }
   function parse(v, fileSize) { // → opis ścieżki wideo i tablice próbek (kolejność dekodowania)
     const moov = find(boxes(v, 0, v.byteLength), 'moov'); if (!moov) bad('brak moov');
     for (const trak of boxes(v, moov.b, moov.e).filter((x) => x.ty === 'trak')) {
@@ -57,9 +64,9 @@ const FastVid = (() => {
       let mediaTime = 0; const edts = find(tk, 'edts');
       if (edts) { const elst = find(boxes(v, edts.b, edts.e), 'elst'); if (elst) { const ver = v.getUint8(elst.b), cnt = u32(v, elst.b + 4); let p = elst.b + 8; const mts = []; for (let k = 0; k < cnt; k++) { if (ver === 1) { mts.push(i64(v, p + 8)); p += 20; } else { mts.push(i32(v, p + 4)); p += 12; } } if (mts.some((x) => x < 0) || mts.length > 1) bad('złożona lista edycji'); mediaTime = mts[0] || 0; } }
       const minf = find(md, 'minf'), stbl = minf && find(boxes(v, minf.b, minf.e), 'stbl'); if (!stbl) bad('brak stbl'); const sb = boxes(v, stbl.b, stbl.e);
-      const stsd = find(sb, 'stsd'); if (!stsd) bad('brak stsd'); const es = stsd.b + 8, esz = u32(v, es), ety = tp(v, es + 4); if (ety !== 'avc1') bad('kodek ' + ety + ' (tylko H.264 avc1)');
-      const avcC = find(boxes(v, es + 8 + 78, es + esz), 'avcC'); if (!avcC) bad('brak avcC');
-      const desc = new Uint8Array(v.buffer.slice(v.byteOffset + avcC.b, v.byteOffset + avcC.e)), codec = 'avc1.' + [1, 2, 3].map((i) => hex2(v.getUint8(avcC.b + i))).join('');
+      const stsd = find(sb, 'stsd'); if (!stsd) bad('brak stsd'); const es = stsd.b + 8, esz = u32(v, es), ety = tp(v, es + 4), isH = ety === 'hvc1' || ety === 'hev1'; if (ety !== 'avc1' && !isH) bad('kodek ' + ety + ' (obsługuję H.264 i HEVC)');
+      const avcC = find(boxes(v, es + 8 + 78, es + esz), isH ? 'hvcC' : 'avcC'); if (!avcC) bad('brak ' + (isH ? 'hvcC' : 'avcC'));
+      const desc = new Uint8Array(v.buffer.slice(v.byteOffset + avcC.b, v.byteOffset + avcC.e)), codec = isH ? hevcCodec(v, avcC.b, ety) : 'avc1.' + [1, 2, 3].map((i) => hex2(v.getUint8(avcC.b + i))).join('');
       const w0 = u16(v, es + 32), h0 = u16(v, es + 34);
       const stts = find(sb, 'stts'), stsz = find(sb, 'stsz'), stsc = find(sb, 'stsc'), stco = find(sb, 'stco') || find(sb, 'co64'); if (!stts || !stsz || !stsc || !stco) bad('brak tablic próbek');
       const n = u32(v, stsz.b + 8); if (!n) bad('brak próbek (fragmentowany MP4?)'); const fixed = u32(v, stsz.b + 4), size = new Uint32Array(n); for (let i = 0; i < n; i++) size[i] = fixed || u32(v, stsz.b + 12 + i * 4);
@@ -108,7 +115,7 @@ const FastVid = (() => {
         if (this.pend.length && this.pend[0].timestamp >= want) break;
         if (performance.now() - t0 > 15000) bad('limit czasu klatki');
         if (this.fed < this.n && !this.eof) {
-          let c = 0; while (this.fed < this.n && c < 2 && this.dec.decodeQueueSize < 3 && this.pend.length < 8) { const i = this.fed++; const data = await this.rd.read(this.off[i], this.size[i]); this.dec.decode(new EncodedVideoChunk({ type: this.key[i] ? 'key' : 'delta', timestamp: this.pts[i], data })); c++; }
+          let c = 0; while (this.fed < this.n && c < 2 && this.dec.decodeQueueSize < 3 && this.pend.length < 5) { const i = this.fed++; const data = await this.rd.read(this.off[i], this.size[i]); this.dec.decode(new EncodedVideoChunk({ type: this.key[i] ? 'key' : 'delta', timestamp: this.pts[i], data })); c++; }
           if (c) continue; await this.wait(4000);
         } else if (!this.eof) { this.eof = true; await this.dec.flush(); } // koniec pliku: wypchnij zaległe klatki
         else if (!this.pend.length) bad('brak klatki na końcu strumienia');
@@ -121,12 +128,15 @@ const FastVid = (() => {
 
   return {
     // → obiekt z metodą frame(t) i close(), albo null, gdy tego pliku nie da się obsłużyć szybką metodą
-    async open(blob, maxDim) {
+    // out (opcjonalnie): obiekt, do którego trafia { codec, why } – kodek pliku albo powód odrzucenia
+    async open(blob, maxDim, out) {
       try {
-        if (!window.VideoDecoder || !window.EncodedVideoChunk || !blob) return null;
-        const info = parse(await readMoov(blob), blob.size); const sup = await VideoDecoder.isConfigSupported({ codec: info.codec, description: info.desc }); if (!sup.supported) bad('dekoder nie obsługuje ' + info.codec);
+        if (!window.VideoDecoder || !window.EncodedVideoChunk) bad('przeglądarka bez WebCodecs'); if (!blob) bad('brak pliku');
+        const info = parse(await readMoov(blob), blob.size); if (out) out.codec = info.codec; const sup = await VideoDecoder.isConfigSupported({ codec: info.codec, description: info.desc }); if (!sup.supported) bad('dekoder tej przeglądarki nie obsługuje ' + info.codec);
         return new Clip(info, blob, maxDim);
-      } catch (e) { console.info('Szybkie dekodowanie niedostępne dla tego pliku:', e && e.message); return null; }
+      } catch (e) { if (out) out.why = (e && e.message) || String(e); console.info('Szybkie dekodowanie niedostępne dla tego pliku:', e && e.message); return null; }
     },
+    // tylko odczyt nagłówka (testy i diagnostyka): kodek, liczba klatek, obrót
+    async info(blob) { const i = parse(await readMoov(blob), blob.size); return { codec: i.codec, n: i.n, rot: i.rot, w0: i.w0, h0: i.h0, keys: i.key.reduce((a, x) => a + x, 0) }; },
   };
 })();

@@ -110,11 +110,26 @@ async function boot() {
   bus.on('project', () => { nm.value = P.cur.name; S.go(S.tab, true); });
   window.addEventListener('keydown', (e) => { if ((e.ctrlKey || e.metaKey) && /^[1-6]$/.test(e.key) && !e.target.closest('input,textarea,select')) { e.preventDefault(); S.go(S.names[+e.key - 1][0]); } });
   document.addEventListener('visibilitychange', () => { if (document.hidden && P.cur && P.dirty) saveNow(); }); window.addEventListener('beforeunload', () => { if (P.cur && P.dirty) saveNow(); });
-  window.addEventListener('error', (e) => { if (e.message && !/ResizeObserver/.test(e.message)) toast('Błąd aplikacji: ' + e.message, 'bad', 9000); }); window.addEventListener('unhandledrejection', (e) => { console.error(e.reason); toast('Błąd: ' + errText(e.reason), 'bad', 9000); });
+  window.addEventListener('error', (e) => { if (e.message && !/ResizeObserver/.test(e.message)) toast('Błąd aplikacji (' + APP.ver + '): ' + e.message, 'bad', 9000); }); window.addEventListener('unhandledrejection', (e) => { console.error(e.reason); toast('Błąd (' + APP.ver + '): ' + errText(e.reason), 'bad', 9000); });
   try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) { /* opcjonalne */ }
   try {
     const last = localStorage.getItem('css-last'), list = await listProjects(); let id = list.find((p) => p.id === last) ? last : (list[0] && list[0].id);
     if (!id) { await createProject('Mój pierwszy projekt'); toast('Marka i pomysły ładują się same (Drive, Instagram). Zacznij od zakładki Pomysły: wybierz temat i kliknij „Utwórz w edytorze”.', 'info', 9000); } else await openProject(id);
   } catch (e) { console.error(e); toast('Nie udało się otworzyć bazy projektów: ' + errText(e) + '. Sprawdź, czy przeglądarka nie blokuje danych witryn (tryb prywatny).', 'bad', 15000); }
 }
+// ── Nowa wersja: strona bywa otwarta godzinami, a poprawki wdrażają się same. Baner „odśwież” (projekt zapisuje się automatycznie) ──
+let updShown = false;
+async function checkUpdate() {
+  if (updShown) return;
+  try {
+    const r = await fetch('version.json?v=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
+    const j = await r.json(), m = /^v[\d.]+$/.test(j.ver || '') ? [0, j.ver] : null; if (!m || m[1] === APP.ver) return;
+    const num = (x) => x.slice(1).split('.').map(Number); const a = num(m[1]), b = num(APP.ver); let newer = false; for (let i = 0; i < Math.max(a.length, b.length); i++) { if ((a[i] || 0) !== (b[i] || 0)) { newer = (a[i] || 0) > (b[i] || 0); break; } } if (!newer) return;
+    updShown = true; const bar = h('div', { style: { position: 'fixed', left: '50%', bottom: '16px', transform: 'translateX(-50%)', zIndex: 9999, background: '#14532d', color: '#fff', padding: '10px 14px', borderRadius: '10px', boxShadow: '0 6px 24px rgba(0,0,0,.45)', display: 'flex', gap: '12px', alignItems: 'center', fontSize: '13px', maxWidth: '92vw' } },
+      h('span', {}, 'Dostępna nowa wersja ' + m[1] + ' (masz ' + APP.ver + '). Projekt zapisuje się sam.'),
+      h('button', { class: 'btn pri', onclick: async () => { if (typeof Video !== 'undefined' && Video.exporting && !confirm('Trwa eksport. Odświeżenie go przerwie. Odświeżyć mimo to?')) return; try { if (P.cur && P.dirty) await saveNow(); } catch (e) { /* zapis w tle i tak działa */ } location.reload(); } }, 'Odśwież teraz'),
+      h('button', { class: 'btn', onclick: () => bar.remove() }, 'Później')); document.body.append(bar);
+  } catch (e) { /* brak sieci: sprawdzimy później */ }
+}
+setTimeout(checkUpdate, 15000); setInterval(checkUpdate, 5 * 60 * 1000); document.addEventListener('visibilitychange', () => { if (!document.hidden) checkUpdate(); });
 boot();

@@ -12,4 +12,6 @@ vendor = (r / 'vendor' / 'mp4-muxer.min.js').read_text(encoding='utf-8').replace
 tpl = (r / 'src/app.src.html').read_text(encoding='utf-8')
 html = tpl.replace('/*VENDOR*/', vendor).replace('/*SCRIPT*/', "'use strict';\n" + js.replace('</script', '<\\/script'))
 (r / 'index.html').write_text(html, encoding='utf-8')
-print('OK', len(html))
+ver = re.search(r"const APP = \{[^}]*?ver: '(v[\d.]+)'", js).group(1)
+(r / 'public' / 'version.json').write_text(json.dumps({'ver': ver, 'size': len(html)}), encoding='utf-8')
+print('OK', len(html), ver)

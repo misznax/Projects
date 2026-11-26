@@ -1,4 +1,4 @@
-# Creative Studio Social · v0.08
+# Creative Studio Social · v0.09
 
 Studio treści na social media w przeglądarce: marka → grafiki (karuzele) → wideo (rolki 9:16) → audio → publikacja na Instagram, YouTube Shorts, TikTok i Facebook Reels.
 Autor: Michał Rzekiecki · kontakt: michus@gmail.com · adres: https://projects.michus.workers.dev/06/
@@ -44,6 +44,13 @@ Autor: Michał Rzekiecki · kontakt: michus@gmail.com · adres: https://projects
 1. Analiza w przeglądarce (canvas, bez kluczy): poświaty (kolor i pozycja), pasek postępu, stopka, bloki tekstu, zdjęcie, akcenty → „DNA” układu, które steruje wszystkimi szablonami.
 2. Wzorzec domyślny: karuzela „Po kontuzji” (v4). Własny materiał (obrazy lub wideo rolki) nadpisuje DNA w projekcie; rodzaje slajdów są rozpoznawane zgrubnie.
 
+## Zmiany v0.09 (eksport: Baseline, HEVC, szkic, baner nowej wersji)
+
+1. **Kodowanie H.264 Baseline** (bez klatek B): kolejność klatek nie może się już rozjechać, więc błąd „Timestamps must be monotonically increasing” nie ma jak wystąpić. Składanie pliku nadal liczy DTS i PTS niezależnie od kodera (zabezpieczenie na Safari / inne kodery), a dźwięk trafia do bufora i jest składany z gwarancją niemalejących czasów. Przy błędzie komunikat zawiera dane diagnostyczne (kodek, kolejność klatek).
+2. **HEVC (iPhone) w szybkim dekodowaniu**: pliki H.265 (`hvc1`/`hev1`, także 10-bit) są dekodowane po kolei przez WebCodecs, jeśli dekoder przeglądarki je obsługuje. Wcześniej szły wolną metodą z przewijaniem (4K HEVC: ok. 1 s na klatkę). Po eksporcie okno pokazuje, które wideo szło szybko, a które wolno, z powodem.
+3. **Szkic ok. 30%** w oknie eksportu: 540×960, 15 kl./s, 2 Mb/s, ok. 3× szybciej niż pełna wersja przy tym samym materiale i bez zmiany czasu i dźwięku. Plik tylko się pobiera i nie trafia do Publikacji. Dodatkowo „Średnia” (720×1280).
+4. **Baner „nowa wersja”**: aplikacja co 5 minut i po powrocie do karty czyta `version.json`; jeśli na serwerze jest nowsza wersja, pokazuje zielony pasek „Odśwież teraz” (projekt zapisuje się sam). Wersja jest też w komunikatach błędów.
+
 ## Zmiany v0.08 (eksport MP4: błąd DTS i szybkość)
 
 1. **Naprawa błędu „Timestamps must be monotonically increasing (DTS went from … to …)”**: sprzętowy koder H.264 zwraca klatki B w kolejności dekodowania. Eksport buforuje je, wylicza opóźnienie i zapisuje osobno DTS (rosnący) i PTS (przesunięcie kompozycji), a dźwięk dostaje tyle samo ciszy na starcie (synchronizacja A/V bez zmian). Test syntetyczny z przestawionymi klatkami: plik poprawny (DTS ściśle rosnące, PTS unikalne, ffmpeg dekoduje bez błędów).
@@ -87,7 +94,7 @@ Autor: Michał Rzekiecki · kontakt: michus@gmail.com · adres: https://projects
 
 1. Rolki tylko 9:16. Wideo HEVC/H.265 (domyślny format iPhone'a) Chrome zwykle nie odczyta (widać wtedy tylko ramkę, a dźwięk gra): aplikacja pokazuje komunikat; nagrywaj w trybie „Najbardziej zgodny” (H.264).
 2. Obrazy AI: FLUX generuje 1024×1024, aplikacja kadruje do formatu; brak zachowania tożsamości osoby.
-3. AAC zależy od przeglądarki (Windows i macOS: tak; Linux headless: Opus). Nie sprawdzono jeszcze na prawdziwym Chrome z AAC.
+3. AAC zależy od przeglądarki (Chrome na Windows i macOS, Safari 26+: tak; Firefox i Linux: nie, wtedy Opus, którego Instagram i TikTok mogą nie przyjąć). Plan: wbudowany koder AAC (WASM) jako zapas.
 4. Zmiana tempa/tonu bez Rubber Band (licencja GPL); własny WSOLA, jakość dobra dla mowy, słabsza dla muzyki przy skrajnych wartościach.
 5. Brak analizy PDF, brak synchronizacji projektów między urządzeniami.
 6. Szkło (rozmycie) używa `ctx.filter`: w Safari zastępuje je półprzezroczysta warstwa; w eksporcie MP4 rozmycie spowalnia kodowanie.
@@ -97,6 +104,6 @@ Autor: Michał Rzekiecki · kontakt: michus@gmail.com · adres: https://projects
 
 ## Plan
 
-1. v0.09: R2 (chmura projektów i publiczne adresy mediów) + adapter Metricool (planowanie wpisów); nagrywanie gadającej głowy kamerą w aplikacji.
-2. v0.10: bezpośrednie API (YouTube, Meta, TikTok), format 4:5 w wideo.
+1. v0.10: R2 (chmura projektów i publiczne adresy mediów) + adapter Metricool (planowanie wpisów); nagrywanie gadającej głowy kamerą w aplikacji.
+2. v0.11: bezpośrednie API (YouTube, Meta, TikTok), format 4:5 w wideo.
 3. v1.0 po zatwierdzeniu; od tej wersji kopie w `backup/`.

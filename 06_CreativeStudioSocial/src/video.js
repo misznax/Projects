@@ -481,10 +481,10 @@ const Video = {
       jobs.push((async () => {
         if (st.use && !st.off.has(l.id)) {
           try {
-            let f = st.fast.get(l.id); if (f === undefined) { f = await FastVid.open(await Assets.blob(l.video.assetId), st.dim); st.fast.set(l.id, f); if (!f) st.off.add(l.id); }
+            let f = st.fast.get(l.id); if (f === undefined) { const out = {}; f = await FastVid.open(await Assets.blob(l.video.assetId), st.dim, out); st.fast.set(l.id, f); st.info.set(l.id, { name: l.name, codec: out.codec || '', mode: f ? 'szybko' : 'wolno', why: out.why || '' }); if (!f) st.off.add(l.id); }
             if (f) { st.src.set(l.id, await f.frame(tt)); st.nFast++; return; }
-          } catch (e) { console.warn('Szybkie dekodowanie nie powiodło się, wracam do przewijania:', l.name, e); const f = st.fast.get(l.id); if (f) f.close(); st.fast.set(l.id, null); st.off.add(l.id); }
-        }
+          } catch (e) { console.warn('Szybkie dekodowanie nie powiodło się, wracam do przewijania:', l.name, e); const f = st.fast.get(l.id); if (f) f.close(); st.fast.set(l.id, null); st.off.add(l.id); const inf = st.info.get(l.id) || { name: l.name, codec: '' }; inf.mode = 'wolno'; inf.why = (e && e.message) || String(e); st.info.set(l.id, inf); }
+        } else if (!st.info.has(l.id)) st.info.set(l.id, { name: l.name, codec: '', mode: 'wolno', why: st.use ? '' : 'wyłączone w oknie eksportu' });
         st.src.delete(l.id); st.nSeek++; await this.seekLayer(l, tt);
       })());
     }
@@ -514,16 +514,19 @@ const Video = {
   // ── Eksport ──
   netCheck() { const r = this.reel; return [['Instagram Reels', r.dur >= 3 && r.dur <= 90], ['YouTube Shorts', r.dur <= 180], ['TikTok', r.dur >= 3 && r.dur <= 600], ['Facebook Reels', r.dur >= 3 && r.dur <= 90]]; },
   async exportDialog() {
-    this.pause(); const r = this.reel, fps = h('select', {}, [30, 24, 60].map((v) => h('option', { value: v, selected: v === 30 }, v + ' fps' + (v === 30 ? ' (zalecane)' : '')))), br = h('select', {}, [[6, '6 Mb/s (lżejszy plik)'], [8, '8 Mb/s (zalecane)'], [12, '12 Mb/s (najwyższa jakość)']].map(([v, n]) => h('option', { value: v, selected: v === 8 }, n))), resSel = h('select', {}, [[r.w, r.w + '×' + r.h + ' (standard Instagram, zalecane)'], [720, '720×1280 (szybka próba, ok. 2× szybciej)']].map(([v, n]) => h('option', { value: v, selected: v === r.w }, n))), fastChk = h('input', { type: 'checkbox', checked: true });
+    this.pause(); const r = this.reel, sel = (arr, cur) => h('select', {}, arr.map(([v, n]) => h('option', { value: v, selected: v === cur }, n)));
+    const fps = sel([[30, '30 fps (zalecane)'], [24, '24 fps'], [60, '60 fps'], [15, '15 fps (szkic)']], 30), br = sel([[2, '2 Mb/s (szkic)'], [4, '4 Mb/s'], [6, '6 Mb/s (lżejszy plik)'], [8, '8 Mb/s (zalecane)'], [12, '12 Mb/s (najwyższa jakość)']], 8), resSel = sel([[r.w, r.w + '×' + r.h + ' (standard Instagram, zalecane)'], [720, '720×1280 (średnia)'], [540, '540×960 (szkic)']], r.w), fastChk = h('input', { type: 'checkbox', checked: true });
+    const presets = { full: [r.w, 30, 8], mid: [720, 30, 4], draft: [540, 15, 2] }, pre = sel([['full', 'Pełna jakość: do publikacji (' + r.w + '×' + r.h + ', 30 fps, 8 Mb/s)'], ['mid', 'Średnia: 720×1280, 30 fps, 4 Mb/s (ok. 2× szybciej)'], ['draft', 'Szkic ok. 30%: 540×960, 15 fps, 2 Mb/s (ok. 8× mniej pracy; do sprawdzenia synchronizacji i ogólnego wyglądu)']], 'full');
+    const dnote = h('div', { class: 'fine', style: { marginTop: '4px' } }); const sync = () => { const p = presets[pre.value]; resSel.value = p[0]; fps.value = p[1]; br.value = p[2]; dnote.textContent = pre.value === 'draft' ? 'Szkic nie trafia do Publikacji: tylko pobiera się na urządzenie. Czas i dźwięk są takie same jak w pełnej wersji.' : ''; }; pre.onchange = sync;
     const info = h('div', { class: 'hint' }, 'Sprawdzam możliwości przeglądarki…'); const cap = await this.capabilities(); info.innerHTML = rich(cap.html);
-    modal('Eksport MP4', h('div', {}, info, h('div', { class: 'row', style: { marginTop: '8px' } }, h('div', { class: 'fld' }, h('label', {}, 'Klatki na sekundę'), fps), h('div', { class: 'fld' }, h('label', {}, 'Przepływność wideo'), br)), h('div', { class: 'fld' }, h('label', {}, 'Rozdzielczość'), resSel),
-      h('label', { style: { display: 'flex', gap: '8px', alignItems: 'center', margin: '8px 0 2px', fontSize: '13px' }, title: 'Każda klatka wideo źródłowego jest dekodowana raz, po kolei (zamiast przewijania pliku dla każdej klatki eksportu). Wyłącz tylko wtedy, gdy obraz w pliku wygląda źle.' }, fastChk, 'Szybkie dekodowanie wideo (zalecane)'),
+    modal('Eksport MP4', h('div', {}, info, h('div', { class: 'fld', style: { marginTop: '8px' } }, h('label', {}, 'Jakość'), pre, dnote), h('div', { class: 'row', style: { marginTop: '8px' } }, h('div', { class: 'fld' }, h('label', {}, 'Klatki na sekundę'), fps), h('div', { class: 'fld' }, h('label', {}, 'Przepływność wideo'), br)), h('div', { class: 'fld' }, h('label', {}, 'Rozdzielczość'), resSel),
+      h('label', { style: { display: 'flex', gap: '8px', alignItems: 'center', margin: '8px 0 2px', fontSize: '13px' }, title: 'Każda klatka wideo źródłowego jest dekodowana raz, po kolei (zamiast przewijania pliku dla każdej klatki eksportu). Obsługa H.264 i HEVC (iPhone). Wyłącz tylko wtedy, gdy obraz w pliku wygląda źle.' }, fastChk, 'Szybkie dekodowanie wideo (zalecane)'),
       h('div', { class: 'fine', style: { marginTop: '6px' } }, 'Rolka: ' + fmtTime(r.dur) + ', ' + r.w + '×' + r.h + ', ' + r.layers.length + ' warstw, ' + r.audio.length + ' klipów dźwięku'), h('div', { style: { marginTop: '8px' } }, this.netCheck().map(([n, ok]) => h('span', { class: 'tag ' + (ok ? 'ok' : 'warn'), style: { marginRight: '6px' } }, n + (ok ? ' ✔' : ' ▲ długość'))))),
-      [{ t: 'Eksportuj', cls: 'pri', keep: true, fn: (close) => { close(); this.runExport({ fps: +fps.value, bitrate: +br.value * 1e6, w: +resSel.value, fast: fastChk.checked }); } }, { t: 'Anuluj' }]);
+      [{ t: 'Eksportuj', cls: 'pri', keep: true, fn: (close) => { close(); this.runExport({ fps: +fps.value, bitrate: +br.value * 1e6, w: +resSel.value, fast: fastChk.checked, draft: pre.value === 'draft' }); } }, { t: 'Anuluj' }]);
   },
   async capabilities() {
     const c = { v: false, a: false, opus: false, vcodec: null, acodec: null };
-    try { if (window.VideoEncoder) for (const cd of ['avc1.640028', 'avc1.4d0028', 'avc1.42E028']) { const s = await VideoEncoder.isConfigSupported({ codec: cd, width: 1080, height: 1920, bitrate: 8e6, framerate: 30, avc: { format: 'avc' } }); if (s.supported) { c.v = true; c.vcodec = cd; break; } } } catch (e) { /* brak */ }
+    try { if (window.VideoEncoder) for (const cd of ['avc1.42E02A', 'avc1.42E028', 'avc1.4d002A', 'avc1.640028']) { const s = await VideoEncoder.isConfigSupported({ codec: cd, width: 1080, height: 1920, bitrate: 8e6, framerate: 30, avc: { format: 'avc' } }); if (s.supported) { c.v = true; c.vcodec = cd; break; } } } catch (e) { /* brak */ }
     try { if (window.AudioEncoder) { c.a = (await AudioEncoder.isConfigSupported({ codec: 'mp4a.40.2', sampleRate: 48000, numberOfChannels: 2, bitrate: 192000 })).supported; c.opus = (await AudioEncoder.isConfigSupported({ codec: 'opus', sampleRate: 48000, numberOfChannels: 2, bitrate: 160000 })).supported; } } catch (e) { /* brak */ }
     c.html = c.v ? (c.a ? 'Wykryto kodowanie sprzętowe/programowe: (H.264 + AAC). Plik: MP4 gotowy dla IG, YouTube, TikTok i Facebooka.' : 'Wykryto (H.264), ale ta przeglądarka nie koduje AAC. ' + (c.opus ? 'Dźwięk zostanie zapisany jako (Opus) w MP4: YouTube go przyjmie, Instagram i TikTok mogą odrzucić. Do pełnej zgodności użyj Chrome na Windows lub macOS.' : 'Dźwięk nie zostanie zapisany.')) : 'Ta przeglądarka nie obsługuje WebCodecs H.264. Użyję trybu awaryjnego (WebM, nagrywanie w czasie rzeczywistym). Nie jest zgodny z Instagramem i TikTokiem bez konwersji.'; return c;
   },
@@ -531,14 +534,15 @@ const Video = {
     const r = this.reel, pr = progressModal('Eksport rolki'), t0 = Date.now(); let blob, kind = 'mp4', note = '', ow = r.w, oh = r.h; this.exporting = true;
     try {
       pr.set(0, 'przygotowanie zasobów'); await preloadScene(r); await this.ensureVideos(); const cap = await this.capabilities();
-      if (cap.v) { const res = await this.encodeMP4(o, pr, cap); blob = res.blob; note = res.note; ow = res.w; oh = res.h; } else { blob = await this.encodeWebM(o, pr); kind = 'webm'; note = 'tryb awaryjny WebM'; }
+      let modes = []; if (cap.v) { const res = await this.encodeMP4(o, pr, cap); blob = res.blob; note = res.note; ow = res.w; oh = res.h; modes = res.modes || []; } else { blob = await this.encodeWebM(o, pr); kind = 'webm'; note = 'tryb awaryjny WebM'; }
       if (pr.cancel) { pr.close(); toast('Eksport anulowany.', 'warn'); return; } pr.close();
-      const nm = fname(slug(r.name), kind), id = await Assets.add(new File([blob], nm, { type: blob.type }), 'render'); P.cur.publish.video = id; P.cur.publish.videoInfo = { name: nm, size: blob.size, dur: r.dur, w: ow, h: oh, fps: o.fps, kind, note, ts: Date.now(), qc: this.mc && this.mc.qc ? this.mc.qc.items.map((x) => ({ k: x.k, v: x.v, ok: x.ok })) : null }; touch();
+      const nm = fname(slug(r.name) + (o.draft ? '_SZKIC' : ''), kind);
+      if (!o.draft) { const id = await Assets.add(new File([blob], nm, { type: blob.type }), 'render'); P.cur.publish.video = id; P.cur.publish.videoInfo = { name: nm, size: blob.size, dur: r.dur, w: ow, h: oh, fps: o.fps, kind, note, ts: Date.now(), qc: this.mc && this.mc.qc ? this.mc.qc.items.map((x) => ({ k: x.k, v: x.v, ok: x.ok })) : null }; touch(); }
       let probe = null; try { probe = await this.probe(blob); } catch (e) { probe = { err: errText(e) }; }
       const sec = ((Date.now() - t0) / 1000).toFixed(1); download(blob, nm);
-      modal('Eksport zakończony', h('div', {}, h('table', { class: 'qc' }, ...[['Plik', nm], ['Rozmiar', fmtSize(blob.size)], ['Czas eksportu', sec + ' s'], ['Format', kind === 'mp4' ? 'MP4 (H.264' + (note.includes('AAC') ? ' + AAC' : note.includes('Opus') ? ' + Opus' : ', bez dźwięku') + ')' : 'WebM (awaryjny)'], ['Wymiary / FPS', ow + '×' + oh + ' @ ' + o.fps], ['Test odczytu w przeglądarce', probe && !probe.err ? 'OK: ' + probe.w + '×' + probe.h + ', ' + probe.dur.toFixed(2) + ' s' : 'BŁĄD: ' + (probe && probe.err)]].map(([a, b]) => h('tr', {}, h('td', {}, a), h('td', {}, b)))),
-        this.mc && this.mc.qc ? h('div', { class: 'hint', style: { marginTop: '8px' }, html: rich('Dźwięk: (' + this.mc.qc.lufs.toFixed(1) + ' LUFS), true peak (' + this.mc.qc.tp.toFixed(1) + ' dBTP). Pełny raport: zakładka Audio.') }) : h('div', { class: 'hint', style: { marginTop: '8px' } }, 'Rolka nie ma ścieżki dźwiękowej.'), h('div', { class: 'hint', html: rich('Plik zapisano też w bibliotece projektu i wybrano go do (Publikacji).') })), [{ t: 'Zamknij' }]);
-    } catch (e) { pr.close(); if (/^cancel$/.test(e && e.message)) { toast('Eksport anulowany.', 'warn'); return; } console.error(e); toast('Eksport nieudany: ' + errText(e), 'bad', 12000); }
+      modal('Eksport zakończony', h('div', {}, h('table', { class: 'qc' }, ...[['Plik', nm], ['Rozmiar', fmtSize(blob.size)], ['Czas eksportu', sec + ' s'], ['Format', kind === 'mp4' ? 'MP4 (H.264' + (note.includes('AAC') ? ' + AAC' : note.includes('Opus') ? ' + Opus' : ', bez dźwięku') + ')' : 'WebM (awaryjny)'], ['Wymiary / FPS', ow + '×' + oh + ' @ ' + o.fps + (o.draft ? ' (SZKIC, nie do publikacji)' : '')], ...(modes.length ? [['Dekodowanie wideo', modes.map((m) => m.name.replace(/^[^:]*: /, '') + ': ' + m.mode + (m.codec ? ' (' + m.codec.split('.')[0] + ')' : '') + (m.why ? ', powód: ' + m.why.replace(/^FastVid: /, '') : '')).join('; ')]] : []), ['Test odczytu w przeglądarce', probe && !probe.err ? 'OK: ' + probe.w + '×' + probe.h + ', ' + probe.dur.toFixed(2) + ' s' : 'BŁĄD: ' + (probe && probe.err)]].map(([a, b]) => h('tr', {}, h('td', {}, a), h('td', {}, b)))),
+        this.mc && this.mc.qc ? h('div', { class: 'hint', style: { marginTop: '8px' }, html: rich('Dźwięk: (' + this.mc.qc.lufs.toFixed(1) + ' LUFS), true peak (' + this.mc.qc.tp.toFixed(1) + ' dBTP). Pełny raport: zakładka Audio.') }) : h('div', { class: 'hint', style: { marginTop: '8px' } }, 'Rolka nie ma ścieżki dźwiękowej.'), h('div', { class: 'hint', html: rich(o.draft ? 'To jest (szkic): plik tylko pobrano, do Publikacji nie trafił.' : 'Plik zapisano też w bibliotece projektu i wybrano go do (Publikacji).') })), [{ t: 'Zamknij' }]);
+    } catch (e) { pr.close(); if (/^cancel$/.test(e && e.message)) { toast('Eksport anulowany.', 'warn'); return; } console.error(e); toast('Eksport nieudany (' + APP.ver + '): ' + errText(e), 'bad', 12000); }
     finally { this.exporting = false; }
   },
   probe(blob) { return new Promise((res, rej) => { const v = document.createElement('video'); v.preload = 'metadata'; v.muted = true; v.onloadedmetadata = () => res({ w: v.videoWidth, h: v.videoHeight, dur: v.duration }); v.onerror = () => rej(new Error('przeglądarka nie odczytuje pliku')); v.src = URL.createObjectURL(blob); setTimeout(() => rej(new Error('limit czasu odczytu')), 8000); }); },
@@ -547,25 +551,25 @@ const Video = {
     pr.set(0, 'miks dźwięku'); const mix = await this.mixReel(); const hasA = mix && !mix.none && (cap.a || cap.opus), acodec = hasA ? (cap.a ? 'aac' : 'opus') : null;
     const target = new Mp4Muxer.ArrayBufferTarget(), muxer = new Mp4Muxer.Muxer({ target, video: { codec: 'avc', width: W, height: H, frameRate: fps }, audio: hasA ? { codec: acodec, numberOfChannels: 2, sampleRate: 48000 } : undefined, fastStart: 'in-memory', firstTimestampBehavior: 'offset' });
     // chunki wideo trafiają do bufora (w kolejności dekodowania). Koder sprzętowy używa klatek B: czas wyświetlania nie rośnie wtedy monotonicznie, więc DTS liczymy sami przy składaniu pliku
-    let err = null; const vch = [];
+    let err = null; const vch = [], ach = [];
     const venc = new VideoEncoder({ output: (c, m) => { const d = new Uint8Array(c.byteLength); c.copyTo(d); vch.push({ d, type: c.type, ts: c.timestamp, dur: c.duration, meta: m }); }, error: (e) => { err = e; } });
     venc.configure({ codec: cap.vcodec, width: W, height: H, bitrate: Math.round((o.bitrate || 8e6) * (k < 1 ? 0.65 : 1)), framerate: fps, avc: { format: 'avc' }, latencyMode: 'quality' });
     const cv = document.createElement('canvas'); cv.width = W; cv.height = H; const ctx = cv.getContext('2d', { alpha: false });
-    const st = { fast: new Map(), src: new Map(), off: new Set(), use: o.fast !== false, dim: Math.max(W, H), nFast: 0, nSeek: 0 }, opts = { video: (l) => st.src.get(l.id) || (this.vids.get(l.id) || {}).el || null }, tStart = performance.now();
+    const st = { fast: new Map(), src: new Map(), off: new Set(), info: new Map(), use: o.fast !== false, dim: Math.max(W, H), nFast: 0, nSeek: 0 }, opts = { video: (l) => st.src.get(l.id) || (this.vids.get(l.id) || {}).el || null }, tStart = performance.now();
     try {
       for (let i = 0; i < N; i++) {
         if (pr.cancel) throw new Error('cancel'); if (err) throw err; const t = i / fps; await this.exportSources(t, st);
         ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, W, H); ctx.setTransform(k, 0, 0, k, 0, 0); drawScene(ctx, r, t, opts);
         const vf = new VideoFrame(cv, { timestamp: Math.round(i * dur), duration: Math.round(dur) }); venc.encode(vf, { keyFrame: i % (fps * 2) === 0 }); vf.close(); while (venc.encodeQueueSize > 6) await sleep(2);
-        if (i % 4 === 0) { const el = (performance.now() - tStart) / 1000, fr = i / Math.max(0.1, el); pr.set(i / N * 0.9, 'klatka ' + i + ' / ' + N + (i > 8 ? ' (' + fr.toFixed(1) + ' kl./s)' : '') + (st.use && st.off.size ? ' · część wideo wolną metodą' : '')); await tick(); }
+        if (i % 4 === 0) { const el = (performance.now() - tStart) / 1000, fr = i / Math.max(0.1, el); pr.set(i / N * 0.9, 'klatka ' + i + ' / ' + N + (i > 8 ? ' (' + fr.toFixed(1) + ' kl./s)' : '') + (() => { const m = [...st.info.values()], sl = m.filter((x) => x.mode === 'wolno'); return m.length ? ' · wideo: ' + (m.length - sl.length) + ' szybko' + (sl.length ? ', ' + sl.length + ' WOLNO (' + sl.map((x) => x.name.replace(/^[^:]*: /, '')).join(', ') + ')' : '') : ''; })()); await tick(); }
       }
       await venc.flush(); venc.close(); if (err) throw err;
     } finally { for (const f of st.fast.values()) if (f) f.close(); st.fast.clear(); st.src.clear(); }
     console.info('Eksport:', N, 'klatek,', ((performance.now() - tStart) / 1000).toFixed(1), 's; szybkie dekodowanie', st.nFast, 'x, przewijanie', st.nSeek, 'x');
     // opóźnienie klatek B: indeks w kolejności dekodowania minus numer klatki wyświetlania. Obraz przesuwamy o tyle klatek, a dźwięk dostaje tyle samo ciszy z przodu (zgodność obrazu i dźwięku zostaje)
-    let dly = 0; vch.forEach((c, i) => { dly = Math.max(dly, i - Math.round(c.ts / dur)); }); const delay = Math.round(dly * dur);
+    const dIdx = (c) => Math.round(c.ts / dur); let dly = 0; vch.forEach((c, i) => { dly = Math.max(dly, i - dIdx(c)); }); const delay = Math.round(dly * dur);
     if (hasA) {
-      pr.set(0.92, 'kodowanie dźwięku'); const aenc = new AudioEncoder({ output: (c, m) => muxer.addAudioChunk(c, m), error: (e) => { err = e; } }); aenc.configure({ codec: acodec === 'aac' ? 'mp4a.40.2' : 'opus', sampleRate: 48000, numberOfChannels: 2, bitrate: acodec === 'aac' ? 192000 : 160000 });
+      pr.set(0.92, 'kodowanie dźwięku'); const aenc = new AudioEncoder({ output: (c, m) => { const d = new Uint8Array(c.byteLength); c.copyTo(d); ach.push({ d, type: c.type, ts: c.timestamp, dur: c.duration, meta: m }); }, error: (e) => { err = e; } }); aenc.configure({ codec: acodec === 'aac' ? 'mp4a.40.2' : 'opus', sampleRate: 48000, numberOfChannels: 2, bitrate: acodec === 'aac' ? 192000 : 160000 });
       const pad = Math.round(delay / 1e6 * 48000), total = mix.chs[0].length + pad, CH = 48000;
       for (let i = 0; i < total; i += CH) {
         if (pr.cancel) throw new Error('cancel'); const n = Math.min(CH, total - i), buf = new Float32Array(n * 2), z = Math.min(n, Math.max(0, pad - i)), from = Math.max(0, i - pad);
@@ -575,8 +579,12 @@ const Video = {
       await aenc.flush(); aenc.close(); if (err) throw err;
     }
     pr.set(0.97, 'składanie pliku MP4');
-    for (let i = 0; i < vch.length; i++) { const c = vch[i], d = c.dur == null ? Math.round(dur) : c.dur; if (!delay) muxer.addVideoChunkRaw(c.d, c.type, c.ts, d, c.meta); else { const pts = c.ts + delay, dts = i * dur; muxer.addVideoChunkRaw(c.d, c.type, pts, d, c.meta, pts - dts); } }
-    muxer.finalize(); return { blob: new Blob([target.buffer], { type: 'video/mp4' }), w: W, h: H, note: hasA ? (acodec === 'aac' ? 'H.264 + AAC' : 'H.264 + Opus (brak AAC w przeglądarce)') : 'H.264 bez dźwięku' };
+    // DTS = numer w kolejności dekodowania × czas klatki (zawsze rosnący); PTS = numer klatki wyświetlania + opóźnienie, więc PTS ≥ DTS i różnica (przesunięcie kompozycji) nigdy nie jest ujemna
+    try {
+      for (let i = 0; i < vch.length; i++) { const c = vch[i], d = c.dur == null ? Math.round(dur) : c.dur, dts = Math.round(i * dur), pts = Math.max(dts, Math.round((dIdx(c) + dly) * dur)); muxer.addVideoChunkRaw(c.d, c.type, pts, d, c.meta, pts - dts); }
+      let la = -1; for (const c of ach) { const ts = Math.max(c.ts, la + 1); la = ts; muxer.addAudioChunkRaw(c.d, c.type, ts, c.dur == null ? 0 : c.dur, c.meta); } // czas dźwięku nie może się cofnąć
+    } catch (e) { throw new Error((e && e.message) + ' [diagnostyka: kodek ' + cap.vcodec + ', wideo ' + vch.length + ' kl., opóźnienie ' + dly + ' kl., czasy kl. (w kolejności kodera): ' + vch.slice(0, 16).map(dIdx).join(',') + ', dźwięk ' + ach.length + ' pak.]'); }
+    muxer.finalize(); return { blob: new Blob([target.buffer], { type: 'video/mp4' }), w: W, h: H, modes: [...st.info.values()], note: hasA ? (acodec === 'aac' ? 'H.264 + AAC' : 'H.264 + Opus (brak AAC w przeglądarce)') : 'H.264 bez dźwięku' };
   },
   async encodeWebM(o, pr) {
     const r = this.reel, fps = o.fps || 30, cv = document.createElement('canvas'); cv.width = r.w; cv.height = r.h; const ctx = cv.getContext('2d'), stream = cv.captureStream(fps), mix = await this.mixReel(); let ac = null, src = null;

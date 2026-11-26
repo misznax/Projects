@@ -562,7 +562,7 @@ const DSP = (function () {
 if (typeof module !== 'undefined') module.exports = DSP;
 
 /* Creative Studio Social — rdzeń: narzędzia, magazyn (IndexedDB), projekt, historia, UI-pomocniki */
-const APP = { name: 'Creative Studio Social', ver: 'v0.08', author: 'Michał Rzekiecki', mail: 'michus@gmail.com' };
+const APP = { name: 'Creative Studio Social', ver: 'v0.09', author: 'Michał Rzekiecki', mail: 'michus@gmail.com' };
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const uid = (p = 'x') => p + Math.random().toString(36).slice(2, 9);
@@ -1848,6 +1848,13 @@ const FastVid = (() => {
     return bad('brak moov');
   }
 
+  // ciąg kodeka HEVC z hvcC (ISO 14496-15, dodatek E): hvc1.<profil>.<flagi zgodności (bity odwrócone)>.<L|H><poziom>.<bajty ograniczeń bez zer na końcu>
+  function hevcCodec(v, b, ety) {
+    const g = (i) => v.getUint8(b + i), ps = g(1) >> 6, tier = (g(1) >> 5) & 1, pidc = g(1) & 31; let comp = ((g(2) << 24) | (g(3) << 16) | (g(4) << 8) | g(5)) >>> 0, rev = 0;
+    for (let i = 0; i < 32; i++) { rev = ((rev << 1) | (comp & 1)) >>> 0; comp >>>= 1; }
+    const cs = []; for (let i = 0; i < 6; i++) cs.push(g(6 + i)); while (cs.length && !cs[cs.length - 1]) cs.pop();
+    return ety + '.' + ['', 'A', 'B', 'C'][ps] + pidc + '.' + rev.toString(16).toUpperCase() + '.' + (tier ? 'H' : 'L') + g(12) + cs.map((x) => '.' + x.toString(16).toUpperCase()).join('');
+  }
   function parse(v, fileSize) { // → opis ścieżki wideo i tablice próbek (kolejność dekodowania)
     const moov = find(boxes(v, 0, v.byteLength), 'moov'); if (!moov) bad('brak moov');
     for (const trak of boxes(v, moov.b, moov.e).filter((x) => x.ty === 'trak')) {
@@ -1862,9 +1869,9 @@ const FastVid = (() => {
       let mediaTime = 0; const edts = find(tk, 'edts');
       if (edts) { const elst = find(boxes(v, edts.b, edts.e), 'elst'); if (elst) { const ver = v.getUint8(elst.b), cnt = u32(v, elst.b + 4); let p = elst.b + 8; const mts = []; for (let k = 0; k < cnt; k++) { if (ver === 1) { mts.push(i64(v, p + 8)); p += 20; } else { mts.push(i32(v, p + 4)); p += 12; } } if (mts.some((x) => x < 0) || mts.length > 1) bad('złożona lista edycji'); mediaTime = mts[0] || 0; } }
       const minf = find(md, 'minf'), stbl = minf && find(boxes(v, minf.b, minf.e), 'stbl'); if (!stbl) bad('brak stbl'); const sb = boxes(v, stbl.b, stbl.e);
-      const stsd = find(sb, 'stsd'); if (!stsd) bad('brak stsd'); const es = stsd.b + 8, esz = u32(v, es), ety = tp(v, es + 4); if (ety !== 'avc1') bad('kodek ' + ety + ' (tylko H.264 avc1)');
-      const avcC = find(boxes(v, es + 8 + 78, es + esz), 'avcC'); if (!avcC) bad('brak avcC');
-      const desc = new Uint8Array(v.buffer.slice(v.byteOffset + avcC.b, v.byteOffset + avcC.e)), codec = 'avc1.' + [1, 2, 3].map((i) => hex2(v.getUint8(avcC.b + i))).join('');
+      const stsd = find(sb, 'stsd'); if (!stsd) bad('brak stsd'); const es = stsd.b + 8, esz = u32(v, es), ety = tp(v, es + 4), isH = ety === 'hvc1' || ety === 'hev1'; if (ety !== 'avc1' && !isH) bad('kodek ' + ety + ' (obsługuję H.264 i HEVC)');
+      const avcC = find(boxes(v, es + 8 + 78, es + esz), isH ? 'hvcC' : 'avcC'); if (!avcC) bad('brak ' + (isH ? 'hvcC' : 'avcC'));
+      const desc = new Uint8Array(v.buffer.slice(v.byteOffset + avcC.b, v.byteOffset + avcC.e)), codec = isH ? hevcCodec(v, avcC.b, ety) : 'avc1.' + [1, 2, 3].map((i) => hex2(v.getUint8(avcC.b + i))).join('');
       const w0 = u16(v, es + 32), h0 = u16(v, es + 34);
       const stts = find(sb, 'stts'), stsz = find(sb, 'stsz'), stsc = find(sb, 'stsc'), stco = find(sb, 'stco') || find(sb, 'co64'); if (!stts || !stsz || !stsc || !stco) bad('brak tablic próbek');
       const n = u32(v, stsz.b + 8); if (!n) bad('brak próbek (fragmentowany MP4?)'); const fixed = u32(v, stsz.b + 4), size = new Uint32Array(n); for (let i = 0; i < n; i++) size[i] = fixed || u32(v, stsz.b + 12 + i * 4);
@@ -1913,7 +1920,7 @@ const FastVid = (() => {
         if (this.pend.length && this.pend[0].timestamp >= want) break;
         if (performance.now() - t0 > 15000) bad('limit czasu klatki');
         if (this.fed < this.n && !this.eof) {
-          let c = 0; while (this.fed < this.n && c < 2 && this.dec.decodeQueueSize < 3 && this.pend.length < 8) { const i = this.fed++; const data = await this.rd.read(this.off[i], this.size[i]); this.dec.decode(new EncodedVideoChunk({ type: this.key[i] ? 'key' : 'delta', timestamp: this.pts[i], data })); c++; }
+          let c = 0; while (this.fed < this.n && c < 2 && this.dec.decodeQueueSize < 3 && this.pend.length < 5) { const i = this.fed++; const data = await this.rd.read(this.off[i], this.size[i]); this.dec.decode(new EncodedVideoChunk({ type: this.key[i] ? 'key' : 'delta', timestamp: this.pts[i], data })); c++; }
           if (c) continue; await this.wait(4000);
         } else if (!this.eof) { this.eof = true; await this.dec.flush(); } // koniec pliku: wypchnij zaległe klatki
         else if (!this.pend.length) bad('brak klatki na końcu strumienia');
@@ -1926,13 +1933,16 @@ const FastVid = (() => {
 
   return {
     // → obiekt z metodą frame(t) i close(), albo null, gdy tego pliku nie da się obsłużyć szybką metodą
-    async open(blob, maxDim) {
+    // out (opcjonalnie): obiekt, do którego trafia { codec, why } – kodek pliku albo powód odrzucenia
+    async open(blob, maxDim, out) {
       try {
-        if (!window.VideoDecoder || !window.EncodedVideoChunk || !blob) return null;
-        const info = parse(await readMoov(blob), blob.size); const sup = await VideoDecoder.isConfigSupported({ codec: info.codec, description: info.desc }); if (!sup.supported) bad('dekoder nie obsługuje ' + info.codec);
+        if (!window.VideoDecoder || !window.EncodedVideoChunk) bad('przeglądarka bez WebCodecs'); if (!blob) bad('brak pliku');
+        const info = parse(await readMoov(blob), blob.size); if (out) out.codec = info.codec; const sup = await VideoDecoder.isConfigSupported({ codec: info.codec, description: info.desc }); if (!sup.supported) bad('dekoder tej przeglądarki nie obsługuje ' + info.codec);
         return new Clip(info, blob, maxDim);
-      } catch (e) { console.info('Szybkie dekodowanie niedostępne dla tego pliku:', e && e.message); return null; }
+      } catch (e) { if (out) out.why = (e && e.message) || String(e); console.info('Szybkie dekodowanie niedostępne dla tego pliku:', e && e.message); return null; }
     },
+    // tylko odczyt nagłówka (testy i diagnostyka): kodek, liczba klatek, obrót
+    async info(blob) { const i = parse(await readMoov(blob), blob.size); return { codec: i.codec, n: i.n, rot: i.rot, w0: i.w0, h0: i.h0, keys: i.key.reduce((a, x) => a + x, 0) }; },
   };
 })();
 
@@ -2419,10 +2429,10 @@ const Video = {
       jobs.push((async () => {
         if (st.use && !st.off.has(l.id)) {
           try {
-            let f = st.fast.get(l.id); if (f === undefined) { f = await FastVid.open(await Assets.blob(l.video.assetId), st.dim); st.fast.set(l.id, f); if (!f) st.off.add(l.id); }
+            let f = st.fast.get(l.id); if (f === undefined) { const out = {}; f = await FastVid.open(await Assets.blob(l.video.assetId), st.dim, out); st.fast.set(l.id, f); st.info.set(l.id, { name: l.name, codec: out.codec || '', mode: f ? 'szybko' : 'wolno', why: out.why || '' }); if (!f) st.off.add(l.id); }
             if (f) { st.src.set(l.id, await f.frame(tt)); st.nFast++; return; }
-          } catch (e) { console.warn('Szybkie dekodowanie nie powiodło się, wracam do przewijania:', l.name, e); const f = st.fast.get(l.id); if (f) f.close(); st.fast.set(l.id, null); st.off.add(l.id); }
-        }
+          } catch (e) { console.warn('Szybkie dekodowanie nie powiodło się, wracam do przewijania:', l.name, e); const f = st.fast.get(l.id); if (f) f.close(); st.fast.set(l.id, null); st.off.add(l.id); const inf = st.info.get(l.id) || { name: l.name, codec: '' }; inf.mode = 'wolno'; inf.why = (e && e.message) || String(e); st.info.set(l.id, inf); }
+        } else if (!st.info.has(l.id)) st.info.set(l.id, { name: l.name, codec: '', mode: 'wolno', why: st.use ? '' : 'wyłączone w oknie eksportu' });
         st.src.delete(l.id); st.nSeek++; await this.seekLayer(l, tt);
       })());
     }
@@ -2452,16 +2462,19 @@ const Video = {
   // ── Eksport ──
   netCheck() { const r = this.reel; return [['Instagram Reels', r.dur >= 3 && r.dur <= 90], ['YouTube Shorts', r.dur <= 180], ['TikTok', r.dur >= 3 && r.dur <= 600], ['Facebook Reels', r.dur >= 3 && r.dur <= 90]]; },
   async exportDialog() {
-    this.pause(); const r = this.reel, fps = h('select', {}, [30, 24, 60].map((v) => h('option', { value: v, selected: v === 30 }, v + ' fps' + (v === 30 ? ' (zalecane)' : '')))), br = h('select', {}, [[6, '6 Mb/s (lżejszy plik)'], [8, '8 Mb/s (zalecane)'], [12, '12 Mb/s (najwyższa jakość)']].map(([v, n]) => h('option', { value: v, selected: v === 8 }, n))), resSel = h('select', {}, [[r.w, r.w + '×' + r.h + ' (standard Instagram, zalecane)'], [720, '720×1280 (szybka próba, ok. 2× szybciej)']].map(([v, n]) => h('option', { value: v, selected: v === r.w }, n))), fastChk = h('input', { type: 'checkbox', checked: true });
+    this.pause(); const r = this.reel, sel = (arr, cur) => h('select', {}, arr.map(([v, n]) => h('option', { value: v, selected: v === cur }, n)));
+    const fps = sel([[30, '30 fps (zalecane)'], [24, '24 fps'], [60, '60 fps'], [15, '15 fps (szkic)']], 30), br = sel([[2, '2 Mb/s (szkic)'], [4, '4 Mb/s'], [6, '6 Mb/s (lżejszy plik)'], [8, '8 Mb/s (zalecane)'], [12, '12 Mb/s (najwyższa jakość)']], 8), resSel = sel([[r.w, r.w + '×' + r.h + ' (standard Instagram, zalecane)'], [720, '720×1280 (średnia)'], [540, '540×960 (szkic)']], r.w), fastChk = h('input', { type: 'checkbox', checked: true });
+    const presets = { full: [r.w, 30, 8], mid: [720, 30, 4], draft: [540, 15, 2] }, pre = sel([['full', 'Pełna jakość: do publikacji (' + r.w + '×' + r.h + ', 30 fps, 8 Mb/s)'], ['mid', 'Średnia: 720×1280, 30 fps, 4 Mb/s (ok. 2× szybciej)'], ['draft', 'Szkic ok. 30%: 540×960, 15 fps, 2 Mb/s (ok. 8× mniej pracy; do sprawdzenia synchronizacji i ogólnego wyglądu)']], 'full');
+    const dnote = h('div', { class: 'fine', style: { marginTop: '4px' } }); const sync = () => { const p = presets[pre.value]; resSel.value = p[0]; fps.value = p[1]; br.value = p[2]; dnote.textContent = pre.value === 'draft' ? 'Szkic nie trafia do Publikacji: tylko pobiera się na urządzenie. Czas i dźwięk są takie same jak w pełnej wersji.' : ''; }; pre.onchange = sync;
     const info = h('div', { class: 'hint' }, 'Sprawdzam możliwości przeglądarki…'); const cap = await this.capabilities(); info.innerHTML = rich(cap.html);
-    modal('Eksport MP4', h('div', {}, info, h('div', { class: 'row', style: { marginTop: '8px' } }, h('div', { class: 'fld' }, h('label', {}, 'Klatki na sekundę'), fps), h('div', { class: 'fld' }, h('label', {}, 'Przepływność wideo'), br)), h('div', { class: 'fld' }, h('label', {}, 'Rozdzielczość'), resSel),
-      h('label', { style: { display: 'flex', gap: '8px', alignItems: 'center', margin: '8px 0 2px', fontSize: '13px' }, title: 'Każda klatka wideo źródłowego jest dekodowana raz, po kolei (zamiast przewijania pliku dla każdej klatki eksportu). Wyłącz tylko wtedy, gdy obraz w pliku wygląda źle.' }, fastChk, 'Szybkie dekodowanie wideo (zalecane)'),
+    modal('Eksport MP4', h('div', {}, info, h('div', { class: 'fld', style: { marginTop: '8px' } }, h('label', {}, 'Jakość'), pre, dnote), h('div', { class: 'row', style: { marginTop: '8px' } }, h('div', { class: 'fld' }, h('label', {}, 'Klatki na sekundę'), fps), h('div', { class: 'fld' }, h('label', {}, 'Przepływność wideo'), br)), h('div', { class: 'fld' }, h('label', {}, 'Rozdzielczość'), resSel),
+      h('label', { style: { display: 'flex', gap: '8px', alignItems: 'center', margin: '8px 0 2px', fontSize: '13px' }, title: 'Każda klatka wideo źródłowego jest dekodowana raz, po kolei (zamiast przewijania pliku dla każdej klatki eksportu). Obsługa H.264 i HEVC (iPhone). Wyłącz tylko wtedy, gdy obraz w pliku wygląda źle.' }, fastChk, 'Szybkie dekodowanie wideo (zalecane)'),
       h('div', { class: 'fine', style: { marginTop: '6px' } }, 'Rolka: ' + fmtTime(r.dur) + ', ' + r.w + '×' + r.h + ', ' + r.layers.length + ' warstw, ' + r.audio.length + ' klipów dźwięku'), h('div', { style: { marginTop: '8px' } }, this.netCheck().map(([n, ok]) => h('span', { class: 'tag ' + (ok ? 'ok' : 'warn'), style: { marginRight: '6px' } }, n + (ok ? ' ✔' : ' ▲ długość'))))),
-      [{ t: 'Eksportuj', cls: 'pri', keep: true, fn: (close) => { close(); this.runExport({ fps: +fps.value, bitrate: +br.value * 1e6, w: +resSel.value, fast: fastChk.checked }); } }, { t: 'Anuluj' }]);
+      [{ t: 'Eksportuj', cls: 'pri', keep: true, fn: (close) => { close(); this.runExport({ fps: +fps.value, bitrate: +br.value * 1e6, w: +resSel.value, fast: fastChk.checked, draft: pre.value === 'draft' }); } }, { t: 'Anuluj' }]);
   },
   async capabilities() {
     const c = { v: false, a: false, opus: false, vcodec: null, acodec: null };
-    try { if (window.VideoEncoder) for (const cd of ['avc1.640028', 'avc1.4d0028', 'avc1.42E028']) { const s = await VideoEncoder.isConfigSupported({ codec: cd, width: 1080, height: 1920, bitrate: 8e6, framerate: 30, avc: { format: 'avc' } }); if (s.supported) { c.v = true; c.vcodec = cd; break; } } } catch (e) { /* brak */ }
+    try { if (window.VideoEncoder) for (const cd of ['avc1.42E02A', 'avc1.42E028', 'avc1.4d002A', 'avc1.640028']) { const s = await VideoEncoder.isConfigSupported({ codec: cd, width: 1080, height: 1920, bitrate: 8e6, framerate: 30, avc: { format: 'avc' } }); if (s.supported) { c.v = true; c.vcodec = cd; break; } } } catch (e) { /* brak */ }
     try { if (window.AudioEncoder) { c.a = (await AudioEncoder.isConfigSupported({ codec: 'mp4a.40.2', sampleRate: 48000, numberOfChannels: 2, bitrate: 192000 })).supported; c.opus = (await AudioEncoder.isConfigSupported({ codec: 'opus', sampleRate: 48000, numberOfChannels: 2, bitrate: 160000 })).supported; } } catch (e) { /* brak */ }
     c.html = c.v ? (c.a ? 'Wykryto kodowanie sprzętowe/programowe: (H.264 + AAC). Plik: MP4 gotowy dla IG, YouTube, TikTok i Facebooka.' : 'Wykryto (H.264), ale ta przeglądarka nie koduje AAC. ' + (c.opus ? 'Dźwięk zostanie zapisany jako (Opus) w MP4: YouTube go przyjmie, Instagram i TikTok mogą odrzucić. Do pełnej zgodności użyj Chrome na Windows lub macOS.' : 'Dźwięk nie zostanie zapisany.')) : 'Ta przeglądarka nie obsługuje WebCodecs H.264. Użyję trybu awaryjnego (WebM, nagrywanie w czasie rzeczywistym). Nie jest zgodny z Instagramem i TikTokiem bez konwersji.'; return c;
   },
@@ -2469,14 +2482,15 @@ const Video = {
     const r = this.reel, pr = progressModal('Eksport rolki'), t0 = Date.now(); let blob, kind = 'mp4', note = '', ow = r.w, oh = r.h; this.exporting = true;
     try {
       pr.set(0, 'przygotowanie zasobów'); await preloadScene(r); await this.ensureVideos(); const cap = await this.capabilities();
-      if (cap.v) { const res = await this.encodeMP4(o, pr, cap); blob = res.blob; note = res.note; ow = res.w; oh = res.h; } else { blob = await this.encodeWebM(o, pr); kind = 'webm'; note = 'tryb awaryjny WebM'; }
+      let modes = []; if (cap.v) { const res = await this.encodeMP4(o, pr, cap); blob = res.blob; note = res.note; ow = res.w; oh = res.h; modes = res.modes || []; } else { blob = await this.encodeWebM(o, pr); kind = 'webm'; note = 'tryb awaryjny WebM'; }
       if (pr.cancel) { pr.close(); toast('Eksport anulowany.', 'warn'); return; } pr.close();
-      const nm = fname(slug(r.name), kind), id = await Assets.add(new File([blob], nm, { type: blob.type }), 'render'); P.cur.publish.video = id; P.cur.publish.videoInfo = { name: nm, size: blob.size, dur: r.dur, w: ow, h: oh, fps: o.fps, kind, note, ts: Date.now(), qc: this.mc && this.mc.qc ? this.mc.qc.items.map((x) => ({ k: x.k, v: x.v, ok: x.ok })) : null }; touch();
+      const nm = fname(slug(r.name) + (o.draft ? '_SZKIC' : ''), kind);
+      if (!o.draft) { const id = await Assets.add(new File([blob], nm, { type: blob.type }), 'render'); P.cur.publish.video = id; P.cur.publish.videoInfo = { name: nm, size: blob.size, dur: r.dur, w: ow, h: oh, fps: o.fps, kind, note, ts: Date.now(), qc: this.mc && this.mc.qc ? this.mc.qc.items.map((x) => ({ k: x.k, v: x.v, ok: x.ok })) : null }; touch(); }
       let probe = null; try { probe = await this.probe(blob); } catch (e) { probe = { err: errText(e) }; }
       const sec = ((Date.now() - t0) / 1000).toFixed(1); download(blob, nm);
-      modal('Eksport zakończony', h('div', {}, h('table', { class: 'qc' }, ...[['Plik', nm], ['Rozmiar', fmtSize(blob.size)], ['Czas eksportu', sec + ' s'], ['Format', kind === 'mp4' ? 'MP4 (H.264' + (note.includes('AAC') ? ' + AAC' : note.includes('Opus') ? ' + Opus' : ', bez dźwięku') + ')' : 'WebM (awaryjny)'], ['Wymiary / FPS', ow + '×' + oh + ' @ ' + o.fps], ['Test odczytu w przeglądarce', probe && !probe.err ? 'OK: ' + probe.w + '×' + probe.h + ', ' + probe.dur.toFixed(2) + ' s' : 'BŁĄD: ' + (probe && probe.err)]].map(([a, b]) => h('tr', {}, h('td', {}, a), h('td', {}, b)))),
-        this.mc && this.mc.qc ? h('div', { class: 'hint', style: { marginTop: '8px' }, html: rich('Dźwięk: (' + this.mc.qc.lufs.toFixed(1) + ' LUFS), true peak (' + this.mc.qc.tp.toFixed(1) + ' dBTP). Pełny raport: zakładka Audio.') }) : h('div', { class: 'hint', style: { marginTop: '8px' } }, 'Rolka nie ma ścieżki dźwiękowej.'), h('div', { class: 'hint', html: rich('Plik zapisano też w bibliotece projektu i wybrano go do (Publikacji).') })), [{ t: 'Zamknij' }]);
-    } catch (e) { pr.close(); if (/^cancel$/.test(e && e.message)) { toast('Eksport anulowany.', 'warn'); return; } console.error(e); toast('Eksport nieudany: ' + errText(e), 'bad', 12000); }
+      modal('Eksport zakończony', h('div', {}, h('table', { class: 'qc' }, ...[['Plik', nm], ['Rozmiar', fmtSize(blob.size)], ['Czas eksportu', sec + ' s'], ['Format', kind === 'mp4' ? 'MP4 (H.264' + (note.includes('AAC') ? ' + AAC' : note.includes('Opus') ? ' + Opus' : ', bez dźwięku') + ')' : 'WebM (awaryjny)'], ['Wymiary / FPS', ow + '×' + oh + ' @ ' + o.fps + (o.draft ? ' (SZKIC, nie do publikacji)' : '')], ...(modes.length ? [['Dekodowanie wideo', modes.map((m) => m.name.replace(/^[^:]*: /, '') + ': ' + m.mode + (m.codec ? ' (' + m.codec.split('.')[0] + ')' : '') + (m.why ? ', powód: ' + m.why.replace(/^FastVid: /, '') : '')).join('; ')]] : []), ['Test odczytu w przeglądarce', probe && !probe.err ? 'OK: ' + probe.w + '×' + probe.h + ', ' + probe.dur.toFixed(2) + ' s' : 'BŁĄD: ' + (probe && probe.err)]].map(([a, b]) => h('tr', {}, h('td', {}, a), h('td', {}, b)))),
+        this.mc && this.mc.qc ? h('div', { class: 'hint', style: { marginTop: '8px' }, html: rich('Dźwięk: (' + this.mc.qc.lufs.toFixed(1) + ' LUFS), true peak (' + this.mc.qc.tp.toFixed(1) + ' dBTP). Pełny raport: zakładka Audio.') }) : h('div', { class: 'hint', style: { marginTop: '8px' } }, 'Rolka nie ma ścieżki dźwiękowej.'), h('div', { class: 'hint', html: rich(o.draft ? 'To jest (szkic): plik tylko pobrano, do Publikacji nie trafił.' : 'Plik zapisano też w bibliotece projektu i wybrano go do (Publikacji).') })), [{ t: 'Zamknij' }]);
+    } catch (e) { pr.close(); if (/^cancel$/.test(e && e.message)) { toast('Eksport anulowany.', 'warn'); return; } console.error(e); toast('Eksport nieudany (' + APP.ver + '): ' + errText(e), 'bad', 12000); }
     finally { this.exporting = false; }
   },
   probe(blob) { return new Promise((res, rej) => { const v = document.createElement('video'); v.preload = 'metadata'; v.muted = true; v.onloadedmetadata = () => res({ w: v.videoWidth, h: v.videoHeight, dur: v.duration }); v.onerror = () => rej(new Error('przeglądarka nie odczytuje pliku')); v.src = URL.createObjectURL(blob); setTimeout(() => rej(new Error('limit czasu odczytu')), 8000); }); },
@@ -2485,25 +2499,25 @@ const Video = {
     pr.set(0, 'miks dźwięku'); const mix = await this.mixReel(); const hasA = mix && !mix.none && (cap.a || cap.opus), acodec = hasA ? (cap.a ? 'aac' : 'opus') : null;
     const target = new Mp4Muxer.ArrayBufferTarget(), muxer = new Mp4Muxer.Muxer({ target, video: { codec: 'avc', width: W, height: H, frameRate: fps }, audio: hasA ? { codec: acodec, numberOfChannels: 2, sampleRate: 48000 } : undefined, fastStart: 'in-memory', firstTimestampBehavior: 'offset' });
     // chunki wideo trafiają do bufora (w kolejności dekodowania). Koder sprzętowy używa klatek B: czas wyświetlania nie rośnie wtedy monotonicznie, więc DTS liczymy sami przy składaniu pliku
-    let err = null; const vch = [];
+    let err = null; const vch = [], ach = [];
     const venc = new VideoEncoder({ output: (c, m) => { const d = new Uint8Array(c.byteLength); c.copyTo(d); vch.push({ d, type: c.type, ts: c.timestamp, dur: c.duration, meta: m }); }, error: (e) => { err = e; } });
     venc.configure({ codec: cap.vcodec, width: W, height: H, bitrate: Math.round((o.bitrate || 8e6) * (k < 1 ? 0.65 : 1)), framerate: fps, avc: { format: 'avc' }, latencyMode: 'quality' });
     const cv = document.createElement('canvas'); cv.width = W; cv.height = H; const ctx = cv.getContext('2d', { alpha: false });
-    const st = { fast: new Map(), src: new Map(), off: new Set(), use: o.fast !== false, dim: Math.max(W, H), nFast: 0, nSeek: 0 }, opts = { video: (l) => st.src.get(l.id) || (this.vids.get(l.id) || {}).el || null }, tStart = performance.now();
+    const st = { fast: new Map(), src: new Map(), off: new Set(), info: new Map(), use: o.fast !== false, dim: Math.max(W, H), nFast: 0, nSeek: 0 }, opts = { video: (l) => st.src.get(l.id) || (this.vids.get(l.id) || {}).el || null }, tStart = performance.now();
     try {
       for (let i = 0; i < N; i++) {
         if (pr.cancel) throw new Error('cancel'); if (err) throw err; const t = i / fps; await this.exportSources(t, st);
         ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, W, H); ctx.setTransform(k, 0, 0, k, 0, 0); drawScene(ctx, r, t, opts);
         const vf = new VideoFrame(cv, { timestamp: Math.round(i * dur), duration: Math.round(dur) }); venc.encode(vf, { keyFrame: i % (fps * 2) === 0 }); vf.close(); while (venc.encodeQueueSize > 6) await sleep(2);
-        if (i % 4 === 0) { const el = (performance.now() - tStart) / 1000, fr = i / Math.max(0.1, el); pr.set(i / N * 0.9, 'klatka ' + i + ' / ' + N + (i > 8 ? ' (' + fr.toFixed(1) + ' kl./s)' : '') + (st.use && st.off.size ? ' · część wideo wolną metodą' : '')); await tick(); }
+        if (i % 4 === 0) { const el = (performance.now() - tStart) / 1000, fr = i / Math.max(0.1, el); pr.set(i / N * 0.9, 'klatka ' + i + ' / ' + N + (i > 8 ? ' (' + fr.toFixed(1) + ' kl./s)' : '') + (() => { const m = [...st.info.values()], sl = m.filter((x) => x.mode === 'wolno'); return m.length ? ' · wideo: ' + (m.length - sl.length) + ' szybko' + (sl.length ? ', ' + sl.length + ' WOLNO (' + sl.map((x) => x.name.replace(/^[^:]*: /, '')).join(', ') + ')' : '') : ''; })()); await tick(); }
       }
       await venc.flush(); venc.close(); if (err) throw err;
     } finally { for (const f of st.fast.values()) if (f) f.close(); st.fast.clear(); st.src.clear(); }
     console.info('Eksport:', N, 'klatek,', ((performance.now() - tStart) / 1000).toFixed(1), 's; szybkie dekodowanie', st.nFast, 'x, przewijanie', st.nSeek, 'x');
     // opóźnienie klatek B: indeks w kolejności dekodowania minus numer klatki wyświetlania. Obraz przesuwamy o tyle klatek, a dźwięk dostaje tyle samo ciszy z przodu (zgodność obrazu i dźwięku zostaje)
-    let dly = 0; vch.forEach((c, i) => { dly = Math.max(dly, i - Math.round(c.ts / dur)); }); const delay = Math.round(dly * dur);
+    const dIdx = (c) => Math.round(c.ts / dur); let dly = 0; vch.forEach((c, i) => { dly = Math.max(dly, i - dIdx(c)); }); const delay = Math.round(dly * dur);
     if (hasA) {
-      pr.set(0.92, 'kodowanie dźwięku'); const aenc = new AudioEncoder({ output: (c, m) => muxer.addAudioChunk(c, m), error: (e) => { err = e; } }); aenc.configure({ codec: acodec === 'aac' ? 'mp4a.40.2' : 'opus', sampleRate: 48000, numberOfChannels: 2, bitrate: acodec === 'aac' ? 192000 : 160000 });
+      pr.set(0.92, 'kodowanie dźwięku'); const aenc = new AudioEncoder({ output: (c, m) => { const d = new Uint8Array(c.byteLength); c.copyTo(d); ach.push({ d, type: c.type, ts: c.timestamp, dur: c.duration, meta: m }); }, error: (e) => { err = e; } }); aenc.configure({ codec: acodec === 'aac' ? 'mp4a.40.2' : 'opus', sampleRate: 48000, numberOfChannels: 2, bitrate: acodec === 'aac' ? 192000 : 160000 });
       const pad = Math.round(delay / 1e6 * 48000), total = mix.chs[0].length + pad, CH = 48000;
       for (let i = 0; i < total; i += CH) {
         if (pr.cancel) throw new Error('cancel'); const n = Math.min(CH, total - i), buf = new Float32Array(n * 2), z = Math.min(n, Math.max(0, pad - i)), from = Math.max(0, i - pad);
@@ -2513,8 +2527,12 @@ const Video = {
       await aenc.flush(); aenc.close(); if (err) throw err;
     }
     pr.set(0.97, 'składanie pliku MP4');
-    for (let i = 0; i < vch.length; i++) { const c = vch[i], d = c.dur == null ? Math.round(dur) : c.dur; if (!delay) muxer.addVideoChunkRaw(c.d, c.type, c.ts, d, c.meta); else { const pts = c.ts + delay, dts = i * dur; muxer.addVideoChunkRaw(c.d, c.type, pts, d, c.meta, pts - dts); } }
-    muxer.finalize(); return { blob: new Blob([target.buffer], { type: 'video/mp4' }), w: W, h: H, note: hasA ? (acodec === 'aac' ? 'H.264 + AAC' : 'H.264 + Opus (brak AAC w przeglądarce)') : 'H.264 bez dźwięku' };
+    // DTS = numer w kolejności dekodowania × czas klatki (zawsze rosnący); PTS = numer klatki wyświetlania + opóźnienie, więc PTS ≥ DTS i różnica (przesunięcie kompozycji) nigdy nie jest ujemna
+    try {
+      for (let i = 0; i < vch.length; i++) { const c = vch[i], d = c.dur == null ? Math.round(dur) : c.dur, dts = Math.round(i * dur), pts = Math.max(dts, Math.round((dIdx(c) + dly) * dur)); muxer.addVideoChunkRaw(c.d, c.type, pts, d, c.meta, pts - dts); }
+      let la = -1; for (const c of ach) { const ts = Math.max(c.ts, la + 1); la = ts; muxer.addAudioChunkRaw(c.d, c.type, ts, c.dur == null ? 0 : c.dur, c.meta); } // czas dźwięku nie może się cofnąć
+    } catch (e) { throw new Error((e && e.message) + ' [diagnostyka: kodek ' + cap.vcodec + ', wideo ' + vch.length + ' kl., opóźnienie ' + dly + ' kl., czasy kl. (w kolejności kodera): ' + vch.slice(0, 16).map(dIdx).join(',') + ', dźwięk ' + ach.length + ' pak.]'); }
+    muxer.finalize(); return { blob: new Blob([target.buffer], { type: 'video/mp4' }), w: W, h: H, modes: [...st.info.values()], note: hasA ? (acodec === 'aac' ? 'H.264 + AAC' : 'H.264 + Opus (brak AAC w przeglądarce)') : 'H.264 bez dźwięku' };
   },
   async encodeWebM(o, pr) {
     const r = this.reel, fps = o.fps || 30, cv = document.createElement('canvas'); cv.width = r.w; cv.height = r.h; const ctx = cv.getContext('2d'), stream = cv.captureStream(fps), mix = await this.mixReel(); let ac = null, src = null;
@@ -3439,13 +3457,28 @@ async function boot() {
   bus.on('project', () => { nm.value = P.cur.name; S.go(S.tab, true); });
   window.addEventListener('keydown', (e) => { if ((e.ctrlKey || e.metaKey) && /^[1-6]$/.test(e.key) && !e.target.closest('input,textarea,select')) { e.preventDefault(); S.go(S.names[+e.key - 1][0]); } });
   document.addEventListener('visibilitychange', () => { if (document.hidden && P.cur && P.dirty) saveNow(); }); window.addEventListener('beforeunload', () => { if (P.cur && P.dirty) saveNow(); });
-  window.addEventListener('error', (e) => { if (e.message && !/ResizeObserver/.test(e.message)) toast('Błąd aplikacji: ' + e.message, 'bad', 9000); }); window.addEventListener('unhandledrejection', (e) => { console.error(e.reason); toast('Błąd: ' + errText(e.reason), 'bad', 9000); });
+  window.addEventListener('error', (e) => { if (e.message && !/ResizeObserver/.test(e.message)) toast('Błąd aplikacji (' + APP.ver + '): ' + e.message, 'bad', 9000); }); window.addEventListener('unhandledrejection', (e) => { console.error(e.reason); toast('Błąd (' + APP.ver + '): ' + errText(e.reason), 'bad', 9000); });
   try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) { /* opcjonalne */ }
   try {
     const last = localStorage.getItem('css-last'), list = await listProjects(); let id = list.find((p) => p.id === last) ? last : (list[0] && list[0].id);
     if (!id) { await createProject('Mój pierwszy projekt'); toast('Marka i pomysły ładują się same (Drive, Instagram). Zacznij od zakładki Pomysły: wybierz temat i kliknij „Utwórz w edytorze”.', 'info', 9000); } else await openProject(id);
   } catch (e) { console.error(e); toast('Nie udało się otworzyć bazy projektów: ' + errText(e) + '. Sprawdź, czy przeglądarka nie blokuje danych witryn (tryb prywatny).', 'bad', 15000); }
 }
+// ── Nowa wersja: strona bywa otwarta godzinami, a poprawki wdrażają się same. Baner „odśwież” (projekt zapisuje się automatycznie) ──
+let updShown = false;
+async function checkUpdate() {
+  if (updShown) return;
+  try {
+    const r = await fetch('version.json?v=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
+    const j = await r.json(), m = /^v[\d.]+$/.test(j.ver || '') ? [0, j.ver] : null; if (!m || m[1] === APP.ver) return;
+    const num = (x) => x.slice(1).split('.').map(Number); const a = num(m[1]), b = num(APP.ver); let newer = false; for (let i = 0; i < Math.max(a.length, b.length); i++) { if ((a[i] || 0) !== (b[i] || 0)) { newer = (a[i] || 0) > (b[i] || 0); break; } } if (!newer) return;
+    updShown = true; const bar = h('div', { style: { position: 'fixed', left: '50%', bottom: '16px', transform: 'translateX(-50%)', zIndex: 9999, background: '#14532d', color: '#fff', padding: '10px 14px', borderRadius: '10px', boxShadow: '0 6px 24px rgba(0,0,0,.45)', display: 'flex', gap: '12px', alignItems: 'center', fontSize: '13px', maxWidth: '92vw' } },
+      h('span', {}, 'Dostępna nowa wersja ' + m[1] + ' (masz ' + APP.ver + '). Projekt zapisuje się sam.'),
+      h('button', { class: 'btn pri', onclick: async () => { if (typeof Video !== 'undefined' && Video.exporting && !confirm('Trwa eksport. Odświeżenie go przerwie. Odświeżyć mimo to?')) return; try { if (P.cur && P.dirty) await saveNow(); } catch (e) { /* zapis w tle i tak działa */ } location.reload(); } }, 'Odśwież teraz'),
+      h('button', { class: 'btn', onclick: () => bar.remove() }, 'Później')); document.body.append(bar);
+  } catch (e) { /* brak sieci: sprawdzimy później */ }
+}
+setTimeout(checkUpdate, 15000); setInterval(checkUpdate, 5 * 60 * 1000); document.addEventListener('visibilitychange', () => { if (!document.hidden) checkUpdate(); });
 boot();
 
 </script>
