@@ -6,8 +6,8 @@
     {
       "id": "T04",
       "title": "Efekt reflektora",
-      "status": "do publikacji",
-      "active": true,
+      "status": "ustawiona w Metricool na 27.11.2026 17:35 (IG i FB)",
+      "active": false,
       "nets": [
         "ig",
         "fb"
