@@ -44,6 +44,13 @@ Autor: Michał Rzekiecki · kontakt: michus@gmail.com · adres: https://projects
 1. Analiza w przeglądarce (canvas, bez kluczy): poświaty (kolor i pozycja), pasek postępu, stopka, bloki tekstu, zdjęcie, akcenty → „DNA” układu, które steruje wszystkimi szablonami.
 2. Wzorzec domyślny: karuzela „Po kontuzji” (v4). Własny materiał (obrazy lub wideo rolki) nadpisuje DNA w projekcie; rodzaje slajdów są rozpoznawane zgrubnie.
 
+## Zmiany v0.15 (Publikacja: 3 kroki do Metricool, Instagram i Facebook)
+
+1. Sekcja 7 w trybie Metricool ma 3 numerowane kroki: wyślij na Drive, skopiuj polecenie, agent ustawia publikację
+2. Polecenie dla agenta uwzględnia zaznaczone sieci (np. Instagram i Facebook) i mówi, że publikacja idzie przez Metricool
+3. Przycisk wysyłki na Drive podaje wprost, dlaczego jest wyszarzony (brak eksportu, zatwierdzeń lub sieci)
+4. Sieci z planu (rolki.json) wpisują się ponownie, gdy agent zmieni listę sieci rolki
+
 ## Zmiany v0.14 (Publikacja w sekcjach, opis i miniatura automatycznie, Audio przed Wideo)
 
 1. **Kolejność zakładek**: Audio stoi przed Wideo (Marka, Pomysły, Grafiki, Audio, Wideo, Publikacja). Skróty Ctrl+1 do 6 idą za kolejnością.
