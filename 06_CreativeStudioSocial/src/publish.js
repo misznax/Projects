@@ -171,8 +171,8 @@ const Publish = {
       readyA ? null : h('div', { class: 'warnrow', style: { margin: '6px 0' } }, 'Przycisk 1 jest wyszarzony, bo: ' + whyA),
       step(1, 'Wyślij plik, miniaturę i opis na Drive'),
       h('div', { class: 'row', style: { flexWrap: 'wrap' } }, h('button', { class: 'btn pri', style: { flex: 1, padding: '12px', fontSize: '15px' }, disabled: !readyA, onclick: () => this.sendAuto(), title: readyA ? '' : whyA }, '☁ Wyślij na Drive'), h('button', { class: 'btn', title: 'Połącz Drive: jednorazowa konfiguracja skryptu', onclick: () => DriveUp.setup() }, '⚙ Drive')),
-      step(2, 'Skopiuj polecenie i wklej agentowi w czacie'),
-      h('div', { class: 'hint', style: { padding: '8px 10px', border: '1px dashed var(--bd)', borderRadius: '8px', userSelect: 'all' } }, this.agentCmd()),
+      step(2, 'Napisz agentowi w czacie (wystarczy: publikuj)'),
+      h('div', { class: 'hint', style: { margin: '2px 0 6px' } }, 'To zwykłe zdanie do czatu z agentem, nic się nie wysyła samo. Możesz je skopiować albo napisać własnymi słowami, np. publikuj od razu.'), h('div', { class: 'hint', style: { padding: '8px 10px', border: '1px dashed var(--bd)', borderRadius: '8px', userSelect: 'all' } }, this.agentCmd()),
       h('div', { class: 'row', style: { marginTop: '6px' } }, h('button', { class: 'btn pri', onclick: () => navigator.clipboard.writeText(this.agentCmd()).then(() => toast('Skopiowano polecenie dla agenta', 'ok')).catch((e) => toast(errText(e), 'bad')) }, '📋 Skopiuj polecenie')),
       step(3, 'Agent ustawia publikację w Metricool i podaje link do wpisu'));
     const manual = h('div', {}, h('div', { class: 'hint', style: { margin: '6px 0' } }, 'Pobierasz pakiet ZIP (plik, miniatura, opisy, metadane) i wgrywasz sam: otwierają się strony wgrywania wybranych sieci. Nic nie jest wysyłane automatycznie.'),

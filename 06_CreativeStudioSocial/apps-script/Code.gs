@@ -1,4 +1,6 @@
-/* Creative Studio Social: odbiornik gotowych rolek -> Google Drive (folder „Gotowe rolki”).
+/* PO CO TO JEST: ten skrypt pozwala aplikacji Creative Studio Social wysłać gotową rolkę na Twój Google Drive jednym kliknięciem. Robisz to raz.
+   Co zrobić: 1) wklej ten kod w script.google.com i zapisz, 2) Wdróż → Nowe wdrożenie → Aplikacja internetowa (Wykonaj jako: Ja, Dostęp: Wszyscy), 3) skopiuj adres kończący się na /exec do Studio (okno ⚙ Drive).
+   Creative Studio Social: odbiornik gotowych rolek -> Google Drive (folder „Gotowe rolki”).
    Wklej do nowego projektu na script.google.com i wdróż jako Aplikację internetową (Wykonaj jako: Ja, Dostęp: Wszyscy).
    Aplikacja Creative Studio Social wysyła plik kawałkami prosto do Drive; skrypt tylko zakłada sesję wysyłania i sprawdza hasło.
    Autor: Michał Rzekiecki · michus@gmail.com */
