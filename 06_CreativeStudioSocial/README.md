@@ -1,4 +1,4 @@
-# Creative Studio Social · v0.13
+# Creative Studio Social · v0.20
 
 Studio treści na social media w przeglądarce: marka → grafiki (karuzele) → wideo (rolki 9:16) → audio → publikacja na Instagram, YouTube Shorts, TikTok i Facebook Reels.
 Autor: Michał Rzekiecki · kontakt: michus@gmail.com · adres: https://projects.michus.workers.dev/06/
@@ -43,6 +43,15 @@ Autor: Michał Rzekiecki · kontakt: michus@gmail.com · adres: https://projects
 
 1. Analiza w przeglądarce (canvas, bez kluczy): poświaty (kolor i pozycja), pasek postępu, stopka, bloki tekstu, zdjęcie, akcenty → „DNA” układu, które steruje wszystkimi szablonami.
 2. Wzorzec domyślny: karuzela „Po kontuzji” (v4). Własny materiał (obrazy lub wideo rolki) nadpisuje DNA w projekcie; rodzaje slajdów są rozpoznawane zgrubnie.
+
+## Zmiany v0.20 (numeracja rolek, porządek na Drive)
+
+1. Każda rolka ma od początku stały numer: litera typu (R rolka, K karuzela, P post) + 3 cyfry, np. R001. Numer nadaje się raz i nigdy nie jest używany ponownie. Kolejny wolny numer to największy znany (rolki.json `numeracja` i `topics[].num`, projekty w przeglądarce, foldery na Drive) + 1.
+2. Folder rolki na Drive nazywa się `R001-Efekt reflektora` (numer, myślnik, tytuł; bez numeru banku tematów T04). Leży w `Śmiało – Rolki / Materiały` w produkcji, po publikacji w `Opublikowane`. Wszystko jednej rolki jest w tym jednym folderze: rolka (final), podkład muzyczny, miniatura, opis i hashtagi, projekt Studia (ZIP); szkice w podfolderze Szkice.
+3. Nowa rolka: lista pokazuje numery; temat bez numeru (format do ustalenia) wybierasz „jako rolka” lub „jako karuzela” i numer nadaje się od razu; pusta rolka ma wybór typu. Folder na Drive zakłada się od razu, gdy Drive jest połączony.
+4. Publikacja, sekcja 8: Archiwizuj na Drive (ponowna archiwizacja nadpisuje pliki o tych samych nazwach, stare idą do kosza Drive), „Opublikowana: przenieś do Opublikowane” (przenosi cały folder).
+5. Skrypt Drive w wersji 2 (`apps-script/Code.gs`): ścieżki, akcje `names` i `move`, nadpisywanie opisu. Studio odmawia pracy ze starszym skryptem (zakładałby foldery o złych nazwach): wklej nowy kod z ⚙ Drive i zrób Wdróż → Zarządzaj wdrożeniami → ołówek → Nowa wersja.
+6. Rejestr pomysłów to arkusz „Lista rolek” na Drive (numer, typ, tytuł, status, kategoria, autorzy badań, źródło, hook, temat z banku, data, folder). Studio go nie edytuje: status i datę wpisuje Agent John. W `rolki.json` temat R1 przemianowany na T27.
 
 ## Zmiany v0.19 (lista tematów, pusta rolka, status projektów)
 

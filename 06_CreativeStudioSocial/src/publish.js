@@ -57,10 +57,10 @@ const Publish = {
   worst(n) { const v = this.validate(n); return v.some((x) => x.ok === 'bad') ? 'bad' : v.some((x) => x.ok === 'warn') ? 'warn' : 'ok'; },
 
   // ── Plan agenta (public/rolki.json): opis ze źródłami, hashtagi i tekst miniatury wpisują się same ──
-  plan: null, topics: [],
+  plan: null, topics: [], pool: {},
   async loadPlan() {
     if (this.plan) return this.plan;
-    try { const r = await fetch('rolki.json?v=' + Date.now(), { cache: 'no-store' }); const j = r.ok ? await r.json() : null; this.plan = j && Array.isArray(j.reels) ? j.reels : []; this.topics = j && Array.isArray(j.topics) ? j.topics : []; } catch (e) { this.plan = []; this.topics = []; }
+    try { const r = await fetch('rolki.json?v=' + Date.now(), { cache: 'no-store' }); const j = r.ok ? await r.json() : null; this.plan = j && Array.isArray(j.reels) ? j.reels : []; this.topics = j && Array.isArray(j.topics) ? j.topics : []; this.pool = (j && j.numeracja) || {}; } catch (e) { this.plan = []; this.topics = []; this.pool = {}; }
     return this.plan;
   },
   planEntry() { return (this.plan || []).find((x) => x.id === this.p.planId) || null; },
@@ -92,15 +92,15 @@ const Publish = {
     p.cover = await Assets.add(new File([b], fname('miniatura_' + slug(spec.kicker || P.cur.name), 'png'), { type: 'image/png' }), 'image', { desc: 'Miniatura z hookiem: ' + (spec.lines || []).join(' ').replace(/\*/g, ''), origin: 'Publikacja' }); touch(); if (!silent) toast('Miniatura gotowa.', 'ok'); return true;
   },
   netsPl() { const m = { ig: 'Instagramie (Reel)', fb: 'Facebooku (Reel)', yt: 'YouTube (Shorts)', tt: 'TikToku' }, a = Object.keys(NETS).filter((k) => this.p.nets[k]).map((k) => m[k] || NETS[k].n); return a.length > 1 ? a.slice(0, -1).join(', ') + ' i ' + a[a.length - 1] : (a[0] || 'Instagramie'); },
-  agentCmd() { const p = this.p; return 'Opublikuj ' + (p.planId ? p.planId + ' ' : '') + '(' + P.cur.name + ') na ' + this.netsPl() + ' ' + (p.schedule ? 'o ' + new Date(p.schedule).toLocaleString('pl-PL') : 'od razu') + ' przez Metricool. Plik, miniatura i opis są na Drive w folderze Rolki do publikacji.'; },
+  agentCmd() { const p = this.p; return 'Opublikuj ' + reelFolderName() + ' na ' + this.netsPl() + ' ' + (p.schedule ? 'o ' + new Date(p.schedule).toLocaleString('pl-PL') : 'od razu') + ' przez Metricool. Materiały są na Drive: Śmiało – Rolki / ' + reelPath().replace('/', ' / ') + '. Po publikacji: status i data w Liście rolek, folder do Opublikowane.'; },
   // tryb automatyczny: plik + miniatura + opis na Drive, resztę (Metricool) robi agent na Twoje polecenie
   async sendAuto() {
     const p = this.p, info = p.videoInfo; if (!p.video || !info) { toast('Najpierw wyeksportuj rolkę w pełnej jakości (Wideo → Eksport).', 'warn'); return; }
     if (!DriveUp.cfg()) { DriveUp.setup(() => this.sendAuto()); return; }
     try {
       const vb = await Assets.blob(p.video); if (!vb) throw new Error('Brak pliku wideo w bibliotece. Wyeksportuj rolkę ponownie.');
-      const res = await DriveUp.deliver(vb, info.name); if (!res) return;
-      let cv = null; if (p.cover) { const cb = await Assets.blob(p.cover); if (cb) cv = await DriveUp.deliver(cb, info.name.replace(/\.[^.]+$/, '') + '_miniatura.png', { draft: true }); }
+      const res = await DriveUp.deliver(vb, info.name, { sub: reelPath() }); if (!res) return;
+      let cv = null; if (p.cover) { const cb = await Assets.blob(p.cover); if (cb) cv = await DriveUp.deliver(cb, info.name.replace(/\.[^.]+$/, '') + '_miniatura.png', { draft: true, sub: reelPath() }); }
       this.log('Pakiet wysłany na Drive dla agenta: ' + res.name + (cv ? ' i miniatura' : ' (bez miniatury)'));
       modal('Pakiet jest na Drive', h('div', {}, DriveUp.resultBox(res), cv ? h('div', { style: { marginTop: '6px' } }, 'Miniatura: ', h('a', { href: cv.url, target: '_blank', rel: 'noopener' }, cv.name)) : h('div', { class: 'warnrow' }, 'Bez miniatury: wygeneruj ją w sekcji 2 i wyślij ponownie.'), h('div', { class: 'hint', style: { marginTop: '8px' } }, 'Napisz agentowi w czacie: ' + this.agentCmd())),
         [{ t: 'Skopiuj polecenie', cls: 'pri', keep: true, fn: () => { navigator.clipboard.writeText(this.agentCmd()).then(() => toast('Skopiowano polecenie dla agenta', 'ok')).catch((e) => toast(errText(e), 'bad')); return false; } }, { t: 'Zamknij' }]);
@@ -119,7 +119,7 @@ const Publish = {
     if (p.kind === 'video') {
       mat.append(...[info && p.video ? h('div', { class: 'card' }, h('table', { class: 'qc' }, ...[['Plik', info.name], ['Rozmiar', fmtSize(info.size)], ['Długość', info.dur.toFixed(1) + ' s'], ['Wymiary', info.w + '×' + info.h + ' @ ' + info.fps + ' fps'], ['Kodeki', info.note || info.kind], ['Wyeksportowano', new Date(info.ts).toLocaleString('pl-PL')]].map(([a, b]) => h('tr', {}, h('td', {}, a), h('td', {}, b))))) : h('div', { class: 'hint' }, 'Brak wyeksportowanej rolki. Zaprojektuj ją w zakładce Wideo i wybierz Eksport → Pełna jakość.'),
         h('div', { class: 'row', style: { marginTop: '6px' } }, h('button', { class: 'btn', onclick: () => S.go('video') }, 'Przejdź do Wideo'), info && p.video ? h('button', { class: 'btn', onclick: async () => { const b = await Assets.blob(p.video); if (b) download(b, info.name); } }, 'Pobierz plik') : null),
-        p.drive ? h('div', { class: 'hint', style: { marginTop: '6px' } }, 'Na Drive: ', h('a', { href: p.drive.url, target: '_blank', rel: 'noopener' }, p.drive.name), p.drive.folder ? h('span', {}, ' · ', h('a', { href: p.drive.folder, target: '_blank', rel: 'noopener' }, 'folder Rolki do publikacji')) : null, ' · ' + new Date(p.drive.ts).toLocaleString('pl-PL')) : null].filter(Boolean));
+        p.drive ? h('div', { class: 'hint', style: { marginTop: '6px' } }, 'Na Drive: ', h('a', { href: p.drive.url, target: '_blank', rel: 'noopener' }, p.drive.name), p.drive.folder ? h('span', {}, ' · ', h('a', { href: p.drive.folder, target: '_blank', rel: 'noopener' }, 'folder rolki na Drive')) : null, ' · ' + new Date(p.drive.ts).toLocaleString('pl-PL')) : null].filter(Boolean));
     } else { const sel = h('select', { onchange: (e) => { p.postId = e.target.value; touch(); this.right(); } }, c.posts.map((x) => h('option', { value: x.id, selected: x.id === (p.postId || c.curPost) }, x.name + ' (' + x.slides.length + ' szt.)'))); mat.append(c.posts.length ? sel : h('div', { class: 'hint' }, 'Brak projektów graficznych. Utwórz karuzelę w zakładce Grafiki.')); }
     L.append(this.sec(1, 'Materiał', 'Plik z eksportu w pełnej jakości. Szkic tu nie trafia.', h('div', { class: 'fld' }, h('label', {}, 'Rodzaj materiału'), fld({ k: 'kind', t: 'seg', opts: [['video', 'Rolka (wideo)'], ['images', 'Karuzela / zdjęcia']] }, p, () => { touch(); this.render(); })), mat));
 
@@ -179,9 +179,9 @@ const Publish = {
       h('button', { class: 'btn pri', style: { width: '100%', padding: '12px', fontSize: '15px' }, disabled: !ready, onclick: () => this.finalPublish(), title: ready ? '' : why }, 'FINAL PUBLISH (pakiet ZIP)'), ready ? null : h('div', { class: 'hint', style: { marginTop: '6px', color: 'var(--warn)' } }, why));
     R.append(this.sec(7, 'Publikacja', 'Wybierz tryb. Zalecany: Metricool przez agenta (3 kroki poniżej).', modeSeg, p.mode === 'manual' ? manual : auto));
     const ar = P.cur.archived;
-    R.append(this.sec(8, 'Po publikacji: archiwum i nowa rolka', 'Zapisuje cały projekt (wszystkie materiały) w folderze „numer nazwa” na Drive, żeby nic się nie zgubiło i można było do niego wrócić. Potem zaczynasz nową rolkę.',
-      h('div', { class: 'row', style: { flexWrap: 'wrap' } }, h('button', { class: 'btn pri', style: { flex: 1, padding: '12px' }, onclick: () => archiveProject() }, '📦 Archiwizuj na Drive (' + reelFolderName() + ')'), h('button', { class: 'btn', onclick: () => exportProject(), title: 'Pobiera ZIP z projektem na ten komputer' }, '⬇ Pobierz ZIP'), h('button', { class: 'btn', onclick: () => newReelPrompt() }, '➕ Nowa rolka')),
-      ar ? h('div', { class: 'hint', style: { marginTop: '6px' } }, 'Zarchiwizowano ' + new Date(ar.ts).toLocaleString('pl-PL') + ': ', ar.folder ? h('a', { href: ar.folder, target: '_blank', rel: 'noopener' }, ar.name) : ar.name) : null));
+    R.append(this.sec(8, 'Po publikacji: archiwum i nowa rolka', 'Numer rolki: ' + (reelNum() || 'brak (wybierz temat w oknie Nowa rolka)') + '. Archiwum zapisuje wszystko w jednym folderze na Drive (rolka, podkład, miniatura, opis, projekt Studia), żeby nic się nie zgubiło. Po publikacji folder przechodzi z Materiały do Opublikowane.',
+      h('div', { class: 'row', style: { flexWrap: 'wrap' } }, h('button', { class: 'btn pri', style: { flex: 1, padding: '12px' }, onclick: () => archiveProject() }, '📦 Archiwizuj na Drive (' + reelPath() + ')'), h('button', { class: 'btn', disabled: reelDone(), title: reelDone() ? 'Folder jest już w Opublikowane' : 'Przenosi cały folder rolki z Materiały do Opublikowane', onclick: () => markPublished() }, reelDone() ? '✔ Folder w Opublikowane' : '✔ Opublikowana: przenieś do Opublikowane'), h('button', { class: 'btn', onclick: () => exportProject(), title: 'Pobiera ZIP z projektem na ten komputer' }, '⬇ Pobierz ZIP'), h('button', { class: 'btn', onclick: () => newReelPrompt() }, '➕ Nowa rolka')),
+      ar ? h('div', { class: 'hint', style: { marginTop: '6px' } }, 'Zarchiwizowano ' + new Date(ar.ts).toLocaleString('pl-PL') + ': ', ar.folder ? h('a', { href: ar.folder, target: '_blank', rel: 'noopener' }, ar.path || ar.name) : (ar.path || ar.name)) : null));
     const lg = P.cur.log || (P.cur.log = []); R.append(h('h3', { style: { margin: '18px 0 6px' } }, 'Historia'), lg.length ? h('div', { class: 'zebra' }, lg.slice(0, 15).map((e) => h('div', { style: { padding: '6px 9px' } }, h('div', { class: 'fine' }, new Date(e.ts).toLocaleString('pl-PL')), h('div', {}, e.t)))) : h('div', { class: 'hint' }, 'Brak wpisów.'));
     this.calendar();
   },

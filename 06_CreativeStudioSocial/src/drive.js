@@ -1,9 +1,9 @@
-/* WYSYŁKA GOTOWYCH ROLEK NA GOOGLE DRIVE (folder „Rolki do publikacji”)
+/* WYSYŁKA I PORZĄDEK ROLEK NA GOOGLE DRIVE (folder główny „Śmiało – Rolki”: Lista rolek, Materiały/<numer-tytuł>, Opublikowane/<numer-tytuł>)
    Przeglądarka → Worker (api/s/gas, api/s/gput) → skrypt Google użytkownika (apps-script/Code.gs, kod wstawiany z build.py jako GAS_CODE) + sesja wznawialnego uploadu Drive.
    Nic nie wymaga kluczy: skrypt działa na koncie użytkownika, a Worker przepuszcza tylko dwa adresy (skrypt script.google.com i sesję uploadu googleapis.com).
    Po wysyłce plik leży na Drive, więc czat agenta (Drive) go widzi, w przeciwieństwie do biblioteki projektu, która jest tylko w IndexedDB przeglądarki. */
 const DriveUp = {
-  K: 'css-gas', KT: 'css-gas-token', CH: 8 * 1048576, ROOT_ID: '1d_ppqbdQk1VI9HOiWGnDe-to5ar74gcy', // główny folder na Drive Michała (Rolki do publikacji); podfolder na rolkę zakłada skrypt
+  K: 'css-gas', KT: 'css-gas-token', CH: 8 * 1048576, ROOT_ID: '1d_ppqbdQk1VI9HOiWGnDe-to5ar74gcy', DIR_WORK: 'Materiały', DIR_DONE: 'Opublikowane', NEED_VER: 2, _ok: false, // ROOT_ID = folder „Śmiało – Rolki” na Drive Michała; podfoldery rolek zakłada skrypt
   cfg() { try { const c = JSON.parse(localStorage.getItem(this.K) || 'null'); return c && c.url && c.token ? c : null; } catch { return null; } },
   save(c) { try { localStorage.setItem(this.K, JSON.stringify(c)); } catch { /* brak pamięci */ } },
   token() { let t = ''; try { t = localStorage.getItem(this.KT) || ''; } catch { t = ''; } if (!t) { const a = new Uint8Array(18); crypto.getRandomValues(a); t = [...a].map((x) => 'abcdefghjkmnpqrstuvwxyz23456789'[x % 31]).join(''); try { localStorage.setItem(this.KT, t); } catch { /* nic */ } } return t; },
@@ -22,6 +22,17 @@ const DriveUp = {
     if (j && j.error) return 'Skrypt zgłosił błąd: ' + j.error;
     return 'Nieoczekiwana odpowiedź serwera' + (st ? ' (HTTP ' + st + ')' : '') + '.';
   },
+  // Sprawdza raz na sesję, czy wdrożony skrypt jest w wersji 2 (ścieżki, przenoszenie). Starszy zakładałby foldery o złych nazwach, więc go odrzucamy.
+  async ready() {
+    if (this._ok) return; const j = await this.gas({ action: 'ping' });
+    if ((j.ver || 0) < this.NEED_VER) throw new Error('Skrypt Drive jest w starej wersji (bez folderów Materiały i Opublikowane). W ⚙ Ustawienia Drive skopiuj nowy kod, wklej go w skrypcie (script.google.com), potem Wdróż → Zarządzaj wdrożeniami → ołówek → Wersja: Nowa wersja → Wdróż.');
+    this._ok = true;
+  },
+  // Folder rolki: Materiały/R001-Efekt reflektora (w produkcji) albo Opublikowane/R001-Efekt reflektora (po publikacji)
+  path(name, done) { return (done ? this.DIR_DONE : this.DIR_WORK) + '/' + name; },
+  async names() { await this.ready(); const j = await this.gas({ action: 'names' }); return j.names || {}; }, // {Materiały:[nazwy folderów], Opublikowane:[…]}
+  async mkdir(path) { await this.ready(); return this.gas({ action: 'ping', sub: path }); }, // zakłada folder pod ścieżką (jeśli go nie ma)
+  async move(from, to) { await this.ready(); return this.gas({ action: 'move', from, to }); },
   async gas(payload, url, token) {
     const c = this.cfg(); url = url || (c && c.url); token = token || (c && c.token); if (!url) throw new Error('Drive nie jest skonfigurowany (⚙ Ustawienia Drive).');
     let r; try { r = await fetch('api/s/gas', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ url, payload: Object.assign({ token }, payload) }) }); } catch (e) { throw new Error('Brak połączenia z serwerem: ' + errText(e)); }
@@ -36,9 +47,9 @@ const DriveUp = {
     return j;
   },
   next(range, def) { const m = /bytes=0-(\d+)/.exec(range || ''); return m ? +m[1] + 1 : def; }, // ile bajtów Drive już przyjął
-  // Wysyła blob do folderu „Rolki do publikacji”. pr: progressModal. Zwraca {id, name, url, folder}.
-  async upload(blob, name, mime, pr, sub) {
-    pr.set(0, 'łączenie z Drive'); const s = await this.gas({ action: 'init', name, mime: mime || 'video/mp4', size: blob.size, sub: sub || '' }); if (!s.url) throw new Error('Skrypt nie zwrócił adresu sesji wysyłania.');
+  // Wysyła blob do folderu pod ścieżką sub (domyślnie folder główny). pr: progressModal. Zwraca {id, name, url, folder}.
+  async upload(blob, name, mime, pr, sub, replace) {
+    pr.set(0, 'łączenie z Drive'); await this.ready(); const s = await this.gas({ action: 'init', name, mime: mime || 'video/mp4', size: blob.size, sub: sub || '', replace: !!replace }); if (!s.url) throw new Error('Skrypt nie zwrócił adresu sesji wysyłania.');
     const total = blob.size; let off = 0, fin = null, stall = 0; const t0 = Date.now();
     while (off < total) {
       if (pr.cancel) throw new Error('cancel');
@@ -72,22 +83,22 @@ const DriveUp = {
     const draft = !!(opt && opt.draft);
     const pr = progressModal('Wysyłanie na Drive'); let res;
     try {
-      res = await this.upload(blob, name, (opt && opt.mime) || blob.type || 'video/mp4', pr, opt && opt.sub);
+      res = await this.upload(blob, name, (opt && opt.mime) || blob.type || 'video/mp4', pr, opt && opt.sub, opt && opt.replace);
       let txt = ''; const t = draft ? '' : this.captionText(); if (t) { pr.set(0.98, 'zapis opisu obok pliku'); txt = name.replace(/\.[^.]+$/, '') + '_opis.txt'; try { await this.gas({ action: 'text', name: txt, text: t, sub: (opt && opt.sub) || '' }); } catch (e) { console.warn('Opis na Drive:', e); txt = ''; } }
       pr.close(); if (!draft) { (P.cur.publish = P.cur.publish || {}).drive = { id: res.id, name: res.name, url: res.url, folder: res.folder, size: blob.size, ts: Date.now(), text: txt }; touch(); } return res;
     } catch (e) { pr.close(); if (/^cancel$/.test(e && e.message)) { toast('Wysyłanie na Drive anulowane.', 'warn'); return null; } throw e; }
   },
-  text(name, text, sub) { return this.gas({ action: 'text', name, text, sub: sub || '' }); }, // mały plik tekstowy do (podfolderu) folderu głównego
+  async text(name, text, sub) { await this.ready(); return this.gas({ action: 'text', name, text, sub: sub || '' }); }, // mały plik tekstowy do folderu pod ścieżką sub (ta sama nazwa = nadpisanie)
   resultBox(res) {
-    return h('div', {}, h('div', { class: 'hint', html: rich('Plik jest na Twoim Drive w folderze (Rolki do publikacji). Czat agenta z dostępem do Drive widzi go tam, razem z plikiem „_opis.txt”, jeśli opis był wpisany.') }),
-      h('div', { style: { marginTop: '8px', lineHeight: '1.7' } }, 'Plik: ', h('a', { href: res.url, target: '_blank', rel: 'noopener' }, res.name), h('br'), res.folder ? h('span', {}, 'Folder: ', h('a', { href: res.folder, target: '_blank', rel: 'noopener' }, 'Rolki do publikacji')) : null));
+    return h('div', {}, h('div', { class: 'hint', html: rich('Plik jest na Twoim Drive w folderze „Śmiało – Rolki” (podfolder tej rolki). Czat agenta z dostępem do Drive widzi go tam, razem z plikiem „_opis.txt”, jeśli opis był wpisany.') }),
+      h('div', { style: { marginTop: '8px', lineHeight: '1.7' } }, 'Plik: ', h('a', { href: res.url, target: '_blank', rel: 'noopener' }, res.name), h('br'), res.folder ? h('span', {}, 'Folder: ', h('a', { href: res.folder, target: '_blank', rel: 'noopener' }, 'Folder rolki na Drive')) : null));
   },
   // Wysyła rolkę już zapisaną w Publikacji (publish.video)
   async sendPublished() {
     const p = P.cur.publish, info = p && p.videoInfo; if (!p || !p.video || !info) { toast('Najpierw wyeksportuj rolkę (Wideo → Eksport).', 'warn'); return; }
     if (!this.cfg()) { this.setup(() => this.sendPublished()); return; }
     const b = await Assets.blob(p.video); if (!b) { toast('Brak pliku wideo w bibliotece. Wyeksportuj rolkę ponownie.', 'bad'); return; }
-    try { const res = await this.deliver(b, info.name); if (res) { modal('Wysłano na Drive', this.resultBox(res), [{ t: 'Zamknij' }]); if (typeof Publish !== 'undefined' && S.tab === 'publish') Publish.render(); } }
+    try { const res = await this.deliver(b, info.name, { sub: reelPath() }); if (res) { modal('Wysłano na Drive', this.resultBox(res), [{ t: 'Zamknij' }]); if (typeof Publish !== 'undefined' && S.tab === 'publish') Publish.render(); } }
     catch (e) { console.error(e); modal('Nie udało się wysłać na Drive', h('div', {}, h('div', { class: 'warnrow bad' }, errText(e)), h('div', { class: 'hint', style: { marginTop: '8px' }, html: rich('Rolka jest zapisana w bibliotece projektu: wyślij ją ponownie z Publikacji (☁ Wyślij na Drive) albo sprawdź (⚙ Ustawienia Drive).') })), [{ t: 'Ustawienia Drive', cls: 'pri', fn: () => { this.setup(); } }, { t: 'Zamknij' }]); }
   },
   // Okno ustawień: kod skryptu, kroki wdrożenia, adres, test
@@ -97,7 +108,7 @@ const DriveUp = {
     const ta = h('textarea', { readonly: true, rows: 5, style: { width: '100%', fontFamily: 'monospace', fontSize: '11px' } }); ta.value = code;
     const st = h('div', { class: 'hint', style: { marginTop: '6px' } }), L = (href, t) => h('a', { href, target: '_blank', rel: 'noopener' }, t);
     const body = h('div', { style: { lineHeight: '1.55' } },
-      h('div', { class: 'hint', html: rich('Po co to jest: dzięki temu przycisk (☁ Wyślij na Drive) w Publikacji wrzuca gotową rolkę z Studio na Twój Drive do folderu (Rolki do publikacji), skąd agent weźmie ją do Metricool. Robisz to raz (ok. 3 minut), bez kluczy. Skrypt działa na Twoim koncie Google i nikt poza Tobą go nie ma. Nie chcesz skryptu? Przeciągnij wyeksportowany plik mp4 na Drive do folderu (Rolki do publikacji) ręcznie, a agent go znajdzie.') }),
+      h('div', { class: 'hint', html: rich('Po co to jest: dzięki temu przycisk (☁ Wyślij na Drive) w Publikacji wrzuca gotową rolkę z Studio na Twój Drive do folderu rolki (Śmiało – Rolki / Materiały), skąd agent weźmie ją do Metricool. Robisz to raz (ok. 3 minut), bez kluczy. Skrypt działa na Twoim koncie Google i nikt poza Tobą go nie ma. Nie chcesz skryptu? Przeciągnij wyeksportowany plik mp4 na Drive do folderu rolki (Śmiało – Rolki / Materiały) ręcznie, a agent go znajdzie.') }),
       h('div', { style: { margin: '8px 0' } }, '1. Otwórz ', L('https://script.google.com/home/projects/create', 'script.google.com → Nowy projekt'), ' (to samo konto Google, co Drive).', h('br'), '2. Usuń domyślny kod i wklej poniższy (przycisk obok). Zapisz (Ctrl+S).'),
       ta, h('div', { class: 'row', style: { marginTop: '6px' } }, h('button', { class: 'btn', onclick: () => navigator.clipboard.writeText(code).then(() => toast('Skopiowano kod skryptu', 'ok')).catch(() => { ta.select(); toast('Zaznaczono kod: skopiuj Ctrl+C', 'warn'); }) }, '📋 Kopiuj kod skryptu')),
       h('div', { style: { margin: '8px 0' } }, '3. Wdróż → Nowe wdrożenie → typ „Aplikacja internetowa” → Wykonaj jako: (Ja) → Kto ma dostęp: (Wszyscy) → Wdróż. Przy pytaniu o uprawnienia: Autoryzuj dostęp → wybierz konto → (Zaawansowane) → „Przejdź do … (niebezpieczne)” → Zezwól. To Twój własny skrypt.', h('br'), '4. Skopiuj „Adres URL aplikacji internetowej” (kończy się na /exec) i wklej w polu poniżej, potem kliknij (Zapisz i sprawdź). Gotowe: od tej chwili w Publikacji działa (☁ Wyślij na Drive).'),
@@ -105,9 +116,9 @@ const DriveUp = {
     const run = async (close) => {
       const u = url.value.trim(); if (!this.urlOk(u)) { st.className = 'warnrow bad'; st.textContent = this.errMsg({ code: 'bad_url' }); return false; }
       st.className = 'hint'; st.textContent = 'Sprawdzam połączenie…';
-      try { const j = await this.gas({ action: 'ping' }, u, this.token()); this.save({ url: u, token: this.token() }); st.className = 'hint'; st.textContent = ''; toast('Drive połączony. Folder: ' + (j.name || 'Rolki do publikacji'), 'ok', 6000); if (after) setTimeout(after, 150); return true; }
+      try { const j = await this.gas({ action: 'ping' }, u, this.token()); this.save({ url: u, token: this.token() }); this._ok = (j.ver || 0) >= this.NEED_VER; if (!this._ok) { st.className = 'warnrow bad'; st.textContent = 'Połączono, ale to stara wersja skryptu (bez folderów Materiały i Opublikowane). Wklej nowy kod z pola wyżej w skrypcie i zrób Wdróż → Zarządzaj wdrożeniami → ołówek → Wersja: Nowa wersja → Wdróż.'; return false; } st.className = 'hint'; st.textContent = ''; toast('Drive połączony. Folder: ' + (j.name || 'Śmiało – Rolki'), 'ok', 6000); if (after) setTimeout(after, 150); return true; }
       catch (e) { st.className = 'warnrow bad'; st.textContent = errText(e); return false; }
     };
-    modal('☁ Ustawienia Drive: Rolki do publikacji', body, [{ t: 'Zapisz i sprawdź', cls: 'pri', fn: run }, ...(c ? [{ t: 'Odłącz', cls: 'bad', fn: () => { try { localStorage.removeItem(this.K); } catch { /* nic */ } toast('Drive odłączony.', 'warn'); } }] : []), { t: 'Zamknij' }]);
+    modal('☁ Ustawienia Drive: Śmiało – Rolki', body, [{ t: 'Zapisz i sprawdź', cls: 'pri', fn: run }, ...(c ? [{ t: 'Odłącz', cls: 'bad', fn: () => { try { localStorage.removeItem(this.K); } catch { /* nic */ } toast('Drive odłączony.', 'warn'); } }] : []), { t: 'Zamknij' }]);
   },
 };
