@@ -1,13 +1,13 @@
-/* WYSYŁKA GOTOWYCH ROLEK NA GOOGLE DRIVE (folder „Gotowe rolki”)
+/* WYSYŁKA GOTOWYCH ROLEK NA GOOGLE DRIVE (folder „Rolki do publikacji”)
    Przeglądarka → Worker (api/s/gas, api/s/gput) → skrypt Google użytkownika (apps-script/Code.gs, kod wstawiany z build.py jako GAS_CODE) + sesja wznawialnego uploadu Drive.
    Nic nie wymaga kluczy: skrypt działa na koncie użytkownika, a Worker przepuszcza tylko dwa adresy (skrypt script.google.com i sesję uploadu googleapis.com).
    Po wysyłce plik leży na Drive, więc czat agenta (Drive) go widzi, w przeciwieństwie do biblioteki projektu, która jest tylko w IndexedDB przeglądarki. */
 const DriveUp = {
-  K: 'css-gas', KT: 'css-gas-token', CH: 8 * 1048576,
+  K: 'css-gas', KT: 'css-gas-token', CH: 8 * 1048576, ROOT_ID: '1d_ppqbdQk1VI9HOiWGnDe-to5ar74gcy', // główny folder na Drive Michała (Rolki do publikacji); podfolder na rolkę zakłada skrypt
   cfg() { try { const c = JSON.parse(localStorage.getItem(this.K) || 'null'); return c && c.url && c.token ? c : null; } catch { return null; } },
   save(c) { try { localStorage.setItem(this.K, JSON.stringify(c)); } catch { /* brak pamięci */ } },
   token() { let t = ''; try { t = localStorage.getItem(this.KT) || ''; } catch { t = ''; } if (!t) { const a = new Uint8Array(18); crypto.getRandomValues(a); t = [...a].map((x) => 'abcdefghjkmnpqrstuvwxyz23456789'[x % 31]).join(''); try { localStorage.setItem(this.KT, t); } catch { /* nic */ } } return t; },
-  code() { return GAS_CODE.replace('__TOKEN__', this.token()); },
+  code() { return GAS_CODE.replace('__TOKEN__', this.token()).replace('__FOLDER_ID__', this.ROOT_ID); },
   urlOk(u) { return /^https:\/\/script\.google\.com\/macros\/s\/[\w-]{20,200}\/exec$/.test(String(u || '').trim()); },
   errMsg(j, st) {
     const c = j && j.code;
@@ -36,9 +36,9 @@ const DriveUp = {
     return j;
   },
   next(range, def) { const m = /bytes=0-(\d+)/.exec(range || ''); return m ? +m[1] + 1 : def; }, // ile bajtów Drive już przyjął
-  // Wysyła blob do folderu „Gotowe rolki”. pr: progressModal. Zwraca {id, name, url, folder}.
-  async upload(blob, name, mime, pr) {
-    pr.set(0, 'łączenie z Drive'); const s = await this.gas({ action: 'init', name, mime: mime || 'video/mp4', size: blob.size }); if (!s.url) throw new Error('Skrypt nie zwrócił adresu sesji wysyłania.');
+  // Wysyła blob do folderu „Rolki do publikacji”. pr: progressModal. Zwraca {id, name, url, folder}.
+  async upload(blob, name, mime, pr, sub) {
+    pr.set(0, 'łączenie z Drive'); const s = await this.gas({ action: 'init', name, mime: mime || 'video/mp4', size: blob.size, sub: sub || '' }); if (!s.url) throw new Error('Skrypt nie zwrócił adresu sesji wysyłania.');
     const total = blob.size; let off = 0, fin = null, stall = 0; const t0 = Date.now();
     while (off < total) {
       if (pr.cancel) throw new Error('cancel');
@@ -72,14 +72,15 @@ const DriveUp = {
     const draft = !!(opt && opt.draft);
     const pr = progressModal('Wysyłanie na Drive'); let res;
     try {
-      res = await this.upload(blob, name, blob.type || 'video/mp4', pr);
-      let txt = ''; const t = draft ? '' : this.captionText(); if (t) { pr.set(0.98, 'zapis opisu obok pliku'); txt = name.replace(/\.[^.]+$/, '') + '_opis.txt'; try { await this.gas({ action: 'text', name: txt, text: t }); } catch (e) { console.warn('Opis na Drive:', e); txt = ''; } }
+      res = await this.upload(blob, name, (opt && opt.mime) || blob.type || 'video/mp4', pr, opt && opt.sub);
+      let txt = ''; const t = draft ? '' : this.captionText(); if (t) { pr.set(0.98, 'zapis opisu obok pliku'); txt = name.replace(/\.[^.]+$/, '') + '_opis.txt'; try { await this.gas({ action: 'text', name: txt, text: t, sub: (opt && opt.sub) || '' }); } catch (e) { console.warn('Opis na Drive:', e); txt = ''; } }
       pr.close(); if (!draft) { (P.cur.publish = P.cur.publish || {}).drive = { id: res.id, name: res.name, url: res.url, folder: res.folder, size: blob.size, ts: Date.now(), text: txt }; touch(); } return res;
     } catch (e) { pr.close(); if (/^cancel$/.test(e && e.message)) { toast('Wysyłanie na Drive anulowane.', 'warn'); return null; } throw e; }
   },
+  text(name, text, sub) { return this.gas({ action: 'text', name, text, sub: sub || '' }); }, // mały plik tekstowy do (podfolderu) folderu głównego
   resultBox(res) {
-    return h('div', {}, h('div', { class: 'hint', html: rich('Plik jest na Twoim Drive w folderze (Gotowe rolki). Czat agenta z dostępem do Drive widzi go tam, razem z plikiem „_opis.txt”, jeśli opis był wpisany.') }),
-      h('div', { style: { marginTop: '8px', lineHeight: '1.7' } }, 'Plik: ', h('a', { href: res.url, target: '_blank', rel: 'noopener' }, res.name), h('br'), res.folder ? h('span', {}, 'Folder: ', h('a', { href: res.folder, target: '_blank', rel: 'noopener' }, 'Gotowe rolki')) : null));
+    return h('div', {}, h('div', { class: 'hint', html: rich('Plik jest na Twoim Drive w folderze (Rolki do publikacji). Czat agenta z dostępem do Drive widzi go tam, razem z plikiem „_opis.txt”, jeśli opis był wpisany.') }),
+      h('div', { style: { marginTop: '8px', lineHeight: '1.7' } }, 'Plik: ', h('a', { href: res.url, target: '_blank', rel: 'noopener' }, res.name), h('br'), res.folder ? h('span', {}, 'Folder: ', h('a', { href: res.folder, target: '_blank', rel: 'noopener' }, 'Rolki do publikacji')) : null));
   },
   // Wysyła rolkę już zapisaną w Publikacji (publish.video)
   async sendPublished() {
@@ -96,7 +97,7 @@ const DriveUp = {
     const ta = h('textarea', { readonly: true, rows: 5, style: { width: '100%', fontFamily: 'monospace', fontSize: '11px' } }); ta.value = code;
     const st = h('div', { class: 'hint', style: { marginTop: '6px' } }), L = (href, t) => h('a', { href, target: '_blank', rel: 'noopener' }, t);
     const body = h('div', { style: { lineHeight: '1.55' } },
-      h('div', { class: 'hint', html: rich('Po co to jest: dzięki temu przycisk (☁ Wyślij na Drive) w Publikacji wrzuca gotową rolkę z Studio na Twój Drive do folderu (Gotowe rolki), skąd agent weźmie ją do Metricool. Robisz to raz (ok. 3 minut), bez kluczy. Skrypt działa na Twoim koncie Google i nikt poza Tobą go nie ma. Nie chcesz skryptu? Przeciągnij wyeksportowany plik mp4 na Drive do folderu (Gotowe rolki) ręcznie, a agent go znajdzie.') }),
+      h('div', { class: 'hint', html: rich('Po co to jest: dzięki temu przycisk (☁ Wyślij na Drive) w Publikacji wrzuca gotową rolkę z Studio na Twój Drive do folderu (Rolki do publikacji), skąd agent weźmie ją do Metricool. Robisz to raz (ok. 3 minut), bez kluczy. Skrypt działa na Twoim koncie Google i nikt poza Tobą go nie ma. Nie chcesz skryptu? Przeciągnij wyeksportowany plik mp4 na Drive do folderu (Rolki do publikacji) ręcznie, a agent go znajdzie.') }),
       h('div', { style: { margin: '8px 0' } }, '1. Otwórz ', L('https://script.google.com/home/projects/create', 'script.google.com → Nowy projekt'), ' (to samo konto Google, co Drive).', h('br'), '2. Usuń domyślny kod i wklej poniższy (przycisk obok). Zapisz (Ctrl+S).'),
       ta, h('div', { class: 'row', style: { marginTop: '6px' } }, h('button', { class: 'btn', onclick: () => navigator.clipboard.writeText(code).then(() => toast('Skopiowano kod skryptu', 'ok')).catch(() => { ta.select(); toast('Zaznaczono kod: skopiuj Ctrl+C', 'warn'); }) }, '📋 Kopiuj kod skryptu')),
       h('div', { style: { margin: '8px 0' } }, '3. Wdróż → Nowe wdrożenie → typ „Aplikacja internetowa” → Wykonaj jako: (Ja) → Kto ma dostęp: (Wszyscy) → Wdróż. Przy pytaniu o uprawnienia: Autoryzuj dostęp → wybierz konto → (Zaawansowane) → „Przejdź do … (niebezpieczne)” → Zezwól. To Twój własny skrypt.', h('br'), '4. Skopiuj „Adres URL aplikacji internetowej” (kończy się na /exec) i wklej w polu poniżej, potem kliknij (Zapisz i sprawdź). Gotowe: od tej chwili w Publikacji działa (☁ Wyślij na Drive).'),
@@ -104,9 +105,9 @@ const DriveUp = {
     const run = async (close) => {
       const u = url.value.trim(); if (!this.urlOk(u)) { st.className = 'warnrow bad'; st.textContent = this.errMsg({ code: 'bad_url' }); return false; }
       st.className = 'hint'; st.textContent = 'Sprawdzam połączenie…';
-      try { const j = await this.gas({ action: 'ping' }, u, this.token()); this.save({ url: u, token: this.token() }); st.className = 'hint'; st.textContent = ''; toast('Drive połączony. Folder: ' + (j.name || 'Gotowe rolki'), 'ok', 6000); if (after) setTimeout(after, 150); return true; }
+      try { const j = await this.gas({ action: 'ping' }, u, this.token()); this.save({ url: u, token: this.token() }); st.className = 'hint'; st.textContent = ''; toast('Drive połączony. Folder: ' + (j.name || 'Rolki do publikacji'), 'ok', 6000); if (after) setTimeout(after, 150); return true; }
       catch (e) { st.className = 'warnrow bad'; st.textContent = errText(e); return false; }
     };
-    modal('☁ Ustawienia Drive: Gotowe rolki', body, [{ t: 'Zapisz i sprawdź', cls: 'pri', fn: run }, ...(c ? [{ t: 'Odłącz', cls: 'bad', fn: () => { try { localStorage.removeItem(this.K); } catch { /* nic */ } toast('Drive odłączony.', 'warn'); } }] : []), { t: 'Zamknij' }]);
+    modal('☁ Ustawienia Drive: Rolki do publikacji', body, [{ t: 'Zapisz i sprawdź', cls: 'pri', fn: run }, ...(c ? [{ t: 'Odłącz', cls: 'bad', fn: () => { try { localStorage.removeItem(this.K); } catch { /* nic */ } toast('Drive odłączony.', 'warn'); } }] : []), { t: 'Zamknij' }]);
   },
 };

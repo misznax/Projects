@@ -19,12 +19,35 @@ async function readZip(blob) {
   }
   if (!out.length) throw new Error('To nie jest pakiet projektu.'); return out;
 }
+// Pakiet projektu: project.json + wszystkie zasoby (ZIP bez kompresji). pr: progressModal. Zwraca {z, n} albo null (anulowano).
+async function buildProjectZip(pr) {
+  await saveNow(); const files = [], all = (await DBI.all('assets')).filter((a) => a.pid === P.cur.id); files.push({ name: 'project.json', data: JSON.stringify({ app: APP.name, ver: APP.ver, project: P.cur }) });
+  for (const [i, a] of all.entries()) { pr.set(i / Math.max(1, all.length), a.name); const { blob, ...meta } = a; files.push({ name: 'assets/' + a.id + '.json', data: JSON.stringify(meta) }); files.push({ name: 'assets/' + a.id + '.bin', data: blob }); await tick(); if (pr.cancel) return null; }
+  return { z: await makeZip(files), n: all.length };
+}
 async function exportProject() {
   const pr = progressModal('Eksport projektu'); try {
-    await saveNow(); const files = [], all = (await DBI.all('assets')).filter((a) => a.pid === P.cur.id); files.push({ name: 'project.json', data: JSON.stringify({ app: APP.name, ver: APP.ver, project: P.cur }) });
-    for (const [i, a] of all.entries()) { pr.set(i / Math.max(1, all.length), a.name); const { blob, ...meta } = a; files.push({ name: 'assets/' + a.id + '.json', data: JSON.stringify(meta) }); files.push({ name: 'assets/' + a.id + '.bin', data: blob }); await tick(); if (pr.cancel) { pr.close(); return; } }
-    const z = await makeZip(files); pr.close(); download(z, fname('projekt', 'zip')); toast('Zapisano pakiet projektu (' + all.length + ' zasobów, ' + fmtSize(z.size) + ')', 'ok');
+    const r = await buildProjectZip(pr); pr.close(); if (!r) return; download(r.z, fname('projekt', 'zip')); toast('Zapisano pakiet projektu (' + r.n + ' zasobów, ' + fmtSize(r.z.size) + ')', 'ok');
   } catch (e) { pr.close(); toast('Eksport projektu nieudany: ' + errText(e), 'bad', 9000); }
+}
+// Nazwa folderu rolki na Drive: numer z planu + nazwa rolki (np. „T04 Efekt reflektora”), a bez planu nazwa projektu
+function reelFolderName() { const p = P.cur, pb = p.publish || {}; return (((pb.planId ? pb.planId + ' ' : '') + ((pb.auto && pb.auto.title) || p.name)).replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 90)) || 'Rolka'; }
+async function newReelPrompt() { const n = prompt('Nazwa nowej rolki:', 'Nowa rolka ' + new Date().toLocaleDateString('pl-PL')); if (n) { await saveNow(); await createProject(n); } }
+// Archiwum rolki na Drive: folder „numer nazwa” z projektem Studia (ZIP ze wszystkimi materiałami), gotową rolką, miniaturą i opisem
+async function archiveProject() {
+  if (!DriveUp.cfg()) { DriveUp.setup(() => archiveProject()); return; }
+  const p = P.cur, pb = p.publish || (p.publish = {}), sub = reelFolderName(); let r;
+  const pr = progressModal('Archiwizacja projektu'); try { r = await buildProjectZip(pr); pr.close(); if (!r) return; } catch (e) { pr.close(); toast('Archiwizacja nieudana: ' + errText(e), 'bad', 9000); return; }
+  try {
+    const zip = await DriveUp.deliver(r.z, sub + ' - projekt Studia.zip', { draft: true, sub, mime: 'application/zip' }); if (!zip) return;
+    const extra = []; if (pb.video) { const b = await Assets.blob(pb.video); if (b) { const v = await DriveUp.deliver(b, (pb.videoInfo && pb.videoInfo.name) || (sub + ' - rolka.mp4'), { draft: true, sub }); if (v) extra.push('rolka'); } }
+    if (pb.cover) { const b = await Assets.blob(pb.cover); if (b) { const c = await DriveUp.deliver(b, sub + ' - miniatura.png', { draft: true, sub, mime: 'image/png' }); if (c) extra.push('miniatura'); } }
+    const cap = [pb.title ? 'Tytuł: ' + pb.title : '', pb.caption || '', pb.hashtags || ''].filter(Boolean).join('\n\n'); if (cap) { await DriveUp.text(sub + ' - opis i hashtagi.txt', cap + '\n', sub); extra.push('opis'); }
+    p.archived = { ts: Date.now(), name: sub, folder: zip.folder || '' }; touch(); await saveNow();
+    modal('Rolka zarchiwizowana na Drive', h('div', {}, h('div', { style: { lineHeight: '1.7' } }, 'Folder: ', zip.folder ? h('a', { href: zip.folder, target: '_blank', rel: 'noopener' }, sub) : sub), h('div', { class: 'hint', style: { marginTop: '6px' }, html: rich('W folderze: projekt Studia (ZIP ze wszystkimi materiałami)' + (extra.length ? ', ' + extra.join(', ') : '') + '. Żeby wrócić do projektu: pobierz ZIP z folderu i wybierz (⋯ → Import projektu (ZIP)).') })),
+      [{ t: '➕ Nowa rolka', cls: 'pri', fn: newReelPrompt }, { t: 'Zostań w tym projekcie' }]);
+    if (typeof Publish !== 'undefined' && S.tab === 'publish') Publish.render();
+  } catch (e) { console.error(e); modal('Archiwizacja na Drive nieudana', h('div', {}, h('div', { class: 'warnrow bad' }, errText(e)), h('div', { class: 'hint', style: { marginTop: '8px' } }, 'Sprawdź (⚙ Drive) albo pobierz ZIP z projektem (⋯ → Eksport projektu) i przeciągnij go do folderu na Drive.')), [{ t: 'Zamknij' }]); }
 }
 async function importProject(file) {
   const pr = progressModal('Import projektu'); try {
@@ -98,7 +121,7 @@ function shortcutsDialog() {
 }
 function mainMenu(anchor) {
   popMenu(anchor, [{ t: 'Projekty…', i: '📁', fn: projectsDialog }, { t: 'Nowy projekt', i: '＋', fn: async () => { const n = prompt('Nazwa projektu:', 'Projekt ' + new Date().toLocaleDateString('pl-PL')); if (n) { await saveNow(); await createProject(n); } } }, { t: 'Duplikuj projekt', i: '⧉', fn: async () => { await duplicateProject(); } }, { t: 'Wersje projektu…', i: '🕘', fn: versionsDialog }, '-',
-    { t: 'Eksport projektu (ZIP z zasobami)', i: '📦', fn: exportProject }, { t: 'Import projektu (ZIP)…', i: '📥', fn: async () => { const f = await pickFiles('.zip,application/zip', false); if (f[0]) await importProject(f[0]); } }, '-', { t: 'Status integracji', i: '🔌', fn: integrationsDialog }, { t: 'Skróty klawiszowe', i: '⌨', fn: shortcutsDialog }, { t: 'Sugestie', i: '💡', fn: suggestDialog }, { t: 'O autorze', i: 'ℹ', fn: aboutDialog }]);
+    { t: 'Archiwizuj rolkę na Drive (folder numer + nazwa)', i: '☁', fn: archiveProject }, { t: 'Eksport projektu (ZIP z zasobami)', i: '📦', fn: exportProject }, { t: 'Import projektu (ZIP)…', i: '📥', fn: async () => { const f = await pickFiles('.zip,application/zip', false); if (f[0]) await importProject(f[0]); } }, '-', { t: 'Status integracji', i: '🔌', fn: integrationsDialog }, { t: 'Skróty klawiszowe', i: '⌨', fn: shortcutsDialog }, { t: 'Sugestie', i: '💡', fn: suggestDialog }, { t: 'O autorze', i: 'ℹ', fn: aboutDialog }]);
 }
 
 // ── Start ──

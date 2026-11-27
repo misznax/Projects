@@ -44,6 +44,12 @@ Autor: Michał Rzekiecki · kontakt: michus@gmail.com · adres: https://projects
 1. Analiza w przeglądarce (canvas, bez kluczy): poświaty (kolor i pozycja), pasek postępu, stopka, bloki tekstu, zdjęcie, akcenty → „DNA” układu, które steruje wszystkimi szablonami.
 2. Wzorzec domyślny: karuzela „Po kontuzji” (v4). Własny materiał (obrazy lub wideo rolki) nadpisuje DNA w projekcie; rodzaje slajdów są rozpoznawane zgrubnie.
 
+## Zmiany v0.17 (archiwum rolki na Drive, folder główny Rolki do publikacji)
+
+1. Sekcja 8 w Publikacji i pozycja w menu ⋯: "Archiwizuj na Drive" zapisuje w podfolderze "numer nazwa" (np. T04 Efekt reflektora) projekt Studia (ZIP ze wszystkimi materiałami), gotową rolkę, miniaturę i opis. Powrót: pobierz ZIP i ⋯ → Import projektu
+2. Skrypt Apps Script (nowa wersja kodu, trzeba wkleić i wdrożyć nową wersję) umie podfoldery (pole sub) i pisze do istniejącego folderu głównego (ROOT_ID w drive.js) zamiast do nowego "Gotowe rolki"
+3. Przycisk "➕ Nowa rolka" tworzy nowy projekt (stary zostaje zapisany w przeglądarce)
+
 ## Zmiany v0.16 (czytelniejsze opisy wysyłki na Drive i polecenia dla agenta)
 
 1. Okno (⚙ Drive) zaczyna się od "Po co to jest" i podaje alternatywę bez skryptu (ręczne przeciągnięcie mp4 na Drive)
