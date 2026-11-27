@@ -9,7 +9,8 @@
       "status": "do publikacji",
       "active": true,
       "nets": [
-        "ig"
+        "ig",
+        "fb"
       ],
       "hook": "Myślisz, że ktoś patrzy, jak ćwiczysz?",
       "cover": {
