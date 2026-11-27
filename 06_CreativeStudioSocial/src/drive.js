@@ -68,12 +68,13 @@ const DriveUp = {
     return parts.length > 1 ? parts.join('\n\n') + '\n' : '';
   },
   // Pełny przepływ z oknem postępu; zwraca wynik albo null (anulowano). Błędy lecą dalej do wywołującego.
-  async deliver(blob, name) {
+  async deliver(blob, name, opt) {
+    const draft = !!(opt && opt.draft);
     const pr = progressModal('Wysyłanie na Drive'); let res;
     try {
       res = await this.upload(blob, name, blob.type || 'video/mp4', pr);
-      let txt = ''; const t = this.captionText(); if (t) { pr.set(0.98, 'zapis opisu obok pliku'); txt = name.replace(/\.[^.]+$/, '') + '_opis.txt'; try { await this.gas({ action: 'text', name: txt, text: t }); } catch (e) { console.warn('Opis na Drive:', e); txt = ''; } }
-      pr.close(); (P.cur.publish = P.cur.publish || {}).drive = { id: res.id, name: res.name, url: res.url, folder: res.folder, size: blob.size, ts: Date.now(), text: txt }; touch(); return res;
+      let txt = ''; const t = draft ? '' : this.captionText(); if (t) { pr.set(0.98, 'zapis opisu obok pliku'); txt = name.replace(/\.[^.]+$/, '') + '_opis.txt'; try { await this.gas({ action: 'text', name: txt, text: t }); } catch (e) { console.warn('Opis na Drive:', e); txt = ''; } }
+      pr.close(); if (!draft) { (P.cur.publish = P.cur.publish || {}).drive = { id: res.id, name: res.name, url: res.url, folder: res.folder, size: blob.size, ts: Date.now(), text: txt }; touch(); } return res;
     } catch (e) { pr.close(); if (/^cancel$/.test(e && e.message)) { toast('Wysyłanie na Drive anulowane.', 'warn'); return null; } throw e; }
   },
   resultBox(res) {
