@@ -652,7 +652,7 @@ class AacWasmEncoder {
 }
 
 /* Creative Studio Social — rdzeń: narzędzia, magazyn (IndexedDB), projekt, historia, UI-pomocniki */
-const APP = { name: 'Creative Studio Social', ver: 'v0.14', author: 'Michał Rzekiecki', mail: 'michus@gmail.com' };
+const APP = { name: 'Creative Studio Social', ver: 'v0.15', author: 'Michał Rzekiecki', mail: 'michus@gmail.com' };
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const uid = (p = 'x') => p + Math.random().toString(36).slice(2, 9);
@@ -3376,7 +3376,7 @@ const Publish = {
     if (!(p.hashtags || '').trim() && e.hashtags) { p.hashtags = e.hashtags; ch = true; }
     if (!(p.title || '').trim() && e.title) { p.title = e.title; ch = true; }
     if ((!p.coverSpec || !(p.coverSpec.lines || []).some((x) => String(x).trim())) && e.cover) { p.coverSpec = jclone(e.cover); ch = true; }
-    if (e.nets && !p.netsFromPlan) { for (const k of Object.keys(NETS)) p.nets[k] = e.nets.includes(k); p.netsFromPlan = true; ch = true; }
+    const nsig = e.id + ':' + (e.nets || []).join(','); if (e.nets && p.netsFromPlan !== nsig) { for (const k of Object.keys(NETS)) p.nets[k] = e.nets.includes(k); p.netsFromPlan = nsig; ch = true; }
     if (ch) { p.auto = { id: e.id, title: e.title, ts: Date.now() }; touch(); this.log('Opis, hashtagi i tekst miniatury wpisane automatycznie z planu agenta: ' + e.id + ' ' + e.title); }
     return ch;
   },
@@ -3394,7 +3394,8 @@ const Publish = {
     const b = await Cover.render(spec, { frame }); if (!b) throw new Error('Nie udało się narysować miniatury.');
     p.cover = await Assets.add(new File([b], fname('miniatura_' + slug(spec.kicker || P.cur.name), 'png'), { type: 'image/png' }), 'image', { desc: 'Miniatura z hookiem: ' + (spec.lines || []).join(' ').replace(/\*/g, ''), origin: 'Publikacja' }); touch(); if (!silent) toast('Miniatura gotowa.', 'ok'); return true;
   },
-  agentCmd() { const p = this.p; return 'Opublikuj ' + (p.planId ? p.planId + ' ' : '') + '(' + P.cur.name + ') na Instagramie ' + (p.schedule ? 'o ' + new Date(p.schedule).toLocaleString('pl-PL') : 'od razu') + '. Plik, miniatura i opis są na Drive w folderze Gotowe rolki.'; },
+  netsPl() { const m = { ig: 'Instagramie (Reel)', fb: 'Facebooku (Reel)', yt: 'YouTube (Shorts)', tt: 'TikToku' }, a = Object.keys(NETS).filter((k) => this.p.nets[k]).map((k) => m[k] || NETS[k].n); return a.length > 1 ? a.slice(0, -1).join(', ') + ' i ' + a[a.length - 1] : (a[0] || 'Instagramie'); },
+  agentCmd() { const p = this.p; return 'Opublikuj ' + (p.planId ? p.planId + ' ' : '') + '(' + P.cur.name + ') na ' + this.netsPl() + ' ' + (p.schedule ? 'o ' + new Date(p.schedule).toLocaleString('pl-PL') : 'od razu') + ' przez Metricool. Plik, miniatura i opis są na Drive w folderze Gotowe rolki.'; },
   // tryb automatyczny: plik + miniatura + opis na Drive, resztę (Metricool) robi agent na Twoje polecenie
   async sendAuto() {
     const p = this.p, info = p.videoInfo; if (!p.video || !info) { toast('Najpierw wyeksportuj rolkę w pełnej jakości (Wideo → Eksport).', 'warn'); return; }
@@ -3467,13 +3468,19 @@ const Publish = {
     const done = APPROVAL.filter(([k]) => p.approval[k]).length, anyNet = Object.keys(NETS).some((k) => p.nets[k]), errs = Object.keys(NETS).filter((k) => p.nets[k] && this.worst(k) === 'bad'), ready = done === APPROVAL.length && anyNet && !errs.length;
     const why = !anyNet ? 'Zaznacz co najmniej jedną sieć.' : errs.length ? 'Popraw błędy w: ' + errs.map((k) => NETS[k].n).join(', ') + '.' : done < APPROVAL.length ? 'Zaznacz wszystkie kroki zatwierdzenia.' : '';
     R.append(this.sec(6, 'Zatwierdzenie (' + done + ' / ' + APPROVAL.length + ')', 'Bez kompletu zaznaczeń publikacja jest zablokowana.', h('div', { class: 'zebra' }, APPROVAL.map(([k, t], i) => h('label', { class: 'chk', style: { cursor: 'pointer', padding: '7px 9px' } }, h('input', { type: 'checkbox', checked: !!p.approval[k], style: { width: 'auto', flex: 'none' }, onchange: (e) => { p.approval[k] = e.target.checked; touch(); this.right(); } }), h('span', {}, (i + 1) + '. ' + t))))));
-    const modeSeg = fld({ k: 'mode', t: 'seg', opts: [['auto', 'Automatyczna'], ['manual', 'Ręczna']] }, p, () => { touch(); this.right(); });
-    const auto = h('div', {}, h('div', { class: 'hint', style: { margin: '6px 0' } }, 'Plik, miniatura i opis (ze źródłami) lecą na Twój Drive do folderu Gotowe rolki. Potem piszesz agentowi w czacie polecenie, a on ustawia publikację w Metricool (REEL, bez Trial reel, flaga AI wyłączona). Nic nie jest publikowane bez Twojego polecenia.'),
-      h('div', { class: 'row', style: { flexWrap: 'wrap' } }, h('button', { class: 'btn pri', style: { flex: 1, padding: '12px', fontSize: '15px' }, disabled: !ready, onclick: () => this.sendAuto(), title: ready ? '' : why }, '☁ Wyślij pakiet do agenta'), h('button', { class: 'btn', title: 'Połącz Drive: jednorazowa konfiguracja skryptu', onclick: () => DriveUp.setup() }, '⚙ Drive')),
-      h('div', { class: 'row', style: { marginTop: '6px' } }, h('button', { class: 'btn', onclick: () => navigator.clipboard.writeText(this.agentCmd()).then(() => toast('Skopiowano polecenie dla agenta', 'ok')).catch((e) => toast(errText(e), 'bad')) }, 'Skopiuj polecenie dla agenta')), h('div', { class: 'hint', style: { marginTop: '6px' } }, 'Polecenie: ' + this.agentCmd()), ready ? null : h('div', { class: 'hint', style: { marginTop: '6px', color: 'var(--warn)' } }, why));
+    const modeSeg = fld({ k: 'mode', t: 'seg', opts: [['auto', 'Metricool (zalecana)'], ['manual', 'Ręczna (ZIP)']] }, p, () => { touch(); this.right(); });
+    const vOk = !!(p.video && p.videoInfo), whyA = !vOk ? 'brak wyeksportowanej rolki. Wejdź w Wideo → Eksport w pełnej jakości (nie Szkic), potem wróć tu.' : why, readyA = ready && vOk, step = (n, t) => h('div', { style: { display: 'flex', gap: '8px', alignItems: 'center', margin: '10px 0 4px', fontWeight: 600 } }, h('span', { style: { background: 'var(--acc, #8B6CFF)', color: '#fff', borderRadius: '50%', width: '22px', height: '22px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', flex: 'none' } }, n), h('span', {}, t));
+    const auto = h('div', {}, h('div', { class: 'hint', style: { margin: '6px 0' } }, 'Idzie przez Metricool na: ' + this.netsPl() + '. Nic nie jest publikowane bez Twojego polecenia w czacie.'),
+      readyA ? null : h('div', { class: 'warnrow', style: { margin: '6px 0' } }, 'Przycisk 1 jest wyszarzony, bo: ' + whyA),
+      step(1, 'Wyślij plik, miniaturę i opis na Drive'),
+      h('div', { class: 'row', style: { flexWrap: 'wrap' } }, h('button', { class: 'btn pri', style: { flex: 1, padding: '12px', fontSize: '15px' }, disabled: !readyA, onclick: () => this.sendAuto(), title: readyA ? '' : whyA }, '☁ Wyślij na Drive'), h('button', { class: 'btn', title: 'Połącz Drive: jednorazowa konfiguracja skryptu', onclick: () => DriveUp.setup() }, '⚙ Drive')),
+      step(2, 'Skopiuj polecenie i wklej agentowi w czacie'),
+      h('div', { class: 'hint', style: { padding: '8px 10px', border: '1px dashed var(--bd)', borderRadius: '8px', userSelect: 'all' } }, this.agentCmd()),
+      h('div', { class: 'row', style: { marginTop: '6px' } }, h('button', { class: 'btn pri', onclick: () => navigator.clipboard.writeText(this.agentCmd()).then(() => toast('Skopiowano polecenie dla agenta', 'ok')).catch((e) => toast(errText(e), 'bad')) }, '📋 Skopiuj polecenie')),
+      step(3, 'Agent ustawia publikację w Metricool i podaje link do wpisu'));
     const manual = h('div', {}, h('div', { class: 'hint', style: { margin: '6px 0' } }, 'Pobierasz pakiet ZIP (plik, miniatura, opisy, metadane) i wgrywasz sam: otwierają się strony wgrywania wybranych sieci. Nic nie jest wysyłane automatycznie.'),
       h('button', { class: 'btn pri', style: { width: '100%', padding: '12px', fontSize: '15px' }, disabled: !ready, onclick: () => this.finalPublish(), title: ready ? '' : why }, 'FINAL PUBLISH (pakiet ZIP)'), ready ? null : h('div', { class: 'hint', style: { marginTop: '6px', color: 'var(--warn)' } }, why));
-    R.append(this.sec(7, 'Publikacja', 'Wybierz tryb. Zalecany: automatyczna.', modeSeg, p.mode === 'manual' ? manual : auto));
+    R.append(this.sec(7, 'Publikacja', 'Wybierz tryb. Zalecany: Metricool przez agenta (3 kroki poniżej).', modeSeg, p.mode === 'manual' ? manual : auto));
     const lg = P.cur.log || (P.cur.log = []); R.append(h('h3', { style: { margin: '18px 0 6px' } }, 'Historia'), lg.length ? h('div', { class: 'zebra' }, lg.slice(0, 15).map((e) => h('div', { style: { padding: '6px 9px' } }, h('div', { class: 'fine' }, new Date(e.ts).toLocaleString('pl-PL')), h('div', {}, e.t)))) : h('div', { class: 'hint' }, 'Brak wpisów.'));
     this.calendar();
   },
