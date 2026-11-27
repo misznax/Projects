@@ -2,9 +2,21 @@
   "ver": 1,
   "updated": "2026-11-27",
   "note": "Plan agenta: opis ze źródłami, hashtagi i tekst miniatury dla rolek do publikacji. Studio wczytuje ten plik samo (Publikacja, sekcje 2 i 3). Pole active = rolka czekająca na publikację.",
+  "numeracja": {
+    "R": 12,
+    "K": 4,
+    "P": 0
+  },
+  "numeracjaNote": "Numer = litera typu (R rolka, K karuzela, P post) + 3 cyfry, np. R001. Nadawany raz, na stałe, nigdy nie używany ponownie. Liczby w polu numeracja = ostatni nadany numer danego typu. Źródłem prawdy jest arkusz „Lista rolek” na Drive (folder Śmiało – Rolki). Folder rolki: R001-Efekt reflektora w podfolderze Materiały (w produkcji) albo Opublikowane.",
+  "drive": {
+    "root": "1d_ppqbdQk1VI9HOiWGnDe-to5ar74gcy",
+    "work": "Materiały",
+    "done": "Opublikowane"
+  },
   "reels": [
     {
       "id": "T04",
+      "num": "R001",
       "title": "Efekt reflektora",
       "status": "ustawiona w Metricool na 27.11.2026 17:35 (IG i FB)",
       "active": false,
@@ -32,6 +44,7 @@
   "topics": [
     {
       "id": "T01",
+      "num": "R002",
       "title": "Zapamiętujesz trening po jego końcówce",
       "prio": 1,
       "status": "pomysł",
@@ -40,6 +53,7 @@
     },
     {
       "id": "T02",
+      "num": "K001",
       "title": "Intencja to połowa drogi",
       "prio": 1,
       "status": "pomysł",
@@ -49,6 +63,7 @@
     },
     {
       "id": "T03",
+      "num": "R003",
       "title": "Z 54 pomysłów na regularność wygrał powrót po przerwie",
       "prio": 1,
       "status": "pomysł",
@@ -57,6 +72,7 @@
     },
     {
       "id": "T04",
+      "num": "R001",
       "title": "Efekt reflektora",
       "prio": 1,
       "status": "opublikowana 27.11.2026",
@@ -65,6 +81,7 @@
     },
     {
       "id": "T05",
+      "num": "K002",
       "title": "Średnio masz o jedno powtórzenie więcej",
       "prio": 1,
       "status": "pomysł",
@@ -73,6 +90,7 @@
     },
     {
       "id": "T06",
+      "num": "R004",
       "title": "Po tygodniach rozciągania zmienia się głównie odczuwanie",
       "prio": 1,
       "status": "pomysł",
@@ -82,6 +100,7 @@
     },
     {
       "id": "T07",
+      "num": "R005",
       "title": "Dwa rodzaje perfekcjonizmu",
       "prio": 1,
       "status": "pomysł",
@@ -90,6 +109,7 @@
     },
     {
       "id": "T08",
+      "num": "R006",
       "title": "Co powiedzieć sobie przed ciężką serią",
       "prio": 1,
       "status": "pomysł",
@@ -97,7 +117,8 @@
       "hook": "Co powiedzieć sobie przed ciężką serią? Zależy od ćwiczenia."
     },
     {
-      "id": "R1",
+      "id": "T27",
+      "num": "R007",
       "title": "Rozciąganie przed treningiem: czas decyduje",
       "prio": 1,
       "status": "pomysł",
@@ -107,6 +128,7 @@
     },
     {
       "id": "T09",
+      "num": "K003",
       "title": "Co mówić w trakcie ćwiczenia (sporne metaanalizy)",
       "prio": 2,
       "status": "pomysł",
@@ -115,6 +137,7 @@
     },
     {
       "id": "T10",
+      "num": "R008",
       "title": "Pewność siebie przed startem czasem szkodzi",
       "prio": 2,
       "status": "pomysł",
@@ -124,6 +147,7 @@
     },
     {
       "id": "T11",
+      "num": "K004",
       "title": "Test nie pokazał progresu. Czy organizm nie reaguje?",
       "prio": 2,
       "status": "pomysł",
@@ -132,6 +156,7 @@
     },
     {
       "id": "T12",
+      "num": "R009",
       "title": "Powód ćwiczenia a wytrwałość",
       "prio": 2,
       "status": "pomysł",
@@ -140,6 +165,7 @@
     },
     {
       "id": "T13",
+      "num": "R010",
       "title": "Ciężki dzień w pracy i trening: spór w nauce",
       "prio": 2,
       "status": "pomysł",
@@ -148,6 +174,7 @@
     },
     {
       "id": "T14",
+      "num": "R011",
       "title": "Słowa trenera przed serią",
       "prio": 2,
       "status": "pomysł",
@@ -157,6 +184,7 @@
     },
     {
       "id": "T15",
+      "num": "R012",
       "title": "Nawyk: 21 dni to mit",
       "prio": 2,
       "status": "pomysł",

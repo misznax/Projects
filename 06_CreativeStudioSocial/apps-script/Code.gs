@@ -1,12 +1,18 @@
-/* PO CO TO JEST: ten skrypt pozwala aplikacji Creative Studio Social wysłać gotową rolkę na Twój Google Drive jednym kliknięciem. Robisz to raz.
+/* PO CO TO JEST: ten skrypt pozwala aplikacji Creative Studio Social wysyłać i porządkować rolki na Twoim Google Drive. Robisz to raz.
    Co zrobić: 1) wklej ten kod w script.google.com i zapisz, 2) Wdróż → Nowe wdrożenie → Aplikacja internetowa (Wykonaj jako: Ja, Dostęp: Wszyscy), 3) skopiuj adres kończący się na /exec do Studio (okno ⚙ Drive).
-   Creative Studio Social: odbiornik gotowych rolek -> Google Drive (folder „Rolki do publikacji”, w nim podfolder na każdą rolkę).
-   Wklej do nowego projektu na script.google.com i wdróż jako Aplikację internetową (Wykonaj jako: Ja, Dostęp: Wszyscy).
-   Aplikacja Creative Studio Social wysyła plik kawałkami prosto do Drive; skrypt tylko zakłada sesję wysyłania i sprawdza hasło.
+   Po aktualizacji kodu: Wdróż → Zarządzaj wdrożeniami → ołówek → Wersja: Nowa wersja → Wdróż (adres zostaje ten sam).
+   Creative Studio Social: odbiornik rolek -> Google Drive. Struktura (wersja 2):
+     Śmiało – Rolki (folder główny, ID wstawia aplikacja)
+       Lista rolek (arkusz: numer, tytuł, kategoria, autorzy badań, status)
+       Materiały/R001-Efekt reflektora   (rolka w produkcji: wideo, podkład, miniatura, opis, projekt Studia)
+       Opublikowane/R001-Efekt reflektora (rolka po publikacji; folder przenosi akcja „move”)
+   Aplikacja wysyła plik kawałkami prosto do Drive; skrypt zakłada folder, sesję wysyłania, przenosi folder i sprawdza hasło.
    Autor: Michał Rzekiecki · michus@gmail.com */
 const TOKEN = '__TOKEN__';          // hasło wygenerowane przez aplikację (to samo jest zapisane w aplikacji; nie zmieniaj)
-const FOLDER_NAME = 'Rolki do publikacji'; // folder w Moim dysku (używany, gdy poniżej nie ma ID); powstaje sam
+const FOLDER_NAME = 'Śmiało – Rolki'; // folder w Moim dysku (używany, gdy poniżej nie ma ID); powstaje sam
 const FOLDER_ID = '__FOLDER_ID__';  // ID folderu głównego wstawia aplikacja (zamiast nazwy powyżej)
+const VER = 2;                      // wersja skryptu: aplikacja odmawia pracy ze starszą
+const DIR_WORK = 'Materiały', DIR_DONE = 'Opublikowane';
 
 function folder_() {
   if (FOLDER_ID && FOLDER_ID.indexOf('__') !== 0) return DriveApp.getFolderById(FOLDER_ID);
@@ -14,30 +20,62 @@ function folder_() {
   while (it.hasNext()) { const f = it.next(); if (!f.isTrashed()) return f; }
   return DriveApp.createFolder(FOLDER_NAME);
 }
-// podfolder o danej nazwie w folderze głównym (np. „T04 Efekt reflektora”); powstaje sam
-function sub_(root, name) {
-  const n = String(name || '').replace(/[\\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 100);
-  if (!n) return root;
-  const it = root.getFoldersByName(n);
-  while (it.hasNext()) { const x = it.next(); if (!x.isTrashed()) return x; }
-  return root.createFolder(n);
+function clean_(s) { return String(s || '').replace(/[\\:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 100); }
+// folder pod ścieżką „Materiały/R001-Efekt reflektora” (poziom po poziomie); create=true zakłada brakujące, create=false zwraca null, gdy czegoś brak
+function path_(root, path, create) {
+  const parts = String(path || '').split('/').map(clean_).filter(Boolean);
+  let cur = root;
+  for (let i = 0; i < parts.length; i++) {
+    let found = null; const it = cur.getFoldersByName(parts[i]);
+    while (it.hasNext()) { const x = it.next(); if (!x.isTrashed()) { found = x; break; } }
+    if (!found) { if (!create) return null; found = cur.createFolder(parts[i]); }
+    cur = found;
+  }
+  return cur;
 }
 function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); }
 
-function doGet() { return out_({ ok: true, app: 'Creative Studio Social: odbiornik rolek', folder: folder_().getUrl() }); }
+function doGet() { return out_({ ok: true, app: 'Creative Studio Social: odbiornik rolek', ver: VER, folder: folder_().getUrl() }); }
 
 function doPost(e) {
   try {
     const b = JSON.parse(e.postData.contents);
     if (b.token !== TOKEN) return out_({ ok: false, error: 'token' });
-    const f = sub_(folder_(), b.sub);
-    if (b.action === 'ping') return out_({ ok: true, folder: f.getUrl(), folderId: f.getId(), name: f.getName() });
-    if (b.action === 'text') { // mały plik tekstowy (opis rolki obok pliku wideo)
-      const file = f.createFile(String(b.name || 'opis.txt'), String(b.text || ''), MimeType.PLAIN_TEXT);
+    const root = folder_();
+    if (b.action === 'ping') { // sprawdzenie połączenia; z polem sub zakłada też folder pod tą ścieżką
+      const f = path_(root, b.sub, true);
+      return out_({ ok: true, ver: VER, folder: f.getUrl(), folderId: f.getId(), name: f.getName() });
+    }
+    if (b.action === 'names') { // nazwy folderów rolek w Materiały i Opublikowane (z nich aplikacja liczy kolejny numer)
+      const res = {}; [DIR_WORK, DIR_DONE].forEach(function (d) {
+        res[d] = []; const df = path_(root, d, false); if (!df) return;
+        const it = df.getFolders(); while (it.hasNext()) { const x = it.next(); if (!x.isTrashed()) res[d].push(x.getName()); }
+      });
+      return out_({ ok: true, ver: VER, names: res });
+    }
+    if (b.action === 'move') { // przeniesienie folderu rolki, np. z „Materiały/R001-…” do „Opublikowane”
+      const src = path_(root, b.from, false);
+      if (!src) { // może już leży w miejscu docelowym (przeniesiony wcześniej ręcznie): wtedy nic do zrobienia
+        const d0 = path_(root, b.to, false), n0 = clean_(String(b.from).split('/').pop());
+        if (d0) { const t0 = d0.getFoldersByName(n0); while (t0.hasNext()) { const y = t0.next(); if (!y.isTrashed()) return out_({ ok: true, already: true, name: n0, folder: y.getUrl() }); } }
+        return out_({ ok: false, error: 'Nie ma folderu: ' + b.from });
+      }
+      const dst = path_(root, b.to, true), nm = src.getName(), ps = src.getParents();
+      while (ps.hasNext()) if (ps.next().getId() === dst.getId()) return out_({ ok: true, already: true, name: nm, folder: src.getUrl() });
+      const clash = dst.getFoldersByName(nm); while (clash.hasNext()) if (!clash.next().isTrashed()) return out_({ ok: false, error: 'W folderze ' + b.to + ' jest już folder ' + nm });
+      src.moveTo(dst);
+      return out_({ ok: true, name: nm, folder: src.getUrl() });
+    }
+    const f = path_(root, b.sub, true);
+    if (b.action === 'text') { // mały plik tekstowy (opis rolki obok pliku wideo); ta sama nazwa = nadpisanie, bez duplikatów
+      const nm = String(b.name || 'opis.txt'), same = f.getFilesByName(nm);
+      while (same.hasNext()) { const x = same.next(); if (!x.isTrashed()) { x.setContent(String(b.text || '')); return out_({ ok: true, id: x.getId(), url: x.getUrl(), replaced: true }); } }
+      const file = f.createFile(nm, String(b.text || ''), MimeType.PLAIN_TEXT);
       return out_({ ok: true, id: file.getId(), url: file.getUrl() });
     }
     if (b.action === 'init') { // sesja wznawialnego uploadu: kawałki wysyła aplikacja
       const mime = String(b.mime || 'video/mp4');
+      if (b.replace) { const old = f.getFilesByName(String(b.name)); while (old.hasNext()) { const x = old.next(); if (!x.isTrashed()) x.setTrashed(true); } } // archiwum tej samej nazwy: stary plik trafia do kosza Drive (do odzyskania), nie powstaje duplikat
       const r = UrlFetchApp.fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&fields=id,name,webViewLink', {
         method: 'post', contentType: 'application/json; charset=UTF-8', muteHttpExceptions: true,
         headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken(), 'X-Upload-Content-Type': mime, 'X-Upload-Content-Length': String(b.size) },

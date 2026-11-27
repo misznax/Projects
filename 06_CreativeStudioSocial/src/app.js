@@ -30,24 +30,60 @@ async function exportProject() {
     const r = await buildProjectZip(pr); pr.close(); if (!r) return; download(r.z, fname('projekt', 'zip')); toast('Zapisano pakiet projektu (' + r.n + ' zasobów, ' + fmtSize(r.z.size) + ')', 'ok');
   } catch (e) { pr.close(); toast('Eksport projektu nieudany: ' + errText(e), 'bad', 9000); }
 }
-// Nazwa folderu rolki na Drive: numer z planu + nazwa rolki (np. „T04 Efekt reflektora”), a bez planu nazwa projektu
-function reelFolderName() { const p = P.cur, pb = p.publish || {}, base = (pb.auto && pb.auto.title) || p.name; return (((pb.planId && !String(base).startsWith(pb.planId + ' ') ? pb.planId + ' ' : '') + base).replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 90)) || 'Rolka'; }
+// ── Numeracja rolek i folder na Drive ──
+// Numer = litera typu (R rolka, K karuzela, P post) + 3 cyfry, np. R001. Nadawany raz na początku, na stałe, nigdy nie używany ponownie.
+// Źródło prawdy: arkusz „Lista rolek” na Drive (folder „Śmiało – Rolki”). Studio zna numery z rolki.json (topics[].num) i z nazw folderów na Drive.
+// Folder rolki: Materiały/R001-Efekt reflektora (w produkcji) → Opublikowane/R001-Efekt reflektora (po publikacji).
+const NUM_RE = /^([RKP])(\d{3,})(?=$|[-\s])/;
+const stripNum = (s) => String(s || '').replace(/^[RKP]\d{3,}\s*[-–:]?\s*/, '').replace(/^T\d{2,}\s+/, '').trim();
+function planItem(id) { return id ? ((Publish.topics || []).find((x) => x.id === id) || (Publish.plan || []).find((x) => x.id === id) || null) : null; }
+function reelNum(p) { p = p || P.cur; const pb = (p && p.publish) || {}; if (pb.num) return pb.num; const t = planItem(pb.planId); return (t && t.num) || ''; }
+function reelTitle(p) { p = p || P.cur; const pb = p.publish || {}; return stripNum((pb.auto && pb.auto.title) || pb.title || p.name) || 'Rolka'; }
+function reelFolderName(p) { p = p || P.cur; const n = reelNum(p), t = reelTitle(p).replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim(); return ((n ? n + '-' : '') + t).slice(0, 90) || 'Rolka'; }
+function reelDone(p) { p = p || P.cur; const pb = p.publish || {}; if (pb.done) return true; const t = planItem(pb.planId); return !!(t && /^opublikowan/i.test(t.status || '')); }
+function reelPath(p) { p = p || P.cur; return DriveUp.path(reelFolderName(p), reelDone(p)); }
+// Kolejny wolny numer danego typu: największy znany (rolki.json, projekty w tej przeglądarce, licznik lokalny, foldery na Drive) + 1
+async function nextNum(typ) {
+  await Publish.loadPlan(); let max = (Publish.pool && +Publish.pool[typ]) || 0;
+  const note = (s) => { const m = NUM_RE.exec(String(s || '')); if (m && m[1] === typ) max = Math.max(max, +m[2]); };
+  for (const t of [...(Publish.topics || []), ...(Publish.plan || [])]) note(t.num);
+  for (const p of await listProjects()) note((p.publish || {}).num);
+  try { max = Math.max(max, +localStorage.getItem('css-num-' + typ) || 0); } catch { /* brak pamięci */ }
+  if (DriveUp.cfg()) { try { const n = await DriveUp.names(); for (const k of Object.keys(n)) for (const nm of n[k] || []) note(nm); } catch (e) { console.warn('Numeracja bez Drive:', e); } }
+  try { localStorage.setItem('css-num-' + typ, String(max + 1)); } catch { /* brak pamięci */ }
+  return typ + String(max + 1).padStart(3, '0');
+}
 function newReelPrompt() { return newReelDialog(); }
-// Archiwum rolki na Drive: folder „numer nazwa” z projektem Studia (ZIP ze wszystkimi materiałami), gotową rolką, miniaturą i opisem
+// Archiwum rolki na Drive: folder „numer-tytuł” w Materiały (albo Opublikowane, gdy rolka już wyszła) ze wszystkim w jednym miejscu:
+// rolka, podkład muzyczny, miniatura, opis i hashtagi, projekt Studia (ZIP ze wszystkimi materiałami). Ponowna archiwizacja nadpisuje pliki o tych samych nazwach.
 async function archiveProject() {
   if (!DriveUp.cfg()) { DriveUp.setup(() => archiveProject()); return; }
-  const p = P.cur, pb = p.publish || (p.publish = {}), sub = reelFolderName(); let r;
+  await Publish.loadPlan(); const p = P.cur, pb = p.publish || (p.publish = {}), sub = reelPath(), nm = reelFolderName(); let r;
   const pr = progressModal('Archiwizacja projektu'); try { r = await buildProjectZip(pr); pr.close(); if (!r) return; } catch (e) { pr.close(); toast('Archiwizacja nieudana: ' + errText(e), 'bad', 9000); return; }
   try {
-    const zip = await DriveUp.deliver(r.z, sub + ' - projekt Studia.zip', { draft: true, sub, mime: 'application/zip' }); if (!zip) return;
-    const extra = []; if (pb.video) { const b = await Assets.blob(pb.video); if (b) { const v = await DriveUp.deliver(b, (pb.videoInfo && pb.videoInfo.name) || (sub + ' - rolka.mp4'), { draft: true, sub }); if (v) extra.push('rolka'); } }
-    if (pb.cover) { const b = await Assets.blob(pb.cover); if (b) { const c = await DriveUp.deliver(b, sub + ' - miniatura.png', { draft: true, sub, mime: 'image/png' }); if (c) extra.push('miniatura'); } }
-    const cap = [pb.title ? 'Tytuł: ' + pb.title : '', pb.caption || '', pb.hashtags || ''].filter(Boolean).join('\n\n'); if (cap) { await DriveUp.text(sub + ' - opis i hashtagi.txt', cap + '\n', sub); extra.push('opis'); }
-    p.archived = { ts: Date.now(), name: sub, folder: zip.folder || '' }; touch(); await saveNow();
+    const opt = { draft: true, sub, replace: true }, extra = [];
+    const zip = await DriveUp.deliver(r.z, 'projekt Studia.zip', Object.assign({ mime: 'application/zip' }, opt)); if (!zip) return;
+    if (pb.video) { const b = await Assets.blob(pb.video); if (b) { const v = await DriveUp.deliver(b, 'rolka (final).mp4', opt); if (v) extra.push('rolka'); } }
+    const used = new Set(); for (const rl of p.reels || []) for (const a of rl.audio || []) if (a.track === 'music' && a.assetId) used.add(a.assetId);
+    for (const id of used) { const rec = await Assets.rec(id); if (rec && rec.blob) { const ext = (/\.[a-z0-9]{2,4}$/i.exec(rec.name || '') || ['.mp3'])[0], bn = String(rec.name || 'podkład').replace(/\.[a-z0-9]{2,4}$/i, '').replace(/[\\/:*?"<>|]+/g, ' ').trim(); const m = await DriveUp.deliver(rec.blob, 'podkład muzyczny (' + bn + ')' + ext, Object.assign({ mime: rec.blob.type || 'audio/mpeg' }, opt)); if (m) extra.push('podkład'); } }
+    if (pb.cover) { const b = await Assets.blob(pb.cover); if (b) { const c = await DriveUp.deliver(b, 'miniatura.png', Object.assign({ mime: 'image/png' }, opt)); if (c) extra.push('miniatura'); } }
+    const cap = [pb.title ? 'Tytuł: ' + pb.title : '', pb.caption || '', pb.hashtags || ''].filter(Boolean).join('\n\n'); if (cap) { await DriveUp.text('opis i hashtagi.txt', cap + '\n', sub); extra.push('opis'); }
+    p.archived = { ts: Date.now(), name: nm, path: sub, folder: zip.folder || '' }; touch(); await saveNow();
     modal('Rolka zarchiwizowana na Drive', h('div', {}, h('div', { style: { lineHeight: '1.7' } }, 'Folder: ', zip.folder ? h('a', { href: zip.folder, target: '_blank', rel: 'noopener' }, sub) : sub), h('div', { class: 'hint', style: { marginTop: '6px' }, html: rich('W folderze: projekt Studia (ZIP ze wszystkimi materiałami)' + (extra.length ? ', ' + extra.join(', ') : '') + '. Żeby wrócić do projektu: pobierz ZIP z folderu i wybierz (⋯ → Import projektu (ZIP)).') })),
       [{ t: '➕ Nowa rolka', cls: 'pri', fn: newReelPrompt }, { t: 'Zostań w tym projekcie' }]);
     if (typeof Publish !== 'undefined' && S.tab === 'publish') Publish.render();
   } catch (e) { console.error(e); modal('Archiwizacja na Drive nieudana', h('div', {}, h('div', { class: 'warnrow bad' }, errText(e)), h('div', { class: 'hint', style: { marginTop: '8px' } }, 'Sprawdź (⚙ Drive) albo pobierz ZIP z projektem (⋯ → Eksport projektu) i przeciągnij go do folderu na Drive.')), [{ t: 'Zamknij' }]); }
+}
+// Rolka wyszła: folder przechodzi z Materiały do Opublikowane (cały folder z plikami). Studio nie edytuje arkusza „Lista rolek”: status i datę wpisuje Agent John.
+async function markPublished() {
+  if (!DriveUp.cfg()) { DriveUp.setup(() => markPublished()); return; }
+  await Publish.loadPlan(); const p = P.cur, pb = p.publish || (p.publish = {}), nm = reelFolderName(), from = DriveUp.path(nm, false), to = DriveUp.DIR_DONE;
+  try {
+    if (!reelDone(p)) { await DriveUp.mkdir(from); const r = await DriveUp.move(from, to); if (p.archived) { p.archived.path = DriveUp.path(nm, true); if (r && r.folder) p.archived.folder = r.folder; } }
+    pb.done = true; pb.doneTs = pb.doneTs || Date.now(); touch(); await saveNow();
+    if (typeof Publish !== 'undefined' && S.tab === 'publish') Publish.render();
+    toast(nm + ': folder jest w Opublikowane. Status w Liście rolek zaktualizuje Agent John.', 'ok', 7000);
+  } catch (e) { console.error(e); toast('Nie przeniesiono folderu: ' + errText(e), 'bad', 10000); }
 }
 async function importProject(file) {
   const pr = progressModal('Import projektu'); try {
@@ -93,32 +129,40 @@ async function projectsDialog() {
   }
 }
 async function createProject(name) { const p = newProject(name); await DBI.put('projects', p); await openProject(p.id); }
-// Nowa rolka: temat z listy planu (rolki.json → topics) albo pusta rolka. Pusty bieżący projekt jest używany ponownie, więc nie mnożą się puste projekty.
-async function startReel(name, topic) {
-  await saveNow(); const list = await listProjects(), inf = await projInfos(list), ci = P.cur && inf[P.cur.id]; let reused = false;
+// Nowa rolka: temat z listy planu (rolki.json → topics) albo pusta rolka. Każda rolka dostaje numer od początku (R001…). Pusty bieżący projekt jest używany ponownie.
+async function startReel(title, topic, typ) {
+  await saveNow(); await Publish.loadPlan(); const num = (topic && topic.num) || await nextNum(typ || 'R'), name = num + ' ' + title;
+  const list = await listProjects(), inf = await projInfos(list), ci = P.cur && inf[P.cur.id]; let reused = false;
   if (ci && ci.empty) { reused = true; P.cur.name = name; }
   else { const np = newProject(name); await DBI.put('projects', np); await openProject(np.id); }
-  const pb = P.cur.publish; pb.planId = topic ? topic.id : ''; pb.title = topic ? topic.title : ''; pb.auto = null;
+  const pb = P.cur.publish; pb.planId = topic ? topic.id : ''; pb.title = topic ? topic.title : ''; pb.num = num; pb.done = false; pb.auto = null;
   touch(); await saveNow(); if (reused) bus.emit('project');
-  toast((topic ? topic.id + ' ' + topic.title : name) + ': ' + (reused ? 'użyłem pustego projektu, nie powstał kolejny.' : 'nowy projekt gotowy.'), 'ok', 6000);
+  if (DriveUp.cfg()) DriveUp.mkdir(reelPath()).catch((e) => console.warn('Folder rolki na Drive:', e)); // folder od razu: numer jest widoczny na Drive i nie zostanie nadany drugi raz
+  toast(name + ': ' + (reused ? 'użyłem pustego projektu, nie powstał kolejny.' : 'nowy projekt gotowy.'), 'ok', 6000);
 }
 async function newReelDialog() {
   await saveNow(); await Publish.loadPlan(); const topics = Publish.topics || [], list = await listProjects(), inf = await projInfos(list), cur = P.cur, curEmpty = !!(cur && inf[cur.id] && inf[cur.id].empty), by = {};
   for (const p of list) { const k = inf[p.id].planId; if (k && !by[k]) by[k] = p; }
-  let m; const go = async (name, topic) => { m.close(); await startReel(name, topic); };
+  let m; const go = async (title, topic, typ) => { m.close(); await startReel(title, topic, typ); };
   const nm = h('input', { type: 'text', value: 'Rolka bez tematu ' + new Date().toLocaleDateString('pl-PL'), style: { flex: 1, minWidth: 0 } });
+  const typ = h('select', { title: 'Typ: numer to litera typu i 3 cyfry' }, h('option', { value: 'R' }, 'Rolka (R)'), h('option', { value: 'K' }, 'Karuzela (K)'), h('option', { value: 'P' }, 'Post (P)'));
   const box = h('div', { style: { maxHeight: '50vh', overflow: 'auto' } });
   for (const [pr, ttl] of [[1, 'Priorytet 1 (pierwsze 4 tygodnie)'], [2, 'Priorytet 2 (rezerwa)'], [3, 'Partia 2 (dowody w ig-04)']]) {
-    const ts = topics.filter((t) => (t.prio || 3) === pr); if (!ts.length) continue; const z = h('div', { class: 'zebra' }); box.append(h('h3', {}, ttl), z);
+    const key = (t, i) => { const m = NUM_RE.exec(t.num || ''); return m ? 'RKP'.indexOf(m[1]) * 1e6 + (+m[2]) : 3e6 + i; }, ts = topics.map((t, i) => [t, key(t, i)]).filter(([t]) => (t.prio || 3) === pr).sort((x, y) => x[1] - y[1]).map(([t]) => t); if (!ts.length) continue; const z = h('div', { class: 'zebra' }); box.append(h('h3', {}, ttl), z);
     for (const t of ts) {
-      const ex = by[t.id], isCur = ex && cur && ex.id === cur.id, done = /opublikowan/.test(t.status || ''), held = t.status === 'wstrzymane';
-      const act = ex && !isCur ? h('button', { class: 'btn sm', onclick: async () => { m.close(); await saveNow(); await openProject(ex.id); } }, 'Otwórz projekt') : isCur ? h('span', { class: 'fine' }, 'bieżący projekt') : done ? h('span', { class: 'fine' }, 'opublikowana') : h('button', { class: 'btn sm pri', onclick: () => go(t.id + ' ' + t.title, t) }, held ? 'Wybierz mimo to' : 'Wybierz');
-      z.append(h('div', { style: { display: 'flex', gap: '8px', alignItems: 'center', padding: '7px 10px' } }, h('div', { style: { flex: 1, minWidth: 0 } }, h('div', { style: { fontWeight: 600 } }, t.id + ' · ' + t.title), h('div', { class: 'fine' }, [t.format, (held || done) ? t.status : '', t.note].filter(Boolean).join(' · ')), t.hook ? h('div', { class: 'fine', style: { fontStyle: 'italic' } }, '„' + t.hook + '”') : null), act));
+      const ex = by[t.id], isCur = ex && cur && ex.id === cur.id, done = /^opublikowan/.test(t.status || ''), held = t.status === 'wstrzymane';
+      let act;
+      if (ex && !isCur) act = h('button', { class: 'btn sm', onclick: async () => { m.close(); await saveNow(); await openProject(ex.id); } }, 'Otwórz projekt');
+      else if (isCur) act = h('span', { class: 'fine' }, 'bieżący projekt');
+      else if (done) act = h('span', { class: 'fine' }, 'opublikowana');
+      else if (t.num) act = h('button', { class: 'btn sm pri', onclick: () => go(t.title, t) }, held ? 'Wybierz mimo to' : 'Wybierz');
+      else act = h('span', { style: { display: 'flex', gap: '4px' }, title: 'Temat nie ma jeszcze numeru (format do ustalenia). Wybierz format, a numer nada się od razu.' }, h('button', { class: 'btn sm pri', onclick: () => go(t.title, t, 'R') }, 'jako rolka'), h('button', { class: 'btn sm', onclick: () => go(t.title, t, 'K') }, 'jako karuzela'));
+      z.append(h('div', { style: { display: 'flex', gap: '8px', alignItems: 'center', padding: '7px 10px' } }, h('div', { style: { flex: 1, minWidth: 0 } }, h('div', { style: { fontWeight: 600 } }, (t.num || 'bez numeru') + ' · ' + t.title), h('div', { class: 'fine' }, [t.format, (held || done) ? t.status : '', 'bank ' + t.id, t.note].filter(Boolean).join(' · ')), t.hook ? h('div', { class: 'fine', style: { fontStyle: 'italic' } }, '„' + t.hook + '”') : null), act));
     }
   }
   if (!topics.length) box.append(h('div', { class: 'warnrow' }, 'Lista tematów (rolki.json) się nie wczytała. Użyj pustej rolki.'));
   m = modal('Nowa rolka', h('div', {}, h('div', { class: 'hint', style: { marginBottom: '8px' } }, curEmpty ? 'Bieżący projekt „' + cur.name + '” jest pusty, więc użyję go ponownie (nie powstanie kolejny).' : 'Bieżący projekt „' + (cur ? cur.name : '') + '” zostaje zapisany w przeglądarce (⋯ → Projekty…).'),
-    h('div', { class: 'fld' }, h('label', {}, 'Pusta rolka, bez tematu'), h('div', { class: 'row', style: { gap: '8px' } }, nm, h('button', { class: 'btn', onclick: () => go(nm.value.trim() || 'Rolka bez tematu', null) }, 'Pusta rolka'))),
+    h('div', { class: 'fld' }, h('label', {}, 'Pusta rolka, bez tematu (numer nadaje się od razu, kolejny wolny)'), h('div', { class: 'row', style: { gap: '8px' } }, typ, nm, h('button', { class: 'btn', onclick: () => go(nm.value.trim() || 'Rolka bez tematu', null, typ.value) }, 'Pusta rolka'))),
     h('div', { class: 'fld' }, h('label', {}, 'Albo wybierz temat z listy (hooki to propozycje robocze)')), box), [{ t: 'Anuluj' }]);
 }
 async function versionsDialog() {
