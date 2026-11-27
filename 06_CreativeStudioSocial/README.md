@@ -1,4 +1,4 @@
-# Creative Studio Social · v0.11
+# Creative Studio Social · v0.12
 
 Studio treści na social media w przeglądarce: marka → grafiki (karuzele) → wideo (rolki 9:16) → audio → publikacja na Instagram, YouTube Shorts, TikTok i Facebook Reels.
 Autor: Michał Rzekiecki · kontakt: michus@gmail.com · adres: https://projects.michus.workers.dev/06/
@@ -10,8 +10,8 @@ Autor: Michał Rzekiecki · kontakt: michus@gmail.com · adres: https://projects
 3. Dane projektu: IndexedDB w przeglądarce użytkownika (`css-v1`: projekty, zasoby, wersje) + autozapis, migawki, eksport/import ZIP.
 4. Jedna warstwa modelu (tekst, obraz, kształt, wideo, efekt, animacje wejścia/wyjścia/pętla, klatki kluczowe) i jedna funkcja `drawScene` dla edycji, podglądu i eksportu.
 5. Dźwięk: własny silnik DSP w czystym JS (`src/dsp.js`): WSOLA (tempo), zmiana wysokości tonu, redukcja szumu STFT, usuwanie trzasków, korektor, kompresor, de-esser, usuwanie ciszy, głośność BS.1770 (LUFS), true peak, limiter, ducking, miks. Podgląd rolki gra dokładnie ten sam miks, który trafia do eksportu.
-6. Eksport wideo: WebCodecs (H.264 + AAC) + mp4-muxer → MP4. Gdy brak AAC w przeglądarce: Opus w MP4 z ostrzeżeniem; gdy brak WebCodecs: WebM (MediaRecorder).
-7. AI przez Worker (klucze tylko jako sekrety): `/api/n/claude` (Claude, a bez klucza Llama), `/api/n/stt` (Whisper), `/api/s/img` (FLUX.1 schnell, Workers AI), `/api/s/status` (uczciwy stan integracji), `/api/s/drive/list|get` (folder Google Drive udostępniony linkiem: lista i pobranie plików, bez kluczy), `/api/s/link?url=` (pobranie pliku z linku Drive / GitHub / Dropbox; inne hosty odrzucone, brak otwartego proxy), `/api/s/doc?id=` (tekst Dokumentu Google udostępnionego linkiem, np. „Rolki” z Agent John).
+6. Eksport wideo: WebCodecs (H.264 + AAC) + mp4-muxer → MP4. Gdy przeglądarka nie ma własnego AAC (Firefox): wbudowany koder AAC-LC w WASM (`public/aac-worker.js`, ładowany dopiero wtedy); bez WebAssembly: Opus w MP4 z ostrzeżeniem; gdy brak WebCodecs: WebM (MediaRecorder).
+7. AI przez Worker (klucze tylko jako sekrety): `/api/n/claude` (Claude, a bez klucza Llama), `/api/n/stt` (Whisper), `/api/s/img` (FLUX.1 schnell, Workers AI), `/api/s/status` (uczciwy stan integracji), `/api/s/drive/list|get` (folder Google Drive udostępniony linkiem: lista i pobranie plików, bez kluczy), `/api/s/link?url=` (pobranie pliku z linku Drive / GitHub / Dropbox; inne hosty odrzucone, brak otwartego proxy), `/api/s/doc?id=` (tekst Dokumentu Google udostępnionego linkiem, np. „Rolki” z Agent John), `/api/s/gas` i `/api/s/gput` (wysyłka gotowych rolek na Twój Drive: tylko skrypt `script.google.com/macros/s/…/exec` i sesja uploadu `googleapis.com/upload/drive/v3/files…`, inne adresy odrzucone).
 
 ## Moduły (zakładki)
 
@@ -43,6 +43,14 @@ Autor: Michał Rzekiecki · kontakt: michus@gmail.com · adres: https://projects
 
 1. Analiza w przeglądarce (canvas, bez kluczy): poświaty (kolor i pozycja), pasek postępu, stopka, bloki tekstu, zdjęcie, akcenty → „DNA” układu, które steruje wszystkimi szablonami.
 2. Wzorzec domyślny: karuzela „Po kontuzji” (v4). Własny materiał (obrazy lub wideo rolki) nadpisuje DNA w projekcie; rodzaje slajdów są rozpoznawane zgrubnie.
+
+## Zmiany v0.12 (AAC w Firefoxie, eksport na Drive)
+
+1. **Koder AAC w WASM** (`src/aacshim.js` + `public/aac-worker.js`): przeglądarka bez własnego AAC (Firefox) nie zapisuje już Opus w MP4, tylko AAC-LC, który przyjmują Instagram, TikTok i YouTube. Plik workera to niezmieniony koder z paczki `@mediabunny/aac-encoder` (MPL-2.0, libavcodec/FFmpeg LGPL; patrz `public/aac-NOTICE.txt`), ok. 0,9 MB, ładowany tylko gdy natywnego AAC brak. Opóźnienie kodera (1024 próbki) jest kompensowane: sygnały dźwięku i błyski obrazu zgodne co do ok. 1 ms. Test: Chrome z wymuszonym brakiem AAC (`window.__forceAacWasm = true`).
+2. **☁ Eksportuj na Drive** (okno eksportu) i **☁ Wyślij na Drive** (Publikacja, dla już wyeksportowanej rolki): plik trafia do folderu „Gotowe rolki” na Twoim Google Drive, razem z plikiem `…_opis.txt` (koncepcja, hook, tytuł, opis, hashtagi, termin), jeśli są wpisane. Biblioteka projektu to IndexedDB w przeglądarce, więc czat agenta jej nie widzi; Drive widzi.
+3. **Jak to działa**: przeglądarka → Worker → skrypt Google (Apps Script) na Twoim koncie → sesja wznawialnego uploadu Drive. Plik idzie kawałkami po 8 MB przez Workera (bez problemów CORS), z ponawianiem po błędzie sieci i wznawianiem od miejsca, które Drive już ma. Skrypt: `apps-script/Code.gs` (hasło generuje aplikacja i wstawia do kodu).
+4. **⚙ Ustawienia Drive** (jednorazowo, ok. 3 min): okno pokazuje kod skryptu z przyciskiem „Kopiuj”, kroki wdrożenia (script.google.com → Nowy projekt → wklej → Wdróż → Aplikacja internetowa → Wykonaj jako: Ja, Dostęp: Wszyscy → autoryzuj) i pole na adres `…/exec`. „Zapisz i sprawdź” robi test połączenia; folder „Gotowe rolki” powstaje sam. Zmiana nazwy lub ID folderu: stałe `FOLDER_NAME` / `FOLDER_ID` na górze skryptu.
+5. Szkic nie trafia na Drive. Test na prawdziwym Google niewykonany (sprawdzono z atrapą skryptu i sesji uploadu oraz kod Workera: obce adresy odrzucane).
 
 ## Zmiany v0.11 (parowanie dźwięku, „zastosuj do wszystkich”, odświeżanie podglądu, eksport do biblioteki)
 
@@ -109,7 +117,7 @@ Autor: Michał Rzekiecki · kontakt: michus@gmail.com · adres: https://projects
 
 1. Rolki tylko 9:16. Wideo HEVC/H.265 (domyślny format iPhone'a) Chrome zwykle nie odczyta (widać wtedy tylko ramkę, a dźwięk gra): aplikacja pokazuje komunikat; nagrywaj w trybie „Najbardziej zgodny” (H.264).
 2. Obrazy AI: FLUX generuje 1024×1024, aplikacja kadruje do formatu; brak zachowania tożsamości osoby.
-3. AAC zależy od przeglądarki (Chrome na Windows i macOS, Safari 26+: tak; Firefox i Linux: nie, wtedy Opus, którego Instagram i TikTok mogą nie przyjąć). Plan: wbudowany koder AAC (WASM) jako zapas.
+3. AAC: Chrome na Windows i macOS oraz Safari 26+ mają własny; w pozostałych (Firefox, Linux) działa wbudowany koder WASM (v0.12). Opus w MP4 zostaje tylko tam, gdzie nie ma WebAssembly.
 4. Zmiana tempa/tonu bez Rubber Band (licencja GPL); własny WSOLA, jakość dobra dla mowy, słabsza dla muzyki przy skrajnych wartościach.
 5. Brak analizy PDF, brak synchronizacji projektów między urządzeniami.
 6. Szkło (rozmycie) używa `ctx.filter`: w Safari zastępuje je półprzezroczysta warstwa; w eksporcie MP4 rozmycie spowalnia kodowanie.
@@ -119,6 +127,6 @@ Autor: Michał Rzekiecki · kontakt: michus@gmail.com · adres: https://projects
 
 ## Plan
 
-1. v0.12: R2 (chmura projektów i publiczne adresy mediów) + adapter Metricool (planowanie wpisów); nagrywanie gadającej głowy kamerą w aplikacji.
-2. v0.13: bezpośrednie API (YouTube, Meta, TikTok), format 4:5 w wideo.
+1. v0.13: adapter Metricool (planowanie wpisów na Instagramie z pliku z Drive) + R2 (chmura projektów, publiczne adresy mediów); nagrywanie gadającej głowy kamerą w aplikacji.
+2. v0.14: bezpośrednie API (YouTube, Meta, TikTok), format 4:5 w wideo.
 3. v1.0 po zatwierdzeniu; od tej wersji kopie w `backup/`.

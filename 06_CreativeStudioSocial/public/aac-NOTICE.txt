@@ -1,0 +1,6 @@
+aac-worker.js: koder AAC-LC (WebAssembly, libavcodec z FFmpeg) z paczki @mediabunny/aac-encoder 1.66.5,
+autor: Vanilagy i współtwórcy, licencja MPL-2.0 (https://mozilla.org/MPL/2.0/), plik bez zmian.
+Kod źródłowy: https://github.com/Vanilagy/mediabunny/tree/main/packages/aac-encoder
+Zawarty FFmpeg: LGPL 2.1 (https://www.ffmpeg.org/legal.html, https://www.gnu.org/licenses/old-licenses/lgpl-2.1.html).
+Plik ładuje się tylko wtedy, gdy przeglądarka nie ma własnego kodera AAC (np. Firefox).
+Creative Studio Social · Autor: Michał Rzekiecki · michus@gmail.com

@@ -316,6 +316,29 @@ async function docText(id) { // Dokument Google udostępniony linkiem → zwykł
   return J({ text: t });
 }
 
+// ── 06 Creative Studio Social: wysyłka gotowych rolek na Google Drive użytkownika ──
+// Skrypt Google (Apps Script, wdrożony przez użytkownika jako aplikacja internetowa) zakłada sesję wznawialnego uploadu w folderze „Gotowe rolki”;
+// plik idzie z przeglądarki kawałkami przez Workera (po stronie Google brak CORS, brak pamięci na cały plik). Dozwolone wyłącznie dwa adresy docelowe (brak otwartego proxy).
+const GAS_RE = /^https:\/\/script\.google\.com\/macros\/s\/[\w-]{20,200}\/exec$/;
+const GUP_RE = /^https:\/\/www\.googleapis\.com\/upload\/drive\/v3\/files\?[^#\s]*upload_id=[\w-]{10,}[^#\s]*$/;
+async function gasCall(request) {
+  let b; try { b = await request.json(); } catch { return J({ code: 'bad' }, 400); }
+  const u = String(b.url || '').trim(); if (!GAS_RE.test(u)) return J({ code: 'bad_url' }, 400);
+  const p = b.payload && typeof b.payload === 'object' ? b.payload : null; if (!p || !['ping', 'init', 'text'].includes(String(p.action))) return J({ code: 'bad' }, 400);
+  const body = JSON.stringify(p); if (body.length > 200000) return J({ code: 'too_big' }, 413);
+  let r; try { r = await fetch(u, { method: 'POST', headers: { 'content-type': 'text/plain;charset=utf-8' }, body, redirect: 'follow' }); } catch (e) { return J({ code: 'net', msg: String(e.message || e).slice(0, 160) }, 502); }
+  const t = await r.text(); let j = null; try { j = JSON.parse(t); } catch { /* HTML zamiast JSON */ }
+  if (!j || typeof j !== 'object') return J({ code: /accounts\.google\.com|ServiceLogin|Sign in|Zaloguj/i.test(r.url + ' ' + t.slice(0, 3000)) ? 'gas_private' : 'gas_html', status: r.status }, 502);
+  return J(j);
+}
+async function gPut(request, url) {
+  const u = url.searchParams.get('u') || ''; if (!GUP_RE.test(u)) return J({ code: 'bad_url' }, 400);
+  const cr = request.headers.get('x-content-range') || ''; if (!/^bytes (\d+-\d+|\*)\/(\d+|\*)$/.test(cr)) return J({ code: 'bad' }, 400);
+  const body = await request.arrayBuffer(); if (body.byteLength > 16 * 1048576) return J({ code: 'too_big' }, 413);
+  let r; try { r = await fetch(u, { method: 'PUT', headers: { 'content-range': cr, 'content-type': 'application/octet-stream' }, body: body.byteLength ? body : undefined, redirect: 'manual' }); } catch (e) { return J({ code: 'net', msg: String(e.message || e).slice(0, 160) }, 502); }
+  const t = await r.text(); return J({ status: r.status, range: r.headers.get('range') || '', body: t.slice(0, 3000) });
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -359,6 +382,8 @@ export default {
         if (!(await rl(request, env, 'drive', 300))) return J({ code: 'rate' }, 429);
         return url.pathname.endsWith('/list') ? driveList(id) : driveGet(id);
       }
+      if (url.pathname === '/api/s/gas' && request.method === 'POST') { if (!(await rl(request, env, 'gas', 240))) return J({ code: 'rate' }, 429); return gasCall(request); }
+      if (url.pathname === '/api/s/gput' && (request.method === 'PUT' || request.method === 'POST')) { if (!(await rl(request, env, 'gput', 900))) return J({ code: 'rate' }, 429); return gPut(request, url); }
       if (url.pathname === '/api/n/status') return J({ stt: !!(env.OPENAI_API_KEY || env.AI || env.GROQ_API_KEY), diar: !!env.OPENAI_API_KEY, claude: !!(env.ANTHROPIC_API_KEY || env.AI || env.GROQ_API_KEY), ckey: !!env.ANTHROPIC_API_KEY });
       // 04 Notatnik Słuchacza: proxy do OpenAI (transkrypcja + mówcy) i Claude (notatki, autorzy, weryfikacja); klucze tylko jako sekrety Workera
       if (url.pathname === '/api/n/stt' && request.method === 'POST') {
