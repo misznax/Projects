@@ -1,5 +1,5 @@
 /* Creative Studio Social — rdzeń: narzędzia, magazyn (IndexedDB), projekt, historia, UI-pomocniki */
-const APP = { name: 'Creative Studio Social', ver: 'v0.15', author: 'Michał Rzekiecki', mail: 'michus@gmail.com' };
+const APP = { name: 'Creative Studio Social', ver: 'v0.16', author: 'Michał Rzekiecki', mail: 'michus@gmail.com' };
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const uid = (p = 'x') => p + Math.random().toString(36).slice(2, 9);

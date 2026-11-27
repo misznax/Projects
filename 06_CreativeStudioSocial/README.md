@@ -44,6 +44,12 @@ Autor: Michał Rzekiecki · kontakt: michus@gmail.com · adres: https://projects
 1. Analiza w przeglądarce (canvas, bez kluczy): poświaty (kolor i pozycja), pasek postępu, stopka, bloki tekstu, zdjęcie, akcenty → „DNA” układu, które steruje wszystkimi szablonami.
 2. Wzorzec domyślny: karuzela „Po kontuzji” (v4). Własny materiał (obrazy lub wideo rolki) nadpisuje DNA w projekcie; rodzaje slajdów są rozpoznawane zgrubnie.
 
+## Zmiany v0.16 (czytelniejsze opisy wysyłki na Drive i polecenia dla agenta)
+
+1. Okno (⚙ Drive) zaczyna się od "Po co to jest" i podaje alternatywę bez skryptu (ręczne przeciągnięcie mp4 na Drive)
+2. Nagłówek kodu skryptu Apps Script mówi, do czego służy i co zrobić
+3. Krok 2 w Publikacji wyjaśnia, że polecenie to zwykłe zdanie do czatu z agentem (wystarczy napisać: publikuj)
+
 ## Zmiany v0.15 (Publikacja: 3 kroki do Metricool, Instagram i Facebook)
 
 1. Sekcja 7 w trybie Metricool ma 3 numerowane kroki: wyślij na Drive, skopiuj polecenie, agent ustawia publikację
