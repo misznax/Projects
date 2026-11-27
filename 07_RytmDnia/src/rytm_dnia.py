@@ -957,6 +957,10 @@ class RytmApp:
                 d = cls(self, False)
                 self.root.update()
                 Dlg.close(d)
+            if os.name == "nt":  # rejestr: włącz i od razu wyłącz autostart
+                core.set_autostart(True)
+                core.set_autostart(False)
+                print("autostart OK")
             self.tracker.flush()
             files = core.export_csv(self.store, core.data_dir() / "eksport_smoke", "smoke")
             assert all(f.exists() for f in files)

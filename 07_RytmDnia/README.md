@@ -1,6 +1,6 @@
 # Rytm Dnia
 
-Mały widget na pulpit Windows (Python, tkinter, SQLite – **zero zależności**, ok. kilkadziesiąt MB RAM, próbkowanie co 2 s).
+Mały widget na pulpit Windows (Python, tkinter, SQLite – **zero zależności**, próbkowanie aktywnego okna co 2 s).
 Autor: Michał Rzekiecki · kontakt: kontakt@smialo.org · wersja: **v0.01**
 
 - Pobierz: Releases → `rytmdnia-latest` → `RytmDnia_v0.01.zip`, rozpakuj i uruchom `RytmDnia.exe`.
