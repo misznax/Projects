@@ -1,0 +1,3 @@
+# Rytm Dnia nie ma zależności uruchomieniowych (tylko biblioteka standardowa Pythona 3.10+: tkinter, sqlite3, ctypes).
+# Do zbudowania exe:
+pyinstaller>=6

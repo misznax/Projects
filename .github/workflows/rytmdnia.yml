@@ -1,0 +1,48 @@
+name: Build RytmDnia
+on:
+  push:
+    branches: [main]
+    paths: ["07_RytmDnia/**", ".github/workflows/rytmdnia.yml"]
+  workflow_dispatch:
+permissions:
+  contents: write
+env:
+  PYTHONUTF8: "1"
+jobs:
+  build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: 07_RytmDnia
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Testy logiki
+        run: python -m unittest discover -s tests -v
+      - name: Test dymny GUI i API Windows (źródła)
+        env:
+          RYTM_DATA_DIR: ${{ runner.temp }}\rytm_smoke_src
+        run: python src/rytm_dnia.py --smoke
+      - run: pip install pyinstaller
+      - run: python build_exe.py
+      - name: Test dymny zbudowanego exe
+        shell: pwsh
+        env:
+          RYTM_DATA_DIR: ${{ runner.temp }}\rytm_smoke_exe
+        run: |
+          $p = Start-Process -FilePath "dist\RytmDnia\RytmDnia.exe" -ArgumentList "--smoke" -Wait -PassThru
+          if ($p.ExitCode -ne 0) {
+            Get-Content "$env:RYTM_DATA_DIR\rytmdnia.log" -ErrorAction SilentlyContinue
+            throw "exe --smoke zakończone kodem $($p.ExitCode)"
+          }
+          if (-not (Test-Path "$env:RYTM_DATA_DIR\eksport_smoke")) { throw "brak plików eksportu z testu dymnego" }
+          "exe smoke OK"
+      - name: Publish release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete rytmdnia-latest -y --cleanup-tag || true
+          gh release create rytmdnia-latest dist/RytmDnia_v*.zip --title "Rytm Dnia (ZIP)" --notes "Rozpakuj ZIP i uruchom RytmDnia/RytmDnia.exe (widget na pulpicie). Automatyczny build z ostatniego commita."
