@@ -44,6 +44,15 @@ Autor: Michał Rzekiecki · kontakt: michus@gmail.com · adres: https://projects
 1. Analiza w przeglądarce (canvas, bez kluczy): poświaty (kolor i pozycja), pasek postępu, stopka, bloki tekstu, zdjęcie, akcenty → „DNA” układu, które steruje wszystkimi szablonami.
 2. Wzorzec domyślny: karuzela „Po kontuzji” (v4). Własny materiał (obrazy lub wideo rolki) nadpisuje DNA w projekcie; rodzaje slajdów są rozpoznawane zgrubnie.
 
+## Zmiany v0.14 (Publikacja w sekcjach, opis i miniatura automatycznie, Audio przed Wideo)
+
+1. **Kolejność zakładek**: Audio stoi przed Wideo (Marka, Pomysły, Grafiki, Audio, Wideo, Publikacja). Skróty Ctrl+1 do 6 idą za kolejnością.
+2. **Publikacja w 7 numerowanych sekcjach**: 1 Materiał, 2 Miniatura z hookiem, 3 Opis i hashtagi, 4 Termin (lewa kolumna), 5 Sieci i kontrola, 6 Zatwierdzenie, 7 Publikacja (prawa kolumna), pod spodem Historia i Kalendarz.
+3. **Tryb publikacji**: Automatyczna (zalecana: „☁ Wyślij pakiet do agenta” wysyła na Drive plik, miniaturę i opis, potem agent ustawia publikację w Metricool na polecenie) albo Ręczna (FINAL PUBLISH: pakiet ZIP i strony wgrywania). Oba tryby wymagają kompletu zatwierdzeń.
+4. **Opis, hashtagi i tekst miniatury wpisują się same**: Studio czyta `public/rolki.json` (plan agenta: opis ze źródłami, hashtagi, sieci, tekst miniatury; pole `active` = rolka czekająca na publikację). Wpisuje tylko puste pola, nic nie nadpisuje. Wybór innej rolki z planu pyta o zastąpienie. Kontrola ostrzega, gdy w opisie brakuje linii „Źródło:”.
+5. **Miniatura z hookiem** (`src/cover.js`): rysowana w kodzie, bez AI, 1080×1920: ciemne tło marki, stożek reflektora, siatka sześciokątów, nazwa zjawiska w fioletowej pigułce, hook w 3 liniach (środkowa linia z gradientem pomarańcz → żółć), podpis, logo lewy dół, @trenuj.smialo prawy dół. Treść w pasie bezpiecznym siatki profilu (3:4). Opcja „Z klatki rolki” używa klatki wyeksportowanego filmu jako tła. Powstaje sama, gdy jest tekst z planu, a miniatury brak. Trafia do pakietu ZIP i na Drive.
+6. Test: Chrome headless (budowa, zakładki, Publikacja z planem, miniatura, eksport do Drive z atrapą).
+
 ## Zmiany v0.13 (Biblioteka marki, Szkic na Drive z odtwarzaczem)
 
 1. **🏷 Złóż wg marki** (panel Wideo, sekcja „Marka”): jeden przycisk dokłada zakończenie, podkład i dzwonek z biblioteki marki i wyrównuje poziomy. Zakończenie startuje po ostatnim klipie wideo lub głosie, podkład idzie pod cały film (zapętlony, fade-in 1 s, fade-out 1,5 s, ducking wyłączony, stały poziom: ok. 17 LU pod głosem, czyli ok. 14% amplitudy), dzwonek startuje razem z zakończeniem. Głos nie jest ruszany. Ponowne złożenie zastępuje poprzednie (elementy mają znacznik `brand`).

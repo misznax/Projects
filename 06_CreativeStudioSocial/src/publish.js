@@ -13,7 +13,7 @@ const Publish = {
   get p() { return P.cur.publish; },
   get reel() { return P.cur.reels.find((r) => r.id === P.cur.curReel) || null; },
   build() { const root = $('#m-publish'); root.innerHTML = ''; this.L = h('div', { class: 'pad', style: { overflow: 'auto', minHeight: 0 } }); this.R = h('div', { class: 'pad', style: { overflow: 'auto', minHeight: 0, borderLeft: '1px solid var(--bd)' } }); root.append(this.L, this.R); this.built = true; },
-  show() { if (!this.built) this.build(); const p = this.p; p.kind = p.kind || 'video'; p.approval = p.approval || {}; p.nets = Object.assign({ ig: true, yt: true, tt: true, fb: true }, p.nets); this.render(); },
+  show() { if (!this.built) this.build(); const p = this.p; p.kind = p.kind || 'video'; p.approval = p.approval || {}; p.nets = Object.assign({ ig: true, yt: true, tt: true, fb: true }, p.nets); p.mode = p.mode || 'auto'; this.render(); this.loadPlan().then(async () => { let ch = this.autofill(); if (!p.cover && p.coverSpec && (p.coverSpec.lines || []).length && p.kind === 'video') { try { ch = (await this.makeCover(true)) || ch; } catch (e) { console.warn('miniatura', e); } } if (ch && S.tab === 'publish') this.render(); }); },
   render() { this.left(); this.right(); },
   tags() { return String(this.p.hashtags || '').split(/[\s,]+/).filter(Boolean).map((x) => '#' + x.replace(/^#+/, '')); },
   compose(n) {
@@ -49,26 +49,100 @@ const Publish = {
     if (n === 'tt') { add(c.text.length <= N.cap ? 'ok' : 'bad', 'Opis z hashtagami ' + c.text.length + ' / ' + N.cap + ' znaków'); if (tags.length > 5) add('warn', tags.length + ' hashtagów: na TikToku lepiej 3–5 trafnych.'); }
     if (n === 'yt') { add(c.title ? (c.title.length <= N.title ? 'ok' : 'bad') : 'bad', c.title ? 'Tytuł ' + c.title.length + ' / ' + N.title : 'Brak tytułu (wymagany)'); add(c.text.length <= N.desc ? 'ok' : 'bad', 'Opis ' + c.text.length + ' / ' + N.desc); if (tags.length > 15) add('warn', 'Powyżej 15 hashtagów YouTube ignoruje wszystkie.'); }
     if (n === 'fb') add(c.text.length <= N.cap ? 'ok' : 'bad', 'Opis ' + c.text.length + ' znaków');
-    add(p.cover ? 'ok' : 'warn', p.cover ? 'Okładka ustawiona' : 'Brak okładki (zostanie wybrana automatycznie z klatki)');
+    { const pe = this.planEntry(); if (pe && pe.sources && pe.sources.length) { const has = /(Źródło|Źródła|Zrodlo|Source)\s*:/i.test(p.caption || ''); add(has ? 'ok' : 'warn', has ? 'Opis zawiera linię ze źródłem' : 'W opisie brakuje linii ze źródłem, a plan agenta ją ma'); } }
+    add(p.cover ? 'ok' : 'warn', p.cover ? 'Miniatura ustawiona' : 'Brak miniatury (wygeneruj ją w sekcji 2)');
     if (p.schedule) { const d = new Date(p.schedule); add(d.getTime() > Date.now() ? 'ok' : 'warn', 'Termin: ' + d.toLocaleString('pl-PL') + (d.getTime() > Date.now() ? '' : ' (w przeszłości)')); }
     return out;
   },
   worst(n) { const v = this.validate(n); return v.some((x) => x.ok === 'bad') ? 'bad' : v.some((x) => x.ok === 'warn') ? 'warn' : 'ok'; },
 
-  // ── Lewa kolumna: treść ──
+  // ── Plan agenta (public/rolki.json): opis ze źródłami, hashtagi i tekst miniatury wpisują się same ──
+  plan: null,
+  async loadPlan() {
+    if (this.plan) return this.plan;
+    try { const r = await fetch('rolki.json?v=' + Date.now(), { cache: 'no-store' }); const j = r.ok ? await r.json() : null; this.plan = j && Array.isArray(j.reels) ? j.reels : []; } catch (e) { this.plan = []; }
+    return this.plan;
+  },
+  planEntry() { return (this.plan || []).find((x) => x.id === this.p.planId) || null; },
+  // wpisuje tylko puste pola (nic nie nadpisuje); zwraca true, gdy coś zmieniono
+  autofill() {
+    const p = this.p, pl = this.plan || []; if (!pl.length) return false;
+    if (!p.planId) { const a = pl.find((x) => x.active); if (a) p.planId = a.id; }
+    const e = this.planEntry(); if (!e) return false; let ch = false;
+    if (!(p.caption || '').trim() && e.caption) { p.caption = e.caption; ch = true; }
+    if (!(p.hashtags || '').trim() && e.hashtags) { p.hashtags = e.hashtags; ch = true; }
+    if (!(p.title || '').trim() && e.title) { p.title = e.title; ch = true; }
+    if ((!p.coverSpec || !(p.coverSpec.lines || []).some((x) => String(x).trim())) && e.cover) { p.coverSpec = jclone(e.cover); ch = true; }
+    if (e.nets && !p.netsFromPlan) { for (const k of Object.keys(NETS)) p.nets[k] = e.nets.includes(k); p.netsFromPlan = true; ch = true; }
+    if (ch) { p.auto = { id: e.id, title: e.title, ts: Date.now() }; touch(); this.log('Opis, hashtagi i tekst miniatury wpisane automatycznie z planu agenta: ' + e.id + ' ' + e.title); }
+    return ch;
+  },
+  async applyPlan(id) {
+    const e = (this.plan || []).find((x) => x.id === id), p = this.p; if (!e) { p.planId = ''; touch(); this.render(); return; }
+    if (((p.caption || '').trim() || (p.hashtags || '').trim()) && p.planId !== id && !confirm('Zastąpić opis, hashtagi i tekst miniatury tekstem z planu: ' + e.id + ' ' + e.title + '?')) { this.render(); return; }
+    p.planId = id; p.caption = e.caption || ''; p.hashtags = e.hashtags || ''; p.title = e.title || ''; p.coverSpec = e.cover ? jclone(e.cover) : null; p.cover = null; p.auto = { id: e.id, title: e.title, ts: Date.now() }; touch(); this.log('Wczytano z planu agenta: ' + e.id + ' ' + e.title);
+    try { await this.makeCover(true); } catch (er) { console.warn(er); } this.render();
+  },
+  // miniatura z hookiem: rysowana w kodzie (bez AI); useFrame = klatka wyeksportowanej rolki jako tło
+  async makeCover(silent, useFrame) {
+    const p = this.p; let spec = p.coverSpec;
+    if (!spec || !(spec.lines || []).some((x) => String(x).trim())) { const m = (this.reel && this.reel.meta) || {}; if (!m.hook) { if (!silent) toast('Wpisz linie miniatury (hook) albo wybierz tekst z planu agenta.', 'warn'); return false; } spec = p.coverSpec = Cover.fromHook(m.hook, m.concept || ''); }
+    let frame = null; if (useFrame) { try { const vb = p.video ? await Assets.blob(p.video) : null; if (!vb) throw new Error('brak wyeksportowanego wideo'); frame = await Cover.frameFrom(vb, +p.coverT || 0.6); } catch (e) { toast('Klatka niedostępna (' + errText(e) + '), robię samą grafikę.', 'warn'); } }
+    const b = await Cover.render(spec, { frame }); if (!b) throw new Error('Nie udało się narysować miniatury.');
+    p.cover = await Assets.add(new File([b], fname('miniatura_' + slug(spec.kicker || P.cur.name), 'png'), { type: 'image/png' }), 'image', { desc: 'Miniatura z hookiem: ' + (spec.lines || []).join(' ').replace(/\*/g, ''), origin: 'Publikacja' }); touch(); if (!silent) toast('Miniatura gotowa.', 'ok'); return true;
+  },
+  agentCmd() { const p = this.p; return 'Opublikuj ' + (p.planId ? p.planId + ' ' : '') + '(' + P.cur.name + ') na Instagramie ' + (p.schedule ? 'o ' + new Date(p.schedule).toLocaleString('pl-PL') : 'od razu') + '. Plik, miniatura i opis są na Drive w folderze Gotowe rolki.'; },
+  // tryb automatyczny: plik + miniatura + opis na Drive, resztę (Metricool) robi agent na Twoje polecenie
+  async sendAuto() {
+    const p = this.p, info = p.videoInfo; if (!p.video || !info) { toast('Najpierw wyeksportuj rolkę w pełnej jakości (Wideo → Eksport).', 'warn'); return; }
+    if (!DriveUp.cfg()) { DriveUp.setup(() => this.sendAuto()); return; }
+    try {
+      const vb = await Assets.blob(p.video); if (!vb) throw new Error('Brak pliku wideo w bibliotece. Wyeksportuj rolkę ponownie.');
+      const res = await DriveUp.deliver(vb, info.name); if (!res) return;
+      let cv = null; if (p.cover) { const cb = await Assets.blob(p.cover); if (cb) cv = await DriveUp.deliver(cb, info.name.replace(/\.[^.]+$/, '') + '_miniatura.png', { draft: true }); }
+      this.log('Pakiet wysłany na Drive dla agenta: ' + res.name + (cv ? ' i miniatura' : ' (bez miniatury)'));
+      modal('Pakiet jest na Drive', h('div', {}, DriveUp.resultBox(res), cv ? h('div', { style: { marginTop: '6px' } }, 'Miniatura: ', h('a', { href: cv.url, target: '_blank', rel: 'noopener' }, cv.name)) : h('div', { class: 'warnrow' }, 'Bez miniatury: wygeneruj ją w sekcji 2 i wyślij ponownie.'), h('div', { class: 'hint', style: { marginTop: '8px' } }, 'Napisz agentowi w czacie: ' + this.agentCmd())),
+        [{ t: 'Skopiuj polecenie', cls: 'pri', keep: true, fn: () => { navigator.clipboard.writeText(this.agentCmd()).then(() => toast('Skopiowano polecenie dla agenta', 'ok')).catch((e) => toast(errText(e), 'bad')); return false; } }, { t: 'Zamknij' }]);
+      this.render();
+    } catch (e) { console.error(e); modal('Nie udało się wysłać na Drive', h('div', {}, h('div', { class: 'warnrow bad' }, errText(e)), h('div', { class: 'hint', style: { marginTop: '8px' } }, 'Sprawdź ⚙ Drive albo użyj trybu ręcznego (pakiet ZIP).')), [{ t: 'Zamknij' }]); }
+  },
+  sec(num, title, hint, ...kids) {
+    return h('div', { class: 'pubsec', style: { border: '1px solid var(--bd)', borderRadius: '12px', padding: '12px 14px', margin: '0 0 12px', background: 'var(--p2)' } },
+      h('h3', { style: { margin: '0 0 6px', display: 'flex', gap: '9px', alignItems: 'center' } }, h('span', { style: { background: '#8B6CFF', color: '#fff', borderRadius: '50%', width: '24px', height: '24px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', flex: 'none' } }, String(num)), title),
+      hint ? h('div', { class: 'hint', style: { margin: '0 0 8px' } }, hint) : null, ...kids);
+  },
+
+  // ── Lewa kolumna: 1 Materiał, 2 Miniatura, 3 Opis i hashtagi, 4 Termin ──
   left() {
-    const L = this.L, p = this.p, c = P.cur; L.innerHTML = ''; const cb = (k) => { if (k === 'commit' || k === 'live') touch(); if (k === 'commit') this.right(); };
-    const info = p.videoInfo; const mat = h('div', {});
-    if (p.kind === 'video') { mat.append(info && p.video ? h('div', { class: 'card' }, h('table', { class: 'qc' }, ...[['Plik', info.name], ['Rozmiar', fmtSize(info.size)], ['Długość', info.dur.toFixed(1) + ' s'], ['Wymiary', info.w + '×' + info.h + ' @ ' + info.fps + ' fps'], ['Kodeki', info.note || info.kind], ['Wyeksportowano', new Date(info.ts).toLocaleString('pl-PL')]].map(([a, b]) => h('tr', {}, h('td', {}, a), h('td', {}, b))))) : h('div', { class: 'hint', html: rich('Brak wyeksportowanej rolki. Zaprojektuj ją w zakładce (Wideo) i wybierz Eksport → MP4.') }), h('div', { class: 'row', style: { marginTop: '6px' } }, h('button', { class: 'btn', onclick: () => S.go('video') }, 'Przejdź do Wideo'), info && p.video ? h('button', { class: 'btn', onclick: async () => { const b = await Assets.blob(p.video); if (b) download(b, info.name); } }, 'Pobierz plik') : null, info && p.video ? h('button', { class: 'btn sea', title: 'Wysyła plik do folderu „Gotowe rolki” na Twoim Drive (tam widzi go czat agenta)', onclick: () => DriveUp.sendPublished() }, '☁ Wyślij na Drive') : null, h('button', { class: 'btn', title: 'Połącz Drive: jednorazowa konfiguracja skryptu', onclick: () => DriveUp.setup() }, '⚙ Drive')), p.drive ? h('div', { class: 'hint', style: { marginTop: '6px' } }, 'Na Drive: ', h('a', { href: p.drive.url, target: '_blank', rel: 'noopener' }, p.drive.name), p.drive.folder ? h('span', {}, ' · ', h('a', { href: p.drive.folder, target: '_blank', rel: 'noopener' }, 'folder Gotowe rolki')) : null, ' · ' + new Date(p.drive.ts).toLocaleString('pl-PL')) : null); }
-    else { const sel = h('select', { onchange: (e) => { p.postId = e.target.value; touch(); this.right(); } }, c.posts.map((x) => h('option', { value: x.id, selected: x.id === (p.postId || c.curPost) }, x.name + ' (' + x.slides.length + ' szt.)'))); mat.append(c.posts.length ? sel : h('div', { class: 'hint', html: rich('Brak projektów graficznych. Utwórz karuzelę w zakładce (Grafiki).') })); }
-    L.append(h('h3', { style: { marginTop: 0 } }, 'Treść publikacji'), h('div', { class: 'fld' }, h('label', {}, 'Rodzaj materiału'), fld({ k: 'kind', t: 'seg', opts: [['video', 'Rolka (wideo)'], ['images', 'Karuzela / zdjęcia']] }, p, (k) => { touch(); this.render(); })), mat);
-    const cov = h('div', { class: 'row', style: { marginTop: '8px' } }, p.cover ? h('div', { class: 'thumbs' }, h('div', { class: 'th', style: { width: '54px', height: '96px' } }, imgThumbEl(p.cover))) : h('span', { class: 'hint' }, 'Brak okładki.'), h('button', { class: 'btn', onclick: async () => { const a = await assetPicker(['image', 'ai'], 'Okładka – importuj obraz'); if (a) { p.cover = a.id; touch(); this.render(); } } }, 'Wybierz…'), p.cover ? h('button', { class: 'btn bad', onclick: () => { p.cover = null; touch(); this.render(); } }, 'Usuń') : null);
-    L.append(h('div', { class: 'fld', style: { marginTop: '10px' } }, h('label', {}, 'Okładka (z klatki rolki: zakładka Wideo → Eksport; ze slajdu: Grafiki → Eksport)'), cov));
+    const L = this.L, p = this.p, c = P.cur; L.innerHTML = ''; const info = p.videoInfo, mat = h('div', {});
+    if (p.kind === 'video') {
+      mat.append(...[info && p.video ? h('div', { class: 'card' }, h('table', { class: 'qc' }, ...[['Plik', info.name], ['Rozmiar', fmtSize(info.size)], ['Długość', info.dur.toFixed(1) + ' s'], ['Wymiary', info.w + '×' + info.h + ' @ ' + info.fps + ' fps'], ['Kodeki', info.note || info.kind], ['Wyeksportowano', new Date(info.ts).toLocaleString('pl-PL')]].map(([a, b]) => h('tr', {}, h('td', {}, a), h('td', {}, b))))) : h('div', { class: 'hint' }, 'Brak wyeksportowanej rolki. Zaprojektuj ją w zakładce Wideo i wybierz Eksport → Pełna jakość.'),
+        h('div', { class: 'row', style: { marginTop: '6px' } }, h('button', { class: 'btn', onclick: () => S.go('video') }, 'Przejdź do Wideo'), info && p.video ? h('button', { class: 'btn', onclick: async () => { const b = await Assets.blob(p.video); if (b) download(b, info.name); } }, 'Pobierz plik') : null),
+        p.drive ? h('div', { class: 'hint', style: { marginTop: '6px' } }, 'Na Drive: ', h('a', { href: p.drive.url, target: '_blank', rel: 'noopener' }, p.drive.name), p.drive.folder ? h('span', {}, ' · ', h('a', { href: p.drive.folder, target: '_blank', rel: 'noopener' }, 'folder Gotowe rolki')) : null, ' · ' + new Date(p.drive.ts).toLocaleString('pl-PL')) : null].filter(Boolean));
+    } else { const sel = h('select', { onchange: (e) => { p.postId = e.target.value; touch(); this.right(); } }, c.posts.map((x) => h('option', { value: x.id, selected: x.id === (p.postId || c.curPost) }, x.name + ' (' + x.slides.length + ' szt.)'))); mat.append(c.posts.length ? sel : h('div', { class: 'hint' }, 'Brak projektów graficznych. Utwórz karuzelę w zakładce Grafiki.')); }
+    L.append(this.sec(1, 'Materiał', 'Plik z eksportu w pełnej jakości. Szkic tu nie trafia.', h('div', { class: 'fld' }, h('label', {}, 'Rodzaj materiału'), fld({ k: 'kind', t: 'seg', opts: [['video', 'Rolka (wideo)'], ['images', 'Karuzela / zdjęcia']] }, p, () => { touch(); this.render(); })), mat));
+
+    // 2. Miniatura z hookiem
+    const sp = p.coverSpec || { kicker: '', lines: [], sub: '' }, ens = () => (p.coverSpec = p.coverSpec || sp), regen = (fr) => async () => { try { await this.makeCover(false, fr); this.render(); } catch (e) { toast('Miniatura nieudana: ' + errText(e), 'bad', 9000); } };
+    const kick = h('input', { type: 'text', value: sp.kicker || '', placeholder: 'Nazwa zjawiska, np. EFEKT REFLEKTORA', oninput: (e) => { ens().kicker = e.target.value; touch(); } }), lines = h('textarea', { rows: 3, placeholder: 'Hook w 2 do 3 liniach. Linia w gwiazdkach ma gradient: *KTOŚ PATRZY*', oninput: (e) => { ens().lines = e.target.value.split('\n'); touch(); } }), sub = h('input', { type: 'text', value: sp.sub || '', placeholder: 'Podpis, np. Sprawdzono to na koszulkach', oninput: (e) => { ens().sub = e.target.value; touch(); } }); lines.value = (sp.lines || []).join('\n');
+    const prev = p.cover ? h('div', { style: { width: '135px', height: '240px', flex: 'none', borderRadius: '10px', overflow: 'hidden', border: '1px solid var(--bd)', background: '#05070A' } }, (() => { const im = imgThumbEl(p.cover); im.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block'; return im; })()) : h('div', { class: 'hint', style: { width: '135px', height: '240px', flex: 'none', border: '1px dashed var(--bd)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '8px' } }, 'Brak miniatury');
+    L.append(this.sec(2, 'Miniatura z hookiem', 'Rysowana w kodzie z marki (ciemne tło, reflektor, fiolet jako akcent), bez AI. Hook pokazuje problem, który widz chce rozwiązać. Treść leży w pasie bezpiecznym siatki profilu.',
+      h('div', { class: 'row', style: { alignItems: 'flex-start', gap: '12px' } }, prev, h('div', { style: { flex: 1, minWidth: 0 } }, h('div', { class: 'fld' }, h('label', {}, 'Nazwa zjawiska'), kick), h('div', { class: 'fld' }, h('label', {}, 'Hook (linie)'), lines), h('div', { class: 'fld' }, h('label', {}, 'Podpis'), sub))),
+      h('div', { class: 'row', style: { marginTop: '8px', flexWrap: 'wrap' } }, h('button', { class: 'btn pri', onclick: regen(false) }, '✨ Wygeneruj'), p.video ? h('button', { class: 'btn', title: 'Używa klatki wyeksportowanej rolki jako tła', onclick: regen(true) }, '🎞 Z klatki') : null, h('button', { class: 'btn', onclick: async () => { const a = await assetPicker(['image', 'ai'], 'Miniatura: wybierz obraz'); if (a) { p.cover = a.id; touch(); this.render(); } } }, 'Własna…'), p.cover ? h('button', { class: 'btn', onclick: async () => { const b = await Assets.blob(p.cover); if (b) download(b, fname('miniatura', 'png')); } }, 'PNG') : null, p.cover ? h('button', { class: 'btn bad', onclick: () => { p.cover = null; touch(); this.render(); } }, 'Usuń') : null)));
+
+    // 3. Opis i hashtagi (ze źródłami)
     const cnt = (el, max) => { const s = h('span', { class: 'fine' }); const f = () => { s.textContent = el.value.length + (max ? ' / ' + max : ''); s.style.color = max && el.value.length > max ? 'var(--bad)' : ''; }; el.addEventListener('input', f); f(); return s; };
-    const title = h('input', { type: 'text', value: p.title || '', placeholder: 'Tytuł (YouTube, opcjonalnie Facebook)', oninput: (e) => { p.title = e.target.value; touch(); }, onchange: () => this.right() }), cap = h('textarea', { rows: 7, placeholder: 'Pierwsza linia zatrzymuje kciuk. Potem treść i jedno wezwanie do działania.', oninput: (e) => { p.caption = e.target.value; touch(); }, onchange: () => this.right() }), tg = h('textarea', { rows: 2, placeholder: '#trening #zdrowie …', oninput: (e) => { p.hashtags = e.target.value; touch(); }, onchange: () => this.right() }); cap.value = p.caption || ''; tg.value = p.hashtags || '';
+    const title = h('input', { type: 'text', value: p.title || '', placeholder: 'Tytuł (YouTube, opcjonalnie Facebook)', oninput: (e) => { p.title = e.target.value; touch(); }, onchange: () => this.right() }), cap = h('textarea', { rows: 9, placeholder: 'Pierwsza linia zatrzymuje kciuk. Potem treść, jedno wezwanie do działania i linia ze źródłem.', oninput: (e) => { p.caption = e.target.value; touch(); }, onchange: () => this.right() }), tg = h('textarea', { rows: 2, placeholder: '#trening #zdrowie …', oninput: (e) => { p.hashtags = e.target.value; touch(); }, onchange: () => this.right() }); cap.value = p.caption || ''; tg.value = p.hashtags || '';
+    const pl = this.plan || [], hasSrc = /(Źródło|Źródła|Zrodlo|Source)\s*:/i.test(p.caption || '');
+    L.append(this.sec(3, 'Opis i hashtagi', 'Wpisują się same z planu agenta (razem ze źródłami). Możesz je poprawić ręcznie.',
+      pl.length ? h('div', { class: 'fld' }, h('label', {}, 'Tekst z planu agenta'), h('select', { onchange: (e) => this.applyPlan(e.target.value) }, h('option', { value: '' }, '(bez planu)'), pl.map((x) => h('option', { value: x.id, selected: x.id === p.planId }, x.id + ' · ' + x.title + (x.active ? ' (do publikacji)' : ''))))) : h('div', { class: 'hint' }, 'Plan agenta (rolki.json) się nie wczytał: wpisz opis ręcznie.'),
+      p.auto ? h('div', { class: 'hint', style: { marginBottom: '6px' } }, '✓ Wpisano automatycznie: ' + p.auto.id + ' ' + p.auto.title + ' · ' + new Date(p.auto.ts).toLocaleString('pl-PL')) : null,
+      h('div', { class: 'fld' }, h('label', {}, 'Tytuł'), title, cnt(title, 100)), h('div', { class: 'fld' }, h('label', {}, 'Opis (caption)'), cap, cnt(cap, 2200), h('div', { class: 'hint', style: { color: hasSrc ? 'var(--ok)' : 'var(--warn)' } }, hasSrc ? '✓ Opis ma linię ze źródłem' : '⚠ W opisie nie ma linii ze źródłem (📚 Źródło: …)')), h('div', { class: 'fld' }, h('label', {}, 'Hashtagi'), tg),
+      h('div', { class: 'row' }, h('button', { class: 'btn', onclick: () => navigator.clipboard.writeText(this.compose('ig').text).then(() => toast('Skopiowano opis z hashtagami', 'ok')).catch((e) => toast('Nie udało się skopiować: ' + errText(e), 'bad')) }, 'Kopiuj opis'), h('button', { class: 'btn', title: 'Dodatkowa opcja: AI proponuje inną wersję', onclick: () => this.aiText() }, '✨ Napisz inaczej (AI)'))));
+
+    // 4. Termin
     const sch = h('input', { type: 'datetime-local', value: p.schedule || '', onchange: (e) => { p.schedule = e.target.value; touch(); this.right(); } });
-    L.append(h('div', { class: 'fld' }, h('label', {}, 'Tytuł'), title, cnt(title, 100)), h('div', { class: 'fld' }, h('label', {}, 'Opis (caption)'), cap, cnt(cap, 2200)), h('div', { class: 'fld' }, h('label', {}, 'Hashtagi'), tg), h('div', { class: 'row' }, h('button', { class: 'btn sea', onclick: () => this.aiText() }, '✨ AI: opis, tytuł i hashtagi'), h('button', { class: 'btn', onclick: () => navigator.clipboard.writeText(this.compose('ig').text).then(() => toast('Skopiowano opis z hashtagami', 'ok')).catch((e) => toast('Nie udało się skopiować: ' + errText(e), 'bad')) }, 'Kopiuj opis')),
-      h('div', { class: 'fld', style: { marginTop: '10px' } }, h('label', {}, 'Planowany termin publikacji (przypomnienie i kalendarz)'), sch), h('div', { class: 'hint', html: rich('Aplikacja sama niczego nie publikuje bez Twojego zatwierdzenia (bramka po prawej).') }));
+    L.append(this.sec(4, 'Termin', 'Pusty = od razu. W trybie automatycznym agent ustawia godzinę w Metricool.', sch));
   },
   async aiText() {
     const p = this.p, r = this.reel, pr = progressModal('Piszę opis'); try {
@@ -78,21 +152,26 @@ const Publish = {
     } catch (e) { pr.close(); toast('Nie udało się wygenerować opisu: ' + errText(e), 'bad', 9000); }
   },
 
-  // ── Prawa kolumna: sieci, bramka, dziennik, kalendarz ──
+  // ── Prawa kolumna: 5 Sieci i kontrola, 6 Zatwierdzenie, 7 Publikacja (automatyczna / ręczna), historia ──
   right() {
-    const R = this.R, p = this.p; R.innerHTML = ''; R.append(h('h3', { style: { marginTop: 0 } }, 'Sieci docelowe'));
+    const R = this.R, p = this.p; R.innerHTML = ''; p.mode = p.mode || 'auto';
+    const nets = h('div', {});
     for (const [k, N] of Object.entries(NETS)) {
-      const v = this.validate(k), w = this.worst(k), on = !!p.nets[k]; const card = h('div', { class: 'netcard', style: { opacity: on ? 1 : 0.55 } }, h('h4', {}, h('label', { style: { display: 'flex', gap: '8px', alignItems: 'center', cursor: 'pointer' } }, h('input', { type: 'checkbox', checked: on, style: { width: 'auto', flex: 'none' }, onchange: (e) => { p.nets[k] = e.target.checked; touch(); this.right(); } }), h('span', {}, N.ic + '  ' + N.n)), h('span', { class: 'tag ' + w }, { ok: 'gotowe', warn: 'uwagi', bad: 'błędy' }[w])), ...v.map((x) => h('div', { class: 'chk ' + x.ok }, x.t)),
-        h('div', { class: 'row', style: { marginTop: '8px' } }, h('button', { class: 'btn sm', onclick: () => window.open(N.url, '_blank', 'noopener') }, 'Otwórz stronę wgrywania ↗'), h('button', { class: 'btn sm', onclick: () => { const c = this.compose(k); navigator.clipboard.writeText((c.title && k === 'yt' ? c.title + '\n\n' : '') + c.text).then(() => toast('Skopiowano opis dla ' + N.n, 'ok')).catch((e) => toast(errText(e), 'bad')); } }, 'Kopiuj opis'))); R.append(card);
+      const v = this.validate(k), w = this.worst(k), on = !!p.nets[k]; const card = h('div', { class: 'netcard', style: { opacity: on ? 1 : 0.55 } }, h('h4', {}, h('label', { style: { display: 'flex', gap: '8px', alignItems: 'center', cursor: 'pointer' } }, h('input', { type: 'checkbox', checked: on, style: { width: 'auto', flex: 'none' }, onchange: (e) => { p.nets[k] = e.target.checked; touch(); this.right(); } }), h('span', {}, N.ic + '  ' + N.n)), on ? h('span', { class: 'tag ' + w }, { ok: 'gotowe', warn: 'uwagi', bad: 'błędy' }[w]) : null), ...(on ? v.map((x) => h('div', { class: 'chk ' + x.ok }, x.t)) : []),
+        on ? h('div', { class: 'row', style: { marginTop: '8px' } }, h('button', { class: 'btn sm', onclick: () => window.open(N.url, '_blank', 'noopener') }, 'Otwórz stronę wgrywania ↗'), h('button', { class: 'btn sm', onclick: () => { const c = this.compose(k); navigator.clipboard.writeText((c.title && k === 'yt' ? c.title + '\n\n' : '') + c.text).then(() => toast('Skopiowano opis dla ' + N.n, 'ok')).catch((e) => toast(errText(e), 'bad')); } }, 'Kopiuj opis')) : null); nets.append(card);
     }
-    R.append(h('div', { class: 'hint', html: rich('Tryb publikacji w wersji (' + APP.ver + '): (pakiet do wgrania + otwarcie stron nadawczych). Automatyczne wysyłanie przez API wymaga kont i tokenów, patrz „Status integracji” w menu.') }));
-    // bramka zatwierdzania
+    R.append(this.sec(5, 'Sieci i kontrola', 'Zaznacz, gdzie publikujesz. Pod nazwą sieci widać kontrolę pliku i opisu (zielone = gotowe).', nets));
     const done = APPROVAL.filter(([k]) => p.approval[k]).length, anyNet = Object.keys(NETS).some((k) => p.nets[k]), errs = Object.keys(NETS).filter((k) => p.nets[k] && this.worst(k) === 'bad'), ready = done === APPROVAL.length && anyNet && !errs.length;
-    R.append(h('h3', {}, 'Zatwierdzanie (' + done + ' / ' + APPROVAL.length + ')'), h('div', { class: 'zebra' }, APPROVAL.map(([k, t], i) => h('label', { class: 'chk', style: { cursor: 'pointer', padding: '7px 9px' } }, h('input', { type: 'checkbox', checked: !!p.approval[k], style: { width: 'auto', flex: 'none' }, onchange: (e) => { p.approval[k] = e.target.checked; touch(); this.right(); } }), h('span', {}, (i + 1) + '. ' + t)))));
-    const fin = h('button', { class: 'btn pri', style: { width: '100%', marginTop: '10px', padding: '12px', fontSize: '15px' }, disabled: !ready, onclick: () => this.finalPublish(), title: ready ? '' : 'Wymaga: wszystkie kroki zatwierdzone, min. 1 sieć, brak błędów' }, 'FINAL PUBLISH');
-    R.append(fin, h('div', { class: 'hint', style: { marginTop: '6px' }, html: rich(ready ? 'Gotowe. Zostanie przygotowany (pakiet ZIP) dla wybranych sieci i otwarte strony wgrywania. Opublikujesz ręcznie jednym kliknięciem w serwisie.' : (!anyNet ? 'Zaznacz co najmniej jedną sieć.' : errs.length ? 'Popraw błędy w: ' + errs.map((k) => NETS[k].n).join(', ') + '.' : 'Zaznacz wszystkie kroki zatwierdzenia.')) }));
-    // dziennik
-    const lg = P.cur.log || (P.cur.log = []); R.append(h('h3', {}, 'Dziennik'), lg.length ? h('div', { class: 'zebra' }, lg.slice(0, 15).map((e) => h('div', { style: { padding: '6px 9px' } }, h('div', { class: 'fine' }, new Date(e.ts).toLocaleString('pl-PL')), h('div', {}, e.t)))) : h('div', { class: 'hint' }, 'Brak wpisów.'));
+    const why = !anyNet ? 'Zaznacz co najmniej jedną sieć.' : errs.length ? 'Popraw błędy w: ' + errs.map((k) => NETS[k].n).join(', ') + '.' : done < APPROVAL.length ? 'Zaznacz wszystkie kroki zatwierdzenia.' : '';
+    R.append(this.sec(6, 'Zatwierdzenie (' + done + ' / ' + APPROVAL.length + ')', 'Bez kompletu zaznaczeń publikacja jest zablokowana.', h('div', { class: 'zebra' }, APPROVAL.map(([k, t], i) => h('label', { class: 'chk', style: { cursor: 'pointer', padding: '7px 9px' } }, h('input', { type: 'checkbox', checked: !!p.approval[k], style: { width: 'auto', flex: 'none' }, onchange: (e) => { p.approval[k] = e.target.checked; touch(); this.right(); } }), h('span', {}, (i + 1) + '. ' + t))))));
+    const modeSeg = fld({ k: 'mode', t: 'seg', opts: [['auto', 'Automatyczna'], ['manual', 'Ręczna']] }, p, () => { touch(); this.right(); });
+    const auto = h('div', {}, h('div', { class: 'hint', style: { margin: '6px 0' } }, 'Plik, miniatura i opis (ze źródłami) lecą na Twój Drive do folderu Gotowe rolki. Potem piszesz agentowi w czacie polecenie, a on ustawia publikację w Metricool (REEL, bez Trial reel, flaga AI wyłączona). Nic nie jest publikowane bez Twojego polecenia.'),
+      h('div', { class: 'row', style: { flexWrap: 'wrap' } }, h('button', { class: 'btn pri', style: { flex: 1, padding: '12px', fontSize: '15px' }, disabled: !ready, onclick: () => this.sendAuto(), title: ready ? '' : why }, '☁ Wyślij pakiet do agenta'), h('button', { class: 'btn', title: 'Połącz Drive: jednorazowa konfiguracja skryptu', onclick: () => DriveUp.setup() }, '⚙ Drive')),
+      h('div', { class: 'row', style: { marginTop: '6px' } }, h('button', { class: 'btn', onclick: () => navigator.clipboard.writeText(this.agentCmd()).then(() => toast('Skopiowano polecenie dla agenta', 'ok')).catch((e) => toast(errText(e), 'bad')) }, 'Skopiuj polecenie dla agenta')), h('div', { class: 'hint', style: { marginTop: '6px' } }, 'Polecenie: ' + this.agentCmd()), ready ? null : h('div', { class: 'hint', style: { marginTop: '6px', color: 'var(--warn)' } }, why));
+    const manual = h('div', {}, h('div', { class: 'hint', style: { margin: '6px 0' } }, 'Pobierasz pakiet ZIP (plik, miniatura, opisy, metadane) i wgrywasz sam: otwierają się strony wgrywania wybranych sieci. Nic nie jest wysyłane automatycznie.'),
+      h('button', { class: 'btn pri', style: { width: '100%', padding: '12px', fontSize: '15px' }, disabled: !ready, onclick: () => this.finalPublish(), title: ready ? '' : why }, 'FINAL PUBLISH (pakiet ZIP)'), ready ? null : h('div', { class: 'hint', style: { marginTop: '6px', color: 'var(--warn)' } }, why));
+    R.append(this.sec(7, 'Publikacja', 'Wybierz tryb. Zalecany: automatyczna.', modeSeg, p.mode === 'manual' ? manual : auto));
+    const lg = P.cur.log || (P.cur.log = []); R.append(h('h3', { style: { margin: '18px 0 6px' } }, 'Historia'), lg.length ? h('div', { class: 'zebra' }, lg.slice(0, 15).map((e) => h('div', { style: { padding: '6px 9px' } }, h('div', { class: 'fine' }, new Date(e.ts).toLocaleString('pl-PL')), h('div', {}, e.t)))) : h('div', { class: 'hint' }, 'Brak wpisów.'));
     this.calendar();
   },
   log(t) { (P.cur.log = P.cur.log || []).unshift({ ts: Date.now(), t }); if (P.cur.log.length > 100) P.cur.log.length = 100; touch(); },
