@@ -44,6 +44,10 @@ Autor: Michał Rzekiecki · kontakt: michus@gmail.com · adres: https://projects
 1. Analiza w przeglądarce (canvas, bez kluczy): poświaty (kolor i pozycja), pasek postępu, stopka, bloki tekstu, zdjęcie, akcenty → „DNA” układu, które steruje wszystkimi szablonami.
 2. Wzorzec domyślny: karuzela „Po kontuzji” (v4). Własny materiał (obrazy lub wideo rolki) nadpisuje DNA w projekcie; rodzaje slajdów są rozpoznawane zgrubnie.
 
+## Zmiany v0.18 (zamykanie projektu)
+
+1. W pasku Wideo przycisk "✕ Zamknij i nowa rolka": zapisuje bieżący projekt i otwiera pusty (stary zostaje w ⋯ → Projekty…)
+
 ## Zmiany v0.17 (archiwum rolki na Drive, folder główny Rolki do publikacji)
 
 1. Sekcja 8 w Publikacji i pozycja w menu ⋯: "Archiwizuj na Drive" zapisuje w podfolderze "numer nazwa" (np. T04 Efekt reflektora) projekt Studia (ZIP ze wszystkimi materiałami), gotową rolkę, miniaturę i opis. Powrót: pobierz ZIP i ⋯ → Import projektu
