@@ -1,17 +1,54 @@
 {
-  "ver": 1,
+  "ver": 2,
   "updated": "2026-11-27",
   "folder": "https://drive.google.com/drive/folders/1xxCuclUgOdOeiAAx4AeNsSiqhYC3KEyz",
   "recipe": "Zakończenie dochodzi po ostatnim klipie wideo lub głosie. Podkład idzie pod cały film, zapętlony, bez duckingu, ok. 15% głośności głosu (17 LU pod głosem). Dzwonek startuje razem z zakończeniem. Głos zostaje nienaruszony",
   "endings": [
-    { "id": "reflektor", "name": "Koniec 1 - Reflektor", "fname": "Koniec 1 - Reflektor.mp4", "file": "1wRTXmo7lX0-STeGiVivNa6vyqQN9bwTZ", "for": "T04 Efekt reflektora", "default": true },
-    { "id": "przyslona", "name": "Koniec 2 - Przysłona", "fname": "Koniec 2 - Przysłona.mp4", "file": "1tXM5ZFBWssnDGp1GQ7JfWz41lLzY2Mdo", "for": "T04 Efekt reflektora, wariant" }
+    {
+      "id": "reflektor",
+      "name": "Koniec 1 - Reflektor",
+      "fname": "Koniec 1 - Reflektor.mp4",
+      "file": "1wRTXmo7lX0-STeGiVivNa6vyqQN9bwTZ",
+      "for": "T04 Efekt reflektora",
+      "default": true,
+      "desc": "Zaczyna się kartą CTA tematu T04, potem reflektor wyławia logo i @trenuj.smialo i wygasa do czerni. 2,4 s, bez dźwięku",
+      "thumb": "marka-reflektor.jpg"
+    },
+    {
+      "id": "przyslona",
+      "name": "Koniec 2 - Przysłona",
+      "fname": "Koniec 2 - Przysłona.mp4",
+      "file": "1tXM5ZFBWssnDGp1GQ7JfWz41lLzY2Mdo",
+      "for": "T04 Efekt reflektora, wariant",
+      "desc": "Zaczyna się kartą CTA tematu T04, potem przysłona (sześciokąt z obrysami) zamyka się na samym logo. 2,4 s, bez dźwięku. Wariant do wyboru",
+      "thumb": "marka-przyslona.jpg"
+    }
   ],
   "beds": [
-    { "id": "lekki-puls", "name": "Podkład 2 - Lekki puls", "fname": "Podkład 2 - Lekki puls.mp3", "file": "1QWo1Vm4IFEnbYRamyNpMezm0KDW68Ewv", "default": true },
-    { "id": "spokojny", "name": "Podkład 1 - Spokojny", "fname": "Podkład 1 - Spokojny.mp3", "file": "1c5zZ4AcXriWVAWjfLP_zrTnMczQ2aPoJ" }
+    {
+      "id": "lekki-puls",
+      "name": "Podkład 2 - Lekki puls",
+      "fname": "Podkład 2 - Lekki puls.mp3",
+      "file": "1QWo1Vm4IFEnbYRamyNpMezm0KDW68Ewv",
+      "default": true,
+      "desc": "60 s, zapętlany, dynamiczniejszy (rozpiętość głośności 2,1 LU). Wybrany do T04"
+    },
+    {
+      "id": "spokojny",
+      "name": "Podkład 1 - Spokojny",
+      "fname": "Podkład 1 - Spokojny.mp3",
+      "file": "1c5zZ4AcXriWVAWjfLP_zrTnMczQ2aPoJ",
+      "desc": "60 s, zapętlany, bardzo równy (rozpiętość głośności 0,8 LU). Wariant do wyboru"
+    }
   ],
   "bells": [
-    { "id": "dzwonek-logo", "name": "Dzwonek logo", "fname": "Dzwonek logo.mp3", "file": "1jeE4OnQz8DTnGUZ5onWu3crXi2WSa48r", "default": true }
+    {
+      "id": "dzwonek-logo",
+      "name": "Dzwonek logo",
+      "fname": "Dzwonek logo.mp3",
+      "file": "1jeE4OnQz8DTnGUZ5onWu3crXi2WSa48r",
+      "default": true,
+      "desc": "2,7 s, dzwonek wchodzi 0,45 s po starcie pliku, żeby trafić w logo. Startuje razem z zakończeniem"
+    }
   ]
 }

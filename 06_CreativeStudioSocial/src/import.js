@@ -26,12 +26,12 @@ const Importer = {
     return new File(parts, nm || 'plik', { type: ty });
   },
   // pobiera plik z adresu Workera, sprawdza typ i zapisuje jako zasób projektu → rekord zasobu (lub null)
-  async fetchAsset(url, name, cls) {
+  async fetchAsset(url, name, cls, extra) {
     const pr = progressModal('Pobieranie: ' + (name || 'plik'));
     try {
       const file = await this.download(url, name, pr);
       if (!this.fits(cls, file.name, file.type)) throw new Error('„' + file.name + '” nie wygląda na ' + this.LBL[cls] + ' (typ: ' + (file.type || 'nieznany') + ').');
-      pr.set(0.97, 'zapis'); const id = await Assets.add(file, cls === 'audio' ? 'audio' : cls); pr.close();
+      pr.set(0.97, 'zapis'); const id = await Assets.add(file, cls === 'audio' ? 'audio' : cls, extra); pr.close();
       return await Assets.rec(id);
     } catch (e) { pr.close(); toast('Import: ' + errText(e), 'bad', 9000); return null; }
   },
@@ -39,10 +39,11 @@ const Importer = {
   pick(kinds, title) {
     kinds = kinds || ['image']; const cls = this.cls(kinds), self = this;
     return new Promise((res) => {
-      let done = false, M, iv, cur = 'lib'; const fin = (v) => { if (done) return; done = true; clearInterval(iv); if (M) M.close(); res(v); };
+      let done = false, M, iv, cur = 'lib', pv = null, pvId = null; const fin = (v) => { if (done) return; done = true; clearInterval(iv); if (pv) { try { pv.pause(); } catch (e) { /* nic */ } } if (M) M.close(); res(v); };
+      const playPrev = async (a, btn) => { if (pv && pvId === a.id && !pv.paused) { pv.pause(); btn.textContent = '▶'; return; } if (pv) pv.pause(); view.querySelectorAll('.pvb').forEach((x) => { x.textContent = '▶'; }); const u = await Assets.url(a.id); if (!u) return; pv = new Audio(u); pvId = a.id; pv.onended = () => { btn.textContent = '▶'; }; btn.textContent = '⏸'; try { await pv.play(); } catch (e) { btn.textContent = '▶'; } };
       const tabs = h('div', { class: 'seg imptabs' }), view = h('div', { class: 'impv' }), body = h('div', { class: 'imp' }, tabs, view);
-      const T = [['lib', '🗂 Biblioteka'], ['drive', '☁ Google Drive'], ['link', '🔗 Z linku'], ['dev', '📁 Z urządzenia']];
-      const go = (k) => { cur = k; [...tabs.children].forEach((b, i) => b.classList.toggle('on', T[i][0] === k)); view.innerHTML = ''; ({ lib, drive, link, dev })[k](); };
+      const T = [['lib', '🗂 Biblioteka'], ['brand', '🏷 Marka'], ['drive', '☁ Google Drive'], ['link', '🔗 Z linku'], ['dev', '📁 Z urządzenia']];
+      const go = (k) => { cur = k; [...tabs.children].forEach((b, i) => b.classList.toggle('on', T[i][0] === k)); view.innerHTML = ''; ({ lib, brand, drive, link, dev })[k](); };
       T.forEach(([k, n]) => tabs.append(h('button', { onclick: () => go(k) }, n)));
 
       // 1. biblioteka: zasoby tego i (opcjonalnie) innych projektów
@@ -64,14 +65,27 @@ const Importer = {
           }
           const grid = h('div', { class: 'cards impgrid' });
           for (const a of items) {
-            const isImg = (a.type || '').startsWith('image/'), foreign = !mine(a);
-            grid.append(h('div', { class: 'card', style: { cursor: 'pointer' }, title: a.name, onclick: () => fin(a) },
-              isImg ? imgThumbEl(a.id) : h('div', { style: { padding: '22px 6px', textAlign: 'center', fontSize: '22px' } }, (a.type || '').startsWith('audio') || a.kind === 'audio' || a.kind === 'voice' || a.kind === 'music' || a.kind === 'sfx' ? '🎧' : '🎬', a.dur ? h('div', { class: 'hint' }, fmtTime(a.dur)) : null),
-              h('div', { class: 'cap' }, h('span', {}, a.name.slice(0, 22)), h('span', {}, foreign ? '↗ ' + (names[a.pid] || 'inny proj.').slice(0, 14) : a.kind))));
+            const isImg = (a.type || '').startsWith('image/'), isAud = (a.type || '').startsWith('audio') || ['audio', 'voice', 'music', 'sfx'].includes(a.kind), foreign = !mine(a);
+            const media = isImg ? imgThumbEl(a.id) : isAud ? h('div', { style: { padding: '12px 6px', textAlign: 'center' } }, h('button', { class: 'btn pvb', title: 'Odsłuch', onclick: (e) => { e.stopPropagation(); playPrev(a, e.currentTarget); } }, '▶')) : vidThumbEl(a.id);
+            grid.append(h('div', { class: 'card', style: { cursor: 'pointer' }, title: a.name + (a.desc ? '\n' + a.desc : ''), onclick: () => fin(a) }, media,
+              h('div', { style: { fontSize: '12px', marginTop: '6px', wordBreak: 'break-word' } }, a.name),
+              a.desc ? h('div', { class: 'fine' }, a.desc) : null,
+              h('div', { class: 'fine' }, [isAud ? 'dźwięk' : isImg ? 'obraz' : 'wideo', a.dur ? fmtTime(a.dur) : '', a.size ? fmtSize(a.size) : '', a.origin || ''].filter(Boolean).join(' · ')),
+              h('div', { class: 'fine' }, '📁 ' + (foreign ? (names[a.pid] || 'inny projekt') : 'ten projekt'))));
           }
           view.append(grid);
         };
         draw();
+      };
+
+      // 1b. biblioteka marki: gotowe zakończenia, podkłady i dzwonki z Drive. Opis, podgląd i odsłuch bez wgrywania, plik trafia do biblioteki projektu dopiero po „Użyj”
+      const brand = async () => {
+        view.append(h('div', { class: 'hint' }, 'Wczytuję bibliotekę marki…'));
+        let man; try { man = await BrandLib.manifest(); } catch (e) { if (cur === 'brand') { view.innerHTML = ''; view.append(h('div', { class: 'warnrow bad' }, errText(e))); } return; }
+        if (cur !== 'brand') return; view.innerHTML = '';
+        const groups = cls === 'video' ? [['Zakończenia', man.endings]] : cls === 'audio' ? [['Podkłady', man.beds], ['Dzwonki', man.bells]] : [], n = groups.reduce((x, g) => x + (g[1] || []).length, 0);
+        view.append(h('div', { class: 'hint', style: { marginBottom: '6px' } }, n ? 'Gotowe elementy marki z Drive. Odsłuch i podgląd działają bez wgrywania, plik trafia do biblioteki projektu po „Użyj”. ' : 'Biblioteka marki nie ma nic dla typu: ' + self.LBL[cls] + '. ', man.folder ? h('a', { href: man.folder, target: '_blank', rel: 'noopener' }, 'Folder na Drive') : null));
+        for (const [title, arr] of groups) { if (!(arr || []).length) continue; view.append(h('div', { class: 'ph' }, title)); for (const it of arr) { const b = h('button', { class: 'btn pri', style: { alignSelf: 'center' }, onclick: async () => { b.disabled = true; const rec = await BrandLib.asset(it, cls); b.disabled = false; if (rec) fin(rec); } }, 'Użyj'); view.append(BrandLib.card(it, cls, null, b)); } }
       };
 
       // 2. folder Google Drive (z podfolderami)
@@ -124,3 +138,4 @@ const Importer = {
     });
   },
 };
+function vidThumbEl(id) { const v = h('video', { preload: 'metadata', playsinline: true, style: { width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', borderRadius: '6px', background: '#000', display: 'block' } }); v.muted = true; Assets.url(id).then((u) => { if (u) v.src = u + '#t=0.4'; }); return v; }

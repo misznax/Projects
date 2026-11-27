@@ -3011,12 +3011,12 @@ const Importer = {
     return new File(parts, nm || 'plik', { type: ty });
   },
   // pobiera plik z adresu Workera, sprawdza typ i zapisuje jako zasób projektu → rekord zasobu (lub null)
-  async fetchAsset(url, name, cls) {
+  async fetchAsset(url, name, cls, extra) {
     const pr = progressModal('Pobieranie: ' + (name || 'plik'));
     try {
       const file = await this.download(url, name, pr);
       if (!this.fits(cls, file.name, file.type)) throw new Error('„' + file.name + '” nie wygląda na ' + this.LBL[cls] + ' (typ: ' + (file.type || 'nieznany') + ').');
-      pr.set(0.97, 'zapis'); const id = await Assets.add(file, cls === 'audio' ? 'audio' : cls); pr.close();
+      pr.set(0.97, 'zapis'); const id = await Assets.add(file, cls === 'audio' ? 'audio' : cls, extra); pr.close();
       return await Assets.rec(id);
     } catch (e) { pr.close(); toast('Import: ' + errText(e), 'bad', 9000); return null; }
   },
@@ -3024,10 +3024,11 @@ const Importer = {
   pick(kinds, title) {
     kinds = kinds || ['image']; const cls = this.cls(kinds), self = this;
     return new Promise((res) => {
-      let done = false, M, iv, cur = 'lib'; const fin = (v) => { if (done) return; done = true; clearInterval(iv); if (M) M.close(); res(v); };
+      let done = false, M, iv, cur = 'lib', pv = null, pvId = null; const fin = (v) => { if (done) return; done = true; clearInterval(iv); if (pv) { try { pv.pause(); } catch (e) { /* nic */ } } if (M) M.close(); res(v); };
+      const playPrev = async (a, btn) => { if (pv && pvId === a.id && !pv.paused) { pv.pause(); btn.textContent = '▶'; return; } if (pv) pv.pause(); view.querySelectorAll('.pvb').forEach((x) => { x.textContent = '▶'; }); const u = await Assets.url(a.id); if (!u) return; pv = new Audio(u); pvId = a.id; pv.onended = () => { btn.textContent = '▶'; }; btn.textContent = '⏸'; try { await pv.play(); } catch (e) { btn.textContent = '▶'; } };
       const tabs = h('div', { class: 'seg imptabs' }), view = h('div', { class: 'impv' }), body = h('div', { class: 'imp' }, tabs, view);
-      const T = [['lib', '🗂 Biblioteka'], ['drive', '☁ Google Drive'], ['link', '🔗 Z linku'], ['dev', '📁 Z urządzenia']];
-      const go = (k) => { cur = k; [...tabs.children].forEach((b, i) => b.classList.toggle('on', T[i][0] === k)); view.innerHTML = ''; ({ lib, drive, link, dev })[k](); };
+      const T = [['lib', '🗂 Biblioteka'], ['brand', '🏷 Marka'], ['drive', '☁ Google Drive'], ['link', '🔗 Z linku'], ['dev', '📁 Z urządzenia']];
+      const go = (k) => { cur = k; [...tabs.children].forEach((b, i) => b.classList.toggle('on', T[i][0] === k)); view.innerHTML = ''; ({ lib, brand, drive, link, dev })[k](); };
       T.forEach(([k, n]) => tabs.append(h('button', { onclick: () => go(k) }, n)));
 
       // 1. biblioteka: zasoby tego i (opcjonalnie) innych projektów
@@ -3049,14 +3050,27 @@ const Importer = {
           }
           const grid = h('div', { class: 'cards impgrid' });
           for (const a of items) {
-            const isImg = (a.type || '').startsWith('image/'), foreign = !mine(a);
-            grid.append(h('div', { class: 'card', style: { cursor: 'pointer' }, title: a.name, onclick: () => fin(a) },
-              isImg ? imgThumbEl(a.id) : h('div', { style: { padding: '22px 6px', textAlign: 'center', fontSize: '22px' } }, (a.type || '').startsWith('audio') || a.kind === 'audio' || a.kind === 'voice' || a.kind === 'music' || a.kind === 'sfx' ? '🎧' : '🎬', a.dur ? h('div', { class: 'hint' }, fmtTime(a.dur)) : null),
-              h('div', { class: 'cap' }, h('span', {}, a.name.slice(0, 22)), h('span', {}, foreign ? '↗ ' + (names[a.pid] || 'inny proj.').slice(0, 14) : a.kind))));
+            const isImg = (a.type || '').startsWith('image/'), isAud = (a.type || '').startsWith('audio') || ['audio', 'voice', 'music', 'sfx'].includes(a.kind), foreign = !mine(a);
+            const media = isImg ? imgThumbEl(a.id) : isAud ? h('div', { style: { padding: '12px 6px', textAlign: 'center' } }, h('button', { class: 'btn pvb', title: 'Odsłuch', onclick: (e) => { e.stopPropagation(); playPrev(a, e.currentTarget); } }, '▶')) : vidThumbEl(a.id);
+            grid.append(h('div', { class: 'card', style: { cursor: 'pointer' }, title: a.name + (a.desc ? '\n' + a.desc : ''), onclick: () => fin(a) }, media,
+              h('div', { style: { fontSize: '12px', marginTop: '6px', wordBreak: 'break-word' } }, a.name),
+              a.desc ? h('div', { class: 'fine' }, a.desc) : null,
+              h('div', { class: 'fine' }, [isAud ? 'dźwięk' : isImg ? 'obraz' : 'wideo', a.dur ? fmtTime(a.dur) : '', a.size ? fmtSize(a.size) : '', a.origin || ''].filter(Boolean).join(' · ')),
+              h('div', { class: 'fine' }, '📁 ' + (foreign ? (names[a.pid] || 'inny projekt') : 'ten projekt'))));
           }
           view.append(grid);
         };
         draw();
+      };
+
+      // 1b. biblioteka marki: gotowe zakończenia, podkłady i dzwonki z Drive. Opis, podgląd i odsłuch bez wgrywania, plik trafia do biblioteki projektu dopiero po „Użyj”
+      const brand = async () => {
+        view.append(h('div', { class: 'hint' }, 'Wczytuję bibliotekę marki…'));
+        let man; try { man = await BrandLib.manifest(); } catch (e) { if (cur === 'brand') { view.innerHTML = ''; view.append(h('div', { class: 'warnrow bad' }, errText(e))); } return; }
+        if (cur !== 'brand') return; view.innerHTML = '';
+        const groups = cls === 'video' ? [['Zakończenia', man.endings]] : cls === 'audio' ? [['Podkłady', man.beds], ['Dzwonki', man.bells]] : [], n = groups.reduce((x, g) => x + (g[1] || []).length, 0);
+        view.append(h('div', { class: 'hint', style: { marginBottom: '6px' } }, n ? 'Gotowe elementy marki z Drive. Odsłuch i podgląd działają bez wgrywania, plik trafia do biblioteki projektu po „Użyj”. ' : 'Biblioteka marki nie ma nic dla typu: ' + self.LBL[cls] + '. ', man.folder ? h('a', { href: man.folder, target: '_blank', rel: 'noopener' }, 'Folder na Drive') : null));
+        for (const [title, arr] of groups) { if (!(arr || []).length) continue; view.append(h('div', { class: 'ph' }, title)); for (const it of arr) { const b = h('button', { class: 'btn pri', style: { alignSelf: 'center' }, onclick: async () => { b.disabled = true; const rec = await BrandLib.asset(it, cls); b.disabled = false; if (rec) fin(rec); } }, 'Użyj'); view.append(BrandLib.card(it, cls, null, b)); } }
       };
 
       // 2. folder Google Drive (z podfolderami)
@@ -3109,6 +3123,7 @@ const Importer = {
     });
   },
 };
+function vidThumbEl(id) { const v = h('video', { preload: 'metadata', playsinline: true, style: { width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', borderRadius: '6px', background: '#000', display: 'block' } }); v.muted = true; Assets.url(id).then((u) => { if (u) v.src = u + '#t=0.4'; }); return v; }
 
 /* WYSYŁKA GOTOWYCH ROLEK NA GOOGLE DRIVE (folder „Gotowe rolki”)
    Przeglądarka → Worker (api/s/gas, api/s/gput) → skrypt Google użytkownika (apps-script/Code.gs, kod wstawiany z build.py jako GAS_CODE) + sesja wznawialnego uploadu Drive.
@@ -3659,7 +3674,18 @@ const BrandLib = {
       const all = await DBI.all('assets'), hit = all.filter((a) => a.name === it.fname).sort((a, b) => b.created - a.created)[0];
       if (hit) { const rec = await Assets.rec(hit.id); if (rec && !rec.err && rec.dur) return rec; }
     } catch (e) { /* pobierz od nowa */ }
-    return Importer.fetchAsset('api/s/drive/get?id=' + encodeURIComponent(it.file), it.fname, cls);
+    return Importer.fetchAsset(this.src(it), it.fname, cls, { desc: it.desc || '', origin: 'Biblioteka marki' });
+  },
+  src(it) { return 'api/s/drive/get?id=' + encodeURIComponent(it.file); },
+  // podgląd prosto z Drive (bez wgrywania do biblioteki projektu): wideo z miniaturą, dźwięk z odtwarzaczem
+  prev(it, cls) {
+    if (cls === 'video') return h('video', { src: this.src(it), poster: it.thumb || '', controls: true, preload: 'none', playsinline: true, style: { width: '110px', aspectRatio: '9 / 16', objectFit: 'cover', background: '#000', borderRadius: '8px', flex: 'none' } });
+    return h('audio', { src: this.src(it), controls: true, preload: 'none', style: { width: '100%', height: '34px' } });
+  },
+  // karta elementu: podgląd, nazwa, opis, projekt źródłowy; lead = pole wyboru, tail = przycisk
+  card(it, cls, lead, tail) {
+    const txt = h('div', { style: { flex: 1, minWidth: 0 } }, h('div', { style: { fontWeight: 600 } }, it.name + (it.default ? ' ★' : '')), it.desc ? h('div', { class: 'fine' }, it.desc) : null, it.for ? h('div', { class: 'fine' }, 'Z projektu: ' + it.for) : null, cls === 'video' ? null : h('div', { style: { marginTop: '6px' } }, this.prev(it, cls)));
+    return h('label', { class: 'bcard', style: { display: 'flex', gap: '10px', alignItems: 'flex-start', padding: '8px', border: '1px solid var(--bd)', borderRadius: '10px', margin: '6px 0', background: 'var(--p2)', cursor: lead ? 'pointer' : 'default' } }, lead, cls === 'video' ? this.prev(it, cls) : null, txt, tail);
   },
   // początek zakończenia = koniec treści (ostatni klip wideo lub głos), nie koniec osi czasu
   contentEnd(r) {
@@ -3699,12 +3725,17 @@ const BrandLib = {
   async dialog() {
     const r = Video.reel; if (!r) { toast('Najpierw otwórz rolkę (zakładka Wideo).', 'warn'); return; }
     let man; try { man = await this.manifest(true); } catch (e) { toast(errText(e), 'bad', 9000); return; }
-    const mk = (arr, none) => { const s = h('select', {}, [['', none], ...(arr || []).map((x) => [x.id, x.name + (x.for ? ' (' + x.for + ')' : '') + (x.default ? ' ★' : '')])].map(([v, n]) => h('option', { value: v }, n))); const d = (arr || []).find((x) => x.default); if (d) s.value = d.id; return s; };
-    const end = mk(man.endings, 'Bez zakończenia'), bed = mk(man.beds, 'Bez podkładu'), bell = mk(man.bells, 'Bez dzwonka'), t = this.contentEnd(r);
-    const body = h('div', {}, h('div', { class: 'hint', style: { marginBottom: '8px' } }, man.recipe || ''),
-      h('div', { class: 'fld' }, h('label', {}, 'Zakończenie'), end), h('div', { class: 'fld' }, h('label', {}, 'Podkład'), bed), h('div', { class: 'fld' }, h('label', {}, 'Dzwonek'), bell),
-      h('div', { class: 'fine', style: { marginTop: '6px' } }, 'Zakończenie zacznie się w ' + t.toFixed(1) + ' s (koniec treści). Ponowne złożenie zastępuje poprzednie. ★ = domyślne. Folder: ', man.folder ? h('a', { href: man.folder, target: '_blank', rel: 'noopener' }, 'Biblioteka marki na Drive') : ''));
-    modal('🏷 Złóż rolkę wg marki', body, [{ t: 'Złóż', cls: 'pri', keep: true, fn: (close) => { close(); this.assemble({ ending: end.value, bed: bed.value, bell: bell.value }); } }, { t: 'Zamknij' }]);
+    const grp = (title, arr, cls, none, nm) => {
+      const box = h('div', { style: { marginTop: '10px' } }, h('div', { class: 'ph' }, title)), radios = [], def = (arr || []).find((x) => x.default);
+      const mkR = (id, on) => { const x = h('input', { type: 'radio', name: nm, value: id, style: { flex: 'none', width: 'auto', marginTop: '4px' } }); x.checked = on; radios.push(x); return x; };
+      box.append(h('label', { style: { display: 'flex', gap: '10px', alignItems: 'center', padding: '4px 8px', cursor: 'pointer' } }, mkR('', !def), h('span', { class: 'hint' }, none)));
+      (arr || []).forEach((it) => box.append(this.card(it, cls, mkR(it.id, it === def))));
+      return { el: box, get: () => (radios.find((x) => x.checked) || {}).value || '' };
+    };
+    const end = grp('Zakończenie', man.endings, 'video', 'Bez zakończenia', 'bl-end'), bed = grp('Podkład', man.beds, 'audio', 'Bez podkładu', 'bl-bed'), bell = grp('Dzwonek', man.bells, 'audio', 'Bez dzwonka', 'bl-bell'), t = this.contentEnd(r);
+    const body = h('div', { style: { maxHeight: '68vh', overflow: 'auto', paddingRight: '4px' } }, h('div', { class: 'hint', style: { marginBottom: '4px' } }, man.recipe || ''), end.el, bed.el, bell.el,
+      h('div', { class: 'fine', style: { marginTop: '8px' } }, 'Zakończenie zacznie się w ' + t.toFixed(1) + ' s (koniec treści). Ponowne złożenie zastępuje poprzednie. ★ = domyślne. Odsłuch i podgląd działają bez wgrywania. Folder: ', man.folder ? h('a', { href: man.folder, target: '_blank', rel: 'noopener' }, 'Biblioteka marki na Drive') : ''));
+    modal('🏷 Złóż rolkę wg marki', body, [{ t: 'Złóż', cls: 'pri', keep: true, fn: (close) => { close(); this.assemble({ ending: end.get(), bed: bed.get(), bell: bell.get() }); } }, { t: 'Zamknij' }]);
   },
 };
 

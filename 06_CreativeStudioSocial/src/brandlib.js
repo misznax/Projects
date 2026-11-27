@@ -15,7 +15,18 @@ const BrandLib = {
       const all = await DBI.all('assets'), hit = all.filter((a) => a.name === it.fname).sort((a, b) => b.created - a.created)[0];
       if (hit) { const rec = await Assets.rec(hit.id); if (rec && !rec.err && rec.dur) return rec; }
     } catch (e) { /* pobierz od nowa */ }
-    return Importer.fetchAsset('api/s/drive/get?id=' + encodeURIComponent(it.file), it.fname, cls);
+    return Importer.fetchAsset(this.src(it), it.fname, cls, { desc: it.desc || '', origin: 'Biblioteka marki' });
+  },
+  src(it) { return 'api/s/drive/get?id=' + encodeURIComponent(it.file); },
+  // podgląd prosto z Drive (bez wgrywania do biblioteki projektu): wideo z miniaturą, dźwięk z odtwarzaczem
+  prev(it, cls) {
+    if (cls === 'video') return h('video', { src: this.src(it), poster: it.thumb || '', controls: true, preload: 'none', playsinline: true, style: { width: '110px', aspectRatio: '9 / 16', objectFit: 'cover', background: '#000', borderRadius: '8px', flex: 'none' } });
+    return h('audio', { src: this.src(it), controls: true, preload: 'none', style: { width: '100%', height: '34px' } });
+  },
+  // karta elementu: podgląd, nazwa, opis, projekt źródłowy; lead = pole wyboru, tail = przycisk
+  card(it, cls, lead, tail) {
+    const txt = h('div', { style: { flex: 1, minWidth: 0 } }, h('div', { style: { fontWeight: 600 } }, it.name + (it.default ? ' ★' : '')), it.desc ? h('div', { class: 'fine' }, it.desc) : null, it.for ? h('div', { class: 'fine' }, 'Z projektu: ' + it.for) : null, cls === 'video' ? null : h('div', { style: { marginTop: '6px' } }, this.prev(it, cls)));
+    return h('label', { class: 'bcard', style: { display: 'flex', gap: '10px', alignItems: 'flex-start', padding: '8px', border: '1px solid var(--bd)', borderRadius: '10px', margin: '6px 0', background: 'var(--p2)', cursor: lead ? 'pointer' : 'default' } }, lead, cls === 'video' ? this.prev(it, cls) : null, txt, tail);
   },
   // początek zakończenia = koniec treści (ostatni klip wideo lub głos), nie koniec osi czasu
   contentEnd(r) {
@@ -55,11 +66,16 @@ const BrandLib = {
   async dialog() {
     const r = Video.reel; if (!r) { toast('Najpierw otwórz rolkę (zakładka Wideo).', 'warn'); return; }
     let man; try { man = await this.manifest(true); } catch (e) { toast(errText(e), 'bad', 9000); return; }
-    const mk = (arr, none) => { const s = h('select', {}, [['', none], ...(arr || []).map((x) => [x.id, x.name + (x.for ? ' (' + x.for + ')' : '') + (x.default ? ' ★' : '')])].map(([v, n]) => h('option', { value: v }, n))); const d = (arr || []).find((x) => x.default); if (d) s.value = d.id; return s; };
-    const end = mk(man.endings, 'Bez zakończenia'), bed = mk(man.beds, 'Bez podkładu'), bell = mk(man.bells, 'Bez dzwonka'), t = this.contentEnd(r);
-    const body = h('div', {}, h('div', { class: 'hint', style: { marginBottom: '8px' } }, man.recipe || ''),
-      h('div', { class: 'fld' }, h('label', {}, 'Zakończenie'), end), h('div', { class: 'fld' }, h('label', {}, 'Podkład'), bed), h('div', { class: 'fld' }, h('label', {}, 'Dzwonek'), bell),
-      h('div', { class: 'fine', style: { marginTop: '6px' } }, 'Zakończenie zacznie się w ' + t.toFixed(1) + ' s (koniec treści). Ponowne złożenie zastępuje poprzednie. ★ = domyślne. Folder: ', man.folder ? h('a', { href: man.folder, target: '_blank', rel: 'noopener' }, 'Biblioteka marki na Drive') : ''));
-    modal('🏷 Złóż rolkę wg marki', body, [{ t: 'Złóż', cls: 'pri', keep: true, fn: (close) => { close(); this.assemble({ ending: end.value, bed: bed.value, bell: bell.value }); } }, { t: 'Zamknij' }]);
+    const grp = (title, arr, cls, none, nm) => {
+      const box = h('div', { style: { marginTop: '10px' } }, h('div', { class: 'ph' }, title)), radios = [], def = (arr || []).find((x) => x.default);
+      const mkR = (id, on) => { const x = h('input', { type: 'radio', name: nm, value: id, style: { flex: 'none', width: 'auto', marginTop: '4px' } }); x.checked = on; radios.push(x); return x; };
+      box.append(h('label', { style: { display: 'flex', gap: '10px', alignItems: 'center', padding: '4px 8px', cursor: 'pointer' } }, mkR('', !def), h('span', { class: 'hint' }, none)));
+      (arr || []).forEach((it) => box.append(this.card(it, cls, mkR(it.id, it === def))));
+      return { el: box, get: () => (radios.find((x) => x.checked) || {}).value || '' };
+    };
+    const end = grp('Zakończenie', man.endings, 'video', 'Bez zakończenia', 'bl-end'), bed = grp('Podkład', man.beds, 'audio', 'Bez podkładu', 'bl-bed'), bell = grp('Dzwonek', man.bells, 'audio', 'Bez dzwonka', 'bl-bell'), t = this.contentEnd(r);
+    const body = h('div', { style: { maxHeight: '68vh', overflow: 'auto', paddingRight: '4px' } }, h('div', { class: 'hint', style: { marginBottom: '4px' } }, man.recipe || ''), end.el, bed.el, bell.el,
+      h('div', { class: 'fine', style: { marginTop: '8px' } }, 'Zakończenie zacznie się w ' + t.toFixed(1) + ' s (koniec treści). Ponowne złożenie zastępuje poprzednie. ★ = domyślne. Odsłuch i podgląd działają bez wgrywania. Folder: ', man.folder ? h('a', { href: man.folder, target: '_blank', rel: 'noopener' }, 'Biblioteka marki na Drive') : ''));
+    modal('🏷 Złóż rolkę wg marki', body, [{ t: 'Złóż', cls: 'pri', keep: true, fn: (close) => { close(); this.assemble({ ending: end.get(), bed: bed.get(), bell: bell.get() }); } }, { t: 'Zamknij' }]);
   },
 };
