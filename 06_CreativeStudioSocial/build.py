@@ -3,7 +3,7 @@ Fonty marki (Barlow Condensed, Inter; podzbiór Latin + polskie znaki) są wbudo
 Creative Studio Social · Autor: Michał Rzekiecki · michus@gmail.com"""
 import pathlib, re, base64, json
 r = pathlib.Path(__file__).parent
-order = ['dsp.js', 'aacshim.js', 'core.js', 'brandpack.js', 'render.js', 'ui.js', 'stage.js', 'templates.js', 'ai.js', 'brand.js', 'creative.js', 'fastvid.js', 'video.js', 'audio.js', 'import.js', 'drive.js', 'publish.js', 'learn.js', 'ideas.js', 'rolka.js', 'app.js']
+order = ['dsp.js', 'aacshim.js', 'core.js', 'brandpack.js', 'render.js', 'ui.js', 'stage.js', 'templates.js', 'ai.js', 'brand.js', 'creative.js', 'fastvid.js', 'video.js', 'audio.js', 'import.js', 'drive.js', 'publish.js', 'learn.js', 'ideas.js', 'rolka.js', 'brandlib.js', 'app.js']
 fonts = {p.stem: base64.b64encode(p.read_bytes()).decode() for p in sorted((r / 'vendor' / 'fonts').glob('*.woff2'))}
 logo = (r / 'public' / 'logo.svg').read_text(encoding='utf-8') if (r / 'public' / 'logo.svg').exists() else ''
 gas = (r / 'apps-script' / 'Code.gs').read_text(encoding='utf-8')

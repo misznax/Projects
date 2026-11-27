@@ -652,7 +652,7 @@ class AacWasmEncoder {
 }
 
 /* Creative Studio Social — rdzeń: narzędzia, magazyn (IndexedDB), projekt, historia, UI-pomocniki */
-const APP = { name: 'Creative Studio Social', ver: 'v0.12', author: 'Michał Rzekiecki', mail: 'michus@gmail.com' };
+const APP = { name: 'Creative Studio Social', ver: 'v0.13', author: 'Michał Rzekiecki', mail: 'michus@gmail.com' };
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const uid = (p = 'x') => p + Math.random().toString(36).slice(2, 9);
@@ -2219,6 +2219,7 @@ const Video = {
       h('div', { class: 'hint', style: { marginTop: '8px' }, html: rich('Klip trafia w miejsce kursora (czerwona linia). Na osi czasu: ＋ przy ścieżce lub dwuklik w pusty pasek. (Nagrywanie i obróbka głosu: zakładka Audio.)') })));
     this.lyEl = h('div', {}); L.append(h('div', { class: 'ph' }, 'Warstwy (od góry)'), h('div', { class: 'sec' }, this.lyEl)); this.layersList();
     L.append(h('div', { class: 'ph' }, 'Import rolki'), h('div', { class: 'sec' }, h('button', { class: 'btn', style: { width: '100%' }, title: 'Skrypt rolki z dokumentu „Rolki” (projekt Agent John): tekst na ekranie z czasami, skrypt lektora, opis', onclick: () => Rolka.dialog() }, '📥 Rolka z dokumentu (Agent John)')));
+    L.append(h('div', { class: 'ph' }, 'Marka'), h('div', { class: 'sec' }, h('button', { class: 'btn pri', style: { width: '100%' }, title: 'Dokłada zakończenie, podkład (ok. 15% głosu) i dzwonek z biblioteki marki na Drive, wyrównuje poziomy. Głos zostaje nienaruszony', onclick: () => BrandLib.dialog() }, '🏷 Złóż wg marki (zakończenie, podkład, dzwonek)')));
     L.append(h('div', { class: 'ph' }, 'Napisy'), h('div', { class: 'sec' }, h('button', { class: 'btn', style: { width: '100%' }, onclick: () => this.subtitlesDialog() }, 'Napisy z nagrania głosu (Whisper)'), h('div', { class: 'hint', style: { marginTop: '6px' }, html: rich('Rozpoznaje mowę z klipów na ścieżce „Głos” i układa napisy w bezpiecznej strefie. (Wymaga działania Workera AI.)') })));
     const m = r.meta || {}; if (m.concept || m.hook) L.append(h('div', { class: 'ph' }, m.source || 'Z asystenta'), h('div', { class: 'sec hint', html: rich((m.hook ? '„' + m.hook + '” ' : '') + (m.concept ? m.concept : '')) + (m.music ? '<br>' + rich('Muzyka: ' + m.music) : '') + (m.shots ? '<br>' + rich('Ujęcia: ' + m.shots) : '') + (m.how ? '<br>' + rich('Jak mówić: ' + m.how) : '') + (m.caution ? '<br>' + rich('Zastrzeżenia: ' + m.caution) : '') }));
     L.scrollTop = keepTop;
@@ -2641,12 +2642,12 @@ const Video = {
     this.pause(); const r = this.reel, sel = (arr, cur) => h('select', {}, arr.map(([v, n]) => h('option', { value: v, selected: v === cur }, n)));
     const fps = sel([[30, '30 fps (zalecane)'], [24, '24 fps'], [60, '60 fps'], [15, '15 fps (szkic)']], 30), br = sel([[2, '2 Mb/s (szkic)'], [4, '4 Mb/s'], [6, '6 Mb/s (lżejszy plik)'], [8, '8 Mb/s (zalecane)'], [12, '12 Mb/s (najwyższa jakość)']], 8), resSel = sel([[r.w, r.w + '×' + r.h + ' (standard Instagram, zalecane)'], [720, '720×1280 (średnia)'], [540, '540×960 (szkic)']], r.w), fastChk = h('input', { type: 'checkbox', checked: true });
     const presets = { full: [r.w, 30, 8], mid: [720, 30, 4], draft: [540, 15, 2] }, pre = sel([['full', 'Pełna jakość: do publikacji (' + r.w + '×' + r.h + ', 30 fps, 8 Mb/s)'], ['mid', 'Średnia: 720×1280, 30 fps, 4 Mb/s (ok. 2× szybciej)'], ['draft', 'Szkic ok. 30%: 540×960, 15 fps, 2 Mb/s (ok. 8× mniej pracy; do sprawdzenia synchronizacji i ogólnego wyglądu)']], 'full');
-    const dnote = h('div', { class: 'fine', style: { marginTop: '4px' } }); const sync = () => { const p = presets[pre.value]; resSel.value = p[0]; fps.value = p[1]; br.value = p[2]; dnote.textContent = pre.value === 'draft' ? 'Szkic nie trafia do Publikacji: tylko pobiera się na urządzenie. Czas i dźwięk są takie same jak w pełnej wersji.' : ''; }; pre.onchange = sync;
+    const dnote = h('div', { class: 'fine', style: { marginTop: '4px' } }); const sync = () => { const p = presets[pre.value]; resSel.value = p[0]; fps.value = p[1]; br.value = p[2]; dnote.textContent = pre.value === 'draft' ? 'Szkic nie trafia do Publikacji. Po eksporcie obejrzysz go w odtwarzaczu, a „☁ Eksportuj na Drive” wyśle go do folderu Gotowe rolki z nazwą „_SZKIC” (do sprawdzenia przez agenta). Czas i dźwięk są takie same jak w pełnej wersji.' : ''; }; pre.onchange = sync;
     const info = h('div', { class: 'hint' }, 'Sprawdzam możliwości przeglądarki…'); const cap = await this.capabilities(); info.innerHTML = rich(cap.html);
     modal('Eksport MP4', h('div', {}, info, h('div', { class: 'fld', style: { marginTop: '8px' } }, h('label', {}, 'Jakość'), pre, dnote), h('div', { class: 'row', style: { marginTop: '8px' } }, h('div', { class: 'fld' }, h('label', {}, 'Klatki na sekundę'), fps), h('div', { class: 'fld' }, h('label', {}, 'Przepływność wideo'), br)), h('div', { class: 'fld' }, h('label', {}, 'Rozdzielczość'), resSel),
       h('label', { style: { display: 'flex', gap: '8px', alignItems: 'center', margin: '8px 0 2px', fontSize: '13px' }, title: 'Każda klatka wideo źródłowego jest dekodowana raz, po kolei (zamiast przewijania pliku dla każdej klatki eksportu). Obsługa H.264 i HEVC (iPhone). Wyłącz tylko wtedy, gdy obraz w pliku wygląda źle.' }, fastChk, 'Szybkie dekodowanie wideo (zalecane)'),
       h('div', { class: 'fine', style: { marginTop: '6px' }, html: rich('☁ (Eksportuj na Drive) wysyła gotowy plik do folderu (Gotowe rolki) na Twoim Drive; stamtąd widzi go czat agenta. Biblioteka projektu jest tylko w tej przeglądarce.') }), h('div', { class: 'fine', style: { marginTop: '6px' } }, 'Rolka: ' + fmtTime(r.dur) + ', ' + r.w + '×' + r.h + ', ' + r.layers.length + ' warstw, ' + r.audio.length + ' klipów dźwięku'), h('div', { style: { marginTop: '8px' } }, this.netCheck().map(([n, ok]) => h('span', { class: 'tag ' + (ok ? 'ok' : 'warn'), style: { marginRight: '6px' } }, n + (ok ? ' ✔' : ' ▲ długość'))))),
-      [{ t: 'Eksportuj', cls: 'pri', keep: true, fn: (close) => { close(); this.runExport({ fps: +fps.value, bitrate: +br.value * 1e6, w: +resSel.value, fast: fastChk.checked, draft: pre.value === 'draft' }); } }, { t: '📚 Eksportuj do biblioteki', keep: true, fn: (close) => { close(); this.runExport({ fps: +fps.value, bitrate: +br.value * 1e6, w: +resSel.value, fast: fastChk.checked, draft: pre.value === 'draft', lib: true }); } }, { t: '☁ Eksportuj na Drive', keep: true, fn: (close) => { if (pre.value === 'draft') { toast('Szkic nie trafia na Drive. Wybierz pełną lub średnią jakość.', 'warn'); return false; } const go = () => { close(); this.runExport({ fps: +fps.value, bitrate: +br.value * 1e6, w: +resSel.value, fast: fastChk.checked, draft: false, drive: true }); }; if (!DriveUp.cfg()) { DriveUp.setup(go); return false; } go(); } }, { t: 'Anuluj' }]);
+      [{ t: 'Eksportuj', cls: 'pri', keep: true, fn: (close) => { close(); this.runExport({ fps: +fps.value, bitrate: +br.value * 1e6, w: +resSel.value, fast: fastChk.checked, draft: pre.value === 'draft' }); } }, { t: '📚 Eksportuj do biblioteki', keep: true, fn: (close) => { close(); this.runExport({ fps: +fps.value, bitrate: +br.value * 1e6, w: +resSel.value, fast: fastChk.checked, draft: pre.value === 'draft', lib: true }); } }, { t: '☁ Eksportuj na Drive', keep: true, fn: (close) => { const go = () => { close(); this.runExport({ fps: +fps.value, bitrate: +br.value * 1e6, w: +resSel.value, fast: fastChk.checked, draft: pre.value === 'draft', drive: true }); }; if (!DriveUp.cfg()) { DriveUp.setup(go); return false; } go(); } }, { t: 'Anuluj' }]);
   },
   async capabilities() {
     const c = { v: false, a: false, opus: false, vcodec: null, acodec: null };
@@ -2666,9 +2667,9 @@ const Video = {
       if (!o.draft) { const id = await Assets.add(new File([blob], nm, { type: blob.type }), 'render'); P.cur.publish.video = id; P.cur.publish.videoInfo = { name: nm, size: blob.size, dur: r.dur, w: ow, h: oh, fps: o.fps, kind, note, ts: Date.now(), qc: this.mc && this.mc.qc ? this.mc.qc.items.map((x) => ({ k: x.k, v: x.v, ok: x.ok })) : null }; touch(); }
       let probe = null; try { probe = await this.probe(blob); } catch (e) { probe = { err: errText(e) }; }
       const sec = ((Date.now() - t0) / 1000).toFixed(1); let libId = null; if (o.draft && o.lib) { try { libId = await Assets.add(new File([blob], nm, { type: blob.type }), 'render'); } catch (e) { console.warn(e); } } if (!o.lib && !o.drive) download(blob, nm);
-      let drv = null, drvErr = null; if (o.drive && !o.draft) { try { drv = await DriveUp.deliver(blob, nm); } catch (e) { drvErr = e; console.error(e); } }
+      let drv = null, drvErr = null; if (o.drive) { try { drv = await DriveUp.deliver(blob, nm, { draft: !!o.draft }); } catch (e) { drvErr = e; console.error(e); } }
       modal('Eksport zakończony', h('div', {}, h('table', { class: 'qc' }, ...[['Plik', nm], ['Rozmiar', fmtSize(blob.size)], ['Czas eksportu', sec + ' s'], ['Format', kind === 'mp4' ? 'MP4 (H.264' + (note.includes('AAC') ? ' + AAC' : note.includes('Opus') ? ' + Opus' : ', bez dźwięku') + ')' : 'WebM (awaryjny)'], ['Wymiary / FPS', ow + '×' + oh + ' @ ' + o.fps + (o.draft ? ' (SZKIC, nie do publikacji)' : '')], ...(stats ? [['Klatki obrazu', stats.frames + ' z ' + stats.expected + (stats.frames < stats.expected ? ' (koder pominął ' + (stats.expected - stats.frames) + ', czas zachowany)' : '')], ['Czas obrazu / dźwięku', stats.vdur.toFixed(2) + ' s / ' + (stats.adur ? stats.adur.toFixed(2) + ' s' : 'brak') + (stats.adur && Math.abs(stats.vdur - stats.adur) > 0.15 ? ' ⚠ różnica!' : '')]] : []), ...(modes.length ? [['Dekodowanie wideo', modes.map((m) => m.name.replace(/^[^:]*: /, '') + ': ' + m.mode + (m.codec ? ' (' + m.codec.split('.')[0] + ')' : '') + (m.why ? ', powód: ' + m.why.replace(/^FastVid: /, '') : '')).join('; ')]] : []), ['Test odczytu w przeglądarce', probe && !probe.err ? 'OK: ' + probe.w + '×' + probe.h + ', ' + probe.dur.toFixed(2) + ' s' : 'BŁĄD: ' + (probe && probe.err)]].map(([a, b]) => h('tr', {}, h('td', {}, a), h('td', {}, b)))),
-        this.mc && this.mc.qc ? h('div', { class: 'hint', style: { marginTop: '8px' }, html: rich('Dźwięk: (' + this.mc.qc.lufs.toFixed(1) + ' LUFS), true peak (' + this.mc.qc.tp.toFixed(1) + ' dBTP). Pełny raport: zakładka Audio.') }) : h('div', { class: 'hint', style: { marginTop: '8px' } }, 'Rolka nie ma ścieżki dźwiękowej.'), h('div', { class: 'hint', html: rich(o.draft ? (o.lib ? 'To jest (szkic): plik zapisano w bibliotece projektu (nie pobrano na urządzenie), do Publikacji nie trafił.' : 'To jest (szkic): plik tylko pobrano, do Publikacji nie trafił.') : (o.lib ? 'Plik zapisano w bibliotece projektu i wybrano go do (Publikacji). Nie pobrano go na urządzenie: pobierzesz go z Publikacji lub biblioteki.' : 'Plik zapisano też w bibliotece projektu i wybrano go do (Publikacji).')) }), drv ? DriveUp.resultBox(drv) : null, drvErr ? h('div', { style: { marginTop: '8px' } }, h('div', { class: 'warnrow bad' }, 'Wysyłka na Drive nie powiodła się: ' + errText(drvErr)), h('div', { class: 'hint', html: rich('Rolka jest w bibliotece i w (Publikacji). Wyślij ją ponownie z Publikacji (☁ Wyślij na Drive) albo sprawdź (⚙ Ustawienia Drive).') })) : null), [{ t: 'Zamknij' }]);
+        o.draft ? h('video', { src: URL.createObjectURL(blob), controls: true, playsinline: true, style: { width: '100%', maxHeight: '58vh', background: '#000', borderRadius: '10px', marginTop: '10px' } }) : null, this.mc && this.mc.qc ? h('div', { class: 'hint', style: { marginTop: '8px' }, html: rich('Dźwięk: (' + this.mc.qc.lufs.toFixed(1) + ' LUFS), true peak (' + this.mc.qc.tp.toFixed(1) + ' dBTP). Pełny raport: zakładka Audio.') }) : h('div', { class: 'hint', style: { marginTop: '8px' } }, 'Rolka nie ma ścieżki dźwiękowej.'), h('div', { class: 'hint', html: rich(o.draft ? (o.lib ? 'To jest (szkic): plik zapisano w bibliotece projektu (nie pobrano na urządzenie), do Publikacji nie trafił.' : o.drive ? 'To jest (szkic): plik wysłano na Drive (nazwa z „_SZKIC”), do Publikacji nie trafił.' : 'To jest (szkic): plik tylko pobrano, do Publikacji nie trafił.') : (o.lib ? 'Plik zapisano w bibliotece projektu i wybrano go do (Publikacji). Nie pobrano go na urządzenie: pobierzesz go z Publikacji lub biblioteki.' : 'Plik zapisano też w bibliotece projektu i wybrano go do (Publikacji).')) }), drv ? DriveUp.resultBox(drv) : null, drvErr ? h('div', { style: { marginTop: '8px' } }, h('div', { class: 'warnrow bad' }, 'Wysyłka na Drive nie powiodła się: ' + errText(drvErr)), h('div', { class: 'hint', html: rich('Rolka jest w bibliotece i w (Publikacji). Wyślij ją ponownie z Publikacji (☁ Wyślij na Drive) albo sprawdź (⚙ Ustawienia Drive).') })) : null), [{ t: 'Zamknij' }]);
     } catch (e) { pr.close(); if (/^cancel$/.test(e && e.message)) { toast('Eksport anulowany.', 'warn'); return; } console.error(e); toast('Eksport nieudany (' + APP.ver + '): ' + errText(e), 'bad', 12000); }
     finally { this.exporting = false; }
   },
@@ -3010,12 +3011,12 @@ const Importer = {
     return new File(parts, nm || 'plik', { type: ty });
   },
   // pobiera plik z adresu Workera, sprawdza typ i zapisuje jako zasób projektu → rekord zasobu (lub null)
-  async fetchAsset(url, name, cls) {
+  async fetchAsset(url, name, cls, extra) {
     const pr = progressModal('Pobieranie: ' + (name || 'plik'));
     try {
       const file = await this.download(url, name, pr);
       if (!this.fits(cls, file.name, file.type)) throw new Error('„' + file.name + '” nie wygląda na ' + this.LBL[cls] + ' (typ: ' + (file.type || 'nieznany') + ').');
-      pr.set(0.97, 'zapis'); const id = await Assets.add(file, cls === 'audio' ? 'audio' : cls); pr.close();
+      pr.set(0.97, 'zapis'); const id = await Assets.add(file, cls === 'audio' ? 'audio' : cls, extra); pr.close();
       return await Assets.rec(id);
     } catch (e) { pr.close(); toast('Import: ' + errText(e), 'bad', 9000); return null; }
   },
@@ -3023,10 +3024,11 @@ const Importer = {
   pick(kinds, title) {
     kinds = kinds || ['image']; const cls = this.cls(kinds), self = this;
     return new Promise((res) => {
-      let done = false, M, iv, cur = 'lib'; const fin = (v) => { if (done) return; done = true; clearInterval(iv); if (M) M.close(); res(v); };
+      let done = false, M, iv, cur = 'lib', pv = null, pvId = null; const fin = (v) => { if (done) return; done = true; clearInterval(iv); if (pv) { try { pv.pause(); } catch (e) { /* nic */ } } if (M) M.close(); res(v); };
+      const playPrev = async (a, btn) => { if (pv && pvId === a.id && !pv.paused) { pv.pause(); btn.textContent = '▶'; return; } if (pv) pv.pause(); view.querySelectorAll('.pvb').forEach((x) => { x.textContent = '▶'; }); const u = await Assets.url(a.id); if (!u) return; pv = new Audio(u); pvId = a.id; pv.onended = () => { btn.textContent = '▶'; }; btn.textContent = '⏸'; try { await pv.play(); } catch (e) { btn.textContent = '▶'; } };
       const tabs = h('div', { class: 'seg imptabs' }), view = h('div', { class: 'impv' }), body = h('div', { class: 'imp' }, tabs, view);
-      const T = [['lib', '🗂 Biblioteka'], ['drive', '☁ Google Drive'], ['link', '🔗 Z linku'], ['dev', '📁 Z urządzenia']];
-      const go = (k) => { cur = k; [...tabs.children].forEach((b, i) => b.classList.toggle('on', T[i][0] === k)); view.innerHTML = ''; ({ lib, drive, link, dev })[k](); };
+      const T = [['lib', '🗂 Biblioteka'], ['brand', '🏷 Marka'], ['drive', '☁ Google Drive'], ['link', '🔗 Z linku'], ['dev', '📁 Z urządzenia']];
+      const go = (k) => { cur = k; [...tabs.children].forEach((b, i) => b.classList.toggle('on', T[i][0] === k)); view.innerHTML = ''; ({ lib, brand, drive, link, dev })[k](); };
       T.forEach(([k, n]) => tabs.append(h('button', { onclick: () => go(k) }, n)));
 
       // 1. biblioteka: zasoby tego i (opcjonalnie) innych projektów
@@ -3048,14 +3050,27 @@ const Importer = {
           }
           const grid = h('div', { class: 'cards impgrid' });
           for (const a of items) {
-            const isImg = (a.type || '').startsWith('image/'), foreign = !mine(a);
-            grid.append(h('div', { class: 'card', style: { cursor: 'pointer' }, title: a.name, onclick: () => fin(a) },
-              isImg ? imgThumbEl(a.id) : h('div', { style: { padding: '22px 6px', textAlign: 'center', fontSize: '22px' } }, (a.type || '').startsWith('audio') || a.kind === 'audio' || a.kind === 'voice' || a.kind === 'music' || a.kind === 'sfx' ? '🎧' : '🎬', a.dur ? h('div', { class: 'hint' }, fmtTime(a.dur)) : null),
-              h('div', { class: 'cap' }, h('span', {}, a.name.slice(0, 22)), h('span', {}, foreign ? '↗ ' + (names[a.pid] || 'inny proj.').slice(0, 14) : a.kind))));
+            const isImg = (a.type || '').startsWith('image/'), isAud = (a.type || '').startsWith('audio') || ['audio', 'voice', 'music', 'sfx'].includes(a.kind), foreign = !mine(a);
+            const media = isImg ? imgThumbEl(a.id) : isAud ? h('div', { style: { padding: '12px 6px', textAlign: 'center' } }, h('button', { class: 'btn pvb', title: 'Odsłuch', onclick: (e) => { e.stopPropagation(); playPrev(a, e.currentTarget); } }, '▶')) : vidThumbEl(a.id);
+            grid.append(h('div', { class: 'card', style: { cursor: 'pointer' }, title: a.name + (a.desc ? '\n' + a.desc : ''), onclick: () => fin(a) }, media,
+              h('div', { style: { fontSize: '12px', marginTop: '6px', wordBreak: 'break-word' } }, a.name),
+              a.desc ? h('div', { class: 'fine' }, a.desc) : null,
+              h('div', { class: 'fine' }, [isAud ? 'dźwięk' : isImg ? 'obraz' : 'wideo', a.dur ? fmtTime(a.dur) : '', a.size ? fmtSize(a.size) : '', a.origin || ''].filter(Boolean).join(' · ')),
+              h('div', { class: 'fine' }, '📁 ' + (foreign ? (names[a.pid] || 'inny projekt') : 'ten projekt'))));
           }
           view.append(grid);
         };
         draw();
+      };
+
+      // 1b. biblioteka marki: gotowe zakończenia, podkłady i dzwonki z Drive. Opis, podgląd i odsłuch bez wgrywania, plik trafia do biblioteki projektu dopiero po „Użyj”
+      const brand = async () => {
+        view.append(h('div', { class: 'hint' }, 'Wczytuję bibliotekę marki…'));
+        let man; try { man = await BrandLib.manifest(); } catch (e) { if (cur === 'brand') { view.innerHTML = ''; view.append(h('div', { class: 'warnrow bad' }, errText(e))); } return; }
+        if (cur !== 'brand') return; view.innerHTML = '';
+        const groups = cls === 'video' ? [['Zakończenia', man.endings]] : cls === 'audio' ? [['Podkłady', man.beds], ['Dzwonki', man.bells]] : [], n = groups.reduce((x, g) => x + (g[1] || []).length, 0);
+        view.append(h('div', { class: 'hint', style: { marginBottom: '6px' } }, n ? 'Gotowe elementy marki z Drive. Odsłuch i podgląd działają bez wgrywania, plik trafia do biblioteki projektu po „Użyj”. ' : 'Biblioteka marki nie ma nic dla typu: ' + self.LBL[cls] + '. ', man.folder ? h('a', { href: man.folder, target: '_blank', rel: 'noopener' }, 'Folder na Drive') : null));
+        for (const [title, arr] of groups) { if (!(arr || []).length) continue; view.append(h('div', { class: 'ph' }, title)); for (const it of arr) { const b = h('button', { class: 'btn pri', style: { alignSelf: 'center' }, onclick: async () => { b.disabled = true; const rec = await BrandLib.asset(it, cls); b.disabled = false; if (rec) fin(rec); } }, 'Użyj'); view.append(BrandLib.card(it, cls, null, b)); } }
       };
 
       // 2. folder Google Drive (z podfolderami)
@@ -3108,6 +3123,7 @@ const Importer = {
     });
   },
 };
+function vidThumbEl(id) { const v = h('video', { preload: 'metadata', playsinline: true, style: { width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', borderRadius: '6px', background: '#000', display: 'block' } }); v.muted = true; Assets.url(id).then((u) => { if (u) v.src = u + '#t=0.4'; }); return v; }
 
 /* WYSYŁKA GOTOWYCH ROLEK NA GOOGLE DRIVE (folder „Gotowe rolki”)
    Przeglądarka → Worker (api/s/gas, api/s/gput) → skrypt Google użytkownika (apps-script/Code.gs, kod wstawiany z build.py jako GAS_CODE) + sesja wznawialnego uploadu Drive.
@@ -3179,12 +3195,13 @@ const DriveUp = {
     return parts.length > 1 ? parts.join('\n\n') + '\n' : '';
   },
   // Pełny przepływ z oknem postępu; zwraca wynik albo null (anulowano). Błędy lecą dalej do wywołującego.
-  async deliver(blob, name) {
+  async deliver(blob, name, opt) {
+    const draft = !!(opt && opt.draft);
     const pr = progressModal('Wysyłanie na Drive'); let res;
     try {
       res = await this.upload(blob, name, blob.type || 'video/mp4', pr);
-      let txt = ''; const t = this.captionText(); if (t) { pr.set(0.98, 'zapis opisu obok pliku'); txt = name.replace(/\.[^.]+$/, '') + '_opis.txt'; try { await this.gas({ action: 'text', name: txt, text: t }); } catch (e) { console.warn('Opis na Drive:', e); txt = ''; } }
-      pr.close(); (P.cur.publish = P.cur.publish || {}).drive = { id: res.id, name: res.name, url: res.url, folder: res.folder, size: blob.size, ts: Date.now(), text: txt }; touch(); return res;
+      let txt = ''; const t = draft ? '' : this.captionText(); if (t) { pr.set(0.98, 'zapis opisu obok pliku'); txt = name.replace(/\.[^.]+$/, '') + '_opis.txt'; try { await this.gas({ action: 'text', name: txt, text: t }); } catch (e) { console.warn('Opis na Drive:', e); txt = ''; } }
+      pr.close(); if (!draft) { (P.cur.publish = P.cur.publish || {}).drive = { id: res.id, name: res.name, url: res.url, folder: res.folder, size: blob.size, ts: Date.now(), text: txt }; touch(); } return res;
     } catch (e) { pr.close(); if (/^cancel$/.test(e && e.message)) { toast('Wysyłanie na Drive anulowane.', 'warn'); return null; } throw e; }
   },
   resultBox(res) {
@@ -3637,6 +3654,88 @@ const Rolka = {
     const body = h('div', {}, h('div', { class: 'hint', style: { marginBottom: '6px' } }, 'Dokument „Rolki” z projektu Agent John: wklej treść (Ctrl+A, Ctrl+C w Google Docs) albo podaj link udostępniony linkiem.'), ta, h('div', { class: 'row', style: { marginTop: '6px', gap: '6px' } }, link, h('button', { class: 'btn', onclick: async (e) => { const b = e.currentTarget; b.disabled = true; try { ta.value = await this.fetchDoc(link.value); reparse(); } catch (x) { toast(errText(x), 'bad', 9000); } b.disabled = false; } }, 'Pobierz z linku')), list);
     M = modal('📥 Rolka z dokumentu (Agent John)', body, [{ t: 'Utwórz rolkę', cls: 'pri', keep: true, fn: (close) => { const rk = found[pick]; if (!rk) { toast('Najpierw wklej tekst z rolką.', 'warn'); return false; } const r = this.build(rk); close(); S.go('video', true); toast('Rolka „' + r.name + '”: ' + rk.cards.length + ' ' + plu(rk.cards.length, 'karta', 'karty', 'kart') + ' tekstu z czasami. Skrypt lektora jest w Audio (prompter), opis w Publikacji. Dodaj teraz „🗣 Gadająca głowa” ze swoim nagraniem.', 'ok', 10000); } }, { t: 'Zamknij' }]);
     setTimeout(() => ta.focus(), 30); return M;
+  },
+};
+
+// ── Biblioteka marki: zakończenia, podkłady i dzwonki z Drive + składanie rolki wg receptury jednym przyciskiem ──
+// Manifest: public/marka-biblioteka.json (aktualizuje agent). Pliki leżą na Drive w folderze udostępnionym linkiem, import przez Workera (api/s/drive/get).
+// Receptura: zakończenie po ostatnim klipie wideo lub głosie, podkład pod cały film (zapętlony, bez duckingu, ok. 15% głośności głosu), dzwonek razem z zakończeniem, potem „Wyrównaj poziomy”. Głos nie jest ruszany.
+const BrandLib = {
+  man: null,
+  async manifest(force) {
+    if (this.man && !force) return this.man;
+    let r; try { r = await fetch('marka-biblioteka.json?t=' + (force ? Date.now() : Math.floor(Date.now() / 600000)), { cache: force ? 'reload' : 'default' }); } catch (e) { throw new Error('Brak połączenia z serwerem: ' + errText(e)); }
+    if (!r.ok) throw new Error('Biblioteka marki: HTTP ' + r.status);
+    this.man = await r.json(); return this.man;
+  },
+  // zasób z biblioteki (jeśli już pobrany) albo pobranie z Drive
+  async asset(it, cls) {
+    try {
+      const all = await DBI.all('assets'), hit = all.filter((a) => a.name === it.fname).sort((a, b) => b.created - a.created)[0];
+      if (hit) { const rec = await Assets.rec(hit.id); if (rec && !rec.err && rec.dur) return rec; }
+    } catch (e) { /* pobierz od nowa */ }
+    return Importer.fetchAsset(this.src(it), it.fname, cls, { desc: it.desc || '', origin: 'Biblioteka marki' });
+  },
+  src(it) { return 'api/s/drive/get?id=' + encodeURIComponent(it.file); },
+  // podgląd prosto z Drive (bez wgrywania do biblioteki projektu): wideo z miniaturą, dźwięk z odtwarzaczem
+  prev(it, cls) {
+    if (cls === 'video') return h('video', { src: this.src(it), poster: it.thumb || '', controls: true, preload: 'none', playsinline: true, style: { width: '110px', aspectRatio: '9 / 16', objectFit: 'cover', background: '#000', borderRadius: '8px', flex: 'none' } });
+    return h('audio', { src: this.src(it), controls: true, preload: 'none', style: { width: '100%', height: '34px' } });
+  },
+  // karta elementu: podgląd, nazwa, opis, projekt źródłowy; lead = pole wyboru, tail = przycisk
+  card(it, cls, lead, tail) {
+    const txt = h('div', { style: { flex: 1, minWidth: 0 } }, h('div', { style: { fontWeight: 600 } }, it.name + (it.default ? ' ★' : '')), it.desc ? h('div', { class: 'fine' }, it.desc) : null, it.for ? h('div', { class: 'fine' }, 'Z projektu: ' + it.for) : null, cls === 'video' ? null : h('div', { style: { marginTop: '6px' } }, this.prev(it, cls)));
+    return h('label', { class: 'bcard', style: { display: 'flex', gap: '10px', alignItems: 'flex-start', padding: '8px', border: '1px solid var(--bd)', borderRadius: '10px', margin: '6px 0', background: 'var(--p2)', cursor: lead ? 'pointer' : 'default' } }, lead, cls === 'video' ? this.prev(it, cls) : null, txt, tail);
+  },
+  // początek zakończenia = koniec treści (ostatni klip wideo lub głos), nie koniec osi czasu
+  contentEnd(r) {
+    const body = [...r.layers.filter((l) => l.type === 'video' && !l.brand).map((l) => Math.min(l.t1, r.dur)), ...r.audio.filter((a) => a.track === 'voice' && !a.brand).map((a) => Math.min(a.t0 + a.dur, r.dur))];
+    return body.length ? Math.max(...body) : (r.brandBase != null ? r.brandBase : r.dur);
+  },
+  clear(r) { for (let i = r.layers.length - 1; i >= 0; i--) if (r.layers[i].brand) r.layers.splice(i, 1); for (let i = r.audio.length - 1; i >= 0; i--) if (r.audio[i].brand) r.audio.splice(i, 1); },
+  async assemble(sel) {
+    const V = Video, r = V.reel; if (!r) { toast('Najpierw otwórz rolkę (zakładka Wideo).', 'warn'); return false; }
+    const man = await this.manifest(), by = (arr, id) => (arr || []).find((x) => x.id === id);
+    const end = by(man.endings, sel.ending), bed = by(man.beds, sel.bed), bell = by(man.bells, sel.bell);
+    if (!end && !bed && !bell) { toast('Nic nie wybrano.', 'warn'); return false; }
+    const tt = toast('Składam rolkę wg marki…', 'info', 120000);
+    try {
+      V.pause(); this.clear(r); const mx = P.cur.mix, tEnd = sel.t != null && isFinite(sel.t) ? sel.t : this.contentEnd(r); let tot = tEnd;
+      // 1. pobranie plików (zanim cokolwiek zmienimy w rolce)
+      const eRec = end ? await this.asset(end, 'video') : null, bRec = bed ? await this.asset(bed, 'audio') : null, kRec = bell ? await this.asset(bell, 'audio') : null;
+      if ((end && !eRec) || (bed && !bRec) || (bell && !kRec)) { tt.remove(); return false; } // komunikat błędu pokazał importer
+      // 2. zakończenie: wideo bez dźwięku, od razu po treści
+      if (eRec) {
+        const l = mkLayer('video', { x: r.w / 2, y: r.h / 2 }); l.t0 = tEnd; l.t1 = tEnd + (eRec.dur || 2.4); l.w = r.w; l.h = r.h; l.video.assetId = eRec.id; l.video.fit = 'cover'; l.name = 'Zakończenie: ' + end.name; l.brand = 'end';
+        r.layers.splice(V.zIns(r, zRank(l)), 0, l); animateLayers([l], r.style, l.t1 - l.t0); l.anim.in = { p: 'none', d: 0.6, dl: 0, e: 'outCubic', dir: 'bottom' }; Object.assign(l.anim.out, { p: 'none' }); tot = l.t1;
+      }
+      const dur = Math.max(1, Math.ceil(tot - 1e-6)); // film kończy się na pełnej sekundzie; ostatnia klatka zakończenia trzyma się do końca (bez czarnej dziury)
+      if (eRec) { const l = r.layers.find((x) => x.brand === 'end'); if (l) l.t1 = dur; }
+      // 3. podkład pod cały film, zapętlony, bez duckingu (stały poziom)
+      if (bRec) r.audio.push({ id: uid('au'), track: 'music', assetId: bRec.id, name: bed.name.slice(0, 30), t0: 0, in: 0, dur: dur, srcDur: bRec.dur, gain: mx.musicDb, fi: 1, fo: 1.5, loop: true, duck: false, brand: 'bed' });
+      // 4. dzwonek razem z zakończeniem (plik ma 0,45 s ciszy na początku, więc wchodzi z logo)
+      if (kRec) r.audio.push({ id: uid('au'), track: 'sfx', assetId: kRec.id, name: bell.name.slice(0, 30), t0: tEnd, in: 0, dur: Math.max(0.5, Math.min(kRec.dur, dur - tEnd)), srcDur: kRec.dur, gain: -6, fi: 0.01, fo: 0.3, loop: false, duck: false, brand: 'bell' });
+      r.dur = dur; V.fitBase(); r.brandBase = tEnd; mx.duckDepth = 0; V.mc = null; V.commit(true); await V.ensureVideos(); tt.remove();
+      await V.autoLevel(); // głos −18 LUFS, podkład 17 LU niżej (ok. 14% amplitudy), dzwonek −24 LUFS
+      V.seek(Math.max(0, Math.min(tEnd - 1, r.dur)));
+      toast('Złożone wg marki: ' + [end && end.name, bed && bed.name, bell && bell.name].filter(Boolean).join(' + ') + '. Zakończenie od ' + tEnd.toFixed(1) + ' s, rolka trwa ' + dur + ' s. Ducking wyłączony, podkład stały.', 'ok', 10000);
+      return true;
+    } catch (e) { tt.remove(); console.error(e); toast('Nie udało się złożyć rolki: ' + errText(e), 'bad', 12000); return false; }
+  },
+  async dialog() {
+    const r = Video.reel; if (!r) { toast('Najpierw otwórz rolkę (zakładka Wideo).', 'warn'); return; }
+    let man; try { man = await this.manifest(true); } catch (e) { toast(errText(e), 'bad', 9000); return; }
+    const grp = (title, arr, cls, none, nm) => {
+      const box = h('div', { style: { marginTop: '10px' } }, h('div', { class: 'ph' }, title)), radios = [], def = (arr || []).find((x) => x.default);
+      const mkR = (id, on) => { const x = h('input', { type: 'radio', name: nm, value: id, style: { flex: 'none', width: 'auto', marginTop: '4px' } }); x.checked = on; radios.push(x); return x; };
+      box.append(h('label', { style: { display: 'flex', gap: '10px', alignItems: 'center', padding: '4px 8px', cursor: 'pointer' } }, mkR('', !def), h('span', { class: 'hint' }, none)));
+      (arr || []).forEach((it) => box.append(this.card(it, cls, mkR(it.id, it === def))));
+      return { el: box, get: () => (radios.find((x) => x.checked) || {}).value || '' };
+    };
+    const end = grp('Zakończenie', man.endings, 'video', 'Bez zakończenia', 'bl-end'), bed = grp('Podkład', man.beds, 'audio', 'Bez podkładu', 'bl-bed'), bell = grp('Dzwonek', man.bells, 'audio', 'Bez dzwonka', 'bl-bell'), t = this.contentEnd(r);
+    const body = h('div', { style: { maxHeight: '68vh', overflow: 'auto', paddingRight: '4px' } }, h('div', { class: 'hint', style: { marginBottom: '4px' } }, man.recipe || ''), end.el, bed.el, bell.el,
+      h('div', { class: 'fine', style: { marginTop: '8px' } }, 'Zakończenie zacznie się w ' + t.toFixed(1) + ' s (koniec treści). Ponowne złożenie zastępuje poprzednie. ★ = domyślne. Odsłuch i podgląd działają bez wgrywania. Folder: ', man.folder ? h('a', { href: man.folder, target: '_blank', rel: 'noopener' }, 'Biblioteka marki na Drive') : ''));
+    modal('🏷 Złóż rolkę wg marki', body, [{ t: 'Złóż', cls: 'pri', keep: true, fn: (close) => { close(); this.assemble({ ending: end.get(), bed: bed.get(), bell: bell.get() }); } }, { t: 'Zamknij' }]);
   },
 };
 

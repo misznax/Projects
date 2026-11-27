@@ -1,4 +1,4 @@
-# Creative Studio Social · v0.12
+# Creative Studio Social · v0.13
 
 Studio treści na social media w przeglądarce: marka → grafiki (karuzele) → wideo (rolki 9:16) → audio → publikacja na Instagram, YouTube Shorts, TikTok i Facebook Reels.
 Autor: Michał Rzekiecki · kontakt: michus@gmail.com · adres: https://projects.michus.workers.dev/06/
@@ -44,13 +44,23 @@ Autor: Michał Rzekiecki · kontakt: michus@gmail.com · adres: https://projects
 1. Analiza w przeglądarce (canvas, bez kluczy): poświaty (kolor i pozycja), pasek postępu, stopka, bloki tekstu, zdjęcie, akcenty → „DNA” układu, które steruje wszystkimi szablonami.
 2. Wzorzec domyślny: karuzela „Po kontuzji” (v4). Własny materiał (obrazy lub wideo rolki) nadpisuje DNA w projekcie; rodzaje slajdów są rozpoznawane zgrubnie.
 
+## Zmiany v0.13 (Biblioteka marki, Szkic na Drive z odtwarzaczem)
+
+1. **🏷 Złóż wg marki** (panel Wideo, sekcja „Marka”): jeden przycisk dokłada zakończenie, podkład i dzwonek z biblioteki marki i wyrównuje poziomy. Zakończenie startuje po ostatnim klipie wideo lub głosie, podkład idzie pod cały film (zapętlony, fade-in 1 s, fade-out 1,5 s, ducking wyłączony, stały poziom: ok. 17 LU pod głosem, czyli ok. 14% amplitudy), dzwonek startuje razem z zakończeniem. Głos nie jest ruszany. Ponowne złożenie zastępuje poprzednie (elementy mają znacznik `brand`).
+2. **Biblioteka marki** = `public/marka-biblioteka.json` (zakończenia, podkłady, dzwonki z domyślnym wyborem ★) + pliki na Drive w folderze udostępnionym linkiem. Pliki pobiera Worker (`api/s/drive/get`), pobrane raz zostają w bibliotece projektu. Manifest aktualizuje agent (zmiana jednego małego pliku, bez zmiany kodu).
+3. **Szkic na Drive**: „☁ Eksportuj na Drive” działa też dla jakości „Szkic” (540×960, 15 fps, 2 Mb/s). Plik ma w nazwie `_SZKIC`, nie zapisuje `_opis.txt` i nie nadpisuje rekordu publikacji. Po eksporcie szkicu okno wyników ma odtwarzacz, więc rolkę (z zakończeniem, podkładem i lektorem) obejrzysz przed pełnym eksportem i wysyłką. Szkic nadal nie trafia do Publikacji.
+4. **Zakładka 🏷 Marka w oknie importu** (wideo: zakończenia, dźwięk: podkłady i dzwonki) i okno „Złóż wg marki” pokazują karty: nazwę, opis, projekt źródłowy, podgląd (miniatura i odtwarzacz wideo, odsłuch dźwięku) prosto z Drive, bez wgrywania. Plik trafia do biblioteki projektu po „Użyj”, z opisem (`desc`) i źródłem (`origin`).
+5. **Biblioteka projektu** (zakładka 🗂): pełne nazwy, miniatury wideo, ▶ odsłuch przy dźwięku, opis, typ, czas, rozmiar i nazwa projektu przy każdym elemencie.
+6. Długość: rolka kończy się na pełnej sekundzie po zakończeniu (np. treść 10 s + zakończenie 2,43 s = 13 s), ostatnia klatka zakończenia trzyma się do końca, podkład sięga do końca.
+7. Test (Chrome headless, atrapa Workera i Drive): składanie, ponowne składanie (zamiana, bez duplikatów), poziomy (głos −18 LUFS, podkład −35, dzwonek −24), klatki zakończenia, eksport Szkicu 540×960 H.264 + AAC z odtwarzaczem i nazwą `_SZKIC`. Niesprawdzone: prawdziwy upload na Drive (Apps Script), odsłuch na urządzeniu.
+
 ## Zmiany v0.12 (AAC w Firefoxie, eksport na Drive)
 
 1. **Koder AAC w WASM** (`src/aacshim.js` + `public/aac-worker.js`): przeglądarka bez własnego AAC (Firefox) nie zapisuje już Opus w MP4, tylko AAC-LC, który przyjmują Instagram, TikTok i YouTube. Plik workera to niezmieniony koder z paczki `@mediabunny/aac-encoder` (MPL-2.0, libavcodec/FFmpeg LGPL; patrz `public/aac-NOTICE.txt`), ok. 0,9 MB, ładowany tylko gdy natywnego AAC brak. Opóźnienie kodera (1024 próbki) jest kompensowane: sygnały dźwięku i błyski obrazu zgodne co do ok. 1 ms. Test: Chrome z wymuszonym brakiem AAC (`window.__forceAacWasm = true`).
 2. **☁ Eksportuj na Drive** (okno eksportu) i **☁ Wyślij na Drive** (Publikacja, dla już wyeksportowanej rolki): plik trafia do folderu „Gotowe rolki” na Twoim Google Drive, razem z plikiem `…_opis.txt` (koncepcja, hook, tytuł, opis, hashtagi, termin), jeśli są wpisane. Biblioteka projektu to IndexedDB w przeglądarce, więc czat agenta jej nie widzi; Drive widzi.
 3. **Jak to działa**: przeglądarka → Worker → skrypt Google (Apps Script) na Twoim koncie → sesja wznawialnego uploadu Drive. Plik idzie kawałkami po 8 MB przez Workera (bez problemów CORS), z ponawianiem po błędzie sieci i wznawianiem od miejsca, które Drive już ma. Skrypt: `apps-script/Code.gs` (hasło generuje aplikacja i wstawia do kodu).
 4. **⚙ Ustawienia Drive** (jednorazowo, ok. 3 min): okno pokazuje kod skryptu z przyciskiem „Kopiuj”, kroki wdrożenia (script.google.com → Nowy projekt → wklej → Wdróż → Aplikacja internetowa → Wykonaj jako: Ja, Dostęp: Wszyscy → autoryzuj) i pole na adres `…/exec`. „Zapisz i sprawdź” robi test połączenia; folder „Gotowe rolki” powstaje sam. Zmiana nazwy lub ID folderu: stałe `FOLDER_NAME` / `FOLDER_ID` na górze skryptu.
-5. Szkic nie trafia na Drive. Test na prawdziwym Google niewykonany (sprawdzono z atrapą skryptu i sesji uploadu oraz kod Workera: obce adresy odrzucane).
+5. (Od v0.13 Szkic można wysłać na Drive, patrz „Zmiany v0.13”.) Test na prawdziwym Google niewykonany (sprawdzono z atrapą skryptu i sesji uploadu oraz kod Workera: obce adresy odrzucane).
 
 ## Zmiany v0.11 (parowanie dźwięku, „zastosuj do wszystkich”, odświeżanie podglądu, eksport do biblioteki)
 
