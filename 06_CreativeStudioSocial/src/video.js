@@ -98,6 +98,7 @@ const Video = {
     const b = (t, fn, cls, title) => h('button', { class: 'btn ' + (cls || ''), onclick: fn, title: title || '' }, t);
     this.safeBtn = b('Strefy', () => { this.stage.safe = !this.stage.safe; this.safeBtn.classList.toggle('on', this.stage.safe); this.stage.overlay(); }, '', 'Pokaż strefy zasłaniane przez interfejs aplikacji');
     this.bar.append(this.safeBtn, h('span', { class: 'fine' }, 'Odtwarzanie: przyciski nad osią czasu lub Spacja'), h('span', { style: { flex: 1 } }),
+      b('✕ Zamknij i nowa rolka', () => newReelPrompt(), '', 'Zamyka ten projekt i otwiera pusty. Ten zostaje zapisany w przeglądarce (⋯ → Projekty…); kopię na Drive zrobisz w Publikacji, sekcja 8'),
       b('💾 Zapisz projekt', () => exportProject(), '', 'Pobiera plik ZIP z całym projektem i materiałami: kopia bezpieczeństwa na tym urządzeniu (wczytasz ją w menu ⋯ → Import projektu)'),
       b('Eksport ▾', (e) => popMenu(e.currentTarget, [{ t: 'Eksportuj MP4 (IG / YouTube / TikTok / Facebook)…', i: '🎬', fn: () => this.exportDialog() }, { t: 'Bieżąca klatka jako okładka publikacji', i: '📌', fn: () => this.frameAsCover() }, { t: 'Bieżąca klatka (PNG)', i: '🖼', fn: () => this.framePng() }, '-', { t: 'Miks audio (WAV) tej rolki', i: '🎧', fn: () => this.exportMixWav() }]), 'pri'));
   },
