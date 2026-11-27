@@ -3,11 +3,11 @@
    Nic nie wymaga kluczy: skrypt działa na koncie użytkownika, a Worker przepuszcza tylko dwa adresy (skrypt script.google.com i sesję uploadu googleapis.com).
    Po wysyłce plik leży na Drive, więc czat agenta (Drive) go widzi, w przeciwieństwie do biblioteki projektu, która jest tylko w IndexedDB przeglądarki. */
 const DriveUp = {
-  K: 'css-gas', KT: 'css-gas-token', CH: 8 * 1048576, ROOT_ID: '1d_ppqbdQk1VI9HOiWGnDe-to5ar74gcy', DIR_WORK: 'Materiały', DIR_DONE: 'Opublikowane', NEED_VER: 2, _ok: false, // ROOT_ID = folder „Śmiało – Rolki” na Drive Michała; podfoldery rolek zakłada skrypt
+  K: 'css-gas', KT: 'css-gas-token', CH: 8 * 1048576, ROOT_ID: '1d_ppqbdQk1VI9HOiWGnDe-to5ar74gcy', LIST_ID: '1UelfVTYkqeKlL5X80DzA5XWeGDRONy21imUMjEw-pXA' /* arkusz „Lista rolek” w folderze głównym */, DIR_WORK: 'Materiały', DIR_DONE: 'Opublikowane', NEED_VER: 2, _ok: false, // ROOT_ID = folder „Śmiało – Rolki” na Drive Michała; podfoldery rolek zakłada skrypt
   cfg() { try { const c = JSON.parse(localStorage.getItem(this.K) || 'null'); return c && c.url && c.token ? c : null; } catch { return null; } },
   save(c) { try { localStorage.setItem(this.K, JSON.stringify(c)); } catch { /* brak pamięci */ } },
   token() { let t = ''; try { t = localStorage.getItem(this.KT) || ''; } catch { t = ''; } if (!t) { const a = new Uint8Array(18); crypto.getRandomValues(a); t = [...a].map((x) => 'abcdefghjkmnpqrstuvwxyz23456789'[x % 31]).join(''); try { localStorage.setItem(this.KT, t); } catch { /* nic */ } } return t; },
-  code() { return GAS_CODE.replace('__TOKEN__', this.token()).replace('__FOLDER_ID__', this.ROOT_ID); },
+  code() { return GAS_CODE.replace('__TOKEN__', this.token()).replace('__FOLDER_ID__', this.ROOT_ID).replace('__LIST_ID__', this.LIST_ID); },
   urlOk(u) { return /^https:\/\/script\.google\.com\/macros\/s\/[\w-]{20,200}\/exec$/.test(String(u || '').trim()); },
   errMsg(j, st) {
     const c = j && j.code;
@@ -120,5 +120,32 @@ const DriveUp = {
       catch (e) { st.className = 'warnrow bad'; st.textContent = errText(e); return false; }
     };
     modal('☁ Ustawienia Drive: Śmiało – Rolki', body, [{ t: 'Zapisz i sprawdź', cls: 'pri', fn: run }, ...(c ? [{ t: 'Odłącz', cls: 'bad', fn: () => { try { localStorage.removeItem(this.K); } catch { /* nic */ } toast('Drive odłączony.', 'warn'); } }] : []), { t: 'Zamknij' }]);
+  },
+};
+
+// ── Spontaniczny pomysł → nowy wiersz w arkuszu „Lista rolek” na Drive (skrypt Drive w wersji 3). Pomysł najpierw trafia do kolejki w przeglądarce,
+// więc nie ginie, gdy Drive nie jest skonfigurowany albo sieć zawiedzie; znika z kolejki dopiero po potwierdzeniu zapisu w arkuszu. ──
+const QuickIdea = {
+  K: 'css-quick-ideas', busy: false,
+  load() { try { const a = JSON.parse(localStorage.getItem(this.K) || '[]'); return Array.isArray(a) ? a : []; } catch { return []; } },
+  store(a) { try { localStorage.setItem(this.K, JSON.stringify(a.slice(-100))); } catch { /* brak pamięci */ } },
+  OLD: 'Skrypt Drive jest w starej wersji (bez zapisu do Listy rolek). W ⚙ Ustawienia Drive skopiuj nowy kod, wklej go w skrypcie (script.google.com), potem Wdróż → Zarządzaj wdrożeniami → ołówek → Wersja: Nowa wersja → Wdróż. Zaakceptuj dodatkowe uprawnienie do arkuszy Google (to Twój własny skrypt).',
+  async send(it) {
+    if (!DriveUp.cfg()) throw new Error('Drive nie jest skonfigurowany (⚙ Ustawienia Drive).');
+    try { return await DriveUp.gas({ action: 'idea', text: it.text, typ: it.typ }); } catch (e) { if (/\baction$/.test(errText(e))) throw new Error(this.OLD); throw e; }
+  },
+  // Zapis jednego pomysłu: {ok:true,row,url,dup} albo {ok:false,pending:true,err}
+  async save(text, typ) {
+    const q = this.load(), it = { id: uid('i'), text: String(text || '').replace(/\s+/g, ' ').trim(), typ: typ || 'R', ts: Date.now() }; if (!it.text) return { ok: false, err: 'Wpisz pomysł.' };
+    q.push(it); this.store(q);
+    try { const r = await this.send(it); this.store(this.load().filter((x) => x.id !== it.id)); this.flush(); return { ok: true, row: r.row, url: r.url, dup: !!r.dup }; }
+    catch (e) { return { ok: false, pending: true, err: errText(e) }; }
+  },
+  // Wysyła zaległe pomysły (po konfiguracji Drive, po sieciowej awarii, przy starcie aplikacji). Po cichu, chyba że loud.
+  async flush(loud) {
+    if (this.busy || !DriveUp.cfg()) return 0; this.busy = true; let n = 0;
+    try { for (const it of this.load()) { try { await this.send(it); this.store(this.load().filter((x) => x.id !== it.id)); n++; } catch (e) { if (loud) toast('Pomysły czekają w kolejce: ' + errText(e), 'warn', 8000); break; } } }
+    finally { this.busy = false; }
+    if (n) toast('Wysłano zaległe pomysły do Listy rolek: ' + n, 'ok', 6000); return n;
   },
 };

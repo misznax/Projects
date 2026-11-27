@@ -53,19 +53,20 @@ const Brand = {
   async set(fn) { fn(P.cur.brand); touch(); this.refreshRight(); },
   render() {
     const b = P.cur.brand, L = this.left; L.innerHTML = '';
-    const colorRow = (role, label) => {
-      const inp = h('input', { type: 'text', value: b.colors[role], maxlength: 7, spellcheck: false, 'aria-label': label + ' HEX' }), pick = h('input', { type: 'color', value: b.colors[role], 'aria-label': label }), badge = h('span', { class: 'tag off' });
+    const cbadge = h('span', { class: 'tag off' });
+    const colorRow = (role, label, short) => { // kolory ustawia się raz na długo: jedna kompaktowa linia zamiast trzech dużych bloków
+      const inp = h('input', { type: 'text', value: b.colors[role], maxlength: 7, spellcheck: false, 'aria-label': label + ' HEX', style: { width: '68px', flex: 'none', padding: '3px 5px', fontSize: '12px' } }), pick = h('input', { type: 'color', value: b.colors[role], 'aria-label': label, title: label, style: { width: '28px', height: '26px', padding: 0, flex: 'none' } });
       const upd = (v) => { if (!/^#[0-9a-fA-F]{6}$/.test(v)) return; b.colors[role] = v.toUpperCase(); this.detach(); this.syncPal(b); inp.value = b.colors[role]; pick.value = b.colors[role].toLowerCase(); touch(); this.refreshRight(); bd(); };
-      const bd = () => { const c = contrast(b.colors.primary, b.colors.background); badge.textContent = role === 'primary' ? 'kontrast z tłem ' + c.toFixed(1) + ':1' : ''; badge.className = 'tag ' + (c >= 4.5 ? 'ok' : c >= 3 ? 'warn' : 'bad'); if (role !== 'primary') badge.style.display = 'none'; };
+      const bd = () => { const c = contrast(b.colors.primary, b.colors.background); cbadge.textContent = 'kontrast tekstu z tłem ' + c.toFixed(1) + ':1'; cbadge.className = 'tag ' + (c >= 4.5 ? 'ok' : c >= 3 ? 'warn' : 'bad'); };
       pick.oninput = () => upd(pick.value); inp.onchange = () => upd(inp.value.startsWith('#') ? inp.value : '#' + inp.value); bd();
-      return h('div', { class: 'fld' }, h('label', {}, label), h('div', { class: 'row' }, pick, inp, badge));
+      return h('div', { class: 'fix', style: { display: 'flex', alignItems: 'center', gap: '4px' } }, h('span', { class: 'fine', title: label }, short), pick, inp);
     };
     const fontSel = (key, label) => { const s = h('select', { 'aria-label': label }); for (const f of allFonts()) s.append(h('option', { value: f, selected: f === b[key] }, f)); s.onchange = () => { b[key] = s.value; this.detach(); touch(); this.refreshRight(); }; return h('div', { class: 'fld' }, h('label', {}, label), s); };
     this.autoBox = h('div', {}); L.append(this.autoBox); this.updCard();
-    L.append(h('div', { class: 'ph' }, 'Kolory marki (ręczna zmiana odpina markę od automatu)'), h('div', { class: 'sec' },
-      colorRow('primary', 'Primary (kolor główny)'), colorRow('background', 'Background (tło bazowe)'), colorRow('accent', 'Accent (akcent)'),
-      h('div', { class: 'row', style: { marginTop: '8px' } }, h('button', { class: 'btn', onclick: () => this.importMd() }, 'Wczytaj brand.md'), h('button', { class: 'btn', onclick: () => this.pasteMd() }, 'Wklej brand.md'), h('button', { class: 'btn', onclick: () => download(new Blob([brandToMd(b)], { type: 'text/markdown' }), fname('brand', 'md')) }, 'Zapisz brand.md')),
-      h('div', { class: 'hint', style: { marginTop: '6px' }, html: rich('Nie musisz niczego wgrywać: marka sama się ładuje z repo marki. Plik brand.md jest tylko dla innych marek (format: „Primary: #123456”, „Background: #F5F2ED”, „Accent: #D49B65”).') })));
+    L.append(h('div', { class: 'ph' }, 'Kolory marki', h('span', {}, h('button', { class: 'btn sm', title: 'Podgląd zestawu: kolory i przykładowy nagłówek z tekstem', onclick: () => this.kitDialog() }, '🎨 Brand kit'))), h('div', { class: 'sec', style: { paddingTop: '6px', paddingBottom: '8px' } },
+      h('div', { class: 'row', style: { gap: '10px' } }, colorRow('primary', 'Primary (kolor główny)', 'Główny'), colorRow('background', 'Background (tło bazowe)', 'Tło'), colorRow('accent', 'Accent (akcent)', 'Akcent'), cbadge),
+      h('div', { class: 'row', style: { marginTop: '6px', gap: '4px' } }, h('button', { class: 'btn sm', onclick: () => this.importMd() }, 'Wczytaj brand.md'), h('button', { class: 'btn sm', onclick: () => this.pasteMd() }, 'Wklej'), h('button', { class: 'btn sm', onclick: () => download(new Blob([brandToMd(b)], { type: 'text/markdown' }), fname('brand', 'md')) }, 'Zapisz brand.md')),
+      h('div', { class: 'fine', style: { marginTop: '4px' } }, 'Ręczna zmiana odpina markę od automatu. Marka sama ładuje się z repo marki; brand.md jest dla innych marek.')));
     L.append(h('div', { class: 'ph' }, 'Typografia'), h('div', { class: 'sec' }, fontSel('headingFont', 'Font nagłówków'), fontSel('bodyFont', 'Font tekstu'),
       h('div', { class: 'row' }, h('button', { class: 'btn', onclick: () => this.uploadFont() }, 'Dodaj własny font (TTF/OTF/WOFF)')),
       h('div', { class: 'fld' }, h('label', {}, 'Styl marki (słowa kluczowe)'), h('input', { type: 'text', value: b.style, onchange: (e) => { b.style = e.target.value; touch(); } })),
@@ -81,7 +82,7 @@ const Brand = {
     const slv = h('span', { class: 'tag off' }, b.strictness + '%'); const sl = h('input', { type: 'range', min: 0, max: 100, value: b.strictness, 'aria-label': 'Intensywność trzymania się identyfikacji' }); sl.oninput = () => { b.strictness = +sl.value; slv.textContent = sl.value + '%'; }; sl.onchange = () => { touch(); this.refreshRight(); };
     L.append(h('div', { class: 'ph' }, 'Trzymanie się identyfikacji'), h('div', { class: 'sec' }, h('div', { class: 'row' }, sl, slv.classList.add('fix') || slv), h('div', { class: 'hint', html: rich('100% = tylko kolory i fonty marki, powtarzalne układy. Poniżej 55% = więcej wariantów tła, dekoracji i układów (kolory zostają z marki). Poniżej 40% = także zamiana fontów.') })));
     const sty = h('div', { class: 'zebra' }); for (const s of b.styles || []) sty.append(h('div', { class: 'row', style: { padding: '4px 8px' } }, h('span', {}, s.name), h('button', { class: 'btn sm fix', onclick: () => { Object.assign(b, jclone({ colors: s.colors, headingFont: s.headingFont, bodyFont: s.bodyFont, style: s.style, strictness: s.strictness })); touch(); this.render(); this.refreshRight(); } }, 'Zastosuj'), h('button', { class: 'btn sm bad fix', onclick: () => { b.styles = b.styles.filter((x) => x !== s); touch(); this.render(); } }, '✕')));
-    L.append(h('div', { class: 'ph' }, 'Zapisane style graficzne'), h('div', { class: 'sec' }, sty, h('button', { class: 'btn', style: { marginTop: '8px' }, onclick: () => { const n = prompt('Nazwa stylu:', 'Styl ' + ((b.styles || []).length + 1)); if (!n) return; b.styles = b.styles || []; b.styles.push({ name: n, colors: jclone(b.colors), headingFont: b.headingFont, bodyFont: b.bodyFont, style: b.style, strictness: b.strictness }); touch(); this.render(); } }, 'Zapisz bieżący styl')));
+    L.append(h('div', { class: 'ph' }, 'Zapisane style graficzne'), h('div', { class: 'sec' }, sty, h('button', { class: 'btn', style: { marginTop: '8px' }, onclick: async () => { const n = await askText('Nazwa stylu', 'Styl ' + ((b.styles || []).length + 1)); if (!n) return; b.styles = b.styles || []; b.styles.push({ name: n, colors: jclone(b.colors), headingFont: b.headingFont, bodyFont: b.bodyFont, style: b.style, strictness: b.strictness }); touch(); this.render(); } }, 'Zapisz bieżący styl')));
     this.renderRight();
   },
   detach() { const b = P.cur.brand; if (!b.auto) return; b.auto = false; this.updCard(); },
@@ -132,11 +133,13 @@ const Brand = {
       const m = t.match(/\{[\s\S]*\}/); const j = JSON.parse(m[0]); b.analysis = j; b.rules = (j.zasady || []).join('; '); touch(); pr.close(); this.render(); toast('Zasady wizualne zapisane w marce.', 'ok');
     } catch (e) { pr.close(); toast('Analiza AI nieudana: ' + errText(e), 'bad', 7000); }
   },
+  kitDialog() { // podgląd zestawu marki (rzadko potrzebny, więc w oknie otwieranym małym przyciskiem)
+    const b = P.cur.brand, sw = (role, label) => h('div', { style: { flex: 1 } }, h('div', { class: 'sw', style: { background: b.colors[role], color: readable(b.colors[role]) } }, label), h('div', { class: 'fine' }, b.colors[role]));
+    modal('Brand Kit', h('div', {}, h('div', { class: 'row' }, sw('primary', 'Primary'), sw('background', 'Background'), sw('accent', 'Accent')),
+      h('div', { class: 'card', style: { marginTop: '12px', background: b.colors.background, color: b.colors.primary } }, h('div', { style: { fontFamily: `"${b.headingFont}"`, fontSize: '30px', fontWeight: 800, lineHeight: 1.1 } }, 'Nagłówek marki' + (b.handle ? ' ' + b.handle : '')), h('div', { style: { fontFamily: `"${b.bodyFont}"`, fontSize: '16px', marginTop: '6px' } }, 'Tekst podstawowy, który ma się dobrze czytać. ', h('b', { style: { color: b.colors.accent } }, 'Akcent'), ' i ', h('u', {}, 'wyróżnienia'), '.'), h('span', { style: { display: 'inline-block', marginTop: '10px', background: b.colors.accent, color: readable(b.colors.accent), padding: '6px 16px', borderRadius: '99px', fontWeight: 700 } }, 'Przycisk CTA'))), [{ t: 'Zamknij' }]);
+  },
   renderRight() {
     const R = this.right, b = P.cur.brand; R.innerHTML = '';
-    const sw = (role, label) => h('div', { style: { flex: 1 } }, h('div', { class: 'sw', style: { background: b.colors[role], color: readable(b.colors[role]) } }, label), h('div', { class: 'fine' }, b.colors[role]));
-    R.append(h('h3', { style: { marginTop: 0 } }, 'Brand Kit'), h('div', { class: 'row' }, sw('primary', 'Primary'), sw('background', 'Background'), sw('accent', 'Accent')),
-      h('div', { class: 'card', style: { marginTop: '12px', background: b.colors.background, color: b.colors.primary } }, h('div', { style: { fontFamily: `"${b.headingFont}"`, fontSize: '30px', fontWeight: 800, lineHeight: 1.1 } }, 'Nagłówek marki: ' + P.cur.name), h('div', { style: { fontFamily: `"${b.bodyFont}"`, fontSize: '16px', marginTop: '6px' } }, 'Tekst podstawowy, który ma się dobrze czytać. ', h('b', { style: { color: b.colors.accent } }, 'Akcent'), ' i ', h('u', {}, 'wyróżnienia'), '.'), h('span', { style: { display: 'inline-block', marginTop: '10px', background: b.colors.accent, color: readable(b.colors.accent), padding: '6px 16px', borderRadius: '99px', fontWeight: 700 } }, 'Przycisk CTA')));
     this.tplBox = h('div', { class: 'cards' }); this.animBox = h('div', { class: 'cards' });
     R.append(h('h3', {}, 'Zestaw szablonów (na bazie marki)'), h('div', { class: 'hint', html: rich('Szablony przeliczają się po każdej zmianie marki. W zakładce „Grafiki” dodasz je jednym kliknięciem.') }), this.tplBox, h('h3', {}, 'Biblioteka przejść i animacji'), h('div', { class: 'hint', html: rich('Podgląd na żywo każdej animacji (wejścia, kinetyczny tekst, maski, ruch ciągły). Używasz ich w zakładce „Wideo”.') }), this.animBox);
     this.refreshRight();

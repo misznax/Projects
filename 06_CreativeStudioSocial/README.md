@@ -1,4 +1,4 @@
-# Creative Studio Social · v0.21
+# Creative Studio Social · v0.22
 
 Studio treści na social media w przeglądarce: marka → grafiki (karuzele) → wideo (rolki 9:16) → audio → publikacja na Instagram, YouTube Shorts, TikTok i Facebook Reels.
 Autor: Michał Rzekiecki · kontakt: michus@gmail.com · adres: https://projects.michus.workers.dev/06/
@@ -43,6 +43,14 @@ Autor: Michał Rzekiecki · kontakt: michus@gmail.com · adres: https://projects
 
 1. Analiza w przeglądarce (canvas, bez kluczy): poświaty (kolor i pozycja), pasek postępu, stopka, bloki tekstu, zdjęcie, akcenty → „DNA” układu, które steruje wszystkimi szablonami.
 2. Wzorzec domyślny: karuzela „Po kontuzji” (v4). Własny materiał (obrazy lub wideo rolki) nadpisuje DNA w projekcie; rodzaje slajdów są rozpoznawane zgrubnie.
+
+## Zmiany v0.22 (usuwanie rolek, Marka, spontaniczne pomysły)
+
+1. Błąd: po zaznaczeniu „nie pytaj więcej” w natywnym oknie przeglądarki confirm() zwracał na stałe false i nie dało się usunąć żadnej rolki. Wszystkie confirm() i prompt() zastąpiły własne okna (`askYes`, `askText` w `core.js`), których przeglądarka nie zablokuje.
+2. Wideo i Grafiki: zamiast menu „⋯” są przyciski ✎ (nazwa) i ✕ (usuń). Usunięcie jest od razu, z przyciskiem „Cofnij” (10 s); cofnięcie ostatniej rolki usuwa automatycznie utworzoną pustą.
+3. Marka: trzy kolory w jednej kompaktowej linii (ustawia się je raz na długo), mniejsza karta „Marka z automatu”; duży Brand Kit i przykładowy nagłówek wyszły z panelu: otwiera je mały przycisk „🎨 Brand kit”.
+4. „💡 Pomysł” (pasek u góry, menu ⋯, okno Nowa rolka): spontaniczny pomysł w 1-2 zdaniach, zapis jako nowy wiersz (status „pomysł”) w arkuszu **Lista rolek** na Drive (kolumna „Hook roboczy” = cały pomysł). Okno pokazuje potwierdzenie z numerem wiersza i linkiem. Pomysł najpierw trafia do kolejki w przeglądarce (`css-quick-ideas`) i znika z niej po potwierdzeniu zapisu, więc nie ginie bez Drive lub przy awarii sieci; zaległe wysyłają się same.
+5. Skrypt Drive w wersji 3 (`apps-script/Code.gs`, akcja `idea`, blokada LockService, wykrywanie duplikatów, ID arkusza wstawia aplikacja). Wymaga jednorazowej aktualizacji: ⚙ Ustawienia Drive → skopiuj kod → wklej → Wdróż → Zarządzaj wdrożeniami → ołówek → Nowa wersja → zaakceptuj uprawnienie do arkuszy. Starszy skrypt nadal obsługuje wysyłkę rolek.
 
 ## Zmiany v0.21
 

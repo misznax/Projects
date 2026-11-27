@@ -35,13 +35,20 @@ const Creative = {
   // ── Panele ──
   panels() { this.leftPanel(); this.rightPanel(); },
   panelsLive() { const l = this.sel; if (!l) return; for (const k of ['x', 'y', 'w', 'h', 'rot']) { const i = $(`input[data-pk="${k}"]`, this.right); if (i && document.activeElement !== i) i.value = rnd(l[k], 1); } },
+  delPost(post) {
+    const p = P.cur, i = p.posts.indexOf(post); if (i < 0) return; const wasLast = p.posts.length === 1; p.posts.splice(i, 1); p.curPost = p.posts[0] ? p.posts[0].id : null; touch(); this.show();
+    const auto = wasLast ? p.posts[0] : null, snap = auto ? JSON.stringify(auto) : '';
+    toastUndo('Usunięto projekt „' + post.name + '”.', () => { if (P.cur !== p) { toast('Projekt został zmieniony, nie cofnę usunięcia.', 'warn'); return; } if (auto && JSON.stringify(auto) === snap) p.posts = p.posts.filter((x) => x !== auto); p.posts.splice(Math.min(i, p.posts.length), 0, post); p.curPost = post.id; touch(); this.show(); toast('Przywrócono projekt „' + post.name + '”.', 'ok'); });
+  },
   leftPanel() {
     const L = this.left, p = P.cur, post = this.post; L.innerHTML = '';
     const sel = h('select', { 'aria-label': 'Projekt graficzny', onchange: (e) => { p.curPost = e.target.value; p.curSlide = 0; this.selId = null; this.hist = new History(() => this.post, (s) => { const i = P.cur.posts.findIndex((x) => x.id === s.id); if (i >= 0) P.cur.posts[i] = s; }); this.panels(); this.stage.fit(); touch(); } }, p.posts.map((x) => h('option', { value: x.id, selected: x.id === p.curPost }, x.name)));
     L.append(h('div', { class: 'ph' }, 'Projekty graficzne'), h('div', { class: 'sec' }, sel, h('div', { class: 'row', style: { marginTop: '6px' } },
       h('button', { class: 'btn sm', onclick: (e) => popMenu(e.currentTarget, Object.entries(FORMATS).map(([k, f]) => ({ t: f.n, i: '＋', fn: () => { this.newPost(k); this.show(); } }))) }, '＋ Nowy'),
       h('button', { class: 'btn sm', title: 'Kopia jako wariant (inny układ do wypróbowania)', onclick: () => { const c = jclone(post); c.id = uid('post'); c.name = post.name + ' (wariant)'; c.slides.forEach((s) => { s.id = uid('s'); }); p.posts.push(c); p.curPost = c.id; touch(); this.show(); toast('Utworzono wariant', 'ok'); } }, 'Duplikuj'),
-      h('button', { class: 'btn sm', onclick: (e) => popMenu(e.currentTarget, [{ t: 'Zmień nazwę…', i: '✎', fn: () => { const n = prompt('Nazwa:', post.name); if (n) { post.name = n; touch(); this.panels(); } } }, { t: 'Zmień format…', i: '▭', fn: () => this.changeFormat() }, { t: 'Usuń projekt', i: '🗑', fn: () => { if (!confirm('Usunąć „' + post.name + '”?')) return; p.posts = p.posts.filter((x) => x !== post); p.curPost = p.posts[0] ? p.posts[0].id : null; touch(); this.show(); } }]) }, '⋯')),
+      h('button', { class: 'btn sm fix', title: 'Zmień nazwę', 'aria-label': 'Zmień nazwę projektu', onclick: async () => { const n = await askText('Nazwa projektu graficznego', post.name); if (n) { post.name = n; touch(); this.panels(); } } }, '✎'),
+      h('button', { class: 'btn sm fix', title: 'Zmień format', 'aria-label': 'Zmień format', onclick: () => this.changeFormat() }, '▭'),
+      h('button', { class: 'btn sm bad fix', title: 'Usuń projekt (można cofnąć)', 'aria-label': 'Usuń projekt graficzny', onclick: () => this.delPost(post) }, '✕')),
       h('div', { class: 'fine', style: { marginTop: '6px' } }, FORMATS[post.fmt].n)));
     L.append(h('div', { class: 'ph' }, 'Slajdy (' + post.slides.length + ')', h('span', {}, h('button', { class: 'btn sm', title: 'Dodaj slajd z szablonu marki', onclick: (e) => popMenu(e.currentTarget, [...TPL_KINDS.map(([k, n]) => ({ t: n, i: '＋', fn: () => this.addSlide(k) })), '-', { t: 'Pusty slajd', i: '▢', fn: () => this.addSlide(null) }]) }, '＋'))));
     const films = h('div', { class: 'films' }); post.slides.forEach((s, i) => {

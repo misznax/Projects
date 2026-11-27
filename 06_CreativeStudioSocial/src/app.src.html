@@ -72,8 +72,8 @@ h3{margin:14px 0 6px;font-size:15px}.fine{font-size:12px;color:var(--mut)}
 .rec-guide{position:absolute;left:0;right:0;pointer-events:none;background:linear-gradient(90deg,rgba(255,122,26,.16),rgba(139,108,255,.1));border-top:1px solid rgba(255,122,26,.6);border-bottom:1px solid rgba(255,122,26,.25)}
 /* ideas */
 #m-ideas{grid-template-columns:380px 1fr}
-.autocard{margin:10px 12px 4px;padding:10px 12px;border:1px solid rgba(139,108,255,.4);border-radius:12px;background:radial-gradient(120% 140% at 100% 0%,rgba(139,108,255,.22),transparent 60%),radial-gradient(120% 140% at 0% 100%,rgba(255,90,0,.16),transparent 60%),var(--p2);backdrop-filter:blur(6px)}
-.autocard .sws{display:flex;gap:4px;margin:6px 0}.autocard .sws i{flex:1;height:22px;border-radius:6px;border:1px solid rgba(255,255,255,.14)}
+.autocard{margin:6px 12px 2px;padding:6px 10px;border:1px solid rgba(139,108,255,.4);border-radius:12px;background:radial-gradient(120% 140% at 100% 0%,rgba(139,108,255,.22),transparent 60%),radial-gradient(120% 140% at 0% 100%,rgba(255,90,0,.16),transparent 60%),var(--p2);backdrop-filter:blur(6px)}
+.autocard .sws{display:flex;gap:4px;margin:4px 0}.autocard .sws i{flex:1;height:10px;border-radius:6px;border:1px solid rgba(255,255,255,.14)}
 .ideas{padding:0 8px 8px}.idea{padding:8px 10px;border-radius:9px;cursor:pointer;border:1px solid transparent;margin-bottom:3px}.idea:hover{background:var(--p2)}.idea.on{background:linear-gradient(110deg,rgba(255,90,0,.16),rgba(139,108,255,.14));border-color:rgba(255,122,26,.45)}
 .lv{display:inline-block;min-width:20px;text-align:center;padding:0 6px;border-radius:99px;font-size:11px;font-weight:800;color:#1a0800}.lvM{background:#58d68d}.lvU{background:#ffc24a}.lvO{background:#ff8a5e}.lvH{background:#ff6b5e}
 .tag.off{background:var(--p3);color:var(--mut)}
@@ -117,7 +117,7 @@ table.qc td{vertical-align:top}
   <div class="logo"><b>◆</b><span>Creative Studio Social</span><small id="verTag"></small></div>
   <input id="projName" aria-label="Nazwa projektu" spellcheck="false">
   <nav class="tabs" id="tabs"></nav>
-  <div class="right"><span id="saveState">—</span><button class="btn pri" id="btnAI" title="Pomysł → scenariusz → rolka/karuzela">✨ Asystent</button><button class="btn" id="btnMenu" aria-label="Menu">⋯</button></div>
+  <div class="right"><span id="saveState">—</span><button class="btn" id="btnIdea" title="Spontaniczny pomysł na rolkę: zapis do Listy rolek na Drive">💡 Pomysł</button><button class="btn pri" id="btnAI" title="Pomysł → scenariusz → rolka/karuzela">✨ Asystent</button><button class="btn" id="btnMenu" aria-label="Menu">⋯</button></div>
 </header>
 <main id="main"></main>
 <script>

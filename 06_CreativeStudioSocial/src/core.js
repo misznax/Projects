@@ -1,5 +1,5 @@
 /* Creative Studio Social — rdzeń: narzędzia, magazyn (IndexedDB), projekt, historia, UI-pomocniki */
-const APP = { name: 'Creative Studio Social', ver: 'v0.21', author: 'Michał Rzekiecki', mail: 'michus@gmail.com' };
+const APP = { name: 'Creative Studio Social', ver: 'v0.22', author: 'Michał Rzekiecki', mail: 'michus@gmail.com' };
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const uid = (p = 'x') => p + Math.random().toString(36).slice(2, 9);
@@ -35,14 +35,28 @@ function toast(msg, kind = 'info', ms = 3600) {
   let box = $('#toasts'); if (!box) { box = h('div', { id: 'toasts' }); document.body.append(box); }
   const t = h('div', { class: 'toast ' + kind, role: 'status' }, msg); box.append(t); setTimeout(() => { t.classList.add('out'); setTimeout(() => t.remove(), 300); }, ms); return t;
 }
-function modal(title, body, buttons) {
+function modal(title, body, buttons, onClose) {
   const back = h('div', { class: 'modal-back' }), box = h('div', { class: 'modal', role: 'dialog', 'aria-label': title });
-  const close = () => { back.remove(); document.removeEventListener('keydown', onk); };
+  const close = () => { if (!back.isConnected) return; back.remove(); document.removeEventListener('keydown', onk); if (onClose) onClose(); };
   const onk = (e) => { if (e.key === 'Escape') close(); }; document.addEventListener('keydown', onk);
   box.append(h('h2', {}, title), typeof body === 'string' ? h('div', { class: 'mbody', html: body }) : h('div', { class: 'mbody' }, body));
   const row = h('div', { class: 'mrow' });
   for (const b of buttons || [{ t: 'Zamknij' }]) row.append(h('button', { class: 'btn ' + (b.cls || ''), onclick: async () => { if (b.fn) { const r = await b.fn(close); if (r === false) return; } if (!b.keep) close(); } }, b.t));
   box.append(row); back.append(box); back.addEventListener('mousedown', (e) => { if (e.target === back) close(); }); document.body.append(back); return { close, box };
+}
+// Własne okna zamiast confirm()/prompt(): przeglądarka po zaznaczeniu „nie pytaj więcej” blokuje natywne okna na stałe (confirm() zwraca wtedy false, więc nic nie dało się usunąć).
+function askYes(msg, ok = 'Tak', cls = 'pri', title = 'Potwierdź') {
+  return new Promise((res) => { let v = false; modal(title, h('div', { style: { lineHeight: 1.5 } }, msg), [{ t: ok, cls, fn: () => { v = true; } }, { t: 'Anuluj' }], () => res(v)); });
+}
+function askText(title, def, placeholder) {
+  return new Promise((res) => {
+    let v = null; const i = h('input', { type: 'text', value: def || '', placeholder: placeholder || '', style: { width: '100%' } }); i.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); i.closest('.modal').querySelector('.btn.pri').click(); } });
+    modal(title, i, [{ t: 'OK', cls: 'pri', fn: () => { v = i.value.trim() || null; } }, { t: 'Anuluj' }], () => res(v)); setTimeout(() => { i.focus(); i.select(); }, 30);
+  });
+}
+// Komunikat z przyciskiem „Cofnij” (usunięcie bez pytania, z możliwością odwrócenia)
+function toastUndo(msg, undo, ms = 10000) {
+  const t = toast(msg, 'info', ms); t.append(' ', h('button', { class: 'btn sm', style: { marginLeft: '8px' }, onclick: () => { t.remove(); undo(); } }, 'Cofnij')); return t;
 }
 function popMenu(anchor, items) {
   $$('.popmenu').forEach((m) => m.remove());

@@ -6,12 +6,15 @@
        Lista rolek (arkusz: numer, tytuł, kategoria, autorzy badań, status)
        Materiały/R001-Efekt reflektora   (rolka w produkcji: wideo, podkład, miniatura, opis, projekt Studia)
        Opublikowane/R001-Efekt reflektora (rolka po publikacji; folder przenosi akcja „move”)
+   Wersja 3: przycisk „Spontaniczny pomysł” dopisuje wiersz (status: pomysł) do arkusza Lista rolek; skrypt prosi wtedy o dodatkowe uprawnienie do arkuszy Google (Autoryzuj raz).
    Aplikacja wysyła plik kawałkami prosto do Drive; skrypt zakłada folder, sesję wysyłania, przenosi folder i sprawdza hasło.
    Autor: Michał Rzekiecki · michus@gmail.com */
 const TOKEN = '__TOKEN__';          // hasło wygenerowane przez aplikację (to samo jest zapisane w aplikacji; nie zmieniaj)
 const FOLDER_NAME = 'Śmiało – Rolki'; // folder w Moim dysku (używany, gdy poniżej nie ma ID); powstaje sam
 const FOLDER_ID = '__FOLDER_ID__';  // ID folderu głównego wstawia aplikacja (zamiast nazwy powyżej)
-const VER = 2;                      // wersja skryptu: aplikacja odmawia pracy ze starszą
+const VER = 3;                      // wersja skryptu: aplikacja odmawia pracy ze starszą (v3: akcja „idea” dopisuje wiersz do arkusza Lista rolek)
+const LIST_ID = '__LIST_ID__';      // ID arkusza „Lista rolek” wstawia aplikacja (gdy brak: szukam arkusza o tej nazwie w folderze głównym)
+const LIST_NAME = 'Lista rolek';
 const DIR_WORK = 'Materiały', DIR_DONE = 'Opublikowane';
 
 function folder_() {
@@ -32,6 +35,12 @@ function path_(root, path, create) {
     cur = found;
   }
   return cur;
+}
+function list_(root) { // arkusz „Lista rolek”: po ID, a gdy go nie ma, po nazwie w folderze głównym
+  if (LIST_ID && LIST_ID.indexOf('__') !== 0) { try { return SpreadsheetApp.openById(LIST_ID); } catch (e) { /* szukam po nazwie */ } }
+  const it = root.getFilesByName(LIST_NAME);
+  while (it.hasNext()) { const f = it.next(); if (!f.isTrashed() && f.getMimeType() === MimeType.GOOGLE_SHEETS) return SpreadsheetApp.open(f); }
+  return null;
 }
 function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); }
 
@@ -65,6 +74,19 @@ function doPost(e) {
       const clash = dst.getFoldersByName(nm); while (clash.hasNext()) if (!clash.next().isTrashed()) return out_({ ok: false, error: 'W folderze ' + b.to + ' jest już folder ' + nm });
       src.moveTo(dst);
       return out_({ ok: true, name: nm, folder: src.getUrl() });
+    }
+    if (b.action === 'idea') { // spontaniczny pomysł: nowy wiersz na końcu arkusza (kolumny: Nr, Typ, Tytuł, Status, Prio, Kategoria, Autorzy badań, Źródło, Hook roboczy, Temat (bank), Data publikacji, Folder, Uwagi)
+      const text = String(b.text || '').replace(/\s+/g, ' ').trim().slice(0, 600); if (!text) return out_({ ok: false, error: 'Pusty pomysł.' });
+      const lock = LockService.getScriptLock(); lock.waitLock(20000);
+      try {
+        const ss = list_(root); if (!ss) return out_({ ok: false, error: 'Nie znalazłem arkusza „' + LIST_NAME + '” w folderze głównym.' });
+        const sh = ss.getSheetByName('Lista') || ss.getSheets()[0], last = sh.getLastRow(), col = 9; // kolumna I = „Hook roboczy” (cały pomysł)
+        if (last > 1) { const vals = sh.getRange(2, col, last - 1, 1).getValues(); for (let i = 0; i < vals.length; i++) if (String(vals[i][0]).replace(/\s+/g, ' ').trim() === text) return out_({ ok: true, dup: true, row: i + 2, url: ss.getUrl() + '#gid=' + sh.getSheetId() }); }
+        const title = text.length > 70 ? text.slice(0, 67).replace(/\s+\S*$/, '') + '…' : text, typ = ({ R: 'Rolka', K: 'Karuzela', P: 'Post' })[b.typ] || 'do ustalenia';
+        sh.appendRow(['', typ, title, 'pomysł', 2, 'spontaniczny', '', '', text, '', '', '', 'spontaniczny pomysł ze Studia, ' + Utilities.formatDate(new Date(), 'Europe/Warsaw', 'yyyy-MM-dd HH:mm')]);
+        SpreadsheetApp.flush(); const row = sh.getLastRow();
+        return out_({ ok: true, row: row, url: ss.getUrl() + '#gid=' + sh.getSheetId() });
+      } finally { lock.releaseLock(); }
     }
     const f = path_(root, b.sub, true);
     if (b.action === 'text') { // mały plik tekstowy (opis rolki obok pliku wideo); ta sama nazwa = nadpisanie, bez duplikatów

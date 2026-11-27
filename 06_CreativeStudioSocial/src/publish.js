@@ -79,7 +79,7 @@ const Publish = {
   },
   async applyPlan(id) {
     const e = (this.plan || []).find((x) => x.id === id), p = this.p; if (!e) { p.planId = ''; touch(); this.render(); return; }
-    if (((p.caption || '').trim() || (p.hashtags || '').trim()) && p.planId !== id && !confirm('Zastąpić opis, hashtagi i tekst miniatury tekstem z planu: ' + e.id + ' ' + e.title + '?')) { this.render(); return; }
+    if (((p.caption || '').trim() || (p.hashtags || '').trim()) && p.planId !== id && !await askYes('Zastąpić opis, hashtagi i tekst miniatury tekstem z planu: ' + e.id + ' ' + e.title + '?', 'Zastąp')) { this.render(); return; }
     p.planId = id; p.caption = e.caption || ''; p.hashtags = e.hashtags || ''; p.title = e.title || ''; p.coverSpec = e.cover ? jclone(e.cover) : null; p.cover = null; p.auto = { id: e.id, title: e.title, ts: Date.now() }; touch(); this.log('Wczytano z planu agenta: ' + e.id + ' ' + e.title);
     try { await this.makeCover(true); } catch (er) { console.warn(er); } this.render();
   },
