@@ -686,7 +686,8 @@ def set_autostart(enable: bool) -> None:
         return
     import winreg
 
-    key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Run", 0, winreg.KEY_SET_VALUE)
+    # CreateKeyEx: otwiera klucz, a gdy go nie ma (świeży profil) - tworzy
+    key = winreg.CreateKeyEx(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Run", 0, winreg.KEY_SET_VALUE)
     try:
         if enable:
             if getattr(sys, "frozen", False):
