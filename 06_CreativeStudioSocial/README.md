@@ -1,4 +1,4 @@
-# Creative Studio Social · v0.20
+# Creative Studio Social · v0.21
 
 Studio treści na social media w przeglądarce: marka → grafiki (karuzele) → wideo (rolki 9:16) → audio → publikacja na Instagram, YouTube Shorts, TikTok i Facebook Reels.
 Autor: Michał Rzekiecki · kontakt: michus@gmail.com · adres: https://projects.michus.workers.dev/06/
@@ -43,6 +43,10 @@ Autor: Michał Rzekiecki · kontakt: michus@gmail.com · adres: https://projects
 
 1. Analiza w przeglądarce (canvas, bez kluczy): poświaty (kolor i pozycja), pasek postępu, stopka, bloki tekstu, zdjęcie, akcenty → „DNA” układu, które steruje wszystkimi szablonami.
 2. Wzorzec domyślny: karuzela „Po kontuzji” (v4). Własny materiał (obrazy lub wideo rolki) nadpisuje DNA w projekcie; rodzaje slajdów są rozpoznawane zgrubnie.
+
+## Zmiany v0.21
+
+1. Pliki archiwum mają w nazwie numer i tytuł rolki (np. `R001-Efekt reflektora - rolka (final).mp4`), tak jak pliki już leżące w folderze R001.
 
 ## Zmiany v0.20 (numeracja rolek, porządek na Drive)
 

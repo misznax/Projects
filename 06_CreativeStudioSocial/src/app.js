@@ -61,13 +61,13 @@ async function archiveProject() {
   await Publish.loadPlan(); const p = P.cur, pb = p.publish || (p.publish = {}), sub = reelPath(), nm = reelFolderName(); let r;
   const pr = progressModal('Archiwizacja projektu'); try { r = await buildProjectZip(pr); pr.close(); if (!r) return; } catch (e) { pr.close(); toast('Archiwizacja nieudana: ' + errText(e), 'bad', 9000); return; }
   try {
-    const opt = { draft: true, sub, replace: true }, extra = [];
-    const zip = await DriveUp.deliver(r.z, 'projekt Studia.zip', Object.assign({ mime: 'application/zip' }, opt)); if (!zip) return;
-    if (pb.video) { const b = await Assets.blob(pb.video); if (b) { const v = await DriveUp.deliver(b, 'rolka (final).mp4', opt); if (v) extra.push('rolka'); } }
+    const opt = { draft: true, sub, replace: true }, extra = [], pf = nm + ' - '; // nazwy plików: „R001-Efekt reflektora - rolka (final).mp4” (numer w nazwie, gdy plik wyląduje poza folderem)
+    const zip = await DriveUp.deliver(r.z, pf + 'projekt Studia.zip', Object.assign({ mime: 'application/zip' }, opt)); if (!zip) return;
+    if (pb.video) { const b = await Assets.blob(pb.video); if (b) { const v = await DriveUp.deliver(b, pf + 'rolka (final).mp4', opt); if (v) extra.push('rolka'); } }
     const used = new Set(); for (const rl of p.reels || []) for (const a of rl.audio || []) if (a.track === 'music' && a.assetId) used.add(a.assetId);
-    for (const id of used) { const rec = await Assets.rec(id); if (rec && rec.blob) { const ext = (/\.[a-z0-9]{2,4}$/i.exec(rec.name || '') || ['.mp3'])[0], bn = String(rec.name || 'podkład').replace(/\.[a-z0-9]{2,4}$/i, '').replace(/[\\/:*?"<>|]+/g, ' ').trim(); const m = await DriveUp.deliver(rec.blob, 'podkład muzyczny (' + bn + ')' + ext, Object.assign({ mime: rec.blob.type || 'audio/mpeg' }, opt)); if (m) extra.push('podkład'); } }
-    if (pb.cover) { const b = await Assets.blob(pb.cover); if (b) { const c = await DriveUp.deliver(b, 'miniatura.png', Object.assign({ mime: 'image/png' }, opt)); if (c) extra.push('miniatura'); } }
-    const cap = [pb.title ? 'Tytuł: ' + pb.title : '', pb.caption || '', pb.hashtags || ''].filter(Boolean).join('\n\n'); if (cap) { await DriveUp.text('opis i hashtagi.txt', cap + '\n', sub); extra.push('opis'); }
+    for (const id of used) { const rec = await Assets.rec(id); if (rec && rec.blob) { const ext = (/\.[a-z0-9]{2,4}$/i.exec(rec.name || '') || ['.mp3'])[0], bn = String(rec.name || 'podkład').replace(/\.[a-z0-9]{2,4}$/i, '').replace(/[\\/:*?"<>|]+/g, ' ').trim(); const m = await DriveUp.deliver(rec.blob, pf + 'podkład muzyczny (' + bn + ')' + ext, Object.assign({ mime: rec.blob.type || 'audio/mpeg' }, opt)); if (m) extra.push('podkład'); } }
+    if (pb.cover) { const b = await Assets.blob(pb.cover); if (b) { const c = await DriveUp.deliver(b, pf + 'miniatura.png', Object.assign({ mime: 'image/png' }, opt)); if (c) extra.push('miniatura'); } }
+    const cap = [pb.title ? 'Tytuł: ' + pb.title : '', pb.caption || '', pb.hashtags || ''].filter(Boolean).join('\n\n'); if (cap) { await DriveUp.text(pf + 'opis i hashtagi.txt', cap + '\n', sub); extra.push('opis'); }
     p.archived = { ts: Date.now(), name: nm, path: sub, folder: zip.folder || '' }; touch(); await saveNow();
     modal('Rolka zarchiwizowana na Drive', h('div', {}, h('div', { style: { lineHeight: '1.7' } }, 'Folder: ', zip.folder ? h('a', { href: zip.folder, target: '_blank', rel: 'noopener' }, sub) : sub), h('div', { class: 'hint', style: { marginTop: '6px' }, html: rich('W folderze: projekt Studia (ZIP ze wszystkimi materiałami)' + (extra.length ? ', ' + extra.join(', ') : '') + '. Żeby wrócić do projektu: pobierz ZIP z folderu i wybierz (⋯ → Import projektu (ZIP)).') })),
       [{ t: '➕ Nowa rolka', cls: 'pri', fn: newReelPrompt }, { t: 'Zostań w tym projekcie' }]);
