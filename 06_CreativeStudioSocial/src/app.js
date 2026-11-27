@@ -31,8 +31,8 @@ async function exportProject() {
   } catch (e) { pr.close(); toast('Eksport projektu nieudany: ' + errText(e), 'bad', 9000); }
 }
 // Nazwa folderu rolki na Drive: numer z planu + nazwa rolki (np. „T04 Efekt reflektora”), a bez planu nazwa projektu
-function reelFolderName() { const p = P.cur, pb = p.publish || {}; return (((pb.planId ? pb.planId + ' ' : '') + ((pb.auto && pb.auto.title) || p.name)).replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 90)) || 'Rolka'; }
-async function newReelPrompt() { const n = prompt('Nazwa nowej rolki:', 'Nowa rolka ' + new Date().toLocaleDateString('pl-PL')); if (n) { await saveNow(); await createProject(n); } }
+function reelFolderName() { const p = P.cur, pb = p.publish || {}, base = (pb.auto && pb.auto.title) || p.name; return (((pb.planId && !String(base).startsWith(pb.planId + ' ') ? pb.planId + ' ' : '') + base).replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 90)) || 'Rolka'; }
+function newReelPrompt() { return newReelDialog(); }
 // Archiwum rolki na Drive: folder „numer nazwa” z projektem Studia (ZIP ze wszystkimi materiałami), gotową rolką, miniaturą i opisem
 async function archiveProject() {
   if (!DriveUp.cfg()) { DriveUp.setup(() => archiveProject()); return; }
@@ -59,12 +59,68 @@ async function importProject(file) {
 }
 
 // ── Projekty / wersje ──
+// Status projektu: pusty (bez grafik, rolek, plików użytkownika, opisu) albo lista zawartości. Pliki marki (logo, fonty, wzorce) się nie liczą.
+const BRAND_KINDS = ['logo', 'font', 'ref'];
+function projContent(p, assets) {
+  const pb = p.publish || {}, parts = [], a = (assets || []).filter((x) => !BRAND_KINDS.includes(x.kind));
+  if ((p.posts || []).length) parts.push(p.posts.length + ' grafik');
+  if ((p.reels || []).length) parts.push(p.reels.length + ' rolek');
+  if (a.length) parts.push(a.length + ' plików');
+  if (p.audio && (p.audio.takes || []).length) parts.push('nagrania');
+  if (pb.video) parts.push('wyeksportowana rolka');
+  if (pb.cover) parts.push('miniatura');
+  if ((pb.caption || '').trim() || (pb.hashtags || '').trim()) parts.push('opis');
+  return { empty: !parts.length, parts, planId: pb.planId || '', archived: p.archived || null };
+}
+async function projInfos(list) { const by = {}; for (const a of await DBI.all('assets')) (by[a.pid] = by[a.pid] || []).push(a); const o = {}; for (const p of list) o[p.id] = projContent(p, by[p.id]); return o; }
+async function deleteProject(p) { for (const a of (await DBI.all('assets')).filter((a) => a.pid === p.id)) await Assets.del(a.id); for (const v of await DBI.byIndex('versions', 'pid', p.id)) await DBI.del('versions', v.id); await DBI.del('projects', p.id); }
 async function projectsDialog() {
-  const list = await listProjects(), box = h('div', { class: 'zebra' });
-  const m = modal('Projekty', h('div', {}, box), [{ t: 'Zamknij' }]);
-  for (const p of list) box.append(h('div', { style: { display: 'flex', gap: '8px', alignItems: 'center', padding: '8px 10px' } }, h('div', { style: { flex: 1, minWidth: 0 } }, h('div', { style: { fontWeight: 600 } }, p.name + (P.cur && p.id === P.cur.id ? '  (otwarty)' : '')), h('div', { class: 'fine' }, 'Zmieniono ' + new Date(p.updated).toLocaleString('pl-PL') + ' · ' + p.posts.length + ' grafik, ' + p.reels.length + ' rolek')), h('button', { class: 'btn sm pri', onclick: async () => { await saveNow(); await openProject(p.id); m.close(); } }, 'Otwórz'), h('button', { class: 'btn sm bad', onclick: async () => { if (!confirm('Usunąć projekt „' + p.name + '” wraz z zasobami?')) return; for (const a of (await DBI.all('assets')).filter((a) => a.pid === p.id)) await Assets.del(a.id); for (const v of await DBI.byIndex('versions', 'pid', p.id)) await DBI.del('versions', v.id); await DBI.del('projects', p.id); if (P.cur && P.cur.id === p.id) { const rest = await listProjects(); if (rest.length) await openProject(rest[0].id); else await createProject('Nowy projekt'); } m.close(); projectsDialog(); } }, 'Usuń')));
+  await saveNow(); const list = await listProjects(), inf = await projInfos(list), box = h('div', { class: 'zebra' });
+  const empties = list.filter((p) => inf[p.id].empty && !inf[p.id].planId && !(P.cur && p.id === P.cur.id));
+  const m = modal('Projekty', h('div', {}, h('div', { class: 'hint', style: { marginBottom: '8px' } }, list.length + ' w tej przeglądarce. „Pusty” = bez grafik, rolek, własnych plików i opisu.'), box), [
+    { t: '➕ Nowa rolka', cls: 'pri', fn: () => newReelDialog() },
+    ...(empties.length ? [{ t: '🗑 Usuń puste (' + empties.length + ')', cls: 'bad', fn: async (close) => { if (!confirm('Usunąć ' + empties.length + ' pustych projektów bez tematu? W nich nic nie ma, bieżący projekt zostaje.')) return false; for (const p of empties) await deleteProject(p); close(); toast('Usunięto puste projekty: ' + empties.length, 'ok'); projectsDialog(); return false; } }] : []),
+    { t: 'Zamknij' }]);
+  for (const p of list) {
+    const i = inf[p.id], isCur = P.cur && p.id === P.cur.id, st = i.empty ? (i.planId ? 'temat ' + i.planId + ', bez materiałów' : 'pusty') : i.parts.join(', ');
+    box.append(h('div', { style: { display: 'flex', gap: '8px', alignItems: 'center', padding: '8px 10px' } },
+      h('div', { style: { flex: 1, minWidth: 0 } }, h('div', { style: { fontWeight: 600 } }, p.name + (isCur ? '  (otwarty)' : '')),
+        h('div', { class: 'fine', style: { color: i.empty ? 'var(--warn)' : 'var(--ok)' } }, (i.empty ? '○ ' : '● ') + st + (i.planId && !i.empty ? ' · temat ' + i.planId : '')),
+        i.archived ? h('div', { class: 'fine' }, '☁ Drive: ' + i.archived.name + ' · ' + new Date(i.archived.ts).toLocaleDateString('pl-PL')) : null,
+        h('div', { class: 'fine' }, 'Zmieniono ' + new Date(p.updated).toLocaleString('pl-PL'))),
+      h('button', { class: 'btn sm pri', onclick: async () => { await saveNow(); await openProject(p.id); m.close(); } }, 'Otwórz'),
+      h('button', { class: 'btn sm bad', onclick: async () => { if (!confirm('Usunąć projekt „' + p.name + '” (' + st + ') wraz z zasobami? Tego nie da się cofnąć.')) return; await deleteProject(p); if (P.cur && P.cur.id === p.id) { const rest = await listProjects(); if (rest.length) await openProject(rest[0].id); else await createProject('Pusta rolka'); } m.close(); projectsDialog(); } }, 'Usuń')));
+  }
 }
 async function createProject(name) { const p = newProject(name); await DBI.put('projects', p); await openProject(p.id); }
+// Nowa rolka: temat z listy planu (rolki.json → topics) albo pusta rolka. Pusty bieżący projekt jest używany ponownie, więc nie mnożą się puste projekty.
+async function startReel(name, topic) {
+  await saveNow(); const list = await listProjects(), inf = await projInfos(list), ci = P.cur && inf[P.cur.id]; let reused = false;
+  if (ci && ci.empty) { reused = true; P.cur.name = name; }
+  else { const np = newProject(name); await DBI.put('projects', np); await openProject(np.id); }
+  const pb = P.cur.publish; pb.planId = topic ? topic.id : ''; pb.title = topic ? topic.title : ''; pb.auto = null;
+  touch(); await saveNow(); if (reused) bus.emit('project');
+  toast((topic ? topic.id + ' ' + topic.title : name) + ': ' + (reused ? 'użyłem pustego projektu, nie powstał kolejny.' : 'nowy projekt gotowy.'), 'ok', 6000);
+}
+async function newReelDialog() {
+  await saveNow(); await Publish.loadPlan(); const topics = Publish.topics || [], list = await listProjects(), inf = await projInfos(list), cur = P.cur, curEmpty = !!(cur && inf[cur.id] && inf[cur.id].empty), by = {};
+  for (const p of list) { const k = inf[p.id].planId; if (k && !by[k]) by[k] = p; }
+  let m; const go = async (name, topic) => { m.close(); await startReel(name, topic); };
+  const nm = h('input', { type: 'text', value: 'Rolka bez tematu ' + new Date().toLocaleDateString('pl-PL'), style: { flex: 1, minWidth: 0 } });
+  const box = h('div', { style: { maxHeight: '50vh', overflow: 'auto' } });
+  for (const [pr, ttl] of [[1, 'Priorytet 1 (pierwsze 4 tygodnie)'], [2, 'Priorytet 2 (rezerwa)'], [3, 'Partia 2 (dowody w ig-04)']]) {
+    const ts = topics.filter((t) => (t.prio || 3) === pr); if (!ts.length) continue; const z = h('div', { class: 'zebra' }); box.append(h('h3', {}, ttl), z);
+    for (const t of ts) {
+      const ex = by[t.id], isCur = ex && cur && ex.id === cur.id, done = /opublikowan/.test(t.status || ''), held = t.status === 'wstrzymane';
+      const act = ex && !isCur ? h('button', { class: 'btn sm', onclick: async () => { m.close(); await saveNow(); await openProject(ex.id); } }, 'Otwórz projekt') : isCur ? h('span', { class: 'fine' }, 'bieżący projekt') : done ? h('span', { class: 'fine' }, 'opublikowana') : h('button', { class: 'btn sm pri', onclick: () => go(t.id + ' ' + t.title, t) }, held ? 'Wybierz mimo to' : 'Wybierz');
+      z.append(h('div', { style: { display: 'flex', gap: '8px', alignItems: 'center', padding: '7px 10px' } }, h('div', { style: { flex: 1, minWidth: 0 } }, h('div', { style: { fontWeight: 600 } }, t.id + ' · ' + t.title), h('div', { class: 'fine' }, [t.format, (held || done) ? t.status : '', t.note].filter(Boolean).join(' · ')), t.hook ? h('div', { class: 'fine', style: { fontStyle: 'italic' } }, '„' + t.hook + '”') : null), act));
+    }
+  }
+  if (!topics.length) box.append(h('div', { class: 'warnrow' }, 'Lista tematów (rolki.json) się nie wczytała. Użyj pustej rolki.'));
+  m = modal('Nowa rolka', h('div', {}, h('div', { class: 'hint', style: { marginBottom: '8px' } }, curEmpty ? 'Bieżący projekt „' + cur.name + '” jest pusty, więc użyję go ponownie (nie powstanie kolejny).' : 'Bieżący projekt „' + (cur ? cur.name : '') + '” zostaje zapisany w przeglądarce (⋯ → Projekty…).'),
+    h('div', { class: 'fld' }, h('label', {}, 'Pusta rolka, bez tematu'), h('div', { class: 'row', style: { gap: '8px' } }, nm, h('button', { class: 'btn', onclick: () => go(nm.value.trim() || 'Rolka bez tematu', null) }, 'Pusta rolka'))),
+    h('div', { class: 'fld' }, h('label', {}, 'Albo wybierz temat z listy (hooki to propozycje robocze)')), box), [{ t: 'Anuluj' }]);
+}
 async function versionsDialog() {
   await snapshot('ręczna migawka'); const vs = (await DBI.byIndex('versions', 'pid', P.cur.id)).sort((a, b) => b.ts - a.ts), box = h('div', { class: 'zebra' });
   const m = modal('Wersje projektu', h('div', {}, h('div', { class: 'hint', html: rich('Migawki powstają automatycznie co 10 minut zmian, przy duplikacji i po kliknięciu tego okna. (Przywrócenie zachowuje bieżący stan jako nową migawkę.) Przechowuję 30 ostatnich.') }), box), [{ t: 'Zamknij' }]);
@@ -120,7 +176,7 @@ function shortcutsDialog() {
   modal('Skróty klawiszowe', h('table', { class: 'qc' }, ...rows.map(([k, v]) => h('tr', {}, h('td', {}, h('b', {}, k)), h('td', {}, v)))), [{ t: 'Zamknij' }]);
 }
 function mainMenu(anchor) {
-  popMenu(anchor, [{ t: 'Projekty…', i: '📁', fn: projectsDialog }, { t: 'Nowy projekt', i: '＋', fn: async () => { const n = prompt('Nazwa projektu:', 'Projekt ' + new Date().toLocaleDateString('pl-PL')); if (n) { await saveNow(); await createProject(n); } } }, { t: 'Duplikuj projekt', i: '⧉', fn: async () => { await duplicateProject(); } }, { t: 'Wersje projektu…', i: '🕘', fn: versionsDialog }, '-',
+  popMenu(anchor, [{ t: 'Projekty…', i: '📁', fn: projectsDialog }, { t: 'Nowa rolka (temat z listy lub pusta)', i: '＋', fn: newReelDialog }, { t: 'Duplikuj projekt', i: '⧉', fn: async () => { await duplicateProject(); } }, { t: 'Wersje projektu…', i: '🕘', fn: versionsDialog }, '-',
     { t: 'Archiwizuj rolkę na Drive (folder numer + nazwa)', i: '☁', fn: archiveProject }, { t: 'Eksport projektu (ZIP z zasobami)', i: '📦', fn: exportProject }, { t: 'Import projektu (ZIP)…', i: '📥', fn: async () => { const f = await pickFiles('.zip,application/zip', false); if (f[0]) await importProject(f[0]); } }, '-', { t: 'Status integracji', i: '🔌', fn: integrationsDialog }, { t: 'Skróty klawiszowe', i: '⌨', fn: shortcutsDialog }, { t: 'Sugestie', i: '💡', fn: suggestDialog }, { t: 'O autorze', i: 'ℹ', fn: aboutDialog }]);
 }
 

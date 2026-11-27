@@ -28,5 +28,213 @@
         "Gilovich T., Medvec V.H., Savitsky K. (2000). The spotlight effect in social judgment. J Pers Soc Psychol 78(2):211-222. PMID 10707330"
       ]
     }
-  ]
+  ],
+  "topics": [
+    {
+      "id": "T01",
+      "title": "Zapamiętujesz trening po jego końcówce",
+      "prio": 1,
+      "status": "pomysł",
+      "format": "Reel 25-30 s",
+      "hook": "Dlaczego zapamiętujesz trening głównie po jego końcówce?"
+    },
+    {
+      "id": "T02",
+      "title": "Intencja to połowa drogi",
+      "prio": 1,
+      "status": "pomysł",
+      "format": "karuzela 6-7 slajdów",
+      "hook": "Prawie połowa osób, które planują ćwiczyć, tego nie robi.",
+      "note": "źródło na slajdzie"
+    },
+    {
+      "id": "T03",
+      "title": "Z 54 pomysłów na regularność wygrał powrót po przerwie",
+      "prio": 1,
+      "status": "pomysł",
+      "format": "Reel 30 s",
+      "hook": "Z 54 pomysłów na regularność wygrał jeden: powrót po przerwie."
+    },
+    {
+      "id": "T04",
+      "title": "Efekt reflektora",
+      "prio": 1,
+      "status": "opublikowana 27.11.2026",
+      "format": "Reel 30 s",
+      "hook": "Myślisz, że ktoś patrzy, jak ćwiczysz?"
+    },
+    {
+      "id": "T05",
+      "title": "Średnio masz o jedno powtórzenie więcej",
+      "prio": 1,
+      "status": "pomysł",
+      "format": "karuzela lub Reel 30 s",
+      "hook": "Mówisz: zostały 2 powtórzenia. Średnio masz o jedno więcej."
+    },
+    {
+      "id": "T06",
+      "title": "Po tygodniach rozciągania zmienia się głównie odczuwanie",
+      "prio": 1,
+      "status": "pomysł",
+      "format": "Reel 35 s",
+      "hook": "Po 3-8 tygodniach rozciągania zmienia się głównie odczuwanie rozciągania.",
+      "note": "przed publikacją sprawdzić nowszą literaturę"
+    },
+    {
+      "id": "T07",
+      "title": "Dwa rodzaje perfekcjonizmu",
+      "prio": 1,
+      "status": "pomysł",
+      "format": "Reel 30 s",
+      "hook": "Dwa rodzaje perfekcjonizmu. Jeden pomaga, drugi wypala."
+    },
+    {
+      "id": "T08",
+      "title": "Co powiedzieć sobie przed ciężką serią",
+      "prio": 1,
+      "status": "pomysł",
+      "format": "Reel 30 s",
+      "hook": "Co powiedzieć sobie przed ciężką serią? Zależy od ćwiczenia."
+    },
+    {
+      "id": "R1",
+      "title": "Rozciąganie przed treningiem: czas decyduje",
+      "prio": 1,
+      "status": "pomysł",
+      "format": "Reel 25 s",
+      "hook": "Rozciąganie do minuty: minus jeden, dwa procent siły.",
+      "note": "gotowy szkic skryptu w ig-04, sekcja E"
+    },
+    {
+      "id": "T09",
+      "title": "Co mówić w trakcie ćwiczenia (sporne metaanalizy)",
+      "prio": 2,
+      "status": "pomysł",
+      "format": "karuzela",
+      "hook": "Dwie metaanalizy, dwa przeciwne wnioski o tym, co mówić podczas ćwiczenia."
+    },
+    {
+      "id": "T10",
+      "title": "Pewność siebie przed startem czasem szkodzi",
+      "prio": 2,
+      "status": "pomysł",
+      "format": "Reel",
+      "hook": "Pewność siebie przed startem może pogorszyć wynik? Metaanaliza z 2023: czasem.",
+      "note": "połączyć z prawdziwą obserwacją Michała z zajęć"
+    },
+    {
+      "id": "T11",
+      "title": "Test nie pokazał progresu. Czy organizm nie reaguje?",
+      "prio": 2,
+      "status": "pomysł",
+      "format": "karuzela",
+      "hook": "Test nie pokazał progresu. Czy Twój organizm nie reaguje na trening?"
+    },
+    {
+      "id": "T12",
+      "title": "Powód ćwiczenia a wytrwałość",
+      "prio": 2,
+      "status": "pomysł",
+      "format": "Reel lub Stories z pytaniem",
+      "hook": "Powód, dla którego ćwiczysz, wpływa na to, jak długo wytrwasz."
+    },
+    {
+      "id": "T13",
+      "title": "Ciężki dzień w pracy i trening: spór w nauce",
+      "prio": 2,
+      "status": "pomysł",
+      "format": "Reel",
+      "hook": "Ciężki dzień w pracy psuje trening? Nauka się o to kłóci."
+    },
+    {
+      "id": "T14",
+      "title": "Słowa trenera przed serią",
+      "prio": 2,
+      "status": "pomysł",
+      "format": "Reel",
+      "hook": "Słowa trenera przed serią mogą zmienić wynik. Oto dane.",
+      "note": "nie sugerować, że słowa leczą"
+    },
+    {
+      "id": "T15",
+      "title": "Nawyk: 21 dni to mit",
+      "prio": 2,
+      "status": "pomysł",
+      "format": "Reel",
+      "hook": "21 dni na nawyk? Przegląd 20 badań mówi o 59-66 dniach.",
+      "note": "temat znany, użyć tylko z kątem mechanizmu"
+    },
+    {
+      "id": "T16",
+      "title": "Postawa: brak jednej poprawnej",
+      "prio": 2,
+      "status": "wstrzymane",
+      "hook": "Brak dowodów na jedną poprawną postawę. Co robić zamiast prostować plecy?",
+      "note": "wstrzymane do decyzji Michała"
+    },
+    {
+      "id": "T17",
+      "title": "Zakwasy jako miernik treningu",
+      "prio": 2,
+      "status": "pomysł",
+      "note": "rezerwa, temat dobrze znany"
+    },
+    {
+      "id": "T18",
+      "title": "Dobry wynik na treningu to nie to samo co nauka",
+      "prio": 3,
+      "status": "pomysł"
+    },
+    {
+      "id": "T19",
+      "title": "Ćwiczenia w mieszanej kolejności zamiast 10 powtórzeń tego samego",
+      "prio": 3,
+      "status": "pomysł",
+      "note": "dowody sporne"
+    },
+    {
+      "id": "T20",
+      "title": "Pod presją psuje cię myślenie o ruchu",
+      "prio": 3,
+      "status": "pomysł"
+    },
+    {
+      "id": "T21",
+      "title": "Dwie sekundy rutyny przed podejściem",
+      "prio": 3,
+      "status": "pomysł"
+    },
+    {
+      "id": "T22",
+      "title": "Muzyka na treningu",
+      "prio": 3,
+      "status": "pomysł"
+    },
+    {
+      "id": "T23",
+      "title": "Gdy ktoś narzuca intensywność, trening jest mniej przyjemny",
+      "prio": 3,
+      "status": "pomysł"
+    },
+    {
+      "id": "T24",
+      "title": "Minimalna dawka: jeden trening tygodniowo dla początkujących",
+      "prio": 3,
+      "status": "pomysł"
+    },
+    {
+      "id": "T25",
+      "title": "Lęk o wygląd ciała a unikanie ćwiczeń",
+      "prio": 3,
+      "status": "pomysł",
+      "note": "dowody korelacyjne"
+    },
+    {
+      "id": "T26",
+      "title": "Postawa: nie wada, a brak przerw w siedzeniu",
+      "prio": 3,
+      "status": "pomysł"
+    }
+  ],
+  "topicsNote": "Bank tematów (ig-02, ig-04). prio 1 = pierwsze 4 tygodnie, 2 = rezerwa, 3 = partia 2. Hooki to propozycje robocze. Studio pokazuje tę listę w oknie Nowa rolka."
 }
