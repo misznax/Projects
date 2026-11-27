@@ -2,7 +2,7 @@
 const S = {
   tab: 'brand',
   mods: { brand: Brand, ideas: Ideas, creative: Creative, video: Video, audio: AudioStudio, publish: Publish },
-  names: [['brand', 'Marka'], ['ideas', 'Pomysły'], ['creative', 'Grafiki'], ['video', 'Wideo'], ['audio', 'Audio'], ['publish', 'Publikacja']],
+  names: [['brand', 'Marka'], ['ideas', 'Pomysły'], ['creative', 'Grafiki'], ['audio', 'Audio'], ['video', 'Wideo'], ['publish', 'Publikacja']],
   go(tab, force) {
     if (!P.cur) return; if (tab === this.tab && !force) return; const prev = this.mods[this.tab]; if (prev && prev.hide && tab !== this.tab) prev.hide();
     this.tab = tab; $$('.tab').forEach((b) => { b.classList.toggle('on', b.dataset.tab === tab); b.setAttribute('aria-selected', b.dataset.tab === tab); }); $$('.mod').forEach((m) => m.classList.toggle('on', m.id === 'm-' + tab));

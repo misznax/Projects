@@ -1,0 +1,31 @@
+{
+  "ver": 1,
+  "updated": "2026-11-27",
+  "note": "Plan agenta: opis ze źródłami, hashtagi i tekst miniatury dla rolek do publikacji. Studio wczytuje ten plik samo (Publikacja, sekcje 2 i 3). Pole active = rolka czekająca na publikację.",
+  "reels": [
+    {
+      "id": "T04",
+      "title": "Efekt reflektora",
+      "status": "do publikacji",
+      "active": true,
+      "nets": [
+        "ig"
+      ],
+      "hook": "Myślisz, że ktoś patrzy, jak ćwiczysz?",
+      "cover": {
+        "kicker": "EFEKT REFLEKTORA",
+        "lines": [
+          "MYŚLISZ, ŻE",
+          "*KTOŚ PATRZY*",
+          "JAK ĆWICZYSZ?"
+        ],
+        "sub": "Sprawdzono to na koszulkach"
+      },
+      "caption": "🔦 EFEKT REFLEKTORA (spotlight effect)\n\nMyślisz, że ktoś patrzy, jak ćwiczysz? W badaniu z 2000 roku studenci w koszulce z Barrym Manilowem szacowali, że zauważy ją 46% osób w sali. Zauważyło 23%. 👕\n\nPrzeceniamy, ile osób zwraca na nas uwagę. Badanie nie dotyczyło siłowni, a wniosek o skupieniu na ćwiczeniu to moja własna myśl. 💪\n\n📩 Wyślij to komuś, kto omija ćwiczenia z obawy, że ktoś patrzy.\n\n📚 Źródło: Gilovich T., Medvec V.H., Savitsky K. (2000). The spotlight effect in social judgment. J Pers Soc Psychol 78(2):211-222. PMID 10707330",
+      "hashtags": "#efektreflektora #psychologiasportu #gymtimidation #trening #siłownia",
+      "sources": [
+        "Gilovich T., Medvec V.H., Savitsky K. (2000). The spotlight effect in social judgment. J Pers Soc Psychol 78(2):211-222. PMID 10707330"
+      ]
+    }
+  ]
+}
