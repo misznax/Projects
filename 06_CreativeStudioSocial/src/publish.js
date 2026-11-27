@@ -57,10 +57,10 @@ const Publish = {
   worst(n) { const v = this.validate(n); return v.some((x) => x.ok === 'bad') ? 'bad' : v.some((x) => x.ok === 'warn') ? 'warn' : 'ok'; },
 
   // ── Plan agenta (public/rolki.json): opis ze źródłami, hashtagi i tekst miniatury wpisują się same ──
-  plan: null,
+  plan: null, topics: [],
   async loadPlan() {
     if (this.plan) return this.plan;
-    try { const r = await fetch('rolki.json?v=' + Date.now(), { cache: 'no-store' }); const j = r.ok ? await r.json() : null; this.plan = j && Array.isArray(j.reels) ? j.reels : []; } catch (e) { this.plan = []; }
+    try { const r = await fetch('rolki.json?v=' + Date.now(), { cache: 'no-store' }); const j = r.ok ? await r.json() : null; this.plan = j && Array.isArray(j.reels) ? j.reels : []; this.topics = j && Array.isArray(j.topics) ? j.topics : []; } catch (e) { this.plan = []; this.topics = []; }
     return this.plan;
   },
   planEntry() { return (this.plan || []).find((x) => x.id === this.p.planId) || null; },

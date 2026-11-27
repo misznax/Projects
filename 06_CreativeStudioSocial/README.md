@@ -44,6 +44,13 @@ Autor: Michał Rzekiecki · kontakt: michus@gmail.com · adres: https://projects
 1. Analiza w przeglądarce (canvas, bez kluczy): poświaty (kolor i pozycja), pasek postępu, stopka, bloki tekstu, zdjęcie, akcenty → „DNA” układu, które steruje wszystkimi szablonami.
 2. Wzorzec domyślny: karuzela „Po kontuzji” (v4). Własny materiał (obrazy lub wideo rolki) nadpisuje DNA w projekcie; rodzaje slajdów są rozpoznawane zgrubnie.
 
+## Zmiany v0.19 (lista tematów, pusta rolka, status projektów)
+
+1. Okno "Nowa rolka" (⋯ → Nowa rolka, przycisk w Wideo, Projekty, po archiwizacji): lista tematów T01–T26 z banku (public/rolki.json → topics, pole prio 1/2/3) albo "Pusta rolka" z własną nazwą. Wybrany temat ustawia nazwę "Tnn Tytuł" i planId (folder na Drive "Tnn Tytuł")
+2. Pusty bieżący projekt jest używany ponownie (nie powstaje kolejny). Temat, który ma już projekt, ma przycisk "Otwórz projekt"
+3. ⋯ → Projekty: status każdego projektu (pusty / temat bez materiałów / zawartość: grafiki, rolki, pliki, nagrania, rolka, miniatura, opis), znacznik archiwum na Drive, przycisk "Usuń puste" (pomija bieżący projekt i projekty z tematem)
+4. Usunięto okno z domyślną nazwą "Nowa rolka <data>", które tworzyło projekty bez identyfikacji
+
 ## Zmiany v0.18 (zamykanie projektu)
 
 1. W pasku Wideo przycisk "✕ Zamknij i nowa rolka": zapisuje bieżący projekt i otwiera pusty (stary zostaje w ⋯ → Projekty…)
